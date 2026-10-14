@@ -20,7 +20,7 @@
   <title>Schach</title>
 <meta name="description" content="Das königliche Spiel: gegen einen Bot mit vier Stärken und drei Spielstilen oder zu zweit an einem Gerät.">
 <meta name="theme-color" content="#e8c078">
-<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Strategie">
 <!--
   Schach – angepasst für langwiligi.site.
@@ -424,6 +424,7 @@
 <div class="mode-selector">
   <button class="mode-btn active" id="btn-1p" onclick="setMode(1)">1 Spieler</button>
   <button class="mode-btn" id="btn-2p" onclick="setMode(2)">2 Spieler</button>
+  <button class="mode-btn" id="btn-on" onclick="setMode(3)" style="display:none">Online</button>
 </div>
 
 <div class="ai-config" id="ai-config">
@@ -460,7 +461,7 @@
 </div>
 
 <div class="buttons">
-  <button onclick="resetGame()">Neues Spiel</button>
+  <button onclick="newGame()">Neues Spiel</button>
 </div>
 
 <div class="container">
@@ -487,7 +488,7 @@
   <div class="game-over-box">
     <h2 id="game-over-title">Spiel vorbei</h2>
     <p id="game-over-text"></p>
-    <button onclick="resetGame()">Neues Spiel</button>
+    <button onclick="newGame()">Neues Spiel</button>
   </div>
 </div>
 
@@ -498,6 +499,210 @@
   </div>
 </div>
 
+<!-- ===== Online-Modus über GameHub (neu für langwiligi.site) ===== -->
+<style>
+  .ol-panel {
+    display: none; width: min(520px, 100%); margin: 0 auto 14px; padding: 12px 16px;
+    background: rgba(42, 30, 20, 0.85); border: 2px solid #8B7355; border-radius: 10px;
+    font-family: 'Georgia', serif; color: #D8C8B0; text-align: center;
+  }
+  .ol-panel.show { display: block; }
+  .ol-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 6px 0; }
+  .ol-panel button { margin: 0; }
+  .ol-panel input {
+    padding: 7px 10px; font-size: 1em; font-family: inherit; border: 2px solid #8B7355;
+    border-radius: 6px; background: #1A1410; color: #D8C8B0;
+  }
+  .ol-name { width: 180px; }
+  .ol-code { width: 100px; text-transform: uppercase; letter-spacing: 0.25em; text-align: center; font-weight: bold; }
+  .ol-big { font-size: 2em; letter-spacing: 0.3em; color: #E8C078; font-weight: bold; margin: 4px 0; }
+  .ol-info { font-size: 0.95em; }
+  .ol-msg { min-height: 1.3em; font-size: 0.9em; color: #D4A860; margin-top: 4px; }
+  .ol-msg.err { color: #ff8a80; }
+  .ol-lb { margin-top: 8px; text-align: left; font-size: 0.9em; }
+  .ol-lb summary { cursor: pointer; text-align: center; color: #8B7355; }
+  .ol-hidden { display: none !important; }
+</style>
+<script src="../_shared/hub.js"></script>
+<script>
+/* Gemeinsamer Online-Baustein: Raum erstellen/beitreten, Einladungslink, Revanche und Rangliste.
+   Das Spiel selbst überträgt nur seine Züge mit kit.send() und bekommt die des Gegners in cfg.onMsg(). */
+window.OnlineKit = function (cfg) {
+  var HUB = window.GameHub || null;
+  var kit = { available: !!HUB, active: false, inRoom: false, seat: -1, round: 0, settings: null, names: ['', ''], invite: '' };
+  kit.show = kit.leave = kit.send = kit.end = function () {};
+  kit.again = function () { return false; };
+  kit.opponent = function () { return 'Gegner'; };
+  if (!HUB) return kit;
+
+  var room = null, ready = {}, roundOpen = false, lbLoaded = false;
+  var panel = document.createElement('div');
+  panel.className = 'ol-panel';
+  panel.innerHTML =
+    '<div class="ol-setup">' +
+      '<div class="ol-row"><input class="ol-name" maxlength="16" placeholder="Dein Name" autocomplete="nickname"></div>' +
+      '<div class="ol-row"><button class="ol-create">Raum erstellen</button></div>' +
+      '<div class="ol-row"><span>oder mit Code:</span><input class="ol-code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="ol-join">Beitreten</button></div>' +
+    '</div>' +
+    '<div class="ol-wait ol-hidden">' +
+      '<div>Schick diesen Code oder Link an deinen Freund:</div>' +
+      '<div class="ol-big"></div>' +
+      '<div class="ol-row"><button class="ol-copy">Link kopieren</button><button class="ol-cancel">Abbrechen</button></div>' +
+    '</div>' +
+    '<div class="ol-play ol-hidden"><div class="ol-info"></div><div class="ol-row"><button class="ol-leave">Raum verlassen</button></div></div>' +
+    '<div class="ol-msg"></div>' +
+    '<details class="ol-lb"><summary>Online-Rangliste</summary><div class="ol-board"></div></details>';
+  cfg.after.parentNode.insertBefore(panel, cfg.after.nextSibling);
+  function q(s) { return panel.querySelector(s); }
+
+  function msg(text, err) { q('.ol-msg').textContent = text || ''; q('.ol-msg').classList.toggle('err', !!err); }
+  function view(name) {
+    ['setup', 'wait', 'play'].forEach(function (v) { q('.ol-' + v).classList.toggle('ol-hidden', v !== name); });
+    q('.ol-create').disabled = false; q('.ol-join').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    var n = HUB.setName(q('.ol-name').value) || 'Gast';
+    q('.ol-name').value = n;
+    return n;
+  }
+  function updateInfo() {
+    q('.ol-info').textContent = 'Raum ' + (room ? room.code : '') + ' · Du spielst ' + cfg.sides[kit.seat] +
+      ' gegen ' + kit.opponent() + (kit.round > 1 ? ' · Runde ' + kit.round : '');
+  }
+  kit.opponent = function () { return kit.names[1 - kit.seat] || 'Gegner'; };
+
+  function reset() {
+    kit.active = false; kit.inRoom = false; roundOpen = false; ready = {};
+    kit.seat = -1; kit.round = 0;
+    if (room) { try { room.close(); } catch (e) { /* egal */ } }
+    room = null;
+    view('setup');
+  }
+  function abort(text) {
+    var wasRunning = kit.inRoom;
+    reset();
+    msg(text, true);
+    if (wasRunning && cfg.onAbort) cfg.onAbort(text);
+  }
+
+  function connectRoom() {
+    room = HUB.connect(cfg.gameId);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', function (m) {
+      kit.names = (m.players || room.players || []).map(playerName);
+      if (kit.seat === 0) hostStart();
+    });
+    room.on('peer-left', function () { abort('Dein Gegner hat den Raum verlassen.'); });
+    room.on('close', function () { abort('Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', function (rows) { HUB.renderBoard(q('.ol-board'), rows, HUB.getName()); });
+  }
+  function begin() {
+    kit.active = true; roundOpen = true; ready = {};
+    view('play'); updateInfo(); msg('');
+    cfg.onStart({ seat: kit.seat, settings: kit.settings, round: kit.round });
+  }
+  function hostStart() {
+    kit.round++;
+    kit.settings = cfg.getSettings ? cfg.getSettings() : null;
+    room.send({ t: 'start', round: kit.round, settings: kit.settings, names: kit.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    begin();
+  }
+  function onNetMsg(d) {
+    if (!d || !kit.inRoom) return;
+    if (d.t === 'start') {
+      kit.round = d.round || 1; kit.settings = d.settings || null;
+      if (Array.isArray(d.names)) kit.names = d.names;
+      begin();
+    } else if (d.t === 'again') {
+      ready[1 - kit.seat] = true;
+      if (kit.seat === 0 && ready[0]) hostStart();
+      else msg('Dein Gegner will nochmal spielen – klick auf „Neues Spiel“.');
+    } else if (d.t === 'bye') {
+      abort('Dein Gegner hat den Raum verlassen.');
+    } else if (kit.active) {
+      cfg.onMsg(d);
+    }
+  }
+
+  function create() {
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Verbinde …');
+    connectRoom();
+    room.create(name, 2).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you; kit.names = [name, ''];
+      q('.ol-big').textContent = res.code;
+      view('wait');
+      msg('Warte auf Mitspieler …');
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+  function join() {
+    var code = HUB.cleanCode(q('.ol-code').value);
+    if (code.length !== 4) { msg('Bitte den 4-stelligen Code eingeben.', true); return; }
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Trete bei …');
+    connectRoom();
+    room.join(code, name).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you;
+      kit.names = (res.players || room.players || []).map(playerName);
+      view('play');
+      q('.ol-info').textContent = 'Raum ' + room.code;
+      msg('Beigetreten! Warte auf den Start …');
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+
+  kit.show = function (on) {
+    panel.classList.toggle('show', !!on);
+    if (on && !lbLoaded) { lbLoaded = true; HUB.loadBoard(cfg.gameId, q('.ol-board'), HUB.getName()); }
+  };
+  kit.send = function (d) { if (room && kit.active) room.send(d); };
+  // Rundenende: nur der Host meldet das Ergebnis (Platz des Gewinners, -1 = unentschieden)
+  kit.end = function (winnerSeat) {
+    if (!roundOpen) return;
+    roundOpen = false;
+    if (kit.seat === 0 && room) { try { room.result(winnerSeat); } catch (e) { /* egal */ } }
+  };
+  // Neue Runde: startet erst, wenn beide zugestimmt haben
+  kit.again = function () {
+    if (!kit.inRoom) return false;
+    if (!kit.active) return true;
+    ready[kit.seat] = true;
+    room.send({ t: 'again' });
+    if (kit.seat === 0 && ready[1]) hostStart();
+    else msg('Warte, bis dein Gegner auch nochmal will …');
+    return true;
+  };
+  kit.leave = function () {
+    if (room) { try { room.send({ t: 'bye' }); } catch (e) { /* egal */ } }
+    reset();
+    msg('');
+  };
+
+  q('.ol-name').value = HUB.getName();
+  q('.ol-create').addEventListener('click', create);
+  q('.ol-join').addEventListener('click', join);
+  q('.ol-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') join(); });
+  q('.ol-cancel').addEventListener('click', function () { kit.leave(); });
+  q('.ol-leave').addEventListener('click', function () { kit.leave(); if (cfg.onAbort) cfg.onAbort(''); });
+  q('.ol-copy').addEventListener('click', function () {
+    var link = 'https://langwiligi.site/' + cfg.gameId + '/#' + q('.ol-big').textContent;
+    var done = function () { msg('Link kopiert! Warte auf Mitspieler …'); };
+    try { navigator.clipboard.writeText(link).then(done, function () { msg(link); }); } catch (e) { msg(link); }
+  });
+
+  var code = HUB.cleanCode(location.hash);
+  if (code.length === 4) {
+    kit.invite = code;
+    q('.ol-code').value = code;
+    msg('Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.');
+  }
+  return kit;
+};
+</script>
 <script>
 (function() {
 
@@ -669,10 +874,14 @@
   /* ===== MODE ===== */
 
   function setMode(m) {
+    if (m === 3 && !kit.available) return;
+    if (mode === 3 && m !== 3) kit.leave();
     mode = m;
     document.getElementById('btn-1p').className = m === 1 ? 'mode-btn active' : 'mode-btn';
     document.getElementById('btn-2p').className = m === 2 ? 'mode-btn active' : 'mode-btn';
+    if (kit.available) document.getElementById('btn-on').className = m === 3 ? 'mode-btn active' : 'mode-btn';
     document.getElementById('ai-config').style.display = m === 1 ? 'flex' : 'none';
+    kit.show(m === 3);
     /* 2-player is always shown from White's side */
     createBoard();
     createCoords();
@@ -723,12 +932,76 @@
 
   /* You always sit at the bottom of the board. */
   function boardFlipped() {
-    return mode === 1 && humanColor === B;
+    return (mode === 1 && humanColor === B) || (mode === 3 && onlineColor() === B);
+  }
+
+  /* ===== ONLINE (Host = Weiss, Gast = Schwarz) ===== */
+
+  function onlineColor() {
+    return kit.seat === 1 ? B : W;
+  }
+
+  /* Online darf nur geklickt werden, wenn das Spiel läuft und du am Zug bist */
+  function onlineBlocked() {
+    return mode === 3 && (!kit.active || turn !== onlineColor());
+  }
+
+  function onlineMove(fromR, fromC, toR, toC, special, promoType) {
+    if (mode === 3) kit.send({ t: 'mv', m: [fromR, fromC, toR, toC, special || '', promoType || ''] });
+    makeMove(fromR, fromC, toR, toC, special, promoType);
+    render();
+  }
+
+  function onRemoteMsg(d) {
+    if (d.t !== 'mv' || !Array.isArray(d.m) || phase !== 'play') return;
+    var fr = d.m[0], fc = d.m[1], tr = d.m[2], tc = d.m[3];
+    if (!inBounds(fr, fc) || !inBounds(tr, tc)) return;
+    var piece = board[fr][fc];
+    if (!piece || piece.color !== turn || turn === onlineColor()) return;
+    var legal = getLegalMoves(board, fr, fc, castleRights, enPassantTarget);
+    for (var i = 0; i < legal.length; i++) {
+      if (legal[i].r === tr && legal[i].c === tc) {
+        makeMove(fr, fc, tr, tc, legal[i].special, d.m[5] || undefined);
+        render();
+        return;
+      }
+    }
+  }
+
+  var kit = window.OnlineKit({
+    gameId: 'schach',
+    after: document.querySelector('.mode-selector'),
+    sides: ['Weiss', 'Schwarz'],
+    onStart: function() {
+      createBoard();
+      createCoords();
+      resetGame();
+    },
+    onMsg: onRemoteMsg,
+    onAbort: function(text) {
+      if (phase === 'play') phase = 'gameover';
+      document.getElementById('promo-overlay').className = 'game-over-overlay';
+      if (text) setMessage(text);
+      render();
+    }
+  });
+
+  function newGameClicked() {
+    if (mode === 3) {
+      if (kit.again()) document.getElementById('game-over-overlay').className = 'game-over-overlay';
+      else resetGame();
+      return;
+    }
+    resetGame();
   }
 
   function panelLabel(color) {
     var name = color === W ? 'Weiss' : 'Schwarz';
     if (mode === 2) return name + (color === W ? ' (S1)' : ' (S2)');
+    if (mode === 3) {
+      if (!kit.active) return name;
+      return name + (color === onlineColor() ? ' (du)' : ' (' + kit.opponent() + ')');
+    }
     return name + (color === aiColor ? ' (' + AI_LEVELS[aiLevel].label + ')' : ' (du)');
   }
 
@@ -1191,7 +1464,7 @@
         var winner = opponent(turn);
         var winnerName = winner === W ? 'Weiss' : 'Schwarz';
         setMessage('Schachmatt!');
-        showGameOver('Schachmatt!', winnerName + ' gewinnt!');
+        showGameOver('Schachmatt!', winnerName + ' gewinnt!', winner);
       } else {
         phase = 'gameover';
         setMessage('Patt!');
@@ -1707,7 +1980,11 @@
 
   /* ===== GAME OVER ===== */
 
-  function showGameOver(title, text) {
+  function showGameOver(title, text, winner) {
+    if (mode === 3) {
+      kit.end(winner ? (winner === W ? 0 : 1) : -1);
+      if (winner) title = winner === onlineColor() ? 'Du gewinnst!' : kit.opponent() + ' gewinnt';
+    }
     document.getElementById('game-over-title').textContent = title;
     document.getElementById('game-over-text').textContent = text;
     document.getElementById('game-over-overlay').className = 'game-over-overlay show';
@@ -1724,8 +2001,7 @@
       btn.textContent = PIECE_UNICODE[color + t];
       btn.onclick = function() {
         document.getElementById('promo-overlay').className = 'game-over-overlay';
-        makeMove(fromR, fromC, toR, toC, 'promote', t);
-        render();
+        onlineMove(fromR, fromC, toR, toC, 'promote', t);
       };
       wrap.appendChild(btn);
     });
@@ -1856,6 +2132,10 @@
     var turnText = turn === W ? "Weiss ist am Zug" : "Schwarz ist am Zug";
     if (phase === 'gameover') {
       turnText = 'Spiel vorbei';
+    } else if (mode === 3) {
+      turnText = !kit.active ? 'Online: Raum erstellen oder beitreten'
+        : turn === onlineColor() ? 'Du bist am Zug (' + (turn === W ? 'Weiss' : 'Schwarz') + ')'
+        : kit.opponent() + ' ist am Zug';
     }
     document.getElementById('turn-indicator').textContent = turnText;
 
@@ -1893,6 +2173,7 @@
   function onCellClick(e) {
     if (phase !== 'play') return;
     if (mode === 1 && turn === aiColor) return; /* engine's turn */
+    if (onlineBlocked()) return;
 
     var cell = e.currentTarget;
     var r = parseInt(cell.dataset.r);
@@ -1916,8 +2197,7 @@
           return;
         }
         /* Execute the move */
-        makeMove(selectedSq.r, selectedSq.c, r, c, moveTarget.special);
-        render();
+        onlineMove(selectedSq.r, selectedSq.c, r, c, moveTarget.special);
         return;
       }
 
@@ -1962,12 +2242,15 @@
   humanColor = W;
   aiColor = B;
   syncAiButtons();
+  if (kit.available) document.getElementById('btn-on').style.display = '';
+  else document.getElementById('btn-on').remove();
   createBoard();
   createCoords();
   resetGame();
+  if (kit.invite) setMode(3);
 
   /* Expose to global scope for button onclick handlers */
-  window.resetGame = resetGame;
+  window.newGame = newGameClicked;
   window.setMode = setMode;
   window.setLevel = setLevel;
   window.setStyle = setStyle;

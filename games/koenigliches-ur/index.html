@@ -20,7 +20,7 @@
   <title>Das Königliche Spiel von Ur</title>
 <meta name="description" content="Das 4500 Jahre alte Rennspiel aus Mesopotamien: würfeln, schlagen, Rosetten nutzen – gegen Bot oder Freund.">
 <meta name="theme-color" content="#ffd23f">
-<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Uralt,Würfel">
 <!--
   Das Königliche Spiel von Ur – angepasst für langwiligi.site.
@@ -293,6 +293,7 @@
   <div class="mode-selector">
     <button class="mode-btn active" id="mode-1p" onclick="setMode(true)">1 Spieler</button>
     <button class="mode-btn" id="mode-2p" onclick="setMode(false)">2 Spieler</button>
+    <button class="mode-btn" id="mode-on" onclick="setOnline()" style="display:none">Online</button>
   </div>
   <div class="game-info">
     <div id="turn-indicator"></div>
@@ -302,11 +303,11 @@
   </div>
   <div class="buttons">
     <button id="roll-btn" onclick="rollDice()">Würfeln</button>
-    <button onclick="resetGame()">Neues Spiel</button>
+    <button onclick="newGame()">Neues Spiel</button>
   </div>
-  <div class="container">
+  <div class="container" id="ur-container">
     <div class="side-panel">
-      <h3>Weiss (S1)</h3>
+      <h3 id="p1-label">Weiss (S1)</h3>
       <div class="staging-area" id="p1-staging"></div>
       <h3>Im Ziel</h3>
       <div class="scored-area" id="p1-scored"></div>
@@ -332,6 +333,210 @@
     </ul>
   </div>
 
+<!-- ===== Online-Modus über GameHub (neu für langwiligi.site) ===== -->
+<style>
+  .ol-panel {
+    display: none; width: min(520px, 100%); margin: 0 auto 14px; padding: 12px 16px;
+    background: rgba(42, 30, 20, 0.85); border: 2px solid #8B7355; border-radius: 10px;
+    font-family: 'Georgia', serif; color: #D8C8B0; text-align: center;
+  }
+  .ol-panel.show { display: block; }
+  .ol-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 6px 0; }
+  .ol-panel button { margin: 0; }
+  .ol-panel input {
+    padding: 7px 10px; font-size: 1em; font-family: inherit; border: 2px solid #8B7355;
+    border-radius: 6px; background: #1A1410; color: #D8C8B0;
+  }
+  .ol-name { width: 180px; }
+  .ol-code { width: 100px; text-transform: uppercase; letter-spacing: 0.25em; text-align: center; font-weight: bold; }
+  .ol-big { font-size: 2em; letter-spacing: 0.3em; color: #E8C078; font-weight: bold; margin: 4px 0; }
+  .ol-info { font-size: 0.95em; }
+  .ol-msg { min-height: 1.3em; font-size: 0.9em; color: #D4A860; margin-top: 4px; }
+  .ol-msg.err { color: #ff8a80; }
+  .ol-lb { margin-top: 8px; text-align: left; font-size: 0.9em; }
+  .ol-lb summary { cursor: pointer; text-align: center; color: #8B7355; }
+  .ol-hidden { display: none !important; }
+</style>
+<script src="../_shared/hub.js"></script>
+<script>
+/* Gemeinsamer Online-Baustein: Raum erstellen/beitreten, Einladungslink, Revanche und Rangliste.
+   Das Spiel selbst überträgt nur seine Züge mit kit.send() und bekommt die des Gegners in cfg.onMsg(). */
+window.OnlineKit = function (cfg) {
+  var HUB = window.GameHub || null;
+  var kit = { available: !!HUB, active: false, inRoom: false, seat: -1, round: 0, settings: null, names: ['', ''], invite: '' };
+  kit.show = kit.leave = kit.send = kit.end = function () {};
+  kit.again = function () { return false; };
+  kit.opponent = function () { return 'Gegner'; };
+  if (!HUB) return kit;
+
+  var room = null, ready = {}, roundOpen = false, lbLoaded = false;
+  var panel = document.createElement('div');
+  panel.className = 'ol-panel';
+  panel.innerHTML =
+    '<div class="ol-setup">' +
+      '<div class="ol-row"><input class="ol-name" maxlength="16" placeholder="Dein Name" autocomplete="nickname"></div>' +
+      '<div class="ol-row"><button class="ol-create">Raum erstellen</button></div>' +
+      '<div class="ol-row"><span>oder mit Code:</span><input class="ol-code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="ol-join">Beitreten</button></div>' +
+    '</div>' +
+    '<div class="ol-wait ol-hidden">' +
+      '<div>Schick diesen Code oder Link an deinen Freund:</div>' +
+      '<div class="ol-big"></div>' +
+      '<div class="ol-row"><button class="ol-copy">Link kopieren</button><button class="ol-cancel">Abbrechen</button></div>' +
+    '</div>' +
+    '<div class="ol-play ol-hidden"><div class="ol-info"></div><div class="ol-row"><button class="ol-leave">Raum verlassen</button></div></div>' +
+    '<div class="ol-msg"></div>' +
+    '<details class="ol-lb"><summary>Online-Rangliste</summary><div class="ol-board"></div></details>';
+  cfg.after.parentNode.insertBefore(panel, cfg.after.nextSibling);
+  function q(s) { return panel.querySelector(s); }
+
+  function msg(text, err) { q('.ol-msg').textContent = text || ''; q('.ol-msg').classList.toggle('err', !!err); }
+  function view(name) {
+    ['setup', 'wait', 'play'].forEach(function (v) { q('.ol-' + v).classList.toggle('ol-hidden', v !== name); });
+    q('.ol-create').disabled = false; q('.ol-join').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    var n = HUB.setName(q('.ol-name').value) || 'Gast';
+    q('.ol-name').value = n;
+    return n;
+  }
+  function updateInfo() {
+    q('.ol-info').textContent = 'Raum ' + (room ? room.code : '') + ' · Du spielst ' + cfg.sides[kit.seat] +
+      ' gegen ' + kit.opponent() + (kit.round > 1 ? ' · Runde ' + kit.round : '');
+  }
+  kit.opponent = function () { return kit.names[1 - kit.seat] || 'Gegner'; };
+
+  function reset() {
+    kit.active = false; kit.inRoom = false; roundOpen = false; ready = {};
+    kit.seat = -1; kit.round = 0;
+    if (room) { try { room.close(); } catch (e) { /* egal */ } }
+    room = null;
+    view('setup');
+  }
+  function abort(text) {
+    var wasRunning = kit.inRoom;
+    reset();
+    msg(text, true);
+    if (wasRunning && cfg.onAbort) cfg.onAbort(text);
+  }
+
+  function connectRoom() {
+    room = HUB.connect(cfg.gameId);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', function (m) {
+      kit.names = (m.players || room.players || []).map(playerName);
+      if (kit.seat === 0) hostStart();
+    });
+    room.on('peer-left', function () { abort('Dein Gegner hat den Raum verlassen.'); });
+    room.on('close', function () { abort('Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', function (rows) { HUB.renderBoard(q('.ol-board'), rows, HUB.getName()); });
+  }
+  function begin() {
+    kit.active = true; roundOpen = true; ready = {};
+    view('play'); updateInfo(); msg('');
+    cfg.onStart({ seat: kit.seat, settings: kit.settings, round: kit.round });
+  }
+  function hostStart() {
+    kit.round++;
+    kit.settings = cfg.getSettings ? cfg.getSettings() : null;
+    room.send({ t: 'start', round: kit.round, settings: kit.settings, names: kit.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    begin();
+  }
+  function onNetMsg(d) {
+    if (!d || !kit.inRoom) return;
+    if (d.t === 'start') {
+      kit.round = d.round || 1; kit.settings = d.settings || null;
+      if (Array.isArray(d.names)) kit.names = d.names;
+      begin();
+    } else if (d.t === 'again') {
+      ready[1 - kit.seat] = true;
+      if (kit.seat === 0 && ready[0]) hostStart();
+      else msg('Dein Gegner will nochmal spielen – klick auf „Neues Spiel“.');
+    } else if (d.t === 'bye') {
+      abort('Dein Gegner hat den Raum verlassen.');
+    } else if (kit.active) {
+      cfg.onMsg(d);
+    }
+  }
+
+  function create() {
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Verbinde …');
+    connectRoom();
+    room.create(name, 2).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you; kit.names = [name, ''];
+      q('.ol-big').textContent = res.code;
+      view('wait');
+      msg('Warte auf Mitspieler …');
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+  function join() {
+    var code = HUB.cleanCode(q('.ol-code').value);
+    if (code.length !== 4) { msg('Bitte den 4-stelligen Code eingeben.', true); return; }
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Trete bei …');
+    connectRoom();
+    room.join(code, name).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you;
+      kit.names = (res.players || room.players || []).map(playerName);
+      view('play');
+      q('.ol-info').textContent = 'Raum ' + room.code;
+      msg('Beigetreten! Warte auf den Start …');
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+
+  kit.show = function (on) {
+    panel.classList.toggle('show', !!on);
+    if (on && !lbLoaded) { lbLoaded = true; HUB.loadBoard(cfg.gameId, q('.ol-board'), HUB.getName()); }
+  };
+  kit.send = function (d) { if (room && kit.active) room.send(d); };
+  // Rundenende: nur der Host meldet das Ergebnis (Platz des Gewinners, -1 = unentschieden)
+  kit.end = function (winnerSeat) {
+    if (!roundOpen) return;
+    roundOpen = false;
+    if (kit.seat === 0 && room) { try { room.result(winnerSeat); } catch (e) { /* egal */ } }
+  };
+  // Neue Runde: startet erst, wenn beide zugestimmt haben
+  kit.again = function () {
+    if (!kit.inRoom) return false;
+    if (!kit.active) return true;
+    ready[kit.seat] = true;
+    room.send({ t: 'again' });
+    if (kit.seat === 0 && ready[1]) hostStart();
+    else msg('Warte, bis dein Gegner auch nochmal will …');
+    return true;
+  };
+  kit.leave = function () {
+    if (room) { try { room.send({ t: 'bye' }); } catch (e) { /* egal */ } }
+    reset();
+    msg('');
+  };
+
+  q('.ol-name').value = HUB.getName();
+  q('.ol-create').addEventListener('click', create);
+  q('.ol-join').addEventListener('click', join);
+  q('.ol-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') join(); });
+  q('.ol-cancel').addEventListener('click', function () { kit.leave(); });
+  q('.ol-leave').addEventListener('click', function () { kit.leave(); if (cfg.onAbort) cfg.onAbort(''); });
+  q('.ol-copy').addEventListener('click', function () {
+    var link = 'https://langwiligi.site/' + cfg.gameId + '/#' + q('.ol-big').textContent;
+    var done = function () { msg('Link kopiert! Warte auf Mitspieler …'); };
+    try { navigator.clipboard.writeText(link).then(done, function () { msg(link); }); } catch (e) { msg(link); }
+  });
+
+  var code = HUB.cleanCode(location.hash);
+  if (code.length === 4) {
+    kit.invite = code;
+    q('.ol-code').value = code;
+    msg('Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.');
+  }
+  return kit;
+};
+</script>
 <script>
   // =============================================
   //  Constants
@@ -400,11 +605,73 @@
   //  Mode Selection
   // =============================================
   function setMode(isAi) {
-    if (aiMode === isAi) return;
+    if (!online && aiMode === isAi) return;
+    if (online) { kit.leave(); online = false; kit.show(false); }
     aiMode = isAi;
     document.getElementById('mode-1p').classList.toggle('active', isAi);
     document.getElementById('mode-2p').classList.toggle('active', !isAi);
+    document.getElementById('mode-on').classList.remove('active');
     document.getElementById('p2-label').textContent = isAi ? 'Schwarz (Bot)' : 'Schwarz (S2)';
+    document.getElementById('p1-label').textContent = 'Weiss (S1)';
+    createBoard();
+    resetGame();
+  }
+
+  // =============================================
+  //  Online (Host = Weiss, Gast = Schwarz)
+  // =============================================
+  var online = false;
+  function myPlayer() { return kit.seat === 1 ? 2 : 1; }
+  function onlineBlocked() { return online && (!kit.active || playerTurn !== myPlayer()); }
+  function flipped() { return online && myPlayer() === 2; }
+
+  function setOnline() {
+    if (online || !kit.available) return;
+    online = true;
+    aiMode = false;
+    document.getElementById('mode-1p').classList.remove('active');
+    document.getElementById('mode-2p').classList.remove('active');
+    document.getElementById('mode-on').classList.add('active');
+    kit.show(true);
+    onlineLabels();
+    createBoard();
+    resetGame();
+  }
+
+  function onlineLabels() {
+    var mine = myPlayer();
+    [1, 2].forEach(function(pl) {
+      var name = pl === 1 ? 'Weiss' : 'Schwarz';
+      if (online && kit.active) name += pl === mine ? ' (du)' : ' (' + kit.opponent() + ')';
+      document.getElementById(pl === 1 ? 'p1-label' : 'p2-label').textContent = name;
+    });
+  }
+
+  var kit = window.OnlineKit({
+    gameId: 'koenigliches-ur',
+    after: document.querySelector('.mode-selector'),
+    sides: ['Weiss', 'Schwarz'],
+    onStart: function() { onlineLabels(); createBoard(); resetGame(); },
+    onMsg: function(d) {
+      if (playerTurn === myPlayer() || gameOver) return;
+      if (d.t === 'roll' && Array.isArray(d.d) && d.d.length === 4 && phase === 'roll') {
+        doRoll(d.d.map(function(x) { return x ? 1 : 0; }));
+      } else if (d.t === 'mv' && phase === 'move') {
+        var cur = pieces[playerTurn][d.i];
+        var ok = getValidMoves(playerTurn, diceValue).some(function(m) { return m.from === cur && m.to === d.to; });
+        if (ok) executeMove(playerTurn, d.i, d.to);
+      }
+    },
+    onAbort: function(text) {
+      if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+      if (text) setMessage(text);
+      onlineLabels();
+      render();
+    }
+  });
+
+  function newGame() {
+    if (online) { if (!kit.again()) resetGame(); return; }
     resetGame();
   }
 
@@ -413,8 +680,10 @@
   // =============================================
   function createBoard() {
     boardEl.innerHTML = '';
+    document.getElementById('ur-container').style.flexDirection = flipped() ? 'row-reverse' : '';
     for (var r = 0; r < 8; r++) {
-      for (var c = 0; c < 3; c++) {
+      for (var vc = 0; vc < 3; vc++) {
+        var c = flipped() ? 2 - vc : vc;
         var cell = document.createElement('div');
         cell.classList.add('cell');
         cell.dataset.row = r;
@@ -509,6 +778,7 @@
     if (phase !== 'move' || gameOver) return;
     // Don't highlight during AI's turn
     if (aiMode && playerTurn === 2) return;
+    if (onlineBlocked()) return;
 
     var moves = getValidMoves(playerTurn, diceValue);
     var canEnter = moves.some(function(m) { return m.from === START; });
@@ -541,8 +811,13 @@
     var isAiTurn = aiMode && playerTurn === 2;
     var name = playerTurn === 1 ? 'Weiss' : 'Schwarz';
     var suffix = isAiTurn ? ' (Bot überlegt …)' : ' ist dran';
-    document.getElementById('turn-indicator').textContent = name + suffix;
-    rollBtn.disabled = phase !== 'roll' || gameOver || isAiTurn;
+    var text = name + suffix;
+    if (online) {
+      text = !kit.active ? 'Online: Raum erstellen oder beitreten'
+        : playerTurn === myPlayer() ? 'Du bist dran (' + name + ')' : kit.opponent() + ' ist dran';
+    }
+    document.getElementById('turn-indicator').textContent = text;
+    rollBtn.disabled = phase !== 'roll' || gameOver || isAiTurn || onlineBlocked();
   }
 
   function setMessage(msg) {
@@ -556,17 +831,20 @@
     if (phase !== 'roll' || gameOver) return;
     // Block human from rolling during AI turn
     if (aiMode && playerTurn === 2) return;
-    doRoll();
+    if (onlineBlocked()) return;
+    var forced = [0, 0, 0, 0].map(function() { return Math.random() < 0.5 ? 1 : 0; });
+    if (online) kit.send({ t: 'roll', d: forced });
+    doRoll(forced);
   }
 
-  function doRoll() {
+  function doRoll(forced) {
     if (phase !== 'roll' || gameOver) return;
     setMessage('');
 
     diceRolls = [];
     diceValue = 0;
     for (var i = 0; i < 4; i++) {
-      var d = Math.random() < 0.5 ? 1 : 0;
+      var d = forced ? forced[i] : (Math.random() < 0.5 ? 1 : 0);
       diceRolls.push(d);
       diceValue += d;
     }
@@ -641,6 +919,7 @@
   function handleCellClick(r, c) {
     if (phase !== 'move' || gameOver) return;
     if (aiMode && playerTurn === 2) return;
+    if (onlineBlocked()) return;
 
     var cell = getCell(r, c);
     if (!cell) return;
@@ -662,6 +941,7 @@
   function handleStagingClick(player, idx) {
     if (phase !== 'move' || gameOver || player !== playerTurn) return;
     if (aiMode && playerTurn === 2) return;
+    if (onlineBlocked()) return;
     if (pieces[player][idx] !== START) return;
 
     var valid = getValidMoves(playerTurn, diceValue).some(function(m) { return m.from === START; });
@@ -676,6 +956,7 @@
   function executeMove(player, idx, nxt) {
     var opp = 3 - player;
     var msg = '';
+    if (online && player === myPlayer()) kit.send({ t: 'mv', i: idx, to: nxt });
 
     // Capture
     if (nxt >= SHARED_START && nxt <= SHARED_END && !ROSETTES.has(nxt)) {
@@ -700,6 +981,11 @@
       render();
       var winner = player === 1 ? 'Weiss' : 'Schwarz';
       if (aiMode && player === 2) winner = 'Schwarz (Bot)';
+      if (online) {
+        kit.end(player === 1 ? 0 : 1);
+        setMessage(player === myPlayer() ? 'Du gewinnst!' : kit.opponent() + ' gewinnt!');
+        return;
+      }
       setMessage(winner + ' gewinnt!');
       return;
     }
@@ -840,8 +1126,13 @@
   // =============================================
   //  Initialize
   // =============================================
+  if (kit.available) document.getElementById('mode-on').style.display = '';
+  else document.getElementById('mode-on').remove();
+  window.newGame = newGame;
+  window.setOnline = setOnline;
   createBoard();
   render();
+  if (kit.invite) setOnline();
 </script>
 
 </body>

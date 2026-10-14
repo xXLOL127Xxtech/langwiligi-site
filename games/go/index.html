@@ -20,7 +20,7 @@
   <title>Go</title>
 <meta name="description" content="Das jahrtausendealte Umzingelungs-Spiel auf 9×9, 13×13 oder 19×19 – gegen den Bot oder zu zweit.">
 <meta name="theme-color" content="#e9c46a">
-<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Strategie">
 <!--
   Go – angepasst für langwiligi.site.
@@ -432,6 +432,7 @@
   <div class="mode-selector">
     <button class="mode-btn active" id="mode-1p" onclick="setMode(true)">1 Spieler</button>
     <button class="mode-btn" id="mode-2p" onclick="setMode(false)">2 Spieler</button>
+    <button class="mode-btn" id="mode-on" onclick="setOnline()" style="display:none">Online</button>
   </div>
 
   <div class="size-selector">
@@ -447,17 +448,17 @@
 
   <div class="buttons">
     <button id="pass-btn" onclick="passMove()">Passen</button>
-    <button onclick="resetGame()">Neues Spiel</button>
+    <button onclick="newGame()">Neues Spiel</button>
   </div>
 
   <div class="buttons" id="scoring-buttons" style="display: none;">
     <button onclick="confirmScore()">Bestätigen / Endstand</button>
-    <button onclick="resumePlay()">Weiterspielen</button>
+    <button onclick="resumePlayClicked()">Weiterspielen</button>
   </div>
 
   <div class="container">
     <div class="side-panel" id="panel-black">
-      <h3>Schwarz (S1)</h3>
+      <h3 id="black-label">Schwarz (S1)</h3>
       <div class="stone-icon black"></div>
       <div class="prisoner-count" id="prisoners-black">0</div>
       <div class="prisoner-label">gefangen</div>
@@ -499,6 +500,210 @@
     </ul>
   </div>
 
+<!-- ===== Online-Modus über GameHub (neu für langwiligi.site) ===== -->
+<style>
+  .ol-panel {
+    display: none; width: min(520px, 100%); margin: 0 auto 14px; padding: 12px 16px;
+    background: rgba(42, 30, 20, 0.85); border: 2px solid #8B7355; border-radius: 10px;
+    font-family: 'Georgia', serif; color: #D8C8B0; text-align: center;
+  }
+  .ol-panel.show { display: block; }
+  .ol-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 6px 0; }
+  .ol-panel button { margin: 0; }
+  .ol-panel input {
+    padding: 7px 10px; font-size: 1em; font-family: inherit; border: 2px solid #8B7355;
+    border-radius: 6px; background: #1A1410; color: #D8C8B0;
+  }
+  .ol-name { width: 180px; }
+  .ol-code { width: 100px; text-transform: uppercase; letter-spacing: 0.25em; text-align: center; font-weight: bold; }
+  .ol-big { font-size: 2em; letter-spacing: 0.3em; color: #E8C078; font-weight: bold; margin: 4px 0; }
+  .ol-info { font-size: 0.95em; }
+  .ol-msg { min-height: 1.3em; font-size: 0.9em; color: #D4A860; margin-top: 4px; }
+  .ol-msg.err { color: #ff8a80; }
+  .ol-lb { margin-top: 8px; text-align: left; font-size: 0.9em; }
+  .ol-lb summary { cursor: pointer; text-align: center; color: #8B7355; }
+  .ol-hidden { display: none !important; }
+</style>
+<script src="../_shared/hub.js"></script>
+<script>
+/* Gemeinsamer Online-Baustein: Raum erstellen/beitreten, Einladungslink, Revanche und Rangliste.
+   Das Spiel selbst überträgt nur seine Züge mit kit.send() und bekommt die des Gegners in cfg.onMsg(). */
+window.OnlineKit = function (cfg) {
+  var HUB = window.GameHub || null;
+  var kit = { available: !!HUB, active: false, inRoom: false, seat: -1, round: 0, settings: null, names: ['', ''], invite: '' };
+  kit.show = kit.leave = kit.send = kit.end = function () {};
+  kit.again = function () { return false; };
+  kit.opponent = function () { return 'Gegner'; };
+  if (!HUB) return kit;
+
+  var room = null, ready = {}, roundOpen = false, lbLoaded = false;
+  var panel = document.createElement('div');
+  panel.className = 'ol-panel';
+  panel.innerHTML =
+    '<div class="ol-setup">' +
+      '<div class="ol-row"><input class="ol-name" maxlength="16" placeholder="Dein Name" autocomplete="nickname"></div>' +
+      '<div class="ol-row"><button class="ol-create">Raum erstellen</button></div>' +
+      '<div class="ol-row"><span>oder mit Code:</span><input class="ol-code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="ol-join">Beitreten</button></div>' +
+    '</div>' +
+    '<div class="ol-wait ol-hidden">' +
+      '<div>Schick diesen Code oder Link an deinen Freund:</div>' +
+      '<div class="ol-big"></div>' +
+      '<div class="ol-row"><button class="ol-copy">Link kopieren</button><button class="ol-cancel">Abbrechen</button></div>' +
+    '</div>' +
+    '<div class="ol-play ol-hidden"><div class="ol-info"></div><div class="ol-row"><button class="ol-leave">Raum verlassen</button></div></div>' +
+    '<div class="ol-msg"></div>' +
+    '<details class="ol-lb"><summary>Online-Rangliste</summary><div class="ol-board"></div></details>';
+  cfg.after.parentNode.insertBefore(panel, cfg.after.nextSibling);
+  function q(s) { return panel.querySelector(s); }
+
+  function msg(text, err) { q('.ol-msg').textContent = text || ''; q('.ol-msg').classList.toggle('err', !!err); }
+  function view(name) {
+    ['setup', 'wait', 'play'].forEach(function (v) { q('.ol-' + v).classList.toggle('ol-hidden', v !== name); });
+    q('.ol-create').disabled = false; q('.ol-join').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    var n = HUB.setName(q('.ol-name').value) || 'Gast';
+    q('.ol-name').value = n;
+    return n;
+  }
+  function updateInfo() {
+    q('.ol-info').textContent = 'Raum ' + (room ? room.code : '') + ' · Du spielst ' + cfg.sides[kit.seat] +
+      ' gegen ' + kit.opponent() + (kit.round > 1 ? ' · Runde ' + kit.round : '');
+  }
+  kit.opponent = function () { return kit.names[1 - kit.seat] || 'Gegner'; };
+
+  function reset() {
+    kit.active = false; kit.inRoom = false; roundOpen = false; ready = {};
+    kit.seat = -1; kit.round = 0;
+    if (room) { try { room.close(); } catch (e) { /* egal */ } }
+    room = null;
+    view('setup');
+  }
+  function abort(text) {
+    var wasRunning = kit.inRoom;
+    reset();
+    msg(text, true);
+    if (wasRunning && cfg.onAbort) cfg.onAbort(text);
+  }
+
+  function connectRoom() {
+    room = HUB.connect(cfg.gameId);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', function (m) {
+      kit.names = (m.players || room.players || []).map(playerName);
+      if (kit.seat === 0) hostStart();
+    });
+    room.on('peer-left', function () { abort('Dein Gegner hat den Raum verlassen.'); });
+    room.on('close', function () { abort('Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', function (rows) { HUB.renderBoard(q('.ol-board'), rows, HUB.getName()); });
+  }
+  function begin() {
+    kit.active = true; roundOpen = true; ready = {};
+    view('play'); updateInfo(); msg('');
+    cfg.onStart({ seat: kit.seat, settings: kit.settings, round: kit.round });
+  }
+  function hostStart() {
+    kit.round++;
+    kit.settings = cfg.getSettings ? cfg.getSettings() : null;
+    room.send({ t: 'start', round: kit.round, settings: kit.settings, names: kit.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    begin();
+  }
+  function onNetMsg(d) {
+    if (!d || !kit.inRoom) return;
+    if (d.t === 'start') {
+      kit.round = d.round || 1; kit.settings = d.settings || null;
+      if (Array.isArray(d.names)) kit.names = d.names;
+      begin();
+    } else if (d.t === 'again') {
+      ready[1 - kit.seat] = true;
+      if (kit.seat === 0 && ready[0]) hostStart();
+      else msg('Dein Gegner will nochmal spielen – klick auf „Neues Spiel“.');
+    } else if (d.t === 'bye') {
+      abort('Dein Gegner hat den Raum verlassen.');
+    } else if (kit.active) {
+      cfg.onMsg(d);
+    }
+  }
+
+  function create() {
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Verbinde …');
+    connectRoom();
+    room.create(name, 2).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you; kit.names = [name, ''];
+      q('.ol-big').textContent = res.code;
+      view('wait');
+      msg('Warte auf Mitspieler …');
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+  function join() {
+    var code = HUB.cleanCode(q('.ol-code').value);
+    if (code.length !== 4) { msg('Bitte den 4-stelligen Code eingeben.', true); return; }
+    var name = takeName();
+    q('.ol-create').disabled = true; q('.ol-join').disabled = true;
+    msg('Trete bei …');
+    connectRoom();
+    room.join(code, name).then(function (res) {
+      kit.inRoom = true; kit.seat = res.you;
+      kit.names = (res.players || room.players || []).map(playerName);
+      view('play');
+      q('.ol-info').textContent = 'Raum ' + room.code;
+      msg('Beigetreten! Warte auf den Start …');
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    }, function (e) { reset(); msg(HUB.errorText(e), true); });
+  }
+
+  kit.show = function (on) {
+    panel.classList.toggle('show', !!on);
+    if (on && !lbLoaded) { lbLoaded = true; HUB.loadBoard(cfg.gameId, q('.ol-board'), HUB.getName()); }
+  };
+  kit.send = function (d) { if (room && kit.active) room.send(d); };
+  // Rundenende: nur der Host meldet das Ergebnis (Platz des Gewinners, -1 = unentschieden)
+  kit.end = function (winnerSeat) {
+    if (!roundOpen) return;
+    roundOpen = false;
+    if (kit.seat === 0 && room) { try { room.result(winnerSeat); } catch (e) { /* egal */ } }
+  };
+  // Neue Runde: startet erst, wenn beide zugestimmt haben
+  kit.again = function () {
+    if (!kit.inRoom) return false;
+    if (!kit.active) return true;
+    ready[kit.seat] = true;
+    room.send({ t: 'again' });
+    if (kit.seat === 0 && ready[1]) hostStart();
+    else msg('Warte, bis dein Gegner auch nochmal will …');
+    return true;
+  };
+  kit.leave = function () {
+    if (room) { try { room.send({ t: 'bye' }); } catch (e) { /* egal */ } }
+    reset();
+    msg('');
+  };
+
+  q('.ol-name').value = HUB.getName();
+  q('.ol-create').addEventListener('click', create);
+  q('.ol-join').addEventListener('click', join);
+  q('.ol-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') join(); });
+  q('.ol-cancel').addEventListener('click', function () { kit.leave(); });
+  q('.ol-leave').addEventListener('click', function () { kit.leave(); if (cfg.onAbort) cfg.onAbort(''); });
+  q('.ol-copy').addEventListener('click', function () {
+    var link = 'https://langwiligi.site/' + cfg.gameId + '/#' + q('.ol-big').textContent;
+    var done = function () { msg('Link kopiert! Warte auf Mitspieler …'); };
+    try { navigator.clipboard.writeText(link).then(done, function () { msg(link); }); } catch (e) { msg(link); }
+  });
+
+  var code = HUB.cleanCode(location.hash);
+  if (code.length === 4) {
+    kit.invite = code;
+    q('.ol-code').value = code;
+    msg('Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.');
+  }
+  return kit;
+};
+</script>
 <script>
   // =============================================
   //  Constants & Config
@@ -544,16 +749,118 @@
   //  Mode & Size
   // =============================================
   function setMode(isAi) {
-    if (aiMode === isAi) return;
+    if (!online && aiMode === isAi) return;
+    if (online) { kit.leave(); online = false; kit.show(false); }
     aiMode = isAi;
     document.getElementById('mode-1p').classList.toggle('active', isAi);
     document.getElementById('mode-2p').classList.toggle('active', !isAi);
+    document.getElementById('mode-on').classList.remove('active');
     document.getElementById('white-label').textContent = isAi ? 'Weiss (Bot)' : 'Weiss (S2)';
+    document.getElementById('black-label').textContent = 'Schwarz (S1)';
+    boardWrapper.style.transform = '';
+    resetGame();
+  }
+
+  // =============================================
+  //  Online (Host = Schwarz, Gast = Weiss)
+  // =============================================
+  var online = false;
+  var scoreVer = 0;          // zählt Markierungen, damit Bestätigungen zur selben Wertung gehören
+  var confirmed = {};
+  function myColor() { return kit.seat === 1 ? WHITE : BLACK; }
+  function onlineBlocked() { return online && (!kit.active || currentPlayer !== myColor()); }
+
+  function setOnline() {
+    if (online || !kit.available) return;
+    online = true;
+    aiMode = false;
+    document.getElementById('mode-1p').classList.remove('active');
+    document.getElementById('mode-2p').classList.remove('active');
+    document.getElementById('mode-on').classList.add('active');
+    kit.show(true);
+    onlineLabels();
+    resetGame();
+  }
+
+  function onlineLabels() {
+    [BLACK, WHITE].forEach(function(col) {
+      var name = col === BLACK ? 'Schwarz' : 'Weiss';
+      if (online && kit.active) name += col === myColor() ? ' (du)' : ' (' + kit.opponent() + ')';
+      document.getElementById(col === BLACK ? 'black-label' : 'white-label').textContent = name;
+    });
+  }
+
+  function applySize(size) {
+    boardSize = size;
+    cellSize = CELL_SIZES[size];
+    document.getElementById('size-9').classList.toggle('active', size === 9);
+    document.getElementById('size-13').classList.toggle('active', size === 13);
+    document.getElementById('size-19').classList.toggle('active', size === 19);
+  }
+
+  function setDeadGroup(r, c, on) {
+    var group = getGroup(board, r, c);
+    for (var i = 0; i < group.stones.length; i++) {
+      var key = group.stones[i][0] + ',' + group.stones[i][1];
+      if (on) deadStones[key] = true;
+      else delete deadStones[key];
+    }
+    scoreVer++;
+    confirmed = {};
+    updateScoreDisplay();
+    render();
+  }
+
+  var kit = window.OnlineKit({
+    gameId: 'go',
+    after: document.querySelector('.mode-selector'),
+    sides: ['Schwarz', 'Weiss'],
+    getSettings: function() { return { size: boardSize }; },
+    onStart: function(info) {
+      var size = info.settings && CELL_SIZES[info.settings.size] ? info.settings.size : 9;
+      applySize(size);
+      boardWrapper.style.transform = myColor() === WHITE ? 'rotate(180deg)' : '';
+      onlineLabels();
+      resetGame();
+    },
+    onMsg: function(d) {
+      if (gameOver) return;
+      if (scoringMode) {
+        if (d.t === 'dead' && board[d.r] && board[d.r][d.c]) setDeadGroup(d.r, d.c, !!d.on);
+        else if (d.t === 'confirm' && d.v === scoreVer) {
+          confirmed[1 - kit.seat] = true;
+          if (confirmed[kit.seat]) finishScore();
+          else setMessage(kit.opponent() + ' hat die Wertung bestätigt. Prüfe sie und bestätige auch.');
+        } else if (d.t === 'resume') resumePlay();
+        return;
+      }
+      if (currentPlayer === myColor()) return;
+      if (d.t === 'mv' && isLegalMove(d.r, d.c, currentPlayer)) {
+        document.getElementById('pass-black').textContent = '';
+        document.getElementById('pass-white').textContent = '';
+        playMove(d.r, d.c, currentPlayer);
+        setMessage('');
+        render();
+      } else if (d.t === 'pass') {
+        doPass(currentPlayer);
+        render();
+      }
+    },
+    onAbort: function(text) {
+      if (text) setMessage(text);
+      onlineLabels();
+      render();
+    }
+  });
+
+  function newGame() {
+    if (online) { if (!kit.again()) resetGame(); return; }
     resetGame();
   }
 
   function setBoardSize(size) {
     if (boardSize === size) return;
+    if (online && kit.inRoom) { setMessage('Die Brettgrösse kannst du nur vor dem Online-Spiel wählen.'); return; }
     boardSize = size;
     cellSize = CELL_SIZES[size];
     document.getElementById('size-9').classList.toggle('active', size === 9);
@@ -721,6 +1028,8 @@
   function passMove() {
     if (gameOver) return;
     if (aiMode && currentPlayer === WHITE) return;
+    if (onlineBlocked() || scoringMode) return;
+    if (online) kit.send({ t: 'pass' });
 
     doPass(currentPlayer);
     render();
@@ -877,6 +1186,13 @@
 
   function toggleDeadGroup(r, c) {
     if (board[r][c] === EMPTY) return;
+    if (online) {
+      if (!kit.active) return;
+      var on = !deadStones[r + ',' + c];
+      kit.send({ t: 'dead', r: r, c: c, on: on });
+      setDeadGroup(r, c, on);
+      return;
+    }
     var group = getGroup(board, r, c);
     var makeDead = !deadStones[r + ',' + c];
     for (var i = 0; i < group.stones.length; i++) {
@@ -896,6 +1212,18 @@
 
   function confirmScore() {
     if (!scoringMode) return;
+    if (online) {
+      if (!kit.active) return;
+      confirmed[kit.seat] = true;
+      kit.send({ t: 'confirm', v: scoreVer });
+      if (confirmed[1 - kit.seat]) finishScore();
+      else setMessage('Warte, bis ' + kit.opponent() + ' die Wertung auch bestätigt …');
+      return;
+    }
+    finishScore();
+  }
+
+  function finishScore() {
     // Permanently remove dead stones and credit them as prisoners (cosmetic;
     // area scoring already reflects them via scoringBoard()).
     for (var key in deadStones) {
@@ -923,7 +1251,18 @@
     document.getElementById('pass-btn').disabled = true;
 
     setMessage('Spiel vorbei. ' + winner);
+    if (online) {
+      var w = score.blackTotal > score.whiteTotal ? BLACK : score.whiteTotal > score.blackTotal ? WHITE : 0;
+      kit.end(w === BLACK ? 0 : w === WHITE ? 1 : -1);
+      if (w) setMessage('Spiel vorbei. ' + (w === myColor() ? 'Du gewinnst! ' : kit.opponent() + ' gewinnt. ') + winner);
+    }
     render();
+  }
+
+  function resumePlayClicked() {
+    if (!scoringMode) return;
+    if (online) { if (!kit.active) return; kit.send({ t: 'resume' }); }
+    resumePlay();
   }
 
   function resumePlay() {
@@ -1030,7 +1369,7 @@
       var hover = cell.querySelector('.hover-stone');
       if (hover) {
         hover.classList.remove('black', 'white');
-        if (board[r][c] === EMPTY && !gameOver && !scoringMode) {
+        if (board[r][c] === EMPTY && !gameOver && !scoringMode && !onlineBlocked()) {
           hover.classList.add(currentPlayer === BLACK ? 'black' : 'white');
         }
       }
@@ -1083,8 +1422,13 @@
     }
     var name = currentPlayer === BLACK ? 'Schwarz' : 'Weiss';
     var suffix = isAiTurn() ? ' (Bot überlegt …)' : ' ist dran';
-    document.getElementById('turn-indicator').textContent = name + suffix;
-    document.getElementById('pass-btn').disabled = isAiTurn();
+    var text = name + suffix;
+    if (online) {
+      text = !kit.active ? 'Online: Raum erstellen oder beitreten'
+        : currentPlayer === myColor() ? 'Du bist dran (' + name + ')' : kit.opponent() + ' ist dran';
+    }
+    document.getElementById('turn-indicator').textContent = text;
+    document.getElementById('pass-btn').disabled = isAiTurn() || onlineBlocked();
   }
 
   // =============================================
@@ -1097,6 +1441,7 @@
     }
     if (gameOver) return;
     if (isAiTurn()) return;
+    if (onlineBlocked()) return;
 
     if (board[r][c] !== EMPTY) {
       setMessage('Dieser Punkt ist schon besetzt.');
@@ -1134,6 +1479,7 @@
     document.getElementById('pass-black').textContent = '';
     document.getElementById('pass-white').textContent = '';
 
+    if (online) kit.send({ t: 'mv', r: r, c: c });
     playMove(r, c, currentPlayer);
     setMessage('');
     render();
@@ -1377,6 +1723,8 @@
     scoringMode = false;
     deadStones = {};
     preScoreState = null;
+    scoreVer = 0;
+    confirmed = {};
 
     document.getElementById('pass-black').textContent = '';
     document.getElementById('pass-white').textContent = '';
@@ -1393,7 +1741,10 @@
   // =============================================
   //  Init
   // =============================================
+  if (kit.available) document.getElementById('mode-on').style.display = '';
+  else document.getElementById('mode-on').remove();
   resetGame();
+  if (kit.invite) setOnline();
 </script>
 
 </body>
