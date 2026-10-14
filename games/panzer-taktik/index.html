@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panzer-Taktik</title>
+<meta name="description" content="Rundenbasiertes Panzer-Duell: fahren, schiessen, Minen legen und Raketen zünden – mit Aktionspunkten.">
+<meta name="theme-color" content="#9ccc65">
+<meta name="spiel-modi" content="Lokal,Online">
+<meta name="spiel-tags" content="Rundenbasiert,Taktik">
+<!--
+  Panzer-Taktik – angepasst für langwiligi.site.
+  Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
+  MIT License – Copyright (c) 2026 tridpt
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Übersetzung, Menü, Bot-Auswahl und Online-Modus (GameHub) neu für langwiligi.site.
+-->
+<style>
+:root {
+  --bg: #0d0f13;
+  --bg-soft: #161a22;
+  --panel: #1b2029;
+  --panel-2: #232a36;
+  --text: #eef1f6;
+  --muted: #9aa4b5;
+  --p1: #ff5d73;
+  --p2: #4dd0e1;
+  --accent: #9ccc65;
+  --accent-2: #9ccc65;
+  --good: #66bb6a;
+  --line: rgba(255, 255, 255, 0.10);
+  --grad-accent: linear-gradient(135deg, #9ccc65 0%, #9ccc65 100%);
+  --grad-cool: linear-gradient(135deg, #4f8ff7 0%, #3a6fd0 100%);
+  --grad-hot: linear-gradient(135deg, #ef5350 0%, #c63c3a 100%);
+  --shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(0, 0, 0, 0.55);
+  --radius: 16px;
+  --font-head: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(1000px 600px at 50% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 65%), var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font-family: inherit; }
+.hidden { display: none !important; }
+#app { width: min(1160px, 100%); margin: 0 auto; padding: 14px 16px 28px; }
+
+/* ---------- Knöpfe ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--text); font-size: 0.98rem; font-weight: 650;
+  cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s; touch-action: manipulation;
+}
+.btn:hover { background: #2d3545; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #111; border-color: transparent; font-weight: 800; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 6px 12px; font-size: 0.85rem; }
+.btn.ghost { background: transparent; }
+
+/* ---------- Menü ---------- */
+.menu { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.menu-head { text-align: center; padding: 10px 0 2px; }
+.menu-head h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); letter-spacing: -0.5px; color: var(--accent); text-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+.menu-head p { margin: 8px auto 0; max-width: 560px; color: var(--muted); line-height: 1.45; }
+.panel { background: rgba(255,255,255,0.045); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; backdrop-filter: blur(6px); }
+.panel h2 { margin: 0 0 10px; font-size: 1.05rem; letter-spacing: .02em; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.mode-card {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer;
+  transition: transform .12s, border-color .15s, background .15s; font-size: 1rem;
+}
+.mode-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.mode-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.mode-card b { font-size: 1.08rem; }
+.mode-card span { color: var(--muted); font-size: .88rem; line-height: 1.35; }
+.mode-card .ico { font-size: 1.6rem; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: .9rem; }
+.seg button.on { background: var(--accent); color: #111; border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.opt-row { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 8px 12px; align-items: center; margin-bottom: 10px; }
+.opt-row label { color: var(--muted); font-size: .9rem; font-weight: 600; }
+@media (max-width: 520px) { .opt-row { grid-template-columns: 1fr; } }
+.howto ol { margin: 6px 0 0; padding-left: 20px; line-height: 1.5; color: #d6dbe4; }
+.howto li { margin-bottom: 6px; }
+.howto summary { cursor: pointer; font-weight: 700; }
+.field { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #10141b; color: var(--text); font-size: 1rem; }
+.field.code { text-transform: uppercase; letter-spacing: .25em; font-weight: 800; text-align: center; max-width: 150px; }
+.online-grid { display: grid; gap: 12px; }
+.msg { min-height: 1.3em; color: var(--muted); font-size: .92rem; }
+.msg.err { color: #ff8a80; }
+.code-big { font-size: 2.2rem; font-weight: 900; letter-spacing: .3em; color: var(--accent); text-align: center; }
+.start-row { display: flex; justify-content: center; }
+.start-row .btn { min-width: 220px; padding: 14px 22px; font-size: 1.1rem; }
+
+/* ---------- Spielansicht ---------- */
+.topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.topbar h1 { flex: 1; margin: 0; text-align: center; font-size: 1.25rem; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 42px; height: 42px; padding: 0; font-size: 1.15rem; }
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+.pcard { padding: 10px 12px; border-radius: 14px; background: var(--panel); border: 2px solid transparent; display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
+.pcard .pname { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcard .pwins { font-size: .82rem; color: var(--muted); }
+.pcard.p1 .pname { color: var(--p1); }
+.pcard.p2 .pname { color: var(--p2); text-align: right; }
+.pcard.p2 { text-align: right; }
+.pcard.p1.active { border-color: var(--p1); box-shadow: 0 0 18px color-mix(in srgb, var(--p1) 35%, transparent); }
+.pcard.p2.active { border-color: var(--p2); box-shadow: 0 0 18px color-mix(in srgb, var(--p2) 35%, transparent); }
+.turn { align-self: center; padding: 8px 12px; border-radius: 999px; background: var(--panel-2); font-weight: 700; font-size: .9rem; text-align: center; max-width: 38vw; }
+.status { text-align: center; min-height: 1.5em; font-size: 1.02rem; font-weight: 600; color: var(--accent); margin: 4px 0 10px; line-height: 1.4; }
+.board-wrap { display: flex; justify-content: center; position: relative; margin-bottom: 14px; }
+.board-wrap.ai-thinking { pointer-events: none; }
+.board-wrap.ai-thinking::after { content: "🤖 Bot überlegt …"; position: absolute; top: -6px; right: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.6); font-size: .82rem; color: #fff; pointer-events: none; }
+.game-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.online-info { text-align: center; color: var(--muted); font-size: .88rem; margin-bottom: 8px; }
+#gameView { --text: #eef1f6; --muted: #9aa4b5; }
+
+/* ---------- Ergebnis / Dialoge ---------- */
+.overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 18px; background: rgba(5, 7, 10, 0.66); backdrop-filter: blur(5px); }
+.dialog { width: min(440px, 100%); max-height: 88vh; overflow: auto; background: #171b23; border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); text-align: center; animation: pop .22s ease-out; }
+.dialog h2 { margin: 0 0 8px; font-size: 1.6rem; }
+.dialog p { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+.dialog .row { justify-content: center; }
+.dialog.help { text-align: left; width: min(620px, 100%); }
+.dialog.help h2 { text-align: left; }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 3100; background: rgba(20,24,32,.96); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
+.board-wrap .lw-board { color: var(--text); }
+.lb { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  #app { padding: 10px 12px 24px; }
+  .turn { font-size: .78rem; padding: 6px 8px; }
+  .pcard { padding: 8px; }
+  .pcard .pname { font-size: .9rem; }
+}
+
+/* ======================== Spiel-Stile (aus dem Original) ======================== */
+@keyframes ta-boom-anim {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+  55% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.25); opacity: 0; }
+}
+@keyframes ta-shake-anim {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 2px); }
+}
+@keyframes ta-beam-anim {
+  0% { opacity: 0; transform: scale(0.4); }
+  40% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.ta-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+.ta-hud {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(220px, 1.25fr) minmax(170px, 1fr);
+  gap: 10px;
+  width: min(900px, 96vw);
+  align-items: stretch;
+}
+.ta-player,
+.ta-mid {
+  position: relative;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+}
+.ta-player {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+.ta-player span,
+.ta-player b {
+  position: relative;
+  z-index: 1;
+  font-size: 0.9rem;
+}
+.ta-player b { color: var(--text); }
+.ta-player > i {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--good);
+  transition: width 0.15s;
+}
+.ta-player.p1 > i { background: var(--p1); }
+.ta-player.p2 > i { background: var(--p2); }
+.ta-player.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.12), var(--shadow);
+}
+.ta-mid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+}
+.ta-mid b {
+  color: var(--accent);
+  font-size: 1rem;
+}
+.ta-mid span {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+.ta-mid small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+.ta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.ta-actions .btn.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(110, 231, 183, 0.18);
+}
+.ta-board {
+  --ta-cell: clamp(28px, 6.5vw, 46px);
+  display: grid;
+  grid-template-columns: repeat(var(--ta-n), var(--ta-cell));
+  grid-template-rows: repeat(var(--ta-n), var(--ta-cell));
+  gap: 3px;
+  background: #11172f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px;
+  box-shadow: var(--shadow);
+  max-width: 96vw;
+  overflow: auto;
+}
+.ta-cell {
+  position: relative;
+  width: var(--ta-cell);
+  height: var(--ta-cell);
+  border: 0;
+  border-radius: 5px;
+  background: #24305c;
+  color: var(--text);
+  font-weight: 800;
+  font-size: clamp(0.58rem, 1.7vw, 0.78rem);
+  line-height: 1;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  user-select: none;
+  transition: background 0.1s, box-shadow 0.1s, transform 0.1s;
+}
+.ta-cell.wall {
+  background: #111827;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+.ta-cell.crate {
+  background: #6b573a;
+  color: #f7d9a0;
+}
+.ta-cell.item {
+  background: #1f4f64;
+  color: #bff7ff;
+  box-shadow: inset 0 0 0 2px rgba(139, 230, 240, 0.35);
+}
+.ta-cell.mine {
+  background: #5c2748;
+  color: #ffd166;
+  box-shadow: inset 0 0 0 2px rgba(255, 209, 102, 0.5);
+}
+.ta-cell.tank {
+  color: white;
+  font-size: clamp(0.58rem, 1.8vw, 0.78rem);
+  box-shadow: inset 0 -5px 10px rgba(0, 0, 0, 0.22);
+}
+.ta-cell.tank.p1 { background: linear-gradient(145deg, #ff7d8f, #c92745); }
+.ta-cell.tank.p2 { background: linear-gradient(145deg, #6addeb, #168aa0); }
+.ta-cell.active-tank {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+.ta-cell.hl-move,
+.ta-cell.hl-aim,
+.ta-cell.hl-danger,
+.ta-cell.hl-mine {
+  cursor: pointer;
+}
+.ta-cell.hl-move {
+  background: #2f5d57;
+  box-shadow: inset 0 0 0 2px rgba(110, 231, 183, 0.45);
+}
+.ta-cell.hl-aim {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.22);
+}
+.ta-cell.hl-danger {
+  background: #67364a;
+  box-shadow: inset 0 0 0 2px rgba(255, 93, 115, 0.5);
+}
+.ta-cell.hl-mine {
+  background: #604325;
+  box-shadow: inset 0 0 0 2px rgba(255, 209, 102, 0.48);
+}
+.ta-cell.hl-move:hover,
+.ta-cell.hl-aim:hover,
+.ta-cell.hl-danger:hover,
+.ta-cell.hl-mine:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+@media (max-width: 760px) {
+.ta-hud {
+    grid-template-columns: 1fr;
+  }
+.ta-mid { order: -1; }
+}
+.ta-root {
+  padding: 8px 0 18px;
+}
+.ta-hud {
+  grid-template-columns: minmax(190px, 1fr) minmax(260px, 1.35fr) minmax(190px, 1fr);
+}
+.ta-player {
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  min-height: 74px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
+    var(--panel);
+}
+.ta-player span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+}
+.ta-player em {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.76rem;
+}
+.ta-mini-tank,
+.ta-legend-tank {
+  display: inline-block;
+  width: 22px;
+  height: 15px;
+  border-radius: 4px;
+  background: var(--tank-main);
+  box-shadow:
+    inset 0 -4px 0 var(--tank-dark),
+    0 0 0 2px rgba(0, 0, 0, 0.18);
+}
+.ta-player span .ta-mini-tank {
+  position: static;
+  inset: auto;
+  flex: 0 0 auto;
+}
+.ta-mini-tank.p1,
+.ta-legend-tank.p1 { --tank-main: #e94e66; --tank-dark: #7e1d30; }
+.ta-mini-tank.p2,
+.ta-legend-tank.p2 { --tank-main: #37b8cf; --tank-dark: #116b80; }
+.ta-mid {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 209, 102, 0.16), transparent 60%),
+    var(--panel);
+}
+.ta-ap-pips {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  min-height: 9px;
+}
+.ta-ap-pips i {
+  width: 20px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.ta-ap-pips i.on {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.45);
+}
+.ta-actions {
+  align-items: stretch;
+}
+.ta-action-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  min-width: 126px;
+  text-align: left;
+  padding: 8px 10px;
+}
+.ta-action-card > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ta-action-card b {
+  font-size: 0.86rem;
+  line-height: 1.05;
+}
+.ta-action-card small {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.05;
+}
+.ta-action-card:hover small,
+.ta-action-card.active small {
+  color: rgba(10, 12, 24, 0.72);
+}
+.ta-action-icon {
+  min-width: 38px;
+  height: 28px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+.ta-action-card.active .ta-action-icon,
+.ta-action-card:hover .ta-action-icon {
+  background: rgba(10, 12, 24, 0.2);
+  color: #4e3c27;
+}
+.ta-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 12px;
+  width: min(900px, 96vw);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.ta-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+}
+.ta-legend i {
+  flex: 0 0 auto;
+}
+.ta-legend-wall,
+.ta-legend-crate,
+.ta-legend-item,
+.ta-legend-mine {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+.ta-legend-wall {
+  background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 3px, transparent 3px 7px),
+    #2e3442;
+}
+.ta-legend-crate {
+  background:
+    linear-gradient(45deg, transparent 45%, rgba(255,255,255,0.28) 46% 54%, transparent 55%),
+    linear-gradient(-45deg, transparent 45%, rgba(0,0,0,0.28) 46% 54%, transparent 55%),
+    #8b6235;
+}
+.ta-legend-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1f6f69;
+  color: #dffcff;
+  font-style: normal;
+  font-weight: 900;
+}
+.ta-legend-mine {
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffe6a1, #9b355a 34%, #301724 70%);
+}
+.ta-board {
+  --ta-cell: clamp(34px, 6.3vw, 52px);
+  gap: 4px;
+  padding: 10px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    #11172f;
+  background-size: 24px 24px;
+}
+.ta-cell {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255,255,255,0.06), transparent 45%),
+    linear-gradient(135deg, #3c2f1e, #55412b);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+}
+.ta-cell::after {
+  content: attr(data-coord);
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  color: rgba(255,255,255,0.17);
+  font-size: 0.48rem;
+  font-weight: 800;
+  pointer-events: none;
+}
+.ta-cell.wall,
+.ta-cell.crate,
+.ta-cell.item,
+.ta-cell.mine,
+.ta-cell.tank {
+  color: transparent;
+}
+.ta-cell.wall {
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.13), transparent 24%),
+    linear-gradient(145deg, #4b5261, #242936);
+}
+.ta-wall-asset,
+.ta-crate-asset,
+.ta-obstacle {
+  position: relative;
+  display: block;
+  width: 78%;
+  height: 78%;
+}
+.ta-wall-asset {
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 8px, rgba(0,0,0,0.18) 8px 10px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0 2px, transparent 2px 13px),
+    linear-gradient(145deg, #707784, #343a46);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.18),
+    inset 0 -5px 0 rgba(0,0,0,0.28),
+    0 2px 5px rgba(0,0,0,0.28);
+}
+.ta-wall-asset::before,
+.ta-wall-asset::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: rgba(0,0,0,0.22);
+}
+.ta-wall-asset::before { top: 34%; }
+.ta-wall-asset::after { top: 65%; }
+.ta-cell.crate {
+  background: linear-gradient(145deg, #53361f, #2b1b12);
+}
+.ta-crate-asset {
+  border-radius: 5px;
+  background:
+    linear-gradient(45deg, transparent 42%, rgba(255,255,255,0.24) 43% 52%, transparent 53%),
+    linear-gradient(-45deg, transparent 42%, rgba(0,0,0,0.32) 43% 52%, transparent 53%),
+    linear-gradient(90deg, rgba(255,255,255,0.16) 0 8px, transparent 8px calc(100% - 8px), rgba(0,0,0,0.24) calc(100% - 8px)),
+    linear-gradient(#9b6a35, #6c4425);
+  box-shadow:
+    inset 0 0 0 2px rgba(58, 34, 18, 0.75),
+    0 2px 5px rgba(0,0,0,0.28);
+}
+.ta-cell.item {
+  background: radial-gradient(circle at 50% 45%, rgba(139,230,240,0.25), #17324a 70%);
+}
+.ta-cell.item-repair { --item-color: #6ee7b7; }
+.ta-cell.item-armor { --item-color: #8be6f0; }
+.ta-cell.item-rocket { --item-color: #ff8c9c; }
+.ta-cell.item-mine { --item-color: #ffd166; }
+.ta-item-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 62%;
+  height: 62%;
+  border-radius: 50%;
+  background: var(--item-color);
+  color: #11172f;
+  font-size: clamp(0.72rem, 2vw, 1rem);
+  font-weight: 900;
+  box-shadow:
+    inset 0 -4px 0 rgba(0,0,0,0.18),
+    0 0 14px color-mix(in srgb, var(--item-color), transparent 52%);
+}
+.ta-cell.mine {
+  background: radial-gradient(circle at 50% 45%, #5a253f, #20101b 80%);
+}
+.ta-mine-asset {
+  position: relative;
+  width: 54%;
+  height: 54%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, #ffe8a4, #a73d60 28%, #2c1321 72%);
+  box-shadow: 0 0 0 3px rgba(255,209,102,0.2), 0 3px 5px rgba(0,0,0,0.35);
+}
+.ta-mine-asset::before,
+.ta-mine-asset::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 130%;
+  height: 4px;
+  background: #2c1321;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}
+.ta-mine-asset::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.ta-cell.tank {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.06), transparent 48%),
+    linear-gradient(135deg, #29365f, #182245);
+}
+.ta-cell.tank.p1 {
+  --tank-main: #e94e66;
+  --tank-mid: #b82e47;
+  --tank-dark: #681928;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 93, 115, 0.13), transparent 55%),
+    linear-gradient(135deg, #2c355b, #182144);
+}
+.ta-cell.tank.p2 {
+  --tank-main: #37b8cf;
+  --tank-mid: #188ba2;
+  --tank-dark: #0d4c5d;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(77, 208, 225, 0.13), transparent 55%),
+    linear-gradient(135deg, #2c355b, #182144);
+}
+.ta-tank-asset {
+  position: relative;
+  width: 78%;
+  height: 72%;
+  display: block;
+  transform-origin: 50% 50%;
+}
+.ta-cell.face-n .ta-tank-asset { transform: rotate(0deg); }
+.ta-cell.face-e .ta-tank-asset { transform: rotate(90deg); }
+.ta-cell.face-s .ta-tank-asset { transform: rotate(180deg); }
+.ta-cell.face-w .ta-tank-asset { transform: rotate(270deg); }
+.ta-track,
+.ta-hull,
+.ta-turret,
+.ta-gun,
+.ta-player-tag {
+  position: absolute;
+  display: block;
+}
+.ta-track {
+  top: 24%;
+  bottom: 13%;
+  width: 22%;
+  border-radius: 5px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.16) 0 2px, transparent 2px 5px),
+    var(--tank-dark);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.28);
+}
+.ta-track.left { left: 5%; }
+.ta-track.right { right: 5%; }
+.ta-hull {
+  left: 20%;
+  right: 20%;
+  top: 24%;
+  bottom: 13%;
+  border-radius: 7px 7px 5px 5px;
+  background: linear-gradient(145deg, var(--tank-main), var(--tank-mid));
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    inset 0 -5px 0 rgba(0,0,0,0.24);
+}
+.ta-turret {
+  left: 34%;
+  right: 34%;
+  top: 12%;
+  height: 40%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, rgba(255,255,255,0.28), var(--tank-main) 42%, var(--tank-dark));
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+.ta-gun {
+  left: calc(50% - 4px);
+  top: -8%;
+  width: 8px;
+  height: 42%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--tank-dark), var(--tank-main), var(--tank-dark));
+  box-shadow: 0 -2px 0 rgba(0,0,0,0.22);
+}
+.ta-player-tag {
+  left: 50%;
+  top: 57%;
+  width: 16px;
+  height: 12px;
+  margin-left: -8px;
+  color: rgba(255,255,255,0.86);
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 12px;
+  text-align: center;
+}
+.ta-cell.face-e .ta-player-tag,
+.ta-cell.face-s .ta-player-tag,
+.ta-cell.face-w .ta-player-tag {
+  display: none;
+}
+.ta-cell.active-tank {
+  outline: 0;
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    0 0 16px rgba(255, 209, 102, 0.45);
+}
+.ta-cell.hl-move::before,
+.ta-cell.hl-aim::before,
+.ta-cell.hl-danger::before,
+.ta-cell.hl-mine::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 4px;
+  border: 2px solid currentColor;
+  pointer-events: none;
+  z-index: 3;
+}
+.ta-cell.hl-move { color: #6ee7b7; }
+.ta-cell.hl-aim { color: #e9ecff; }
+.ta-cell.hl-danger { color: #ff5d73; }
+.ta-cell.hl-mine { color: #ffd166; }
+.ta-cell.hl-danger::before {
+  background: rgba(255,93,115,0.12);
+}
+.ta-cell.hl-mine::before {
+  background: rgba(255,209,102,0.1);
+}
+@media (max-width: 760px) {
+.ta-hud {
+    grid-template-columns: 1fr;
+  }
+.ta-board {
+    --ta-cell: clamp(30px, 8vw, 44px);
+  }
+.ta-action-card {
+    min-width: 112px;
+  }
+}
+.ta-boom {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 70%; height: 70%;
+  transform: translate(-50%, -50%) scale(0.2);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ffd166 32%, #ff7a2f 55%, rgba(255,93,40,0) 72%);
+  pointer-events: none;
+  z-index: 6;
+  animation: ta-boom-anim 0.55s ease-out forwards;
+}
+.ta-boom.big {
+  width: 150%; height: 150%;
+  background: radial-gradient(circle, #fff 0%, #ffe08a 28%, #ff7a2f 52%, #ff3b30 66%, rgba(255,59,48,0) 78%);
+  animation-duration: 0.62s;
+}
+.ta-shake { animation: ta-shake-anim 0.3s ease; }
+.ta-beam {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  animation: ta-beam-anim 0.36s ease-out forwards;
+}
+.ta-beam.p1 { background: radial-gradient(circle, rgba(255,140,156,0.95), rgba(255,93,115,0)); box-shadow: 0 0 10px 3px rgba(255,93,115,0.7); }
+.ta-beam.p2 { background: radial-gradient(circle, rgba(139,230,240,0.95), rgba(77,208,225,0)); box-shadow: 0 0 10px 3px rgba(77,208,225,0.7); }
+.btn.danger { border-color: rgba(255,93,115,0.5); color: #ff8fa1; }
+.btn.danger:hover { background: var(--p1); color: #fff; box-shadow: 0 6px 18px rgba(255,93,115,0.35); }
+@media (max-width:640px){.ta-board{--ta-cell:calc((100vw - 64px - (var(--ta-n) - 1) * 3px) / var(--ta-n));max-width:none;overflow:visible}}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ======================== Menü ======================== -->
+  <section id="menuView" class="menu">
+    <div class="menu-head">
+      <h1>💥 Panzer-Taktik</h1>
+      <p>Mit deinen Aktionspunkten fährst du, schiesst, legst Minen oder feuerst Raketen. Wer den anderen Panzer zuerst knackt, gewinnt.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Spielmodus</h2>
+      <div class="modes" id="modes"></div>
+      <div id="aiLevelBox" class="hidden" style="margin-top:14px">
+        <div class="opt-row"><label>Bot-Stärke</label>
+          <div class="seg" id="aiLevels">
+            <button data-lv="easy">Leicht</button><button data-lv="medium">Mittel</button><button data-lv="hard">Schwer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="optionsPanel">
+      <h2>Einstellungen</h2>
+      <div id="optionsBox"></div>
+    </div>
+
+    <div class="panel hidden" id="onlinePanel">
+      <h2>Online gegen Freunde</h2>
+      <div class="online-grid" id="onlineSetup">
+        <div class="opt-row"><label for="nameInput">Dein Name</label><input id="nameInput" class="field" maxlength="16" placeholder="Spielername" autocomplete="nickname"></div>
+        <div class="row"><button class="btn primary" id="createBtn">Raum erstellen</button><span class="msg">oder mit Code beitreten:</span></div>
+        <div class="row"><input id="codeInput" class="field code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="btn" id="joinBtn">Beitreten</button></div>
+        <div class="msg" id="onlineMsg"></div>
+      </div>
+      <div id="onlineWait" class="hidden" style="text-align:center">
+        <p class="msg">Schick diesen Code oder Link an deinen Freund:</p>
+        <div class="code-big" id="roomCode">----</div>
+        <div class="row" style="justify-content:center;margin:12px 0">
+          <button class="btn" id="copyBtn">🔗 Link kopieren</button>
+          <button class="btn ghost" id="cancelBtn">Abbrechen</button>
+        </div>
+        <p class="msg">Warte auf Mitspieler …</p>
+      </div>
+      <details class="lb" id="lbBox"><summary class="msg" style="cursor:pointer">🏆 Online-Rangliste</summary><div id="leaderboard"></div></details>
+    </div>
+
+    <div class="start-row" id="startRow"><button class="btn primary" id="startBtn">Los geht's!</button></div>
+
+    <div class="panel howto">
+      <details open>
+        <summary>So wird gespielt</summary>
+        <ol id="howtoList"></ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- ======================== Spiel ======================== -->
+  <section id="gameView" class="hidden">
+    <div class="topbar">
+      <button class="btn small" id="menuBtn">☰ Menü</button>
+      <h1 id="gameTitle">Panzer-Taktik</h1>
+      <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
+      <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
+    </div>
+    <div class="online-info hidden" id="onlineInfo"></div>
+    <div class="scoreboard">
+      <div class="pcard p1" id="pc1"><div class="pname" id="pn1">Spieler 1</div><div class="pwins" id="pw1">0 Siege</div></div>
+      <div class="turn" id="turnBanner">…</div>
+      <div class="pcard p2" id="pc2"><div class="pname" id="pn2">Spieler 2</div><div class="pwins" id="pw2">0 Siege</div></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="board-wrap" id="boardWrap"></div>
+    <div class="game-actions">
+      <button class="btn" id="undoBtn">↶ Rückgängig</button>
+      <button class="btn" id="restartBtn">↻ Neue Runde</button>
+    </div>
+  </section>
+</div>
+
+<div class="overlay hidden" id="resultOverlay">
+  <div class="dialog">
+    <h2 id="resTitle">Sieg!</h2>
+    <p id="resText"></p>
+    <div class="row">
+      <button class="btn primary" id="againBtn">Nochmal</button>
+      <button class="btn" id="resMenuBtn">Menü</button>
+    </div>
+  </div>
+</div>
+<div class="overlay hidden" id="helpOverlay">
+  <div class="dialog help">
+    <h2>So wird gespielt</h2>
+    <ol id="helpList" style="line-height:1.5;padding-left:20px;color:#d6dbe4"></ol>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" id="helpClose">Verstanden</button></div>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script>
+/* ---------- Registry & Zufallszahlen (aus dem Original) ---------- */
+window.GameRegistry = {
+  games: [],
+  register(game) { this.games.push(game); },
+  get(id) { return this.games.find((g) => g.id === id) || null; },
+};
+window.makeRng = function (seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+</script>
+<script>
+/* ============================================================
+   Sound: hiệu ứng âm thanh sinh bằng Web Audio API (không cần file)
+   Dùng: Sound.play("place" | "capture" | "win" | "lose" | "draw"
+                     | "error" | "select" | "rotate" | "shot" | "miss"
+                     | "explode" | "flip" | "score" | "powerup" | "drop" | "coin" | "react")
+   ============================================================ */
+window.Sound = (function () {
+  let ctxAudio = null;
+  let enabled = true;
+  let masterVol = 0.8;
+  let musicOn = false;
+  let musicTimer = null;
+  let musicStep = 0;
+
+  // Khôi phục lựa chọn từ lần trước
+  try {
+    const saved = localStorage.getItem("panzer-taktik-sound");
+    if (saved !== null) enabled = saved === "1";
+    const v = localStorage.getItem("panzer-taktik-volume");
+    if (v !== null) masterVol = Math.max(0, Math.min(1, parseFloat(v) || 0.8));
+    musicOn = localStorage.getItem("panzer-taktik-music") === "1";
+  } catch (e) { /* ignore */ }
+
+  function ac() {
+    if (!ctxAudio) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctxAudio = new AC();
+    }
+    // một số trình duyệt khóa audio cho tới khi có tương tác người dùng
+    if (ctxAudio.state === "suspended") ctxAudio.resume();
+    return ctxAudio;
+  }
+
+  // Phát một nốt: tần số, thời lượng, dạng sóng, âm lượng
+  function tone(freq, dur, type = "sine", vol = 0.2, startAt = 0) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    const v = Math.max(0.0001, vol * masterVol);
+    // bao âm: lên nhanh, tắt dần -> nghe "mượt", tránh tiếng "tách"
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(v, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(a.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  // Tiếng "nhiễu" ngắn cho hiệu ứng va chạm/nước (dùng buffer ngẫu nhiên)
+  function noise(dur, vol = 0.15, startAt = 0, filterFreq = 1000) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const len = Math.floor(a.sampleRate * dur);
+    const buffer = a.createBuffer(1, len, a.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource();
+    src.buffer = buffer;
+    const filter = a.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    const gain = a.createGain();
+    gain.gain.setValueAtTime(vol * masterVol, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(a.destination);
+    src.start(t0);
+    src.stop(t0 + dur);
+  }
+
+  const EFFECTS = {
+    place()   { tone(440, 0.08, "triangle", 0.18); },
+    select()  { tone(660, 0.05, "sine", 0.12); },
+    capture() { tone(330, 0.1, "square", 0.14); tone(220, 0.12, "square", 0.12, 0.05); },
+    rotate()  { tone(300, 0.06, "sawtooth", 0.1); tone(420, 0.08, "sawtooth", 0.1, 0.06); },
+    shot()    { noise(0.18, 0.22, 0, 800); tone(160, 0.12, "square", 0.12); },
+    miss()    { noise(0.25, 0.12, 0, 500); },
+    error()   { tone(180, 0.18, "sawtooth", 0.16); },
+    win()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.2, i * 0.1)); },
+    lose()    { [392, 330, 262].forEach((f, i) => tone(f, 0.22, "sine", 0.18, i * 0.12)); },
+    draw()    { tone(440, 0.15, "sine", 0.15); tone(440, 0.15, "sine", 0.12, 0.16); },
+    notify()  { tone(880, 0.08, "sine", 0.16); tone(1175, 0.1, "sine", 0.16, 0.09); },
+    // Hiệu ứng riêng phong phú hơn
+    explode() {
+      noise(0.45, 0.32, 0, 380);
+      tone(90, 0.35, "sawtooth", 0.22);
+      tone(60, 0.5, "sine", 0.18, 0.02);
+      noise(0.18, 0.18, 0.04, 1600);
+    },
+    flip()    { tone(520, 0.05, "sine", 0.10); tone(760, 0.06, "triangle", 0.12, 0.05); },
+    score()   { [784, 1047, 1319].forEach((f, i) => tone(f, 0.12, "triangle", 0.16, i * 0.06)); },
+    powerup() { [440, 587, 740, 988].forEach((f, i) => tone(f, 0.1, "square", 0.12, i * 0.05)); },
+    drop()    { tone(300, 0.05, "sine", 0.12); tone(180, 0.12, "triangle", 0.16, 0.05); noise(0.06, 0.08, 0.04, 1200); },
+    coin()    { tone(988, 0.07, "square", 0.12); tone(1319, 0.1, "square", 0.12, 0.06); },
+    react()   { tone(700, 0.05, "sine", 0.12); tone(1050, 0.07, "sine", 0.1, 0.04); },
+  };
+
+  function play(name) {
+    if (!enabled) return;
+    const fn = EFFECTS[name];
+    if (fn) { try { fn(); } catch (e) { /* ignore */ } }
+  }
+
+  function setEnabled(on) {
+    enabled = !!on;
+    try { localStorage.setItem("panzer-taktik-sound", enabled ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (enabled) play("select");
+  }
+
+  function isEnabled() { return enabled; }
+
+  // ----- Âm lượng tổng -----
+  function setVolume(v) {
+    masterVol = Math.max(0, Math.min(1, Number(v) || 0));
+    try { localStorage.setItem("panzer-taktik-volume", String(masterVol)); } catch (e) { /* ignore */ }
+  }
+  function getVolume() { return masterVol; }
+
+  // ----- Nhạc nền sinh tự động (pad ngũ cung nhẹ nhàng) -----
+  const MSCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+  function musicTick() {
+    if (!musicOn) return;
+    const i = musicStep % MSCALE.length;
+    const f = MSCALE[i];
+    try {
+      tone(f, 1.8, "sine", 0.05);
+      if (musicStep % 4 === 0) tone(f / 2, 2.6, "triangle", 0.035);
+      if (musicStep % 3 === 0) tone(f * 1.5, 1.2, "sine", 0.025, 0.4);
+    } catch (e) { /* ignore */ }
+    musicStep++;
+  }
+  function startMusic() {
+    if (musicTimer) return;
+    musicStep = 0;
+    musicTick();
+    musicTimer = setInterval(musicTick, 950);
+  }
+  function stopMusic() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  }
+  function setMusic(on) {
+    musicOn = !!on;
+    try { localStorage.setItem("panzer-taktik-music", musicOn ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (musicOn) startMusic(); else stopMusic();
+  }
+  function isMusicOn() { return musicOn; }
+
+  return { play, setEnabled, isEnabled, setVolume, getVolume, setMusic, isMusicOn, startMusic, stopMusic };
+})();
+
+</script>
+<script>
+
+(function () {
+  const DIRS = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+
+  const ITEM_DEFS = {
+    repair: { icon: "+", label: "Reparatur", desc: "+30 Leben", tone: "repair" },
+    armor: { icon: "A", label: "Panzerung", desc: "weniger Schaden beim nächsten Treffer", tone: "armor" },
+    rocket: { icon: "R", label: "Rakete", desc: "+1 Rakete", tone: "rocket" },
+    mine: { icon: "M", label: "Mine", desc: "+1 Mine", tone: "mine" },
+  };
+  const ITEM_KEYS = Object.keys(ITEM_DEFS);
+
+  function create(ctx) {
+    const o = ctx.options || {};
+    const N = o.size || 11;
+    const MAX_HP = o.hp || 100;
+    const START_AP = o.ap || 4;
+    const ROCKET_RANGE = o.range || 5;
+    const density = {
+      open: { wall: 0.06, crate: 0.11, water: 0.04, forest: 0.05 },
+      balanced: { wall: 0.09, crate: 0.16, water: 0.06, forest: 0.07 },
+      dense: { wall: 0.12, crate: 0.20, water: 0.08, forest: 0.09 },
+    }[o.map || "balanced"] || { wall: 0.09, crate: 0.16, water: 0.06, forest: 0.07 };
+
+    let terrain = makeTerrain();
+    const items = Array.from({ length: N }, () => Array(N).fill(null));
+    const mines = Array.from({ length: N }, () => Array(N).fill(null));
+    const players = [
+      { r: N - 1, c: 0, hp: MAX_HP, armor: false, rockets: 1, mines: 1 },
+      { r: 0, c: N - 1, hp: MAX_HP, armor: false, rockets: 1, mines: 1 },
+    ];
+
+    let turn = 0;
+    let ap = START_AP;
+    let selected = "move";
+    let over = false;
+    let last = ("Geh in Stellung, sammle Items und finde eine Schusslinie.");
+    
+    const ITEM_LABEL_EN = { repair: "Reparatur", armor: "Panzerung", rocket: "Rakete", mine: "Mine" };
+    const ITEM_DESC_EN = { repair: "+30 Leben", armor: "weniger Schaden beim nächsten Treffer", rocket: "+1 Rakete", mine: "+1 Mine" };
+    const itemLabel = (type) => ctx.t(ITEM_DEFS[type].label, ITEM_LABEL_EN[type] || ITEM_DEFS[type].label);
+    const itemDesc = (type) => ctx.t(ITEM_DEFS[type].desc, ITEM_DESC_EN[type] || ITEM_DEFS[type].desc);
+    let pendingFx = []; 
+    let pendingBeam = []; 
+
+    const root = document.createElement("div");
+    root.className = "ta-root";
+
+    const hud = document.createElement("div");
+    hud.className = "ta-hud";
+    root.appendChild(hud);
+
+    const bar = document.createElement("div");
+    bar.className = "ta-actions";
+    const moveBtn = actionButton(("Fahren"), "move", "FAHR", ("1 AP / Feld"));
+    const shootBtn = actionButton(("Schuss"), "shoot", "FEUER", "2 AP");
+    const pierceBtn = actionButton(("Durchschuss"), "pierce", "DURCH", "3 AP");
+    const rocketBtn = actionButton("Rakete", "rocket", "RAK", "3 AP");
+    const mineBtn = actionButton(("Mine legen"), "mine", "MINE", "1 AP");
+    const endBtn = document.createElement("button");
+    endBtn.className = "btn small ta-action-card";
+    endBtn.innerHTML = `<span class="ta-action-icon">ENDE</span><span><b>${("Ende")}</b><small>${("Zug beenden")}</small></span>`;
+    endBtn.addEventListener("click", () => applyMove({ t: "end" }, false));
+    bar.appendChild(moveBtn);
+    bar.appendChild(shootBtn);
+    bar.appendChild(pierceBtn);
+    bar.appendChild(rocketBtn);
+    bar.appendChild(mineBtn);
+    bar.appendChild(endBtn);
+    root.appendChild(bar);
+
+    const legend = document.createElement("div");
+    legend.className = "ta-legend";
+    legend.innerHTML = `
+      <span><i class="ta-legend-tank p1"></i> ${("Dein Panzer")}</span>
+      <span><i class="ta-legend-wall"></i> ${("Mauer")}</span>
+      <span><i class="ta-legend-water"></i> ${("Wasser (Schüsse fliegen drüber)")}</span>
+      <span><i class="ta-legend-forest"></i> ${("Büsche (Deckung, stoppen Schüsse)")}</span>
+      <span><i class="ta-legend-crate"></i> ${("Kiste")}</span>
+      <span><i class="ta-legend-item">+</i> ${("Item")}</span>
+      <span><i class="ta-legend-mine"></i> ${("Gelegte Mine")}</span>
+    `;
+    root.appendChild(legend);
+
+    const board = document.createElement("div");
+    board.className = "ta-board";
+    board.style.setProperty("--ta-n", N);
+    root.appendChild(board);
+    ctx.boardEl.appendChild(root);
+
+    const cells = Array.from({ length: N }, () => Array(N));
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = document.createElement("button");
+        cell.type = "button";
+        cell.className = "ta-cell";
+        cell.dataset.r = String(r);
+        cell.dataset.c = String(c);
+        cell.addEventListener("click", () => onCell(r, c));
+        board.appendChild(cell);
+        cells[r][c] = cell;
+      }
+    }
+
+    function actionButton(label, action, icon, cost) {
+      const btn = document.createElement("button");
+      btn.className = "btn small ta-action-card";
+      btn.innerHTML = `<span class="ta-action-icon">${icon}</span><span><b>${label}</b><small>${cost}</small></span>`;
+      btn.addEventListener("click", () => {
+        selected = action;
+        render();
+        updateStatus();
+      });
+      return btn;
+    }
+
+    function makeTerrain() {
+      const grid = Array.from({ length: N }, () =>
+        Array.from({ length: N }, () => ({ type: "empty", hp: 0, item: null }))
+      );
+
+      function safe(r, c) {
+        const s1 = Math.abs(r - (N - 1)) + Math.abs(c);
+        const s2 = Math.abs(r) + Math.abs(c - (N - 1));
+        return s1 <= 2 || s2 <= 2 || r === 0 || c === 0 || r === N - 1 || c === N - 1;
+      }
+
+      function setPair(r, c, cell) {
+        const mr = N - 1 - r;
+        const mc = N - 1 - c;
+        if (!safe(r, c)) grid[r][c] = cloneCell(cell);
+        if (!safe(mr, mc)) grid[mr][mc] = cloneCell(cell);
+      }
+
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          const mr = N - 1 - r;
+          const mc = N - 1 - c;
+          if (r > mr || (r === mr && c > mc) || safe(r, c)) continue;
+          const roll = ctx.rng();
+          const tWall = density.wall;
+          const tCrate = tWall + density.crate;
+          const tWater = tCrate + density.water;
+          const tForest = tWater + density.forest;
+          if (roll < tWall) {
+            setPair(r, c, { type: "wall", hp: 0, item: null });
+          } else if (roll < tCrate) {
+            const item = ctx.rng() < 0.58 ? ITEM_KEYS[Math.floor(ctx.rng() * ITEM_KEYS.length)] : null;
+            setPair(r, c, { type: "crate", hp: 1, item });
+          } else if (roll < tWater) {
+            setPair(r, c, { type: "water", hp: 0, item: null });
+          } else if (roll < tForest) {
+            setPair(r, c, { type: "forest", hp: 0, item: null });
+          }
+        }
+      }
+
+      return grid;
+    }
+
+    function cloneCell(cell) {
+      return { type: cell.type, hp: cell.hp, item: cell.item };
+    }
+
+    function onCell(r, c) {
+      if (!canAct()) return;
+      if (selected === "move") applyMove({ t: "move", r, c }, false);
+      else if (selected === "shoot") applyMove({ t: "shoot", r, c }, false);
+      else if (selected === "pierce") applyMove({ t: "pierce", r, c }, false);
+      else if (selected === "rocket") applyMove({ t: "rocket", r, c }, false);
+      else if (selected === "mine") applyMove({ t: "mine", r, c }, false);
+    }
+
+    function fx(r, c, big) { pendingFx.push({ r, c, big: !!big }); }
+    function fxBeam(list, cls) { pendingBeam.push({ list, cls }); }
+    function flushFx() {
+      
+      pendingBeam.forEach(({ list, cls }) => {
+        list.forEach(({ r, c }) => {
+          const cell = cells[r] && cells[r][c];
+          if (!cell) return;
+          const b = document.createElement("span");
+          b.className = "ta-beam " + cls;
+          cell.appendChild(b);
+          setTimeout(() => b.remove(), 380);
+        });
+      });
+      pendingBeam = [];
+      if (!pendingFx.length) return;
+      let shook = false;
+      pendingFx.forEach(({ r, c, big }) => {
+        const cell = cells[r] && cells[r][c];
+        if (!cell) return;
+        const b = document.createElement("span");
+        b.className = "ta-boom" + (big ? " big" : "");
+        cell.appendChild(b);
+        setTimeout(() => b.remove(), 620);
+        shook = true;
+      });
+      pendingFx = [];
+      if (shook) {
+        board.classList.add("ta-shake");
+        setTimeout(() => board.classList.remove("ta-shake"), 320);
+      }
+    }
+
+    function canAct(fromRemote) {
+      return !over && (fromRemote || !ctx.isOnline || turn === ctx.mySeat);
+    }
+
+    function occupied(r, c) {
+      return players.findIndex((p) => p.hp > 0 && p.r === r && p.c === c);
+    }
+
+    function inside(r, c) {
+      return r >= 0 && r < N && c >= 0 && c < N;
+    }
+
+    function passable(r, c) {
+      return inside(r, c) && (terrain[r][c].type === "empty" || terrain[r][c].type === "forest") && occupied(r, c) === -1;
+    }
+
+    function applyMove(move, fromRemote) {
+      if (over) return;
+      let ok = false;
+      if (move.t === "move") ok = doMove(move.r, move.c, fromRemote);
+      else if (move.t === "shoot") ok = doShoot(move.r, move.c, fromRemote);
+      else if (move.t === "pierce") ok = doPierce(move.r, move.c, fromRemote);
+      else if (move.t === "rocket") ok = doRocket(move.r, move.c, fromRemote);
+      else if (move.t === "mine") ok = doMine(move.r, move.c, fromRemote);
+      else if (move.t === "end") ok = doEnd(fromRemote);
+
+      if (!ok) return;
+      if (!fromRemote) ctx.sendMove(move);
+      render();
+      flushFx();
+      updateStatus();
+    }
+
+    function doMove(r, c, fromRemote) {
+      if (!canAct(fromRemote) || (!fromRemote && selected !== "move")) return false;
+      const path = shortestPath(players[turn], { r, c }, ap);
+      if (!path || path.length < 2) return false;
+      const cost = path.length - 1;
+      const pl = players[turn];
+      for (let i = 1; i < path.length; i++) {
+        pl.r = path[i].r;
+        pl.c = path[i].c;
+        triggerMine(pl.r, pl.c);
+        collectItem(pl.r, pl.c);
+        if (over) return true;
+      }
+      ap -= cost;
+      last = (`Spieler ${turn + 1} fährt ${cost} ${cost === 1 ? "Feld" : "Felder"}.`);
+      ctx.sound("select");
+      if (ap <= 0) endTurn();
+      return true;
+    }
+
+    function shortestPath(start, target, maxCost) {
+      if (!passable(target.r, target.c)) return null;
+      const q = [{ r: start.r, c: start.c }];
+      const seen = new Set([start.r + "," + start.c]);
+      const prev = new Map();
+      while (q.length) {
+        const cur = q.shift();
+        const dist = distanceFromPrev(cur, prev);
+        if (dist >= maxCost) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = cur.r + dr;
+          const nc = cur.c + dc;
+          const key = nr + "," + nc;
+          if (!passable(nr, nc) || seen.has(key)) continue;
+          seen.add(key);
+          prev.set(key, cur.r + "," + cur.c);
+          if (nr === target.r && nc === target.c) return buildPath(key, prev);
+          q.push({ r: nr, c: nc });
+        }
+      }
+      return null;
+    }
+
+    function distanceFromPrev(cur, prev) {
+      let key = cur.r + "," + cur.c;
+      let d = 0;
+      while (prev.has(key)) {
+        key = prev.get(key);
+        d++;
+      }
+      return d;
+    }
+
+    function buildPath(endKey, prev) {
+      const out = [];
+      let key = endKey;
+      while (key) {
+        const [r, c] = key.split(",").map(Number);
+        out.push({ r, c });
+        key = prev.get(key);
+      }
+      return out.reverse();
+    }
+
+    function collectItem(r, c) {
+      const type = items[r][c];
+      if (!type) return;
+      const pl = players[turn];
+      items[r][c] = null;
+      if (type === "repair") pl.hp = Math.min(MAX_HP, pl.hp + 30);
+      else if (type === "armor") pl.armor = true;
+      else if (type === "rocket") pl.rockets++;
+      else if (type === "mine") pl.mines++;
+      last = (`Spieler ${turn + 1} sammelt ${itemLabel(type)}: ${itemDesc(type)}.`);
+      ctx.sound("capture");
+    }
+
+    function triggerMine(r, c) {
+      const mine = mines[r][c];
+      if (!mine || mine.owner === turn) return;
+      mines[r][c] = null;
+      last = (`Spieler ${turn + 1} ist auf eine Mine gefahren!`);
+      damageTank(turn, 28);
+      ctx.sound("shot");
+    }
+
+    function doShoot(r, c, fromRemote) {
+      if (!canAct(fromRemote) || (!fromRemote && selected !== "shoot") || ap < 2) return false;
+      const pl = players[turn];
+      const dir = lineDir(pl.r, pl.c, r, c);
+      if (!dir) return false;
+      ap -= 2;
+      const hit = traceShot(pl.r, pl.c, r, c, dir);
+      
+      const beam = [];
+      let br = pl.r + dir[0], bc = pl.c + dir[1];
+      while (inside(br, bc)) {
+        beam.push({ r: br, c: bc });
+        if (br === hit.r && bc === hit.c) break;
+        br += dir[0]; bc += dir[1];
+      }
+      fxBeam(beam, turn === 0 ? "p1" : "p2");
+      if (hit.type === "tank") {
+        damageTank(hit.player, 32);
+        fx(hit.r, hit.c, true);
+        last = (`Spieler ${turn + 1} trifft den gegnerischen Panzer.`);
+        ctx.sound("shot");
+      } else if (hit.type === "crate") {
+        breakCrate(hit.r, hit.c);
+        fx(hit.r, hit.c, false);
+        last = (`Spieler ${turn + 1} zerstört eine Kiste.`);
+        ctx.sound("capture");
+      } else if (hit.type === "forest") {
+        fx(hit.r, hit.c, false);
+        last = ("Der Schuss bleibt in den Büschen stecken.");
+        ctx.sound("miss");
+      } else if (hit.type === "wall") {
+        fx(hit.r, hit.c, false);
+        last = ("Der Schuss schlägt in eine Mauer ein.");
+        ctx.sound("miss");
+      } else {
+        last = ("Daneben.");
+        ctx.sound("miss");
+      }
+      if (!over && ap <= 0) endTurn();
+      return true;
+    }
+
+    function lineDir(sr, sc, tr, tc) {
+      if (sr === tr && sc !== tc) return [0, tc > sc ? 1 : -1];
+      if (sc === tc && sr !== tr) return [tr > sr ? 1 : -1, 0];
+      return null;
+    }
+
+    function traceShot(sr, sc, tr, tc, dir) {
+      let r = sr + dir[0];
+      let c = sc + dir[1];
+      while (inside(r, c)) {
+        const tank = occupied(r, c);
+        if (tank !== -1) return { type: "tank", player: tank, r, c };
+        const cell = terrain[r][c];
+        if (cell.type === "wall") return { type: "wall", r, c };
+        if (cell.type === "crate") return { type: "crate", r, c };
+        if (r === tr && c === tc) return { type: "miss", r, c };
+        r += dir[0];
+        c += dir[1];
+      }
+      return { type: "miss", r: tr, c: tc };
+    }
+
+    
+    
+    function doPierce(r, c, fromRemote) {
+      if (!canAct(fromRemote) || (!fromRemote && selected !== "pierce") || ap < 3) return false;
+      const pl = players[turn];
+      const dir = lineDir(pl.r, pl.c, r, c);
+      if (!dir) return false;
+      ap -= 3;
+      const beam = [];
+      let rr = pl.r + dir[0], cc = pl.c + dir[1];
+      let hitsTank = false, brokeCrate = false;
+      while (inside(rr, cc)) {
+        const cell = terrain[rr][cc];
+        if (cell.type === "wall") { fx(rr, cc, false); break; }
+        beam.push({ r: rr, c: cc });
+        const tank = occupied(rr, cc);
+        if (tank !== -1) { damageTank(tank, 30, true); fx(rr, cc, true); hitsTank = true; }
+        if (cell.type === "crate") { breakCrate(rr, cc); brokeCrate = true; }
+        rr += dir[0]; cc += dir[1];
+      }
+      checkEnd();
+      fxBeam(beam, turn === 0 ? "p1" : "p2");
+      last = hitsTank
+        ? (`Spieler ${turn + 1} durchschiesst den gegnerischen Panzer!`)
+        : (brokeCrate ? (`Der Durchschuss zerstört Kisten auf seinem Weg.`) : (`Der Durchschuss von Spieler ${turn + 1} fegt über eine ganze Linie.`));
+      ctx.sound("shot");
+      if (!over && ap <= 0) endTurn();
+      return true;
+    }
+
+    function pierceRay(pl) {
+      const out = [];
+      for (const [dr, dc] of DIRS) {
+        let r = pl.r + dr, c = pl.c + dc;
+        while (inside(r, c)) {
+          const cell = terrain[r][c];
+          if (cell.type === "wall") break;
+          out.push({ r, c, hit: occupied(r, c) !== -1 });
+          r += dr; c += dc;
+        }
+      }
+      return out;
+    }
+
+    function doRocket(r, c, fromRemote) {
+      if (!canAct(fromRemote) || (!fromRemote && selected !== "rocket") || ap < 3) return false;
+      const pl = players[turn];
+      if (pl.rockets <= 0) return false;
+      if (Math.abs(pl.r - r) + Math.abs(pl.c - c) > ROCKET_RANGE) return false;
+      pl.rockets--;
+      ap -= 3;
+      const damaged = [];
+      for (let rr = r - 1; rr <= r + 1; rr++) {
+        for (let cc = c - 1; cc <= c + 1; cc++) {
+          if (!inside(rr, cc)) continue;
+          if (terrain[rr][cc].type === "crate") breakCrate(rr, cc);
+          const tank = occupied(rr, cc);
+          if (tank !== -1) {
+            const close = rr === r && cc === c;
+            damageTank(tank, close ? 48 : 28, true);
+            damaged.push(tank);
+          }
+        }
+      }
+      checkEnd();
+      last = damaged.length
+        ? (`Die Rakete explodiert im Zielgebiet und beschädigt Panzer.`)
+        : (`Die Rakete schlägt bei ${coord(r, c)} ein.`);
+      ctx.sound("shot");
+      if (!over && ap <= 0) endTurn();
+      return true;
+    }
+
+    function doMine(r, c, fromRemote) {
+      if (!canAct(fromRemote) || (!fromRemote && selected !== "mine") || ap < 1) return false;
+      const pl = players[turn];
+      if (pl.mines <= 0) return false;
+      const near = Math.abs(pl.r - r) + Math.abs(pl.c - c) === 1;
+      if (!near || !passable(r, c) || mines[r][c] || items[r][c]) return false;
+      mines[r][c] = { owner: turn };
+      pl.mines--;
+      ap--;
+      last = (`Spieler ${turn + 1} legt eine Mine.`);
+      ctx.sound("select");
+      if (ap <= 0) endTurn();
+      return true;
+    }
+
+    function doEnd(fromRemote) {
+      if (!canAct(fromRemote)) return false;
+      last = (`Spieler ${turn + 1} beendet den Zug.`);
+      endTurn();
+      return true;
+    }
+
+    function breakCrate(r, c) {
+      const cell = terrain[r][c];
+      if (cell.type !== "crate") return;
+      if (cell.item) items[r][c] = cell.item;
+      terrain[r][c] = { type: "empty", hp: 0, item: null };
+    }
+
+    function damageTank(idx, raw, deferEndCheck) {
+      const p = players[idx];
+      let dmg = raw;
+      if (p.armor) {
+        dmg = Math.ceil(dmg * 0.45);
+        p.armor = false;
+      }
+      p.hp = Math.max(0, p.hp - dmg);
+      if (!deferEndCheck) checkEnd();
+    }
+
+    function checkEnd() {
+      if (over) return;
+      const dead0 = players[0].hp <= 0;
+      const dead1 = players[1].hp <= 0;
+      if (!dead0 && !dead1) return;
+      over = true;
+      ctx.setTurn(-1);
+      if (dead0 && dead1) {
+        ctx.setStatus(("🤝 Beide Panzer zerstört – unentschieden!"));
+      } else {
+        const winner = dead0 ? 1 : 0;
+        ctx.incScore(winner);
+        ctx.setStatus((`🎉 Spieler ${winner + 1} gewinnt die Panzer-Taktik!`));
+      }
+    }
+
+    function endTurn() {
+      if (over) return;
+      turn = 1 - turn;
+      ap = START_AP;
+      selected = "move";
+      ctx.setTurn(turn);
+    }
+
+    function highlights() {
+      const map = new Map();
+      if (!canAct()) return map;
+      const pl = players[turn];
+      if (selected === "move") {
+        reachable(pl, ap).forEach((key) => map.set(key, "move"));
+      } else if (selected === "shoot") {
+        rayCells(pl).forEach(({ r, c, stop }) => map.set(r + "," + c, stop ? "danger" : "aim"));
+      } else if (selected === "pierce") {
+        if (ap >= 3) pierceRay(pl).forEach(({ r, c, hit }) => map.set(r + "," + c, hit ? "danger" : "aim"));
+      } else if (selected === "rocket") {
+        if (pl.rockets > 0 && ap >= 3) {
+          for (let r = 0; r < N; r++) {
+            for (let c = 0; c < N; c++) {
+              if (Math.abs(pl.r - r) + Math.abs(pl.c - c) <= ROCKET_RANGE) map.set(r + "," + c, "danger");
+            }
+          }
+        }
+      } else if (selected === "mine") {
+        if (pl.mines > 0 && ap >= 1) {
+          DIRS.forEach(([dr, dc]) => {
+            const r = pl.r + dr;
+            const c = pl.c + dc;
+            if (passable(r, c) && !items[r][c] && !mines[r][c]) map.set(r + "," + c, "mine");
+          });
+        }
+      }
+      return map;
+    }
+
+    function reachable(start, maxCost) {
+      const q = [{ r: start.r, c: start.c, d: 0 }];
+      const seen = new Set([start.r + "," + start.c]);
+      const out = new Set();
+      while (q.length) {
+        const cur = q.shift();
+        if (cur.d >= maxCost) continue;
+        for (const [dr, dc] of DIRS) {
+          const r = cur.r + dr;
+          const c = cur.c + dc;
+          const key = r + "," + c;
+          if (!passable(r, c) || seen.has(key)) continue;
+          seen.add(key);
+          out.add(key);
+          q.push({ r, c, d: cur.d + 1 });
+        }
+      }
+      return out;
+    }
+
+    function rayCells(pl) {
+      const out = [];
+      for (const [dr, dc] of DIRS) {
+        let r = pl.r + dr;
+        let c = pl.c + dc;
+        while (inside(r, c)) {
+          const tank = occupied(r, c);
+          const cell = terrain[r][c];
+          const stop = tank !== -1 || cell.type === "wall" || cell.type === "crate";
+          out.push({ r, c, stop });
+          if (stop) break;
+          r += dr;
+          c += dc;
+        }
+      }
+      return out;
+    }
+
+    function updateButtons() {
+      moveBtn.classList.toggle("active", selected === "move");
+      shootBtn.classList.toggle("active", selected === "shoot");
+      pierceBtn.classList.toggle("active", selected === "pierce");
+      rocketBtn.classList.toggle("active", selected === "rocket");
+      mineBtn.classList.toggle("active", selected === "mine");
+      const lock = !canAct();
+      moveBtn.disabled = lock || ap <= 0;
+      shootBtn.disabled = lock || ap < 2;
+      pierceBtn.disabled = lock || ap < 3;
+      rocketBtn.disabled = lock || ap < 3 || players[turn].rockets <= 0;
+      mineBtn.disabled = lock || ap < 1 || players[turn].mines <= 0;
+      endBtn.disabled = lock;
+      rocketBtn.querySelector("small").textContent = (`3 AP • noch ${players[turn].rockets}`);
+      mineBtn.querySelector("small").textContent = (`1 AP • noch ${players[turn].mines}`);
+    }
+
+    function render() {
+      const hi = highlights();
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          const cell = cells[r][c];
+          const h = hi.get(r + "," + c);
+          const terrainCell = terrain[r][c];
+          const tank = occupied(r, c);
+          cell.className = "ta-cell";
+          cell.innerHTML = "";
+          cell.title = coord(r, c);
+          cell.dataset.coord = coord(r, c);
+          if (terrainCell.type === "wall") {
+            cell.classList.add("wall");
+            cell.innerHTML = `<span class="ta-obstacle ta-wall-asset" aria-hidden="true"></span>`;
+          }
+          if (terrainCell.type === "crate") {
+            cell.classList.add("crate");
+            cell.innerHTML = `<span class="ta-obstacle ta-crate-asset" aria-hidden="true"></span>`;
+          }
+          if (items[r][c]) {
+            const item = ITEM_DEFS[items[r][c]];
+            cell.classList.add("item", "item-" + item.tone);
+            cell.innerHTML = `<span class="ta-item-badge" aria-hidden="true">${item.icon}</span>`;
+            cell.title += ` - ${itemLabel(items[r][c])}`;
+          }
+          if (mines[r][c]) {
+            cell.classList.add("mine");
+            cell.innerHTML = `<span class="ta-mine-asset" aria-hidden="true"></span>`;
+          }
+          if (tank !== -1) {
+            cell.classList.add("tank", tank === 0 ? "p1" : "p2", tankFacing(tank));
+            if (tank === turn && !over) cell.classList.add("active-tank");
+            cell.innerHTML = tankMarkup(tank);
+            const flags = [];
+            if (players[tank].armor) flags.push("A");
+            if (players[tank].rockets > 0) flags.push("R" + players[tank].rockets);
+            if (flags.length) cell.title += " - " + flags.join(" ");
+          }
+          if (h) cell.classList.add("hl-" + h);
+        }
+      }
+
+      hud.innerHTML = `
+        <div class="ta-player p1 ${turn === 0 && !over ? "active" : ""}">
+          <span><i class="ta-mini-tank p1"></i>${("Spieler 1")}</span>
+          <b>${players[0].hp}/${MAX_HP}</b>
+          <em>${loadoutText(0)}</em>
+          <i style="width:${Math.max(0, players[0].hp / MAX_HP * 100)}%"></i>
+        </div>
+        <div class="ta-mid">
+          <b>AP ${ap}/${START_AP}</b>
+          <div class="ta-ap-pips">${apPips()}</div>
+          <span>${selectedLabel()}</span>
+          <small>${last}</small>
+        </div>
+        <div class="ta-player p2 ${turn === 1 && !over ? "active" : ""}">
+          <span><i class="ta-mini-tank p2"></i>${("Spieler 2")}</span>
+          <b>${players[1].hp}/${MAX_HP}</b>
+          <em>${loadoutText(1)}</em>
+          <i style="width:${Math.max(0, players[1].hp / MAX_HP * 100)}%"></i>
+        </div>
+      `;
+      updateButtons();
+    }
+
+    function tankMarkup(idx) {
+      return `
+        <span class="ta-tank-asset" aria-hidden="true">
+          <span class="ta-track left"></span>
+          <span class="ta-track right"></span>
+          <span class="ta-hull"></span>
+          <span class="ta-turret"></span>
+          <span class="ta-gun"></span>
+          <span class="ta-player-tag">${idx + 1}</span>
+        </span>
+      `;
+    }
+
+    function tankFacing(idx) {
+      const me = players[idx];
+      const foe = players[1 - idx];
+      const dr = foe.r - me.r;
+      const dc = foe.c - me.c;
+      if (Math.abs(dc) > Math.abs(dr)) return dc > 0 ? "face-e" : "face-w";
+      return dr > 0 ? "face-s" : "face-n";
+    }
+
+    function loadoutText(idx) {
+      const p = players[idx];
+      return (`${p.armor ? "Gepanzert" : "Ohne Panzerung"} • R${p.rockets} • M${p.mines}`);
+    }
+
+    function apPips() {
+      let html = "";
+      for (let i = 0; i < START_AP; i++) {
+        html += `<i class="${i < ap ? "on" : ""}"></i>`;
+      }
+      return html;
+    }
+
+    function selectedLabel() {
+      if (selected === "move") return ("Fahren kostet 1 AP pro Feld.");
+      if (selected === "shoot") return ("Schuss geradeaus in Reihe oder Spalte, kostet 2 AP.");
+      if (selected === "pierce") return ("Durchschuss: geht durch Büsche, zerstört Kisten und trifft jeden Panzer auf der Linie, kostet 3 AP.");
+      if (selected === "rocket") return (`Rakete explodiert 3×3, Reichweite ${ROCKET_RANGE}, kostet 3 AP.`);
+      return ("Mine auf ein Nachbarfeld legen, kostet 1 AP.");
+    }
+
+    function updateStatus() {
+      if (over) return;
+      if (ctx.isOnline && turn !== ctx.mySeat) {
+        ctx.setStatus((`Gegner ist dran. ${last}`));
+      } else {
+        ctx.setStatus((`Spieler ${turn + 1} ist dran. Noch ${ap} AP. ${selectedLabel()}`));
+      }
+    }
+
+    function coord(r, c) {
+      return String.fromCharCode(65 + c) + (r + 1);
+    }
+
+    ctx.setTurn(0);
+    render();
+    updateStatus();
+    return { applyMove };
+  }
+
+  window.GameRegistry.register({
+    id: "tankarena",
+    name: "Panzer-Taktik",
+    emoji: "🪖",
+    description: "Rundenbasiertes Panzer-Duell mit Mauern, Kisten, Minen und Raketen.",
+    onlineReady: true,
+    options: [
+      {
+        id: "size",
+        label: "Kartengrösse",
+        default: 11,
+        choices: [
+          { value: 9, label: "9×9 (nhanh)" },
+          { value: 11, label: "11×11 (Standard)" },
+          { value: 13, label: "13×13 (gross)" },
+        ],
+      },
+      {
+        id: "map",
+        label: "Hindernisse",
+        default: "balanced",
+        choices: [
+          { value: "open", label: "Wenige" },
+          { value: "balanced", label: "Ausgewogen" },
+          { value: "dense", label: "Viele" },
+        ],
+      },
+      {
+        id: "ap",
+        label: "AP pro Zug",
+        default: 4,
+        choices: [
+          { value: 3, label: "3 AP" },
+          { value: 4, label: "4 AP" },
+          { value: 5, label: "5 AP" },
+        ],
+      },
+      {
+        id: "hp",
+        label: "Panzer-Leben",
+        default: 100,
+        choices: [
+          { value: 80, label: "80 HP" },
+          { value: 100, label: "100 HP" },
+          { value: 120, label: "120 HP" },
+        ],
+      },
+    ],
+    howTo: [
+      "Jeder steuert einen Panzer auf einem Raster-Schlachtfeld – zu zweit an einem Gerät oder online.",
+      "Pro Zug hast du Aktionspunkte (AP). Fahren kostet 1 AP pro Feld, ein Schuss 2 AP, eine Rakete 3 AP, eine Mine 1 AP.",
+      "Normale Schüsse fliegen nur waagrecht oder senkrecht und stoppen an Panzern, Kisten oder Mauern.",
+      "Durchschuss (3 AP): geht durch Büsche, zerstört Kisten und trifft jeden Panzer auf der Linie – nur Mauern halten ihn auf.",
+      "Raketen haben eine begrenzte Reichweite, explodieren in einem 3×3-Feld, zerstören Kisten und machen viel Schaden.",
+      "Kisten enthalten Reparatur, Panzerung, Raketen oder Minen. Fahr auf das Item-Feld, um es einzusammeln.",
+      "Panzerung verringert den Schaden des nächsten Treffers. Minen legst du auf ein Nachbarfeld – sie explodieren, wenn der Gegner drauffährt.",
+      "Mit „Ende“ beendest du deinen Zug vorzeitig. Bring die Leben des gegnerischen Panzers auf 0, um zu gewinnen.",
+    ],
+    create,
+  });
+})();
+
+</script>
+<script>
+/* ======================== Hülle für langwiligi.site ======================== */
+(function () {
+  'use strict';
+  const GAME_ID = 'panzer-taktik';
+  const game = window.GameRegistry.games[0];
+  const HUB = window.GameHub || null;
+  const $ = (id) => document.getElementById(id);
+  const LV_NAME = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(GAME_ID + '-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(GAME_ID + '-' + k, JSON.stringify(v)); } catch (e) { /* egal */ } },
+  };
+
+  const canAI = !!game.supportsAI;
+  const canLocal = game.localReady !== false;
+  const canOnline = !!HUB && game.onlineReady !== false;
+
+  let mode = store.get('mode', canAI ? 'ai' : 'local');
+  let aiLevel = store.get('ai', 'medium');
+  let options = Object.assign(defaultOptions(), store.get('options', {}));
+  let instance = null, ended = false, scores = [0, 0], wins = [0, 0], lastWinner = -1, aiTimer = null, resultTimer = null;
+  let curTurn = 0;
+  // Online-Zustand
+  let room = null, net = null; // net: { you, swap, round, names:[], ready:Set, started }
+
+  function defaultOptions() { const o = {}; (game.options || []).forEach((x) => { o[x.id] = x.default; }); return o; }
+  function validMode(m) { return (m === 'ai' && canAI) || (m === 'local' && canLocal) || (m === 'online' && canOnline); }
+  if (!validMode(mode)) mode = canAI ? 'ai' : canLocal ? 'local' : 'online';
+
+  /* ---------- Menü aufbauen ---------- */
+  const MODES = [
+    { id: 'ai', ok: canAI, ico: '🤖', title: 'Gegen Bot', text: 'Spiel gegen den Computer – drei Stärken.' },
+    { id: 'local', ok: canLocal, ico: '👥', title: '2 Spieler', text: 'Zu zweit an einem Gerät, abwechselnd.' },
+    { id: 'online', ok: canOnline, ico: '🌐', title: 'Online', text: 'Gegen Freunde übers Internet mit Raum-Code.' },
+  ];
+  function renderModes() {
+    const box = $('modes'); box.innerHTML = '';
+    MODES.filter((m) => m.ok).forEach((m) => {
+      const b = document.createElement('button');
+      b.className = 'mode-card' + (mode === m.id ? ' selected' : '');
+      b.innerHTML = `<span class="ico">${m.ico}</span><b>${m.title}</b><span>${m.text}</span>`;
+      b.addEventListener('click', () => { mode = m.id; store.set('mode', mode); renderModes(); });
+      box.appendChild(b);
+    });
+    $('aiLevelBox').classList.toggle('hidden', mode !== 'ai');
+    $('onlinePanel').classList.toggle('hidden', mode !== 'online');
+    $('startRow').classList.toggle('hidden', mode === 'online');
+    document.querySelectorAll('#aiLevels button').forEach((b) => b.classList.toggle('on', b.dataset.lv === aiLevel));
+    if (mode === 'online' && HUB && !renderModes.lbLoaded) { renderModes.lbLoaded = true; HUB.loadBoard(GAME_ID, $('leaderboard'), HUB.getName()); }
+  }
+  document.querySelectorAll('#aiLevels button').forEach((b) => b.addEventListener('click', () => { aiLevel = b.dataset.lv; store.set('ai', aiLevel); renderModes(); }));
+
+  function renderOptions() {
+    const opts = game.options || [];
+    $('optionsPanel').classList.toggle('hidden', !opts.length);
+    const box = $('optionsBox'); box.innerHTML = '';
+    opts.forEach((o) => {
+      const row = document.createElement('div'); row.className = 'opt-row';
+      const lab = document.createElement('label'); lab.textContent = o.label; row.appendChild(lab);
+      const seg = document.createElement('div'); seg.className = 'seg';
+      o.choices.forEach((c) => {
+        const b = document.createElement('button');
+        b.textContent = c.label;
+        b.className = String(options[o.id]) === String(c.value) ? 'on' : '';
+        b.addEventListener('click', () => { options[o.id] = c.value; store.set('options', options); renderOptions(); });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg); box.appendChild(row);
+    });
+  }
+  function renderHowto() {
+    const items = (game.howTo || []).map((s) => `<li>${esc(s)}</li>`).join('');
+    $('howtoList').innerHTML = items; $('helpList').innerHTML = items;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  /* ---------- Spiel-Kontext für das Original-Modul ---------- */
+  function seatName(seat) {
+    if (mode === 'ai') return seat === 0 ? 'Du' : 'Bot (' + LV_NAME[aiLevel] + ')';
+    if (mode === 'online' && net) {
+      const roomSeat = net.swap ? 1 - seat : seat;
+      const nm = net.names[roomSeat] || ('Spieler ' + (roomSeat + 1));
+      return roomSeat === net.you ? nm + ' (du)' : nm;
+    }
+    return 'Spieler ' + (seat + 1);
+  }
+  function setNameLabels(extra) {
+    [0, 1].forEach((s) => {
+      const suffix = extra && extra[s] ? ' ' + extra[s] : '';
+      $('pn' + (s + 1)).textContent = seatName(s) + suffix;
+    });
+  }
+  // Siege gehören online dem Raum-Platz (die Seiten wechseln jede Runde), sonst dem Sitz
+  function idOf(seat) { return mode === 'online' && net ? (net.swap ? 1 - seat : seat) : seat; }
+  function renderWins() {
+    [0, 1].forEach((s) => { const n = wins[idOf(s)]; $('pw' + (s + 1)).textContent = n + (n === 1 ? ' Sieg' : ' Siege'); });
+  }
+
+  function makeContext(seed) {
+    const online = mode === 'online' && net;
+    const mySeat = online ? (net.swap ? 1 - net.you : net.you) : -1;
+    return {
+      boardEl: $('boardWrap'),
+      isOnline: !!online,
+      mySeat,
+      roomSeat: online ? net.you : -1,
+      firstSeat: 0,
+      round: online ? net.round : 1,
+      rng: window.makeRng(seed || ((Math.random() * 4294967295) >>> 0)),
+      options: Object.assign({}, options),
+      vsAI: mode === 'ai',
+      aiLevel,
+      setStatus(text) {
+        $('status').textContent = text || '';
+        if (text && /🎉|🤝|💀/.test(text)) onGameEnd(text);
+      },
+      setTurn(idx) { setTurn(idx); },
+      setNames(n1, n2) {
+        const grab = (n) => { const m = /\(([^()]*)\)\s*$/.exec(String(n || '')); return m ? '(' + m[1] + ')' : ''; };
+        if (mode === 'local') { $('pn1').textContent = n1 || seatName(0); $('pn2').textContent = n2 || seatName(1); }
+        else setNameLabels([grab(n1), grab(n2)]);
+      },
+      incScore(idx) { scores[idx]++; lastWinner = idx; },
+      decScore(idx) { scores[idx] = Math.max(0, scores[idx] - 1); },
+      getScore(idx) { return scores[idx]; },
+      sendMove(move) { if (mode === 'online' && room && net && net.started) room.send({ t: 'mv', m: move }); },
+      sound(name) { if (window.Sound) window.Sound.play(name); },
+      t(de) { return de; },
+    };
+  }
+
+  function setTurn(idx) {
+    curTurn = idx;
+    const tb = $('turnBanner');
+    $('pc1').classList.toggle('active', idx === 0);
+    $('pc2').classList.toggle('active', idx === 1);
+    if (idx === -1) { tb.textContent = 'Runde vorbei'; tb.style.color = 'var(--text)'; return; }
+    let label;
+    if (mode === 'ai') label = idx === 0 ? 'Du bist dran' : 'Bot ist dran';
+    else if (mode === 'online' && net) label = idx === (net.swap ? 1 - net.you : net.you) ? 'Du bist dran' : 'Gegner ist dran';
+    else label = 'Spieler ' + (idx + 1) + ' ist dran';
+    tb.textContent = label;
+    tb.style.color = idx === 0 ? 'var(--p1)' : 'var(--p2)';
+    if (mode === 'ai' && idx === 1 && !ended) scheduleAI();
+  }
+
+  function scheduleAI() {
+    const wrap = $('boardWrap');
+    wrap.classList.add('ai-thinking');
+    clearTimeout(aiTimer);
+    aiTimer = setTimeout(() => {
+      wrap.classList.remove('ai-thinking');
+      if (mode !== 'ai' || ended || !instance || typeof instance.aiMove !== 'function') return;
+      try {
+        const mv = instance.aiMove(aiLevel);
+        if (mv !== null && mv !== undefined) instance.applyMove(mv, false);
+      } catch (e) { console.error(e); }
+    }, 520);
+  }
+
+  function teardown() {
+    clearTimeout(aiTimer); clearTimeout(resultTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    if (instance && typeof instance.destroy === 'function') { try { instance.destroy(); } catch (e) { /* egal */ } }
+    instance = null;
+    $('boardWrap').innerHTML = '';
+  }
+
+  function startRound(seed) {
+    teardown();
+    hide('resultOverlay');
+    ended = false; scores = [0, 0]; lastWinner = -1;
+    $('status').textContent = '';
+    show('gameView'); hide('menuView');
+    setNameLabels();
+    renderWins();
+    const online = mode === 'online' && net;
+    $('onlineInfo').classList.toggle('hidden', !online);
+    if (online) $('onlineInfo').textContent = '🌐 Online · Raum ' + room.code + ' · Runde ' + net.round + ' · ' + ((net.swap ? 1 - net.you : net.you) === 0 ? 'du beginnst' : 'Gegner beginnt');
+    $('restartBtn').textContent = online ? '↻ Neue Runde anfragen' : '↻ Neue Runde';
+    instance = game.create(makeContext(seed));
+    $('undoBtn').classList.toggle('hidden', mode !== 'local' || !instance || typeof instance.undo !== 'function');
+    window.scrollTo({ top: 0 });
+  }
+
+  function onGameEnd(text) {
+    if (ended) return;
+    ended = true;
+    clearTimeout(aiTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    const draw = /🤝/.test(text) && !/🎉/.test(text);
+    let w = -1;
+    if (!draw) {
+      w = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : lastWinner;
+      if (w === -1) {
+        // Gewinner aus dem Text lesen ("Spieler 2 …")
+        const m = /Spieler\s*([12])/.exec(text);
+        if (m) w = +m[1] - 1;
+      }
+    }
+    if (w >= 0) wins[idOf(w)]++;
+    renderWins();
+    if (mode === 'online' && net && room && net.you === 0 && net.started) {
+      try { room.result(w < 0 ? -1 : (net.swap ? 1 - w : w)); } catch (e) { /* egal */ }
+    }
+    let title;
+    if (w < 0) title = '🤝 Unentschieden';
+    else if (mode === 'ai') title = w === 0 ? '🎉 Du gewinnst!' : '🤖 Der Bot gewinnt';
+    else if (mode === 'online' && net) title = (w === (net.swap ? 1 - net.you : net.you)) ? '🎉 Du gewinnst!' : '😵 ' + seatName(w).replace(' (du)', '') + ' gewinnt';
+    else title = '🎉 ' + seatName(w) + ' gewinnt!';
+    $('resTitle').textContent = title;
+    $('resText').textContent = text.replace(/^[🎉🤝💀]\s*/u, '');
+    $('againBtn').disabled = false;
+    $('againBtn').textContent = 'Nochmal';
+    resultTimer = setTimeout(() => show('resultOverlay'), 1100);
+  }
+
+  /* ---------- Ansichten ---------- */
+  function show(id) { $(id).classList.remove('hidden'); }
+  function hide(id) { $(id).classList.add('hidden'); }
+  function toMenu() {
+    teardown();
+    hide('resultOverlay'); hide('gameView'); show('menuView');
+    if (room) { try { room.send({ t: 'bye' }); room.close(); } catch (e) { /* egal */ } }
+    room = null; net = null;
+    resetOnlineUI();
+    renderModes();
+    window.scrollTo({ top: 0 });
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    let el = document.querySelector('.toast');
+    if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.classList.remove('hidden');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+  }
+  function info(title, text) {
+    teardown();
+    $('resTitle').textContent = title; $('resText').textContent = text;
+    $('againBtn').textContent = 'Nochmal'; $('againBtn').disabled = true;
+    show('resultOverlay');
+  }
+
+  /* ---------- Online ---------- */
+  function resetOnlineUI() {
+    show('onlineSetup'); hide('onlineWait');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+    $('onlineMsg').textContent = ''; $('onlineMsg').classList.remove('err');
+  }
+  function onlineErr(e) {
+    $('onlineMsg').textContent = HUB.errorText(e); $('onlineMsg').classList.add('err');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    const n = HUB.setName($('nameInput').value) || 'Gast';
+    $('nameInput').value = n;
+    return n;
+  }
+  function newRoom() {
+    room = HUB.connect(GAME_ID);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', (m) => {
+      if (!net) return;
+      net.names = (m.players || room.players || []).map(playerName);
+      if (net.you === 0) { toast('🎮 ' + (playerName(m.name) || 'Mitspieler') + ' ist da!'); hostStart(false); }
+    });
+    room.on('peer-left', () => {
+      if (!net) return;
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    });
+    room.on('close', () => { if (net) info('📡 Verbindung verloren', 'Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', (rows) => HUB.renderBoard($('leaderboard'), rows, HUB.getName()));
+    return room;
+  }
+  async function createRoom() {
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Verbinde …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.create(name, 2);
+      net = { you: res.you, swap: false, round: 0, names: [name, ''], ready: new Set(), started: false };
+      wins = [0, 0];
+      $('roomCode').textContent = res.code;
+      hide('onlineSetup'); show('onlineWait');
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  async function joinRoom() {
+    const code = HUB.cleanCode($('codeInput').value);
+    if (code.length !== 4) { $('onlineMsg').textContent = 'Bitte den 4-stelligen Code eingeben.'; $('onlineMsg').classList.add('err'); return; }
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Trete bei …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.join(code, name);
+      net = { you: res.you, swap: false, round: 0, names: (res.players || room.players || []).map(playerName), ready: new Set(), started: false };
+      wins = [0, 0];
+      $('onlineMsg').textContent = 'Beigetreten! Warte auf den Start …';
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  function hostStart(swap) {
+    net.round++;
+    net.swap = swap;
+    net.ready.clear();
+    net.started = true;
+    const seed = (Math.random() * 4294967295) >>> 0;
+    room.send({ t: 'start', seed, swap, round: net.round, options, names: net.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    startRound(seed);
+  }
+  function onNetMsg(d) {
+    if (!d || !net) return;
+    if (d.t === 'start') {
+      net.swap = !!d.swap; net.round = d.round || 1; net.started = true; net.ready.clear();
+      if (Array.isArray(d.names)) net.names = d.names;
+      if (d.options) options = Object.assign(defaultOptions(), d.options);
+      startRound(d.seed);
+    } else if (d.t === 'mv') {
+      if (instance && instance.applyMove) { try { instance.applyMove(d.m, true); } catch (e) { console.error(e); } }
+    } else if (d.t === 'again') {
+      net.ready.add(1 - net.you);
+      if (net.you === 0 && net.ready.has(0)) hostStart(!net.swap);
+      else toast('🔁 Dein Gegner will nochmal spielen!');
+    } else if (d.t === 'bye') {
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    }
+  }
+  function requestAgain() {
+    if (mode !== 'online') { startRound(); return; }
+    if (!net || !room) return;
+    net.ready.add(net.you);
+    room.send({ t: 'again' });
+    if (net.you === 0 && net.ready.has(1)) { hostStart(!net.swap); return; }
+    $('againBtn').disabled = true; $('againBtn').textContent = 'Warte auf Gegner …';
+    $('status').textContent = 'Warte, bis dein Gegner auch nochmal will …';
+  }
+
+  /* ---------- Knöpfe ---------- */
+  $('startBtn').addEventListener('click', () => { wins = [0, 0]; startRound(); });
+  $('menuBtn').addEventListener('click', toMenu);
+  $('resMenuBtn').addEventListener('click', toMenu);
+  $('againBtn').addEventListener('click', requestAgain);
+  $('restartBtn').addEventListener('click', () => {
+    if (mode === 'online') { hide('resultOverlay'); show('resultOverlay'); $('resTitle').textContent = 'Neue Runde?'; $('resText').textContent = 'Wenn beide zustimmen, startet eine neue Runde.'; $('againBtn').disabled = false; $('againBtn').textContent = 'Ja, neue Runde'; return; }
+    startRound();
+  });
+  $('undoBtn').addEventListener('click', () => {
+    if (!instance || typeof instance.undo !== 'function') return;
+    const wasEnded = ended;
+    if (instance.undo() && wasEnded) { ended = false; hide('resultOverlay'); clearTimeout(resultTimer); }
+  });
+  $('helpBtn').addEventListener('click', () => show('helpOverlay'));
+  $('helpClose').addEventListener('click', () => hide('helpOverlay'));
+  $('helpOverlay').addEventListener('click', (e) => { if (e.target === $('helpOverlay')) hide('helpOverlay'); });
+  function renderMute() { $('muteBtn').textContent = window.Sound && window.Sound.isEnabled() ? '🔊' : '🔇'; }
+  $('muteBtn').addEventListener('click', () => { if (window.Sound) window.Sound.setEnabled(!window.Sound.isEnabled()); renderMute(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hide('helpOverlay'); } });
+
+  if (HUB) {
+    $('nameInput').value = HUB.getName();
+    $('createBtn').addEventListener('click', createRoom);
+    $('joinBtn').addEventListener('click', joinRoom);
+    $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
+    $('cancelBtn').addEventListener('click', () => { if (room) room.close(); room = null; net = null; resetOnlineUI(); });
+    $('copyBtn').addEventListener('click', async () => {
+      const link = 'https://langwiligi.site/' + GAME_ID + '/#' + $('roomCode').textContent;
+      try { await navigator.clipboard.writeText(link); toast('✅ Link kopiert!'); }
+      catch (e) { toast(link); }
+    });
+    const code = HUB.cleanCode(location.hash);
+    if (code.length === 4 && canOnline) {
+      mode = 'online';
+      $('codeInput').value = code;
+      setTimeout(() => { $('onlineMsg').textContent = 'Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.'; $('nameInput').focus(); }, 50);
+    }
+  }
+
+  renderModes(); renderOptions(); renderHowto(); renderMute();
+})();
+</script>
+</body>
+</html>

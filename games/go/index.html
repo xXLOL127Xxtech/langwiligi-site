@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+  (function() {
+    var ua = navigator.userAgent;
+    var isPhone = /iPhone|iPad|iPod|Android/i.test(ua) || window.innerWidth < 768;
+    if (isPhone) {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        var targetWidth = 780;
+        var scale = window.innerWidth / targetWidth;
+        meta.setAttribute('content', 'width=' + targetWidth + ', initial-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes');
+      }
+    }
+  })();
+  </script>
+  <title>Go</title>
+<meta name="description" content="Das jahrtausendealte Umzingelungs-Spiel auf 9×9, 13×13 oder 19×19 – gegen den Bot oder zu zweit.">
+<meta name="theme-color" content="#e9c46a">
+<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-tags" content="Klassiker,Strategie">
+<!--
+  Go – angepasst für langwiligi.site.
+  Original: „Go“ aus github.com/mf4633/board-gaming von Michael Flynn (MIT-Lizenz).
+  MIT License – Copyright (c) 2026 Michael Flynn
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Änderungen: deutsche Texte, ohne Werbung/Tracking/Navigation der Originalseite.
+-->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #1A1810;
+      color: #C8D0B8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.7em;
+      color: #DEB070;
+      margin-bottom: 2px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+      letter-spacing: 0.2em;
+    }
+
+    .subtitle {
+      font-size: 0.8em;
+      color: #8B7040;
+      margin-bottom: 2px;
+      font-style: italic;
+    }
+
+    .subtitle-cn {
+      font-size: 0.7em;
+      color: #6A5A38;
+      margin-bottom: 12px;
+    }
+
+    /* Mode selector */
+    .mode-selector {
+      display: flex;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #8B7040;
+    }
+
+    .mode-btn {
+      padding: 6px 18px;
+      font-size: 0.95em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      border: none;
+      background: #2A2418;
+      color: #6A5A38;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn:not(:last-child) { border-right: 1px solid #8B7040; }
+    .mode-btn.active { background: #8B7040; color: #1A1810; cursor: default; }
+    .mode-btn:hover:not(.active) { background: #3A3020; color: #DEB070; }
+
+    /* Size selector */
+    .size-selector {
+      display: flex;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #5A4A30;
+    }
+
+    .size-btn {
+      padding: 5px 14px;
+      font-size: 0.85em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      border: none;
+      background: #2A2418;
+      color: #6A5A38;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .size-btn:not(:last-child) { border-right: 1px solid #5A4A30; }
+    .size-btn.active { background: #5A4A30; color: #DEB070; cursor: default; }
+    .size-btn:hover:not(.active) { background: #3A3020; color: #DEB070; }
+
+    /* Game info */
+    .game-info { text-align: center; margin-bottom: 8px; }
+    #turn-indicator { font-size: 1.15em; font-weight: bold; margin-bottom: 4px; }
+
+    #message {
+      font-size: 0.95em;
+      color: #90B868;
+      min-height: 1.4em;
+      margin-bottom: 6px;
+    }
+
+    .buttons { margin-bottom: 12px; }
+
+    button {
+      padding: 8px 22px;
+      font-size: 1em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      margin: 0 5px;
+      border: 2px solid #8B7040;
+      border-radius: 6px;
+      background: #2A2418;
+      color: #C8D0B8;
+      transition: background 0.2s;
+    }
+
+    button:hover:not(:disabled) { background: #3A3020; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Main layout */
+    .container { display: flex; align-items: flex-start; gap: 18px; }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+      padding-top: 10px;
+    }
+
+    .side-panel h3 {
+      font-size: 0.85em;
+      margin-bottom: 6px;
+      color: #8B7040;
+    }
+
+    .prisoner-count {
+      font-size: 1.6em;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .prisoner-label {
+      font-size: 0.7em;
+      color: #6A5A38;
+      margin-bottom: 10px;
+    }
+
+    .pass-indicator {
+      font-size: 0.75em;
+      color: #90B868;
+      margin-top: 6px;
+      min-height: 1.2em;
+    }
+
+    .stone-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      margin-bottom: 6px;
+    }
+
+    .stone-icon.black {
+      background: radial-gradient(circle at 35% 30%, #555, #111);
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+    }
+
+    .stone-icon.white {
+      background: radial-gradient(circle at 35% 30%, #fff, #d0d0d0);
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+    }
+
+    /* Board */
+    .board-frame {
+      border: 4px solid #8B7040;
+      border-radius: 4px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.7), 0 0 40px rgba(0,0,0,0.3);
+      padding: 0;
+      display: inline-block;
+    }
+
+    .board-wrapper {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .board-surface {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #DEB070;
+      /* Subtle wood grain */
+      background-image:
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 8px,
+          rgba(180,140,70,0.15) 8px,
+          rgba(180,140,70,0.15) 9px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 40px,
+          rgba(160,120,50,0.08) 40px,
+          rgba(160,120,50,0.08) 42px
+        );
+      z-index: 0;
+    }
+
+    .board-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+    }
+
+    .cell {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cell:hover .hover-stone {
+      opacity: 0.3;
+    }
+
+    /* Grid lines via pseudo-elements on cells */
+    .cell::before {
+      content: '';
+      position: absolute;
+      background: #5A4020;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Horizontal line */
+    .cell::after {
+      content: '';
+      position: absolute;
+      background: #5A4020;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Horizontal line through center */
+    .cell::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      transform: translateY(-0.5px);
+    }
+
+    /* Vertical line through center */
+    .cell::after {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      transform: translateX(-0.5px);
+    }
+
+    /* Edge cells: clip lines */
+    .cell.edge-top::after { top: 50%; }
+    .cell.edge-bottom::after { bottom: 50%; }
+    .cell.edge-left::before { left: 50%; }
+    .cell.edge-right::before { right: 50%; }
+
+    /* Star point (hoshi) */
+    .hoshi {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #5A4020;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Stones */
+    .stone {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 5;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .stone.black {
+      background: radial-gradient(circle at 35% 30%, #555, #222 40%, #111 100%);
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.6), inset -1px -1px 2px rgba(0,0,0,0.3);
+    }
+
+    .stone.white {
+      background: radial-gradient(circle at 35% 30%, #fff, #e8e8e8 40%, #d0d0d0 100%);
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.3), inset -1px -1px 2px rgba(0,0,0,0.05);
+    }
+
+    .stone.last-move {
+      box-shadow: 0 0 0 2px #90B868, 2px 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* Dead stone marking (scoring mode) */
+    .stone.dead { opacity: 0.35; }
+
+    .stone.dead::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 42%;
+      height: 42%;
+      transform: translate(-50%, -50%);
+      background: #C0392B;
+      border-radius: 50%;
+      box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    }
+
+    .hover-stone {
+      position: absolute;
+      border-radius: 50%;
+      z-index: 4;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .hover-stone.black {
+      background: radial-gradient(circle at 35% 30%, #555, #111);
+    }
+
+    .hover-stone.white {
+      background: radial-gradient(circle at 35% 30%, #fff, #d0d0d0);
+    }
+
+    /* Score display */
+    .score-display {
+      margin-top: 15px;
+      padding: 12px 20px;
+      background: #2A2418;
+      border: 2px solid #8B7040;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+
+    .score-display h3 {
+      color: #DEB070;
+      margin-bottom: 8px;
+    }
+
+    .score-line {
+      font-size: 0.95em;
+      margin: 4px 0;
+    }
+
+    .score-winner {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #90B868;
+      margin-top: 8px;
+    }
+
+    /* Rules */
+    .rules {
+      margin-top: 18px;
+      max-width: 540px;
+      font-size: 0.78em;
+      color: #6A5A38;
+      line-height: 1.5;
+    }
+
+    .rules h3 { color: #8B7040; margin-bottom: 6px; }
+    .rules ul { padding-left: 18px; }
+    .rules li { margin-bottom: 3px; }
+    /* Mobile game nav */
+  </style>
+</head>
+<body>
+<h1>GO</h1>
+  <div class="subtitle">Das Umzingelungs-Spiel</div>
+  <div class="subtitle-cn">&mdash; &#22285;&#26827; &mdash;</div>
+
+  <div class="mode-selector">
+    <button class="mode-btn active" id="mode-1p" onclick="setMode(true)">1 Spieler</button>
+    <button class="mode-btn" id="mode-2p" onclick="setMode(false)">2 Spieler</button>
+  </div>
+
+  <div class="size-selector">
+    <button class="size-btn active" id="size-9" onclick="setBoardSize(9)">9&times;9</button>
+    <button class="size-btn" id="size-13" onclick="setBoardSize(13)">13&times;13</button>
+    <button class="size-btn" id="size-19" onclick="setBoardSize(19)">19&times;19</button>
+  </div>
+
+  <div class="game-info">
+    <div id="turn-indicator"></div>
+    <div id="message"></div>
+  </div>
+
+  <div class="buttons">
+    <button id="pass-btn" onclick="passMove()">Passen</button>
+    <button onclick="resetGame()">Neues Spiel</button>
+  </div>
+
+  <div class="buttons" id="scoring-buttons" style="display: none;">
+    <button onclick="confirmScore()">Bestätigen / Endstand</button>
+    <button onclick="resumePlay()">Weiterspielen</button>
+  </div>
+
+  <div class="container">
+    <div class="side-panel" id="panel-black">
+      <h3>Schwarz (S1)</h3>
+      <div class="stone-icon black"></div>
+      <div class="prisoner-count" id="prisoners-black">0</div>
+      <div class="prisoner-label">gefangen</div>
+      <div class="pass-indicator" id="pass-black"></div>
+    </div>
+    <div class="board-frame">
+      <div class="board-wrapper" id="board-wrapper">
+        <div class="board-surface"></div>
+        <div class="board-grid" id="board"></div>
+      </div>
+    </div>
+    <div class="side-panel" id="panel-white">
+      <h3 id="white-label">Weiss (Bot)</h3>
+      <div class="stone-icon white"></div>
+      <div class="prisoner-count" id="prisoners-white">0</div>
+      <div class="prisoner-label">gefangen</div>
+      <div class="pass-indicator" id="pass-white"></div>
+    </div>
+  </div>
+
+  <div class="score-display" id="score-display">
+    <h3 id="score-heading">Spiel vorbei &mdash; Endstand</h3>
+    <div class="score-line" id="score-black"></div>
+    <div class="score-line" id="score-white"></div>
+    <div class="score-winner" id="score-winner"></div>
+  </div>
+
+  <div class="rules">
+    <h3>Regeln</h3>
+    <ul>
+      <li>Schwarz beginnt. Die Steine werden auf die <b>Kreuzungspunkte</b> der Linien gesetzt.</li>
+      <li>Gleichfarbige Steine, die waagrecht oder senkrecht verbunden sind, bilden eine <b>Gruppe</b>.</li>
+      <li>Die <b>Freiheiten</b> einer Gruppe sind die freien Nachbarpunkte.</li>
+      <li>Hat eine Gruppe keine Freiheit mehr, ist sie <b>gefangen</b> und wird vom Brett genommen.</li>
+      <li>Ein Stein ohne Freiheit (Selbstmord) ist verboten – ausser er fängt dabei gegnerische Steine.</li>
+      <li><b>Ko-Regel</b>: Die Stellung direkt vor deinem letzten Zug darf nicht wiederholt werden.</li>
+      <li>Jeder darf <b>passen</b>. Passen beide hintereinander, ist das Spiel vorbei.</li>
+      <li><b>Wertung</b> (Gebietswertung): eigene Steine auf dem Brett + umschlossenes freies Gebiet.</li>
+    </ul>
+  </div>
+
+<script>
+  // =============================================
+  //  Constants & Config
+  // =============================================
+  var BLACK = 1;
+  var WHITE = 2;
+  var EMPTY = 0;
+
+  var CELL_SIZES = { 9: 44, 13: 32, 19: 24 };
+  var STONE_SCALE = 0.85; // stone diameter relative to cell size
+
+  var HOSHI_POINTS = {
+    9:  [[2,2],[2,6],[6,2],[6,6],[4,4]],
+    13: [[3,3],[3,9],[9,3],[9,9],[6,6],[3,6],[9,6],[6,3],[6,9]],
+    19: [[3,3],[3,9],[3,15],[9,3],[9,9],[9,15],[15,3],[15,9],[15,15]]
+  };
+
+  var KOMI = 6.5; // compensation for white
+
+  // =============================================
+  //  Game State
+  // =============================================
+  var boardSize = 9;
+  var cellSize = 44;
+  var board = [];           // 2D array [row][col] = EMPTY/BLACK/WHITE
+  var currentPlayer = BLACK;
+  var prisoners = { 1: 0, 2: 0 }; // stones captured BY each player
+  var prevBoardState = null; // for ko detection
+  var consecutivePasses = 0;
+  var gameOver = false;
+  var lastMove = null;      // {r, c} or null
+  var aiMode = true;
+  var aiTimeout = null;
+  var moveHistory = [];
+  var scoringMode = false;   // true during the mark-dead phase after two passes
+  var deadStones = {};       // keyed 'r,c' -> true for stones marked dead
+  var preScoreState = null;  // snapshot for "Resume Play"
+
+  var boardEl = document.getElementById('board');
+  var boardWrapper = document.getElementById('board-wrapper');
+
+  // =============================================
+  //  Mode & Size
+  // =============================================
+  function setMode(isAi) {
+    if (aiMode === isAi) return;
+    aiMode = isAi;
+    document.getElementById('mode-1p').classList.toggle('active', isAi);
+    document.getElementById('mode-2p').classList.toggle('active', !isAi);
+    document.getElementById('white-label').textContent = isAi ? 'Weiss (Bot)' : 'Weiss (S2)';
+    resetGame();
+  }
+
+  function setBoardSize(size) {
+    if (boardSize === size) return;
+    boardSize = size;
+    cellSize = CELL_SIZES[size];
+    document.getElementById('size-9').classList.toggle('active', size === 9);
+    document.getElementById('size-13').classList.toggle('active', size === 13);
+    document.getElementById('size-19').classList.toggle('active', size === 19);
+    resetGame();
+  }
+
+  // =============================================
+  //  Board State Helpers
+  // =============================================
+  function createEmptyBoard() {
+    var b = [];
+    for (var r = 0; r < boardSize; r++) {
+      b[r] = [];
+      for (var c = 0; c < boardSize; c++) {
+        b[r][c] = EMPTY;
+      }
+    }
+    return b;
+  }
+
+  function cloneBoard(b) {
+    var nb = [];
+    for (var r = 0; r < boardSize; r++) {
+      nb[r] = b[r].slice();
+    }
+    return nb;
+  }
+
+  function boardsEqual(a, b) {
+    if (!a || !b) return false;
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        if (a[r][c] !== b[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
+  function boardToString(b) {
+    var s = '';
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        s += b[r][c];
+      }
+    }
+    return s;
+  }
+
+  function neighbors(r, c) {
+    var adj = [];
+    if (r > 0) adj.push([r - 1, c]);
+    if (r < boardSize - 1) adj.push([r + 1, c]);
+    if (c > 0) adj.push([r, c - 1]);
+    if (c < boardSize - 1) adj.push([r, c + 1]);
+    return adj;
+  }
+
+  // =============================================
+  //  Group & Liberty Logic
+  // =============================================
+  function getGroup(b, r, c) {
+    var color = b[r][c];
+    if (color === EMPTY) return { stones: [], liberties: 0 };
+    var visited = {};
+    var stones = [];
+    var liberties = 0;
+    var libertySet = {};
+    var stack = [[r, c]];
+    visited[r + ',' + c] = true;
+
+    while (stack.length > 0) {
+      var pos = stack.pop();
+      var pr = pos[0], pc = pos[1];
+      stones.push([pr, pc]);
+      var adj = neighbors(pr, pc);
+      for (var i = 0; i < adj.length; i++) {
+        var nr = adj[i][0], nc = adj[i][1];
+        var key = nr + ',' + nc;
+        if (visited[key]) continue;
+        if (b[nr][nc] === color) {
+          visited[key] = true;
+          stack.push([nr, nc]);
+        } else if (b[nr][nc] === EMPTY) {
+          if (!libertySet[key]) {
+            libertySet[key] = true;
+            liberties++;
+          }
+        }
+      }
+    }
+
+    return { stones: stones, liberties: liberties };
+  }
+
+  function removeGroup(b, stones) {
+    for (var i = 0; i < stones.length; i++) {
+      b[stones[i][0]][stones[i][1]] = EMPTY;
+    }
+    return stones.length;
+  }
+
+  // =============================================
+  //  Move Validation & Execution
+  // =============================================
+  function tryMove(r, c, player) {
+    // Must be on board and empty
+    if (r < 0 || r >= boardSize || c < 0 || c >= boardSize) return null;
+    if (board[r][c] !== EMPTY) return null;
+
+    var opponent = player === BLACK ? WHITE : BLACK;
+    var testBoard = cloneBoard(board);
+    testBoard[r][c] = player;
+
+    // Check for captures of opponent groups
+    var captured = 0;
+    var adj = neighbors(r, c);
+    for (var i = 0; i < adj.length; i++) {
+      var nr = adj[i][0], nc = adj[i][1];
+      if (testBoard[nr][nc] === opponent) {
+        var group = getGroup(testBoard, nr, nc);
+        if (group.liberties === 0) {
+          captured += removeGroup(testBoard, group.stones);
+        }
+      }
+    }
+
+    // Check if placing stone results in self-capture (suicide)
+    var selfGroup = getGroup(testBoard, r, c);
+    if (selfGroup.liberties === 0) {
+      return null; // Suicide - illegal
+    }
+
+    // Ko check: can't recreate the previous board state
+    if (prevBoardState && boardsEqual(testBoard, prevBoardState)) {
+      return null; // Ko violation
+    }
+
+    return { board: testBoard, captured: captured };
+  }
+
+  function isLegalMove(r, c, player) {
+    return tryMove(r, c, player) !== null;
+  }
+
+  function playMove(r, c, player) {
+    var result = tryMove(r, c, player);
+    if (!result) return false;
+
+    prevBoardState = cloneBoard(board);
+    board = result.board;
+    prisoners[player] += result.captured;
+    lastMove = { r: r, c: c };
+    consecutivePasses = 0;
+    moveHistory.push({ r: r, c: c, player: player });
+
+    currentPlayer = player === BLACK ? WHITE : BLACK;
+    return true;
+  }
+
+  // =============================================
+  //  Pass & Game End
+  // =============================================
+  function passMove() {
+    if (gameOver) return;
+    if (aiMode && currentPlayer === WHITE) return;
+
+    doPass(currentPlayer);
+    render();
+  }
+
+  function doPass(player) {
+    consecutivePasses++;
+    var name = player === BLACK ? 'Schwarz' : 'Weiss';
+    setMessage(name + ' passt.');
+
+    if (player === BLACK) {
+      document.getElementById('pass-black').textContent = 'Gepasst';
+    } else {
+      document.getElementById('pass-white').textContent = 'Gepasst';
+    }
+
+    if (consecutivePasses >= 2) {
+      // After two passes, the turn would pass to the opponent; keep that so
+      // "Resume Play" hands the move to the correct player.
+      currentPlayer = player === BLACK ? WHITE : BLACK;
+      enterScoringMode();
+      return;
+    }
+
+    prevBoardState = null; // ko is reset after a pass
+    lastMove = null;
+    currentPlayer = player === BLACK ? WHITE : BLACK;
+  }
+
+  // =============================================
+  //  Scoring (Chinese / Area Scoring)
+  // =============================================
+  function calculateScore(b) {
+    b = b || board;
+    var visited = {};
+
+    // Count stones on board
+    var blackStones = 0;
+    var whiteStones = 0;
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        if (b[r][c] === BLACK) blackStones++;
+        else if (b[r][c] === WHITE) whiteStones++;
+      }
+    }
+
+    // Flood-fill empty regions to determine territory
+    var blackTerritory = 0;
+    var whiteTerritory = 0;
+
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        var key = r + ',' + c;
+        if (b[r][c] !== EMPTY || visited[key]) continue;
+
+        // BFS to find connected empty region
+        var region = [];
+        var touchesBlack = false;
+        var touchesWhite = false;
+        var stack = [[r, c]];
+        visited[key] = true;
+
+        while (stack.length > 0) {
+          var pos = stack.pop();
+          var pr = pos[0], pc = pos[1];
+          region.push([pr, pc]);
+          var adj = neighbors(pr, pc);
+          for (var i = 0; i < adj.length; i++) {
+            var nr = adj[i][0], nc = adj[i][1];
+            var nkey = nr + ',' + nc;
+            if (b[nr][nc] === BLACK) { touchesBlack = true; continue; }
+            if (b[nr][nc] === WHITE) { touchesWhite = true; continue; }
+            if (visited[nkey]) continue;
+            visited[nkey] = true;
+            stack.push([nr, nc]);
+          }
+        }
+
+        // If region only touches one color, it's that color's territory
+        if (touchesBlack && !touchesWhite) {
+          blackTerritory += region.length;
+        } else if (touchesWhite && !touchesBlack) {
+          whiteTerritory += region.length;
+        }
+      }
+    }
+
+    return {
+      blackStones: blackStones,
+      whiteStones: whiteStones,
+      blackTerritory: blackTerritory,
+      whiteTerritory: whiteTerritory,
+      blackTotal: blackStones + blackTerritory,
+      whiteTotal: whiteStones + whiteTerritory + KOMI
+    };
+  }
+
+  // Returns a board copy with all dead-marked stones removed, so that under
+  // Chinese area scoring they become empty points surrounded by the opponent.
+  function scoringBoard() {
+    var b = cloneBoard(board);
+    for (var key in deadStones) {
+      if (deadStones[key]) {
+        var parts = key.split(',');
+        b[parseInt(parts[0], 10)][parseInt(parts[1], 10)] = EMPTY;
+      }
+    }
+    return b;
+  }
+
+  function fillScoreLines(score) {
+    document.getElementById('score-black').textContent =
+      'Schwarz: ' + score.blackStones + ' Steine + ' + score.blackTerritory + ' Gebiet = ' + score.blackTotal;
+    document.getElementById('score-white').textContent =
+      'Weiss: ' + score.whiteStones + ' Steine + ' + score.whiteTerritory + ' Gebiet + ' + KOMI + ' Komi = ' + score.whiteTotal;
+  }
+
+  function winnerText(score, isFinal) {
+    var verb = isFinal ? 'gewinnt' : 'führt';
+    var bang = isFinal ? '!' : '';
+    if (score.blackTotal > score.whiteTotal) {
+      return 'Schwarz ' + verb + ' mit ' + (score.blackTotal - score.whiteTotal) + ' Punkten' + bang;
+    } else if (score.whiteTotal > score.blackTotal) {
+      return 'Weiss ' + verb + ' mit ' + (score.whiteTotal - score.blackTotal) + ' Punkten' + bang;
+    }
+    return isFinal ? 'Unentschieden!' : 'Ausgeglichen';
+  }
+
+  // =============================================
+  //  Dead-Stone Marking (Scoring Mode)
+  // =============================================
+  function enterScoringMode() {
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+    scoringMode = true;
+    deadStones = {};
+    // Snapshot the position so "Resume Play" can restore it exactly.
+    preScoreState = {
+      board: cloneBoard(board),
+      currentPlayer: currentPlayer,
+      lastMove: lastMove ? { r: lastMove.r, c: lastMove.c } : null,
+      prisonersBlack: prisoners[BLACK],
+      prisonersWhite: prisoners[WHITE]
+    };
+
+    document.getElementById('scoring-buttons').style.display = '';
+    document.getElementById('score-heading').innerHTML = 'Wertung &mdash; tote Steine markieren';
+    document.getElementById('score-display').style.display = 'block';
+    document.getElementById('pass-btn').disabled = true;
+
+    setMessage('Beide haben gepasst. Tippe auf tote Gruppen, um sie zu markieren, dann bestätigen.');
+    updateScoreDisplay();
+    render();
+  }
+
+  function toggleDeadGroup(r, c) {
+    if (board[r][c] === EMPTY) return;
+    var group = getGroup(board, r, c);
+    var makeDead = !deadStones[r + ',' + c];
+    for (var i = 0; i < group.stones.length; i++) {
+      var key = group.stones[i][0] + ',' + group.stones[i][1];
+      if (makeDead) deadStones[key] = true;
+      else delete deadStones[key];
+    }
+    updateScoreDisplay();
+    render();
+  }
+
+  function updateScoreDisplay() {
+    var score = calculateScore(scoringBoard());
+    fillScoreLines(score);
+    document.getElementById('score-winner').textContent = winnerText(score, false);
+  }
+
+  function confirmScore() {
+    if (!scoringMode) return;
+    // Permanently remove dead stones and credit them as prisoners (cosmetic;
+    // area scoring already reflects them via scoringBoard()).
+    for (var key in deadStones) {
+      if (!deadStones[key]) continue;
+      var parts = key.split(',');
+      var dr = parseInt(parts[0], 10), dc = parseInt(parts[1], 10);
+      var color = board[dr][dc];
+      if (color === BLACK) prisoners[WHITE]++;
+      else if (color === WHITE) prisoners[BLACK]++;
+      board[dr][dc] = EMPTY;
+    }
+    deadStones = {};
+
+    scoringMode = false;
+    gameOver = true;
+    preScoreState = null;
+
+    var score = calculateScore(board);
+    fillScoreLines(score);
+    var winner = winnerText(score, true);
+    document.getElementById('score-winner').textContent = winner;
+    document.getElementById('score-heading').innerHTML = 'Spiel vorbei &mdash; Endstand';
+    document.getElementById('score-display').style.display = 'block';
+    document.getElementById('scoring-buttons').style.display = 'none';
+    document.getElementById('pass-btn').disabled = true;
+
+    setMessage('Spiel vorbei. ' + winner);
+    render();
+  }
+
+  function resumePlay() {
+    if (!scoringMode || !preScoreState) return;
+    board = cloneBoard(preScoreState.board);
+    currentPlayer = preScoreState.currentPlayer;
+    lastMove = null;
+    prisoners[BLACK] = preScoreState.prisonersBlack;
+    prisoners[WHITE] = preScoreState.prisonersWhite;
+
+    scoringMode = false;
+    gameOver = false;
+    deadStones = {};
+    preScoreState = null;
+    prevBoardState = null;   // ko is reset after passes
+    consecutivePasses = 0;   // require two fresh passes to end again
+
+    document.getElementById('pass-black').textContent = '';
+    document.getElementById('pass-white').textContent = '';
+    document.getElementById('score-display').style.display = 'none';
+    document.getElementById('scoring-buttons').style.display = 'none';
+    document.getElementById('pass-btn').disabled = false;
+    document.getElementById('score-heading').innerHTML = 'Spiel vorbei &mdash; Endstand';
+
+    setMessage('Weiter geht’s. Klärt Leben und Tod direkt auf dem Brett.');
+    render();
+  }
+
+  // =============================================
+  //  Board Creation & Rendering
+  // =============================================
+  function createBoard() {
+    boardEl.innerHTML = '';
+    var totalSize = cellSize * boardSize;
+    var padding = Math.floor(cellSize / 2);
+    var wrapperSize = totalSize;
+
+    boardWrapper.style.width = wrapperSize + 'px';
+    boardWrapper.style.height = wrapperSize + 'px';
+
+    boardEl.style.gridTemplateColumns = 'repeat(' + boardSize + ', ' + cellSize + 'px)';
+    boardEl.style.gridTemplateRows = 'repeat(' + boardSize + ', ' + cellSize + 'px)';
+
+    var stoneSize = Math.floor(cellSize * STONE_SCALE);
+    var hoshiSet = {};
+    var hoshiList = HOSHI_POINTS[boardSize] || [];
+    for (var h = 0; h < hoshiList.length; h++) {
+      hoshiSet[hoshiList[h][0] + ',' + hoshiList[h][1]] = true;
+    }
+
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        var cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.style.width = cellSize + 'px';
+        cell.style.height = cellSize + 'px';
+
+        // Edge classes to clip grid lines
+        if (r === 0) cell.classList.add('edge-top');
+        if (r === boardSize - 1) cell.classList.add('edge-bottom');
+        if (c === 0) cell.classList.add('edge-left');
+        if (c === boardSize - 1) cell.classList.add('edge-right');
+
+        // Hoshi point
+        if (hoshiSet[r + ',' + c]) {
+          var dot = document.createElement('div');
+          dot.classList.add('hoshi');
+          cell.appendChild(dot);
+        }
+
+        // Hover stone indicator
+        var hover = document.createElement('div');
+        hover.classList.add('hover-stone');
+        hover.style.width = stoneSize + 'px';
+        hover.style.height = stoneSize + 'px';
+        cell.appendChild(hover);
+
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+
+        (function(row, col) {
+          cell.addEventListener('click', function() { handleCellClick(row, col); });
+        })(r, c);
+
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  function render() {
+    var stoneSize = Math.floor(cellSize * STONE_SCALE);
+    var cells = boardEl.querySelectorAll('.cell');
+
+    for (var i = 0; i < cells.length; i++) {
+      var cell = cells[i];
+      var r = parseInt(cell.dataset.row);
+      var c = parseInt(cell.dataset.col);
+
+      // Remove old stones
+      var oldStone = cell.querySelector('.stone');
+      if (oldStone) oldStone.remove();
+
+      // Update hover stone color
+      var hover = cell.querySelector('.hover-stone');
+      if (hover) {
+        hover.classList.remove('black', 'white');
+        if (board[r][c] === EMPTY && !gameOver && !scoringMode) {
+          hover.classList.add(currentPlayer === BLACK ? 'black' : 'white');
+        }
+      }
+
+      // Place stone if occupied
+      if (board[r][c] !== EMPTY) {
+        var stone = document.createElement('div');
+        stone.classList.add('stone');
+        stone.classList.add(board[r][c] === BLACK ? 'black' : 'white');
+        stone.style.width = stoneSize + 'px';
+        stone.style.height = stoneSize + 'px';
+
+        // Last move indicator
+        if (lastMove && lastMove.r === r && lastMove.c === c) {
+          stone.classList.add('last-move');
+        }
+
+        // Dead-stone marking (scoring mode)
+        if (scoringMode && deadStones[r + ',' + c]) {
+          stone.classList.add('dead');
+        }
+
+        cell.appendChild(stone);
+
+        // Hide hover on occupied cells
+        if (hover) hover.style.display = 'none';
+      } else {
+        if (hover) hover.style.display = '';
+      }
+    }
+
+    // Update UI
+    document.getElementById('prisoners-black').textContent = prisoners[BLACK];
+    document.getElementById('prisoners-white').textContent = prisoners[WHITE];
+
+    updateTurnIndicator();
+    scheduleAi();
+  }
+
+  function updateTurnIndicator() {
+    if (scoringMode) {
+      document.getElementById('turn-indicator').textContent = 'Wertung – tote Steine markieren';
+      document.getElementById('pass-btn').disabled = true;
+      return;
+    }
+    if (gameOver) {
+      document.getElementById('turn-indicator').textContent = 'Spiel vorbei';
+      document.getElementById('pass-btn').disabled = true;
+      return;
+    }
+    var name = currentPlayer === BLACK ? 'Schwarz' : 'Weiss';
+    var suffix = isAiTurn() ? ' (Bot überlegt …)' : ' ist dran';
+    document.getElementById('turn-indicator').textContent = name + suffix;
+    document.getElementById('pass-btn').disabled = isAiTurn();
+  }
+
+  // =============================================
+  //  User Interaction
+  // =============================================
+  function handleCellClick(r, c) {
+    if (scoringMode) {
+      toggleDeadGroup(r, c);
+      return;
+    }
+    if (gameOver) return;
+    if (isAiTurn()) return;
+
+    if (board[r][c] !== EMPTY) {
+      setMessage('Dieser Punkt ist schon besetzt.');
+      return;
+    }
+
+    if (!isLegalMove(r, c, currentPlayer)) {
+      // Determine reason
+      var opponent = currentPlayer === BLACK ? WHITE : BLACK;
+      var testBoard = cloneBoard(board);
+      testBoard[r][c] = currentPlayer;
+
+      // Check captures first
+      var adj = neighbors(r, c);
+      for (var i = 0; i < adj.length; i++) {
+        var nr = adj[i][0], nc = adj[i][1];
+        if (testBoard[nr][nc] === opponent) {
+          var group = getGroup(testBoard, nr, nc);
+          if (group.liberties === 0) {
+            removeGroup(testBoard, group.stones);
+          }
+        }
+      }
+
+      var selfGroup = getGroup(testBoard, r, c);
+      if (selfGroup.liberties === 0) {
+        setMessage('Verboten: Selbstmord-Zug.');
+      } else {
+        setMessage('Verboten: Ko-Regel.');
+      }
+      return;
+    }
+
+    // Clear pass indicators
+    document.getElementById('pass-black').textContent = '';
+    document.getElementById('pass-white').textContent = '';
+
+    playMove(r, c, currentPlayer);
+    setMessage('');
+    render();
+  }
+
+  // =============================================
+  //  AI (Heuristic)
+  // =============================================
+  function isAiTurn() {
+    return aiMode && currentPlayer === WHITE && !gameOver && !scoringMode;
+  }
+
+  function scheduleAi() {
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+    if (!isAiTurn()) return;
+    aiTimeout = setTimeout(function() { doAiMove(); }, 600);
+  }
+
+  function doAiMove() {
+    if (!isAiTurn()) return;
+
+    var move = findAiMove();
+    if (move === null) {
+      // Pass
+      doPass(WHITE);
+      render();
+      return;
+    }
+
+    // Clear pass indicators
+    document.getElementById('pass-black').textContent = '';
+    document.getElementById('pass-white').textContent = '';
+
+    playMove(move.r, move.c, WHITE);
+    setMessage('');
+    render();
+  }
+
+  function findAiMove() {
+    var legalMoves = [];
+    for (var r = 0; r < boardSize; r++) {
+      for (var c = 0; c < boardSize; c++) {
+        if (isLegalMove(r, c, WHITE)) {
+          legalMoves.push({ r: r, c: c });
+        }
+      }
+    }
+
+    if (legalMoves.length === 0) return null;
+
+    // Score each move
+    var scored = [];
+    for (var i = 0; i < legalMoves.length; i++) {
+      var m = legalMoves[i];
+      var score = evaluateMove(m.r, m.c, WHITE);
+      if (score !== -10000) { // -10000 means tryMove returned null (shouldn't happen for legal moves)
+        scored.push({ r: m.r, c: m.c, score: score });
+      }
+    }
+
+    /* If truly no legal moves exist (shouldn't happen after isLegalMove filter), pass */
+    if (scored.length === 0) return null; // pass
+
+    // Sort by score descending
+    scored.sort(function(a, b) { return b.score - a.score; });
+
+    // Pick from top moves with some randomness
+    var topScore = scored[0].score;
+    var candidates = [];
+    for (var i = 0; i < scored.length; i++) {
+      if (scored[i].score >= topScore - 2) {
+        candidates.push(scored[i]);
+      }
+    }
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
+
+  function evaluateMove(r, c, player) {
+    var opponent = player === BLACK ? WHITE : BLACK;
+    var score = 0;
+
+    // Simulate the move
+    var result = tryMove(r, c, player);
+    if (!result) return -10000;
+
+    var testBoard = result.board;
+
+    // 1. Capture opponent stones (highest priority)
+    if (result.captured > 0) {
+      score += result.captured * 20;
+    }
+
+    // 2. Check if this saves our own groups in atari
+    var adj = neighbors(r, c);
+    for (var i = 0; i < adj.length; i++) {
+      var nr = adj[i][0], nc = adj[i][1];
+      if (board[nr][nc] === player) {
+        var groupBefore = getGroup(board, nr, nc);
+        if (groupBefore.liberties === 1) {
+          // We were in atari, check if this fixes it
+          var groupAfter = getGroup(testBoard, r, c);
+          if (groupAfter.liberties > 1) {
+            score += 15;
+          }
+        }
+      }
+    }
+
+    // 3. Capture priority: attack opponent groups in atari
+    for (var i = 0; i < adj.length; i++) {
+      var nr = adj[i][0], nc = adj[i][1];
+      if (board[nr][nc] === opponent) {
+        var oppGroup = getGroup(board, nr, nc);
+        if (oppGroup.liberties === 1) {
+          score += oppGroup.stones.length * 20;
+        } else if (oppGroup.liberties === 2) {
+          score += 5; // putting opponent in atari
+        }
+      }
+    }
+
+    // 4. Avoid self-atari
+    var selfGroup = getGroup(testBoard, r, c);
+    if (selfGroup.liberties === 1) {
+      if (selfGroup.stones.length === 1) {
+        score -= 12; // bad: single stone in atari
+      } else {
+        score -= 8 * selfGroup.stones.length; // worse if bigger group
+      }
+    }
+
+    // 5. Avoid playing in own eyes
+    if (isEye(r, c, player)) {
+      score -= 100; // never fill your own eye
+    }
+
+    // 6. Prefer connecting to friendly stones
+    var friendlyNeighbors = 0;
+    var emptyNeighbors = 0;
+    for (var i = 0; i < adj.length; i++) {
+      var nr = adj[i][0], nc = adj[i][1];
+      if (board[nr][nc] === player) friendlyNeighbors++;
+      else if (board[nr][nc] === EMPTY) emptyNeighbors++;
+    }
+    if (friendlyNeighbors > 0) score += 3;
+
+    // 7. Prefer moves with more liberties for the resulting group
+    score += selfGroup.liberties * 1;
+
+    // 8. Prefer positions near center and on star points
+    var center = (boardSize - 1) / 2;
+    var distFromCenter = Math.abs(r - center) + Math.abs(c - center);
+    var maxDist = boardSize - 1;
+    score += (maxDist - distFromCenter) * 0.3;
+
+    // Star point bonus
+    var hoshiList = HOSHI_POINTS[boardSize] || [];
+    for (var h = 0; h < hoshiList.length; h++) {
+      if (hoshiList[h][0] === r && hoshiList[h][1] === c) {
+        score += 2;
+        break;
+      }
+    }
+
+    // 9. Prefer third and fourth line (edge distance)
+    var edgeDist = Math.min(r, c, boardSize - 1 - r, boardSize - 1 - c);
+    if (edgeDist === 2 || edgeDist === 3) score += 2;
+    if (edgeDist === 0) score -= 2;
+    if (edgeDist === 1) score -= 1;
+
+    // 10. Avoid moves too far from any stone in the opening
+    if (moveHistory.length < boardSize) {
+      var nearStone = false;
+      for (var dr = -3; dr <= 3; dr++) {
+        for (var dc = -3; dc <= 3; dc++) {
+          var tr = r + dr, tc = c + dc;
+          if (tr >= 0 && tr < boardSize && tc >= 0 && tc < boardSize) {
+            if (board[tr][tc] !== EMPTY) { nearStone = true; break; }
+          }
+        }
+        if (nearStone) break;
+      }
+      if (moveHistory.length > 2 && !nearStone) score -= 5;
+    }
+
+    return score;
+  }
+
+  function isEye(r, c, player) {
+    // An eye is an empty point surrounded on all 4 sides by the same color
+    // (or board edge), and at least 3 of 4 diagonals are also that color
+    if (board[r][c] !== EMPTY) return false;
+
+    var adj = neighbors(r, c);
+    for (var i = 0; i < adj.length; i++) {
+      if (board[adj[i][0]][adj[i][1]] !== player) return false;
+    }
+
+    // Check diagonals for false eye detection
+    var diags = [];
+    if (r > 0 && c > 0) diags.push([r-1, c-1]);
+    if (r > 0 && c < boardSize - 1) diags.push([r-1, c+1]);
+    if (r < boardSize - 1 && c > 0) diags.push([r+1, c-1]);
+    if (r < boardSize - 1 && c < boardSize - 1) diags.push([r+1, c+1]);
+
+    var opponentDiags = 0;
+    for (var i = 0; i < diags.length; i++) {
+      if (board[diags[i][0]][diags[i][1]] !== player && board[diags[i][0]][diags[i][1]] !== EMPTY) {
+        opponentDiags++;
+      }
+    }
+
+    // For corner eye, 1 opponent diag makes it false; for edge, need 1; for center, need 2
+    var isCorner = (r === 0 || r === boardSize - 1) && (c === 0 || c === boardSize - 1);
+    var isEdge = (r === 0 || r === boardSize - 1 || c === 0 || c === boardSize - 1);
+
+    if (isCorner) return opponentDiags === 0;
+    if (isEdge) return opponentDiags === 0;
+    return opponentDiags <= 1;
+  }
+
+  // =============================================
+  //  Utility
+  // =============================================
+  function setMessage(msg) {
+    document.getElementById('message').textContent = msg;
+  }
+
+  function resetGame() {
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+
+    board = createEmptyBoard();
+    currentPlayer = BLACK;
+    prisoners = { 1: 0, 2: 0 };
+    prevBoardState = null;
+    consecutivePasses = 0;
+    gameOver = false;
+    lastMove = null;
+    moveHistory = [];
+    scoringMode = false;
+    deadStones = {};
+    preScoreState = null;
+
+    document.getElementById('pass-black').textContent = '';
+    document.getElementById('pass-white').textContent = '';
+    document.getElementById('score-display').style.display = 'none';
+    document.getElementById('score-heading').innerHTML = 'Spiel vorbei &mdash; Endstand';
+    document.getElementById('scoring-buttons').style.display = 'none';
+    document.getElementById('pass-btn').disabled = false;
+
+    setMessage('');
+    createBoard();
+    render();
+  }
+
+  // =============================================
+  //  Init
+  // =============================================
+  resetGame();
+</script>
+
+</body>
+</html>

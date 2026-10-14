@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+  (function() {
+    var ua = navigator.userAgent;
+    var isPhone = /iPhone|iPad|iPod|Android/i.test(ua) || window.innerWidth < 768;
+    if (isPhone) {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        var targetWidth = 780;
+        var scale = window.innerWidth / targetWidth;
+        meta.setAttribute('content', 'width=' + targetWidth + ', initial-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes');
+      }
+    }
+  })();
+  </script>
+  <title>Backgammon</title>
+<meta name="description" content="Würfeln, ziehen, schlagen und abtragen: das uralte Brettspiel gegen den Bot oder zu zweit an einem Gerät.">
+<meta name="theme-color" content="#d9a65b">
+<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-tags" content="Klassiker,Würfel">
+<!--
+  Backgammon – angepasst für langwiligi.site.
+  Original: „Backgammon“ aus github.com/mf4633/board-gaming von Michael Flynn (MIT-Lizenz).
+  MIT License – Copyright (c) 2026 Michael Flynn
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Änderungen: deutsche Texte, ohne Werbung/Tracking/Navigation der Originalseite.
+-->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #1A1410;
+      color: #D8C8B0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    h1 {
+      font-size: 1.7em;
+      color: #D4A860;
+      margin-bottom: 4px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+      letter-spacing: 0.15em;
+    }
+
+    .subtitle {
+      font-size: 0.8em;
+      color: #8B7355;
+      margin-bottom: 14px;
+      font-style: italic;
+    }
+
+    .mode-selector {
+      display: flex;
+      margin-bottom: 14px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #8B7355;
+    }
+
+    .mode-btn {
+      padding: 6px 18px;
+      font-size: 0.95em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      border: none;
+      background: #2A1E14;
+      color: #8B7355;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn:not(:last-child) { border-right: 1px solid #8B7355; }
+    .mode-btn.active { background: #6B4E37; color: #D8C8B0; cursor: default; }
+    .mode-btn:hover:not(.active) { background: #3A2A1C; color: #D4A860; }
+
+    .game-info { text-align: center; margin-bottom: 10px; }
+    #turn-indicator { font-size: 1.15em; font-weight: bold; margin-bottom: 6px; }
+    #message { font-size: 1em; color: #D4A860; min-height: 1.4em; margin-bottom: 8px; }
+
+    .buttons { margin-bottom: 12px; display: flex; gap: 10px; }
+
+    button {
+      padding: 8px 22px;
+      font-size: 1em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      border: 2px solid #8B7355;
+      border-radius: 6px;
+      background: #2A1E14;
+      color: #D8C8B0;
+      transition: background 0.2s;
+    }
+
+    button:hover:not(:disabled) { background: #4A3828; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ===== BOARD ===== */
+
+    .board-frame {
+      background: #5C3A1E;
+      border: 4px solid #8B6B3A;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.6), inset 0 0 15px rgba(0,0,0,0.3);
+    }
+
+    .board-outer {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Top labels row */
+    .point-labels {
+      display: flex;
+      height: 16px;
+      font-size: 0.6em;
+      color: #8B7355;
+      text-align: center;
+    }
+
+    .point-labels .label {
+      width: 44px;
+      text-align: center;
+    }
+
+    .point-labels .bar-label {
+      width: 40px;
+    }
+
+    .point-labels .tray-label {
+      width: 44px;
+    }
+
+    /* Main board area */
+    .board-inner {
+      display: flex;
+      background: #2A1A0E;
+    }
+
+    /* Bear-off tray */
+    .tray {
+      width: 44px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #3A2518;
+      border: 2px solid #5C3A1E;
+      gap: 2px;
+      padding: 4px 2px;
+      min-height: 100%;
+      position: relative;
+    }
+
+    .tray-count {
+      font-size: 0.75em;
+      color: #D4A860;
+      font-weight: bold;
+    }
+
+    .tray-checkers {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .tray-checker {
+      width: 30px;
+      height: 8px;
+      border-radius: 3px;
+    }
+
+    .tray-checker.p1 {
+      background: linear-gradient(to bottom, #FFF8E8, #C8B898);
+      border: 1px solid #A89878;
+    }
+
+    .tray-checker.p2 {
+      background: linear-gradient(to bottom, #5A3A20, #2A1A0E);
+      border: 1px solid #6B4A30;
+    }
+
+    /* Half-board (left or right group of 6 points) */
+    .half-board {
+      display: flex;
+    }
+
+    /* Bar (center divider) */
+    .bar {
+      width: 40px;
+      background: #4A3018;
+      border-left: 2px solid #5C3A1E;
+      border-right: 2px solid #5C3A1E;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .bar-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .bar-checker {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .bar-checker.p1 {
+      background: radial-gradient(circle at 35% 35%, #FFFFFF, #C8B898);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+      border: 1px solid #A89878;
+    }
+
+    .bar-checker.p2 {
+      background: radial-gradient(circle at 35% 35%, #5A3A20, #2A1A0E);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+      border: 1px solid #6B4A30;
+    }
+
+    .bar-checker.highlight {
+      box-shadow: 0 0 8px 3px #D4A860;
+      cursor: pointer;
+    }
+
+    .bar-count {
+      font-size: 0.7em;
+      color: #D4A860;
+      font-weight: bold;
+    }
+
+    /* Point (triangle column) */
+    .point-col {
+      width: 44px;
+      height: 260px;
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .point-col.top { flex-direction: column; }
+    .point-col.bottom { flex-direction: column-reverse; }
+
+    /* Triangle shape */
+    .triangle {
+      position: absolute;
+      width: 0;
+      height: 0;
+      left: 2px;
+      z-index: 0;
+    }
+
+    .triangle.top {
+      top: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top-width: 220px;
+      border-top-style: solid;
+    }
+
+    .triangle.bottom {
+      bottom: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom-width: 220px;
+      border-bottom-style: solid;
+    }
+
+    .triangle.light.top { border-top-color: #C8A868; }
+    .triangle.light.bottom { border-bottom-color: #C8A868; }
+    .triangle.dark.top { border-top-color: #6B3A20; }
+    .triangle.dark.bottom { border-bottom-color: #6B3A20; }
+
+    /* Checker on point */
+    .checker {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      position: relative;
+      z-index: 2;
+      flex-shrink: 0;
+      margin: 1px 0;
+    }
+
+    .checker.p1 {
+      background: radial-gradient(circle at 35% 35%, #FFFFFF, #C8B898);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+      border: 1px solid #A89878;
+    }
+
+    .checker.p2 {
+      background: radial-gradient(circle at 35% 35%, #5A3A20, #2A1A0E);
+      box-shadow: 1px 2px 4px rgba(0,0,0,0.4);
+      border: 1px solid #6B4A30;
+    }
+
+    /* Highlight states */
+    .point-col.highlight {
+      background: rgba(212,168,96,0.15);
+    }
+
+    .point-col.highlight .triangle.light.top { border-top-color: #D8B878; }
+    .point-col.highlight .triangle.light.bottom { border-bottom-color: #D8B878; }
+    .point-col.highlight .triangle.dark.top { border-top-color: #8B4A30; }
+    .point-col.highlight .triangle.dark.bottom { border-bottom-color: #8B4A30; }
+
+    .point-col.selected {
+      background: rgba(212,168,96,0.25);
+    }
+
+    .point-col.dest-highlight {
+      background: rgba(100,200,100,0.2);
+      cursor: pointer;
+    }
+
+    .point-col.dest-highlight::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(100,200,100,0.5);
+      z-index: 5;
+    }
+
+    .point-col.top.dest-highlight::after {
+      top: 10px;
+    }
+
+    .point-col.bottom.dest-highlight::after {
+      bottom: 10px;
+    }
+
+    /* Count badge for stacked checkers */
+    .count-badge {
+      position: absolute;
+      z-index: 10;
+      background: #D4A860;
+      color: #1A1410;
+      font-size: 0.65em;
+      font-weight: bold;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .point-col.top .count-badge { top: 190px; }
+    .point-col.bottom .count-badge { bottom: 190px; }
+
+    /* Dice */
+    .dice-area {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      align-items: center;
+      margin: 8px 0;
+      min-height: 48px;
+    }
+
+    .die {
+      width: 42px;
+      height: 42px;
+      background: #F5F0E0;
+      border: 2px solid #A89878;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4em;
+      font-weight: bold;
+      color: #2A1A0E;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .die.used {
+      opacity: 0.35;
+    }
+
+    .pip-count {
+      font-size: 0.8em;
+      color: #8B7355;
+      margin-top: 6px;
+    }
+
+    /* Game over overlay */
+    .game-over-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .game-over-overlay.show {
+      display: flex;
+    }
+
+    .game-over-box {
+      background: #2A1E14;
+      border: 3px solid #D4A860;
+      border-radius: 12px;
+      padding: 30px 40px;
+      text-align: center;
+    }
+
+    .game-over-box h2 {
+      font-size: 1.5em;
+      color: #D4A860;
+      margin-bottom: 10px;
+    }
+
+    .game-over-box p {
+      margin-bottom: 20px;
+      font-size: 1.1em;
+    }
+
+    /* Bearing off highlight for tray */
+    .tray.dest-highlight {
+      background: rgba(100,200,100,0.2);
+      cursor: pointer;
+    }
+    /* Mobile game nav */
+  </style>
+</head>
+<body>
+<h1>BACKGAMMON</h1>
+<div class="subtitle">Das uralte Würfel-Brettspiel</div>
+
+<div class="mode-selector">
+  <button class="mode-btn active" onclick="setMode(1)">1 Spieler</button>
+  <button class="mode-btn" onclick="setMode(2)">2 Spieler</button>
+</div>
+
+<div class="game-info">
+  <div id="turn-indicator"></div>
+  <div id="message"></div>
+</div>
+
+<div class="dice-area" id="dice-area"></div>
+
+<div class="buttons">
+  <button id="roll-btn" onclick="rollDice()">Würfeln</button>
+  <button id="undo-btn" onclick="undoMove()" disabled>Rückgängig</button>
+  <button onclick="resetGame()">Neues Spiel</button>
+</div>
+
+<div class="board-frame">
+  <div class="board-outer">
+    <div class="point-labels" id="top-labels"></div>
+    <div class="board-inner" id="board"></div>
+    <div class="point-labels" id="bottom-labels"></div>
+  </div>
+</div>
+
+<div class="pip-count" id="pip-count"></div>
+
+<div class="game-over-overlay" id="game-over-overlay">
+  <div class="game-over-box">
+    <h2 id="game-over-title">Spiel vorbei</h2>
+    <p id="game-over-text"></p>
+    <button onclick="resetGame()">Neues Spiel</button>
+  </div>
+</div>
+
+<script>
+(function() {
+
+  /* ===== CONSTANTS ===== */
+
+  var P1 = 1; /* ivory, moves 24 -> 1 */
+  var P2 = 2; /* dark, moves 1 -> 24 */
+  var NUM_POINTS = 24;
+  var CHECKERS_PER_PLAYER = 15;
+  var MAX_VISIBLE = 5;
+  var AI_DELAY = 700;
+
+  /* ===== GAME STATE ===== */
+
+  var points;    /* array[25]: points[1..24], each = {count, owner} */
+  var bar;       /* {1: count, 2: count} */
+  var borneOff;  /* {1: count, 2: count} */
+  var turn;      /* P1 or P2 */
+  var dice;      /* array of remaining die values */
+  var diceRoll;  /* original roll [d1, d2] for display */
+  var diceUsed;  /* array of booleans matching diceAll */
+  var diceAll;   /* all dice values (2 or 4 for doubles) */
+  var phase;     /* 'roll', 'move', 'gameover' */
+  var mode;      /* 1 or 2 */
+  var selectedPoint; /* point index or 'bar' or null */
+  var validDests;    /* array of {to, dieIdx} */
+  var moveHistory;   /* stack for undo */
+  var aiTimeout;
+
+  /* ===== INITIALIZATION ===== */
+
+  function initBoard() {
+    points = [];
+    var i;
+    for (i = 0; i <= 24; i++) {
+      points[i] = { count: 0, owner: 0 };
+    }
+
+    /* Standard starting positions */
+    /* P1 (ivory): moves 24->1 */
+    points[24] = { count: 2, owner: P1 };
+    points[13] = { count: 5, owner: P1 };
+    points[8]  = { count: 3, owner: P1 };
+    points[6]  = { count: 5, owner: P1 };
+
+    /* P2 (dark): moves 1->24 */
+    points[1]  = { count: 2, owner: P2 };
+    points[12] = { count: 5, owner: P2 };
+    points[17] = { count: 3, owner: P2 };
+    points[19] = { count: 5, owner: P2 };
+
+    bar = { 1: 0, 2: 0 };
+    borneOff = { 1: 0, 2: 0 };
+  }
+
+  function resetGame() {
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+    initBoard();
+    turn = P1;
+    dice = [];
+    diceRoll = [];
+    diceUsed = [];
+    diceAll = [];
+    phase = 'roll';
+    selectedPoint = null;
+    validDests = [];
+    moveHistory = [];
+    document.getElementById('game-over-overlay').className = 'game-over-overlay';
+    render();
+    updateTurnIndicator();
+    setMessage('Würfle, um zu beginnen.');
+    updateButtons();
+  }
+
+  /* ===== MODE ===== */
+
+  function setMode(m) {
+    mode = m;
+    var btns = document.querySelectorAll('.mode-btn');
+    btns[0].className = 'mode-btn' + (m === 1 ? ' active' : '');
+    btns[1].className = 'mode-btn' + (m === 2 ? ' active' : '');
+    resetGame();
+  }
+
+  /* ===== UI HELPERS ===== */
+
+  function setMessage(msg) {
+    document.getElementById('message').textContent = msg;
+  }
+
+  function updateTurnIndicator() {
+    var el = document.getElementById('turn-indicator');
+    if (turn === P1) {
+      el.textContent = 'Elfenbein ist dran';
+      el.style.color = '#F0E8D0';
+    } else {
+      el.textContent = 'Nussbaum ist dran';
+      el.style.color = '#8B6B3A';
+    }
+  }
+
+  function updateButtons() {
+    var rollBtn = document.getElementById('roll-btn');
+    var undoBtn = document.getElementById('undo-btn');
+    rollBtn.disabled = (phase !== 'roll');
+    undoBtn.disabled = (moveHistory.length === 0 || phase !== 'move');
+  }
+
+  /* ===== DICE ===== */
+
+  function rollDice() {
+    if (phase !== 'roll') return;
+    var d1 = Math.floor(Math.random() * 6) + 1;
+    var d2 = Math.floor(Math.random() * 6) + 1;
+    diceRoll = [d1, d2];
+
+    if (d1 === d2) {
+      diceAll = [d1, d1, d1, d1];
+    } else {
+      diceAll = [d1, d2];
+    }
+    dice = diceAll.slice();
+    diceUsed = [];
+    var j;
+    for (j = 0; j < diceAll.length; j++) { diceUsed.push(false); }
+
+    phase = 'move';
+    selectedPoint = null;
+    validDests = [];
+    moveHistory = [];
+
+    /* Check if any moves available */
+    var legal = getAllLegalMoves(turn, dice, points, bar);
+    if (legal.length === 0) {
+      setMessage('Kein gültiger Zug möglich. Der andere ist dran.');
+      phase = 'roll';
+      dice = [];
+      turn = (turn === P1) ? P2 : P1;
+      render();
+      updateTurnIndicator();
+      updateButtons();
+      scheduleAi();
+      return;
+    }
+
+    setMessage('Wähle einen Stein zum Ziehen.');
+    render();
+    updateButtons();
+  }
+
+  function renderDice() {
+    var area = document.getElementById('dice-area');
+    area.innerHTML = '';
+    if (diceAll.length === 0) return;
+
+    var i;
+    for (i = 0; i < diceAll.length; i++) {
+      var die = document.createElement('div');
+      die.className = 'die' + (diceUsed[i] ? ' used' : '');
+      die.textContent = diceAll[i];
+      area.appendChild(die);
+    }
+  }
+
+  /* ===== MOVE LOGIC ===== */
+
+  /* Get the destination point for a player moving by dv steps from pt */
+  function moveTarget(player, pt, dv) {
+    if (player === P1) {
+      return pt - dv;
+    } else {
+      return pt + dv;
+    }
+  }
+
+  /* Get re-entry point for a player with die value dv */
+  function barEntryPoint(player, dv) {
+    if (player === P1) {
+      return 25 - dv; /* P1 enters on 19-24 */
+    } else {
+      return dv; /* P2 enters on 1-6 */
+    }
+  }
+
+  /* Check if all checkers are in home board */
+  function allInHome(player, pts, br) {
+    if (br[player] > 0) return false;
+    var i;
+    if (player === P1) {
+      for (i = 7; i <= 24; i++) {
+        if (pts[i].owner === player && pts[i].count > 0) return false;
+      }
+    } else {
+      for (i = 1; i <= 18; i++) {
+        if (pts[i].owner === player && pts[i].count > 0) return false;
+      }
+    }
+    return true;
+  }
+
+  /* Highest occupied point in home board (for bearing off) */
+  function highestHomePoint(player, pts) {
+    var i;
+    if (player === P1) {
+      for (i = 6; i >= 1; i--) {
+        if (pts[i].owner === player && pts[i].count > 0) return i;
+      }
+    } else {
+      for (i = 19; i <= 24; i++) {
+        if (pts[i].owner === player && pts[i].count > 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  /* Distance from home for bearing off: P1's home 1-6, P2's home 19-24 */
+  function homeIndex(player, pt) {
+    /* returns 1-6 position within home board */
+    if (player === P1) return pt;        /* point 1 = 1, point 6 = 6 */
+    return 25 - pt;                       /* point 24 = 1, point 19 = 6 */
+  }
+
+  /* Check if a point is blocked by opponent */
+  function isBlocked(player, pt, pts) {
+    var opp = (player === P1) ? P2 : P1;
+    return (pts[pt].owner === opp && pts[pt].count >= 2);
+  }
+
+  /* Generate all single moves for a given die value */
+  function getSingleMoves(player, dieVal, pts, br) {
+    var moves = [];
+    var opp = (player === P1) ? P2 : P1;
+
+    /* Must enter from bar first */
+    if (br[player] > 0) {
+      var entry = barEntryPoint(player, dieVal);
+      if (entry >= 1 && entry <= 24 && !isBlocked(player, entry, pts)) {
+        var hit = (pts[entry].owner === opp && pts[entry].count === 1);
+        moves.push({ from: 'bar', to: entry, dieVal: dieVal, hit: hit });
+      }
+      return moves; /* Must enter from bar, no other moves */
+    }
+
+    /* Normal moves + bearing off */
+    var canBearOff = allInHome(player, pts, br);
+    var i;
+
+    for (i = 1; i <= 24; i++) {
+      if (pts[i].owner !== player || pts[i].count === 0) continue;
+
+      var dest = moveTarget(player, i, dieVal);
+
+      /* Bearing off */
+      if (canBearOff) {
+        var hi = homeIndex(player, i);
+        if (player === P1 && dest < 1) {
+          /* Exact bear off or from highest point */
+          if (hi === dieVal) {
+            moves.push({ from: i, to: 'off', dieVal: dieVal, hit: false });
+          } else if (hi < dieVal) {
+            /* Can bear off from lower point only if no checker on higher point */
+            var highest = highestHomePoint(player, pts);
+            if (highest === i) {
+              moves.push({ from: i, to: 'off', dieVal: dieVal, hit: false });
+            }
+          }
+          continue;
+        }
+        if (player === P2 && dest > 24) {
+          if (hi === dieVal) {
+            moves.push({ from: i, to: 'off', dieVal: dieVal, hit: false });
+          } else if (hi < dieVal) {
+            var highest2 = highestHomePoint(player, pts);
+            if (highest2 === i) {
+              moves.push({ from: i, to: 'off', dieVal: dieVal, hit: false });
+            }
+          }
+          continue;
+        }
+      }
+
+      /* Normal move */
+      if (dest >= 1 && dest <= 24 && !isBlocked(player, dest, pts)) {
+        var hitNorm = (pts[dest].owner === opp && pts[dest].count === 1);
+        moves.push({ from: i, to: dest, dieVal: dieVal, hit: hitNorm });
+      }
+    }
+
+    return moves;
+  }
+
+  /* Apply a move to state (mutates pts, br, bo). Returns undo info. */
+  function applyMove(mv, player, pts, br, bo) {
+    var opp = (player === P1) ? P2 : P1;
+    var undo = { move: mv, hitPiece: false };
+
+    /* Remove from source */
+    if (mv.from === 'bar') {
+      br[player]--;
+    } else {
+      pts[mv.from].count--;
+      if (pts[mv.from].count === 0) pts[mv.from].owner = 0;
+    }
+
+    /* Place at destination */
+    if (mv.to === 'off') {
+      bo[player]++;
+    } else {
+      /* Check for hit */
+      if (pts[mv.to].owner === opp && pts[mv.to].count === 1) {
+        pts[mv.to].count = 0;
+        pts[mv.to].owner = 0;
+        br[opp]++;
+        undo.hitPiece = true;
+      }
+      pts[mv.to].count++;
+      pts[mv.to].owner = player;
+    }
+
+    return undo;
+  }
+
+  /* Undo a move */
+  function unapplyMove(mv, player, pts, br, bo, wasHit) {
+    var opp = (player === P1) ? P2 : P1;
+
+    /* Remove from destination */
+    if (mv.to === 'off') {
+      bo[player]--;
+    } else {
+      pts[mv.to].count--;
+      if (pts[mv.to].count === 0) pts[mv.to].owner = 0;
+
+      /* Restore hit piece */
+      if (wasHit) {
+        br[opp]--;
+        pts[mv.to].count = 1;
+        pts[mv.to].owner = opp;
+      }
+    }
+
+    /* Restore source */
+    if (mv.from === 'bar') {
+      br[player]++;
+    } else {
+      pts[mv.from].count++;
+      pts[mv.from].owner = player;
+    }
+  }
+
+  /* Clone board state for AI evaluation */
+  function cloneState(pts, br, bo) {
+    var newPts = [];
+    var i;
+    for (i = 0; i <= 24; i++) {
+      newPts[i] = { count: pts[i].count, owner: pts[i].owner };
+    }
+    var newBar = { 1: br[1], 2: br[2] };
+    var newBo = { 1: bo[1], 2: bo[2] };
+    return { points: newPts, bar: newBar, borneOff: newBo };
+  }
+
+  /* Generate ALL legal move sequences for remaining dice.
+     Returns array of move-sequence arrays.
+     Each move sequence is an array of moves to apply in order. */
+  function getAllLegalMoveSequences(player, remainingDice, pts, br, bo) {
+    if (remainingDice.length === 0) return [[]];
+
+    var sequences = [];
+    var triedDieVals = {};
+    var d, moves, m, s, rest, seq;
+
+    for (d = 0; d < remainingDice.length; d++) {
+      var dv = remainingDice[d];
+      if (triedDieVals[dv]) continue;
+      triedDieVals[dv] = true;
+
+      moves = getSingleMoves(player, dv, pts, br);
+
+      for (m = 0; m < moves.length; m++) {
+        var mv = moves[m];
+        var undo = applyMove(mv, player, pts, br, bo);
+
+        var newDice = remainingDice.slice();
+        newDice.splice(d, 1);
+
+        rest = getAllLegalMoveSequences(player, newDice, pts, br, bo);
+        for (s = 0; s < rest.length; s++) {
+          seq = [mv].concat(rest[s]);
+          sequences.push(seq);
+        }
+
+        unapplyMove(mv, player, pts, br, bo, undo.hitPiece);
+      }
+    }
+
+    return sequences;
+  }
+
+  /* Get the maximal legal move sequences (must use as many dice as possible,
+     and if only one can be used, must use the higher) */
+  function getAllLegalMoves(player, remainingDice, pts, br, bo) {
+    /* Fall back to live globals when callers omit the optional state args */
+    if (br === undefined) br = bar;
+    if (bo === undefined) bo = borneOff;
+    var seqs = getAllLegalMoveSequences(player, remainingDice, pts, br, bo);
+
+    if (seqs.length === 0) return [];
+
+    /* Find max length */
+    var maxLen = 0;
+    var i;
+    for (i = 0; i < seqs.length; i++) {
+      if (seqs[i].length > maxLen) maxLen = seqs[i].length;
+    }
+
+    /* Keep only max-length sequences */
+    var filtered = [];
+    for (i = 0; i < seqs.length; i++) {
+      if (seqs[i].length === maxLen) {
+        filtered.push(seqs[i]);
+      }
+    }
+
+    /* If only using 1 die and dice are different, must use higher value */
+    if (maxLen === 1 && remainingDice.length >= 2) {
+      var d1 = remainingDice[0];
+      var d2 = remainingDice[1];
+      if (d1 !== d2) {
+        var higherVal = Math.max(d1, d2);
+        var higherMoves = [];
+        var lowerMoves = [];
+        for (i = 0; i < filtered.length; i++) {
+          if (filtered[i][0].dieVal === higherVal) {
+            higherMoves.push(filtered[i]);
+          } else {
+            lowerMoves.push(filtered[i]);
+          }
+        }
+        if (higherMoves.length > 0) {
+          filtered = higherMoves;
+        }
+        /* If higher die has no moves, lower die moves remain */
+      }
+    }
+
+    return filtered;
+  }
+
+  /* Get legal first-moves from current state with remaining dice */
+  function getLegalFirstMoves(player, remainingDice) {
+    var seqs = getAllLegalMoves(player, remainingDice, points, bar);
+    if (seqs.length === 0) return [];
+
+    /* Extract unique first moves */
+    var firstMoves = [];
+    var seen = {};
+    var i;
+    for (i = 0; i < seqs.length; i++) {
+      var mv = seqs[i][0];
+      var key = mv.from + '->' + mv.to + ':' + mv.dieVal;
+      if (!seen[key]) {
+        seen[key] = true;
+        firstMoves.push(mv);
+      }
+    }
+    return firstMoves;
+  }
+
+  /* ===== RENDERING ===== */
+
+  function render() {
+    renderBoard();
+    renderDice();
+    renderPipCount();
+  }
+
+  function renderPipCount() {
+    var pip1 = 0, pip2 = 0;
+    var i;
+    for (i = 1; i <= 24; i++) {
+      if (points[i].owner === P1 && points[i].count > 0) {
+        pip1 += points[i].count * i;
+      }
+      if (points[i].owner === P2 && points[i].count > 0) {
+        pip2 += points[i].count * (25 - i);
+      }
+    }
+    pip1 += bar[P1] * 25;
+    pip2 += bar[P2] * 25;
+    document.getElementById('pip-count').textContent =
+      'Restaugen \u2014 Elfenbein: ' + pip1 + '  |  Nussbaum: ' + pip2;
+  }
+
+  function renderTray(trayEl, player) {
+    var ct = borneOff[player];
+    if (ct === 0) return;
+
+    var lbl = document.createElement('div');
+    lbl.className = 'tray-count';
+    lbl.textContent = ct + '/15';
+    trayEl.appendChild(lbl);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'tray-checkers';
+    var visible = Math.min(ct, 10);
+    var i;
+    for (i = 0; i < visible; i++) {
+      var ch = document.createElement('div');
+      ch.className = 'tray-checker p' + player;
+      wrap.appendChild(ch);
+    }
+    trayEl.appendChild(wrap);
+  }
+
+  /* ===== INTERACTION ===== */
+
+  function handlePointClick(pt) {
+    if (phase !== 'move') return;
+    if (mode === 1 && turn === P2) return;
+
+    /* If already selected, deselect */
+    if (selectedPoint === pt) {
+      selectedPoint = null;
+      validDests = [];
+      render();
+      setMessage('Wähle einen Stein zum Ziehen.');
+      return;
+    }
+
+    /* Can only select own checkers */
+    if (pt === 'bar') {
+      if (bar[turn] === 0) return;
+    } else {
+      if (points[pt].owner !== turn || points[pt].count === 0) return;
+    }
+
+    /* Check if this point has legal moves */
+    var legalFirstMoves = getLegalFirstMoves(turn, dice);
+    var dests = [];
+    var i;
+    for (i = 0; i < legalFirstMoves.length; i++) {
+      if (legalFirstMoves[i].from === pt) {
+        dests.push(legalFirstMoves[i]);
+      }
+    }
+
+    if (dests.length === 0) {
+      setMessage('Von hier aus ist kein Zug möglich.');
+      return;
+    }
+
+    selectedPoint = pt;
+    validDests = dests;
+    render();
+    setMessage('Wähle ein Ziel.');
+  }
+
+  function handleDestClick(dest) {
+    if (phase !== 'move' || selectedPoint === null) return;
+
+    /* Find the move */
+    var mv = null;
+    var i;
+    for (i = 0; i < validDests.length; i++) {
+      if (validDests[i].to === dest) {
+        mv = validDests[i];
+        break;
+      }
+    }
+    if (!mv) return;
+
+    /* Execute move */
+    var undoInfo = applyMove(mv, turn, points, bar, borneOff);
+    moveHistory.push({ move: mv, wasHit: undoInfo.hitPiece, dieVal: mv.dieVal });
+
+    /* Mark die as used */
+    var dieIdx = -1;
+    for (i = 0; i < dice.length; i++) {
+      if (dice[i] === mv.dieVal) { dieIdx = i; break; }
+    }
+    if (dieIdx >= 0) {
+      dice.splice(dieIdx, 1);
+      /* Mark used in diceAll for display */
+      for (i = 0; i < diceAll.length; i++) {
+        if (!diceUsed[i] && diceAll[i] === mv.dieVal) {
+          diceUsed[i] = true;
+          break;
+        }
+      }
+    }
+
+    selectedPoint = null;
+    validDests = [];
+
+    /* Check win */
+    if (borneOff[turn] === CHECKERS_PER_PLAYER) {
+      phase = 'gameover';
+      render();
+      updateButtons();
+      showGameOver(turn);
+      return;
+    }
+
+    /* Check if more moves */
+    if (dice.length > 0) {
+      var moreMoves = getLegalFirstMoves(turn, dice);
+      if (moreMoves.length > 0) {
+        render();
+        updateButtons();
+        setMessage('Wähle einen Stein (noch ' + dice.length + (dice.length > 1 ? ' Züge' : ' Zug') + ').');
+        return;
+      }
+    }
+
+    /* Turn ends */
+    endTurn();
+  }
+
+  function endTurn() {
+    dice = [];
+    diceAll = [];
+    diceUsed = [];
+    moveHistory = [];
+    phase = 'roll';
+    turn = (turn === P1) ? P2 : P1;
+    selectedPoint = null;
+    validDests = [];
+    render();
+    updateTurnIndicator();
+    updateButtons();
+    setMessage('Würfle.');
+    scheduleAi();
+  }
+
+  function undoMove() {
+    if (moveHistory.length === 0 || phase !== 'move') return;
+
+    var last = moveHistory.pop();
+    unapplyMove(last.move, turn, points, bar, borneOff, last.wasHit);
+
+    /* Restore die */
+    dice.push(last.dieVal);
+
+    /* Unmark used die for display */
+    var i;
+    for (i = diceAll.length - 1; i >= 0; i--) {
+      if (diceUsed[i] && diceAll[i] === last.dieVal) {
+        diceUsed[i] = false;
+        break;
+      }
+    }
+
+    selectedPoint = null;
+    validDests = [];
+    render();
+    updateButtons();
+    setMessage('Zug zurückgenommen. Wähle einen Stein.');
+  }
+
+  /* ===== GAME OVER ===== */
+
+  function showGameOver(winner) {
+    var overlay = document.getElementById('game-over-overlay');
+    var title = document.getElementById('game-over-title');
+    var text = document.getElementById('game-over-text');
+
+    if (winner === P1) {
+      title.textContent = 'Elfenbein gewinnt!';
+      text.textContent = 'Alle Elfenbein-Steine sind abgetragen.';
+    } else {
+      title.textContent = 'Nussbaum gewinnt!';
+      text.textContent = 'Alle Nussbaum-Steine sind abgetragen.';
+    }
+    overlay.className = 'game-over-overlay show';
+  }
+
+  /* ===== AI ===== */
+
+  function scheduleAi() {
+    if (mode !== 1 || turn !== P2 || phase === 'gameover') return;
+
+    if (phase === 'roll') {
+      aiTimeout = setTimeout(function() {
+        aiTimeout = null;
+        aiRoll();
+      }, AI_DELAY);
+    }
+  }
+
+  function aiRoll() {
+    if (phase !== 'roll' || turn !== P2) return;
+    rollDice();
+    if (phase === 'move') {
+      aiTimeout = setTimeout(function() {
+        aiTimeout = null;
+        aiMakeMove();
+      }, AI_DELAY);
+    }
+  }
+
+  function aiMakeMove() {
+    if (phase !== 'move' || turn !== P2) return;
+
+    /* Get all legal move sequences */
+    var seqs = getAllLegalMoves(P2, dice, points, bar);
+    if (seqs.length === 0) {
+      endTurn();
+      return;
+    }
+
+    /* Evaluate each sequence */
+    var bestScore = -Infinity;
+    var bestSeq = seqs[0];
+    var i;
+
+    for (i = 0; i < seqs.length; i++) {
+      var score = evaluateSequence(seqs[i], P2);
+      if (score > bestScore) {
+        bestScore = score;
+        bestSeq = seqs[i];
+      }
+    }
+
+    /* Execute the best sequence one move at a time */
+    aiExecuteSequence(bestSeq, 0);
+  }
+
+  function aiExecuteSequence(seq, idx) {
+    if (idx >= seq.length) {
+      /* Check win */
+      if (borneOff[P2] === CHECKERS_PER_PLAYER) {
+        phase = 'gameover';
+        render();
+        updateButtons();
+        showGameOver(P2);
+        return;
+      }
+      endTurn();
+      return;
+    }
+
+    var mv = seq[idx];
+    var undoInfo = applyMove(mv, P2, points, bar, borneOff);
+    moveHistory.push({ move: mv, wasHit: undoInfo.hitPiece, dieVal: mv.dieVal });
+
+    /* Mark die used */
+    var j;
+    for (j = 0; j < dice.length; j++) {
+      if (dice[j] === mv.dieVal) { dice.splice(j, 1); break; }
+    }
+    for (j = 0; j < diceAll.length; j++) {
+      if (!diceUsed[j] && diceAll[j] === mv.dieVal) { diceUsed[j] = true; break; }
+    }
+
+    render();
+
+    aiTimeout = setTimeout(function() {
+      aiTimeout = null;
+      aiExecuteSequence(seq, idx + 1);
+    }, 350);
+  }
+
+  /* AI evaluation function */
+  function evaluateSequence(seq, player) {
+    var state = cloneState(points, bar, borneOff);
+    var i;
+    for (i = 0; i < seq.length; i++) {
+      applyMove(seq[i], player, state.points, state.bar, state.borneOff);
+    }
+    return evaluateBoard(state.points, state.bar, state.borneOff, player);
+  }
+
+  function evaluateBoard(pts, br, bo, player) {
+    var opp = (player === P1) ? P2 : P1;
+    var score = 0;
+
+    /* Borne off - big bonus */
+    score += bo[player] * 50;
+    score -= bo[opp] * 50;
+
+    /* Bar penalty */
+    score -= br[player] * 80;
+    score += br[opp] * 80;
+
+    /* Pip count (lower is better for player) */
+    var pipPlayer = 0, pipOpp = 0;
+    var i;
+    for (i = 1; i <= 24; i++) {
+      if (pts[i].owner === player && pts[i].count > 0) {
+        if (player === P1) {
+          pipPlayer += pts[i].count * i;
+        } else {
+          pipPlayer += pts[i].count * (25 - i);
+        }
+      }
+      if (pts[i].owner === opp && pts[i].count > 0) {
+        if (opp === P1) {
+          pipOpp += pts[i].count * i;
+        } else {
+          pipOpp += pts[i].count * (25 - i);
+        }
+      }
+    }
+    pipPlayer += br[player] * 25;
+    pipOpp += br[opp] * 25;
+
+    score -= pipPlayer * 0.5;
+    score += pipOpp * 0.3;
+
+    /* Points made (2+ checkers) */
+    for (i = 1; i <= 24; i++) {
+      if (pts[i].owner === player && pts[i].count >= 2) {
+        var ptBonus = 8;
+        /* Home board points worth more */
+        if (player === P1 && i <= 6) ptBonus = 15;
+        if (player === P2 && i >= 19) ptBonus = 15;
+        /* Inner board anchors */
+        if (player === P2 && i >= 1 && i <= 6) ptBonus = 12;
+        if (player === P1 && i >= 19 && i <= 24) ptBonus = 12;
+        score += ptBonus;
+      }
+
+      /* Blots (singles) - penalize */
+      if (pts[i].owner === player && pts[i].count === 1) {
+        var blotPenalty = -8;
+        /* Worse if in opponent's home area */
+        if (player === P1 && i >= 19) blotPenalty = -15;
+        if (player === P2 && i <= 6) blotPenalty = -15;
+        /* Less bad if far from opponent */
+        if (player === P1 && i <= 6) blotPenalty = -3;
+        if (player === P2 && i >= 19) blotPenalty = -3;
+        score += blotPenalty;
+      }
+    }
+
+    /* Prime detection (consecutive made points) */
+    var consecutive = 0;
+    var maxConsec = 0;
+    for (i = 1; i <= 24; i++) {
+      if (pts[i].owner === player && pts[i].count >= 2) {
+        consecutive++;
+        if (consecutive > maxConsec) maxConsec = consecutive;
+      } else {
+        consecutive = 0;
+      }
+    }
+    if (maxConsec >= 3) score += maxConsec * 10;
+    if (maxConsec >= 6) score += 50; /* Full prime! */
+
+    return score;
+  }
+
+  /* ===== BOARD RENDERING (REVISED) =====
+     We need a proper two-row layout. Let me rebuild renderBoard. */
+
+  function renderBoard() {
+    var boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+
+    /* Determine legal first moves for highlighting */
+    var legalFirstMoves = [];
+    if (phase === 'move' && dice.length > 0 && !(mode === 1 && turn === P2)) {
+      legalFirstMoves = getLegalFirstMoves(turn, dice);
+    }
+
+    var sourcePts = {};
+    var i;
+    for (i = 0; i < legalFirstMoves.length; i++) {
+      sourcePts[legalFirstMoves[i].from] = true;
+    }
+
+    var destMap = {};
+    if (selectedPoint !== null) {
+      for (i = 0; i < validDests.length; i++) {
+        destMap[validDests[i].to] = true;
+      }
+    }
+
+    /* Board layout:
+       TOP ROW:    13 14 15 16 17 18  BAR  19 20 21 22 23 24
+       BOTTOM ROW: 12 11 10  9  8  7  BAR   6  5  4  3  2  1
+    */
+
+    var topRow = document.createElement('div');
+    topRow.style.cssText = 'display:flex;';
+
+    var botRow = document.createElement('div');
+    botRow.style.cssText = 'display:flex;';
+
+    /* Left tray (P2 bear off) - spans both rows */
+    var leftTray = createTray(P2, destMap);
+    /* Right tray (P1 bear off) - spans both rows */
+    var rightTray = createTray(P1, destMap);
+
+    /* Create the board as a single flex container with two rows */
+    boardEl.style.cssText = 'display:flex; background:#2A1A0E;';
+
+    /* Left tray */
+    boardEl.appendChild(leftTray);
+
+    /* Main playing area */
+    var playArea = document.createElement('div');
+    playArea.style.cssText = 'display:flex; flex-direction:column;';
+
+    /* === TOP ROW === */
+    var topRowEl = document.createElement('div');
+    topRowEl.style.cssText = 'display:flex;';
+
+    /* Top-left quadrant: points 13-18 */
+    renderQuadrant(topRowEl, [13,14,15,16,17,18], 'top', sourcePts, destMap);
+
+    /* Bar top */
+    var barTop = document.createElement('div');
+    barTop.className = 'bar';
+    barTop.style.height = '260px';
+    renderBarHalf(barTop, P2, sourcePts);
+    topRowEl.appendChild(barTop);
+
+    /* Top-right quadrant: points 19-24 */
+    renderQuadrant(topRowEl, [19,20,21,22,23,24], 'top', sourcePts, destMap);
+
+    playArea.appendChild(topRowEl);
+
+    /* === BOTTOM ROW === */
+    var botRowEl = document.createElement('div');
+    botRowEl.style.cssText = 'display:flex;';
+
+    /* Bottom-left quadrant: points 12-7 */
+    renderQuadrant(botRowEl, [12,11,10,9,8,7], 'bottom', sourcePts, destMap);
+
+    /* Bar bottom */
+    var barBot = document.createElement('div');
+    barBot.className = 'bar';
+    barBot.style.height = '260px';
+    renderBarHalf(barBot, P1, sourcePts);
+    botRowEl.appendChild(barBot);
+
+    /* Bottom-right quadrant: points 6-1 */
+    renderQuadrant(botRowEl, [6,5,4,3,2,1], 'bottom', sourcePts, destMap);
+
+    playArea.appendChild(botRowEl);
+
+    boardEl.appendChild(playArea);
+
+    /* Right tray */
+    boardEl.appendChild(rightTray);
+
+    /* Top labels */
+    var topLabels = document.getElementById('top-labels');
+    topLabels.innerHTML = '';
+    addLabel(topLabels, ' ', 'tray-label');
+    var tlPts = [13,14,15,16,17,18];
+    for (i = 0; i < tlPts.length; i++) addLabel(topLabels, tlPts[i], 'label');
+    addLabel(topLabels, ' ', 'bar-label');
+    var trPts = [19,20,21,22,23,24];
+    for (i = 0; i < trPts.length; i++) addLabel(topLabels, trPts[i], 'label');
+    addLabel(topLabels, ' ', 'tray-label');
+
+    /* Bottom labels */
+    var botLabels = document.getElementById('bottom-labels');
+    botLabels.innerHTML = '';
+    addLabel(botLabels, ' ', 'tray-label');
+    var blPts = [12,11,10,9,8,7];
+    for (i = 0; i < blPts.length; i++) addLabel(botLabels, blPts[i], 'label');
+    addLabel(botLabels, ' ', 'bar-label');
+    var brPts = [6,5,4,3,2,1];
+    for (i = 0; i < brPts.length; i++) addLabel(botLabels, brPts[i], 'label');
+    addLabel(botLabels, ' ', 'tray-label');
+  }
+
+  function addLabel(container, text, cls) {
+    var s = document.createElement('span');
+    s.className = cls;
+    s.textContent = text;
+    container.appendChild(s);
+  }
+
+  function createTray(player, destMap) {
+    var tray = document.createElement('div');
+    tray.className = 'tray';
+    if (selectedPoint !== null && destMap['off'] && turn === player) {
+      tray.className += ' dest-highlight';
+      tray.onclick = function() { handleDestClick('off'); };
+    }
+    renderTray(tray, player);
+    return tray;
+  }
+
+  function renderQuadrant(container, ptNums, rowType, sourcePts, destMap) {
+    var i;
+    for (i = 0; i < ptNums.length; i++) {
+      var pt = ptNums[i];
+      var col = document.createElement('div');
+      col.className = 'point-col ' + rowType;
+
+      if (selectedPoint === pt) {
+        col.className += ' selected';
+      } else if (selectedPoint !== null && destMap[pt]) {
+        col.className += ' dest-highlight';
+      } else if (selectedPoint === null && sourcePts[pt]) {
+        col.className += ' highlight';
+      }
+
+      if (selectedPoint !== null && destMap[pt]) {
+        (function(p) {
+          col.onclick = function() { handleDestClick(p); };
+        })(pt);
+      } else {
+        (function(p) {
+          col.onclick = function() { handlePointClick(p); };
+        })(pt);
+      }
+
+      /* Triangle */
+      var triClass = (pt % 2 === 0) ? 'light' : 'dark';
+      var tri = document.createElement('div');
+      tri.className = 'triangle ' + triClass + ' ' + rowType;
+      col.appendChild(tri);
+
+      /* Checkers */
+      var count = points[pt].count;
+      var owner = points[pt].owner;
+      if (count > 0) {
+        var visible = Math.min(count, MAX_VISIBLE);
+        var j;
+        for (j = 0; j < visible; j++) {
+          var ch = document.createElement('div');
+          ch.className = 'checker p' + owner;
+          col.appendChild(ch);
+        }
+        if (count > MAX_VISIBLE) {
+          var badge = document.createElement('div');
+          badge.className = 'count-badge';
+          badge.textContent = count;
+          col.appendChild(badge);
+        }
+      }
+
+      container.appendChild(col);
+    }
+  }
+
+  function renderBarHalf(barEl, player, sourcePts) {
+    barEl.style.display = 'flex';
+    barEl.style.flexDirection = 'column';
+    barEl.style.alignItems = 'center';
+    barEl.style.justifyContent = 'center';
+
+    if (bar[player] > 0) {
+      var vis = Math.min(bar[player], 3);
+      var i;
+      for (i = 0; i < vis; i++) {
+        var ch = document.createElement('div');
+        ch.className = 'bar-checker p' + player;
+        if (sourcePts['bar'] && turn === player) {
+          ch.className += ' highlight';
+        }
+        ch.onclick = function() { handlePointClick('bar'); };
+        barEl.appendChild(ch);
+      }
+      if (bar[player] > 3) {
+        var cnt = document.createElement('div');
+        cnt.className = 'bar-count';
+        cnt.textContent = bar[player];
+        barEl.appendChild(cnt);
+      }
+    }
+  }
+
+  /* ===== STARTUP ===== */
+
+  mode = 1;
+  resetGame();
+
+  /* Expose for onclick attributes */
+  window.rollDice = rollDice;
+  window.resetGame = resetGame;
+  window.setMode = setMode;
+  window.undoMove = undoMove;
+
+})();
+</script>
+
+
+</body>
+</html>

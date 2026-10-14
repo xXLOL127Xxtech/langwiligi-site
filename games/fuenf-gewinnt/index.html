@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fünf gewinnt</title>
+<meta name="description" content="X gegen O auf dem grossen Brett: Wer zuerst fünf in einer Reihe hat, gewinnt. Mit hartem Bot.">
+<meta name="theme-color" content="#f06292">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
+<meta name="spiel-tags" content="Klassiker,Strategie">
+<!--
+  Fünf gewinnt – angepasst für langwiligi.site.
+  Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
+  MIT License – Copyright (c) 2026 tridpt
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Übersetzung, Menü, Bot-Auswahl und Online-Modus (GameHub) neu für langwiligi.site.
+-->
+<style>
+:root {
+  --bg: #0d0f13;
+  --bg-soft: #161a22;
+  --panel: #1b2029;
+  --panel-2: #232a36;
+  --text: #eef1f6;
+  --muted: #9aa4b5;
+  --p1: #ff5d73;
+  --p2: #4dd0e1;
+  --accent: #f06292;
+  --accent-2: #f06292;
+  --good: #66bb6a;
+  --line: rgba(255, 255, 255, 0.10);
+  --grad-accent: linear-gradient(135deg, #f06292 0%, #f06292 100%);
+  --grad-cool: linear-gradient(135deg, #4f8ff7 0%, #3a6fd0 100%);
+  --grad-hot: linear-gradient(135deg, #ef5350 0%, #c63c3a 100%);
+  --shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(0, 0, 0, 0.55);
+  --radius: 16px;
+  --font-head: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(1000px 600px at 50% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 65%), var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font-family: inherit; }
+.hidden { display: none !important; }
+#app { width: min(1160px, 100%); margin: 0 auto; padding: 14px 16px 28px; }
+
+/* ---------- Knöpfe ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--text); font-size: 0.98rem; font-weight: 650;
+  cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s; touch-action: manipulation;
+}
+.btn:hover { background: #2d3545; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #111; border-color: transparent; font-weight: 800; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 6px 12px; font-size: 0.85rem; }
+.btn.ghost { background: transparent; }
+
+/* ---------- Menü ---------- */
+.menu { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.menu-head { text-align: center; padding: 10px 0 2px; }
+.menu-head h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); letter-spacing: -0.5px; color: var(--accent); text-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+.menu-head p { margin: 8px auto 0; max-width: 560px; color: var(--muted); line-height: 1.45; }
+.panel { background: rgba(255,255,255,0.045); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; backdrop-filter: blur(6px); }
+.panel h2 { margin: 0 0 10px; font-size: 1.05rem; letter-spacing: .02em; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.mode-card {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer;
+  transition: transform .12s, border-color .15s, background .15s; font-size: 1rem;
+}
+.mode-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.mode-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.mode-card b { font-size: 1.08rem; }
+.mode-card span { color: var(--muted); font-size: .88rem; line-height: 1.35; }
+.mode-card .ico { font-size: 1.6rem; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: .9rem; }
+.seg button.on { background: var(--accent); color: #111; border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.opt-row { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 8px 12px; align-items: center; margin-bottom: 10px; }
+.opt-row label { color: var(--muted); font-size: .9rem; font-weight: 600; }
+@media (max-width: 520px) { .opt-row { grid-template-columns: 1fr; } }
+.howto ol { margin: 6px 0 0; padding-left: 20px; line-height: 1.5; color: #d6dbe4; }
+.howto li { margin-bottom: 6px; }
+.howto summary { cursor: pointer; font-weight: 700; }
+.field { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #10141b; color: var(--text); font-size: 1rem; }
+.field.code { text-transform: uppercase; letter-spacing: .25em; font-weight: 800; text-align: center; max-width: 150px; }
+.online-grid { display: grid; gap: 12px; }
+.msg { min-height: 1.3em; color: var(--muted); font-size: .92rem; }
+.msg.err { color: #ff8a80; }
+.code-big { font-size: 2.2rem; font-weight: 900; letter-spacing: .3em; color: var(--accent); text-align: center; }
+.start-row { display: flex; justify-content: center; }
+.start-row .btn { min-width: 220px; padding: 14px 22px; font-size: 1.1rem; }
+
+/* ---------- Spielansicht ---------- */
+.topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.topbar h1 { flex: 1; margin: 0; text-align: center; font-size: 1.25rem; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 42px; height: 42px; padding: 0; font-size: 1.15rem; }
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+.pcard { padding: 10px 12px; border-radius: 14px; background: var(--panel); border: 2px solid transparent; display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
+.pcard .pname { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcard .pwins { font-size: .82rem; color: var(--muted); }
+.pcard.p1 .pname { color: var(--p1); }
+.pcard.p2 .pname { color: var(--p2); text-align: right; }
+.pcard.p2 { text-align: right; }
+.pcard.p1.active { border-color: var(--p1); box-shadow: 0 0 18px color-mix(in srgb, var(--p1) 35%, transparent); }
+.pcard.p2.active { border-color: var(--p2); box-shadow: 0 0 18px color-mix(in srgb, var(--p2) 35%, transparent); }
+.turn { align-self: center; padding: 8px 12px; border-radius: 999px; background: var(--panel-2); font-weight: 700; font-size: .9rem; text-align: center; max-width: 38vw; }
+.status { text-align: center; min-height: 1.5em; font-size: 1.02rem; font-weight: 600; color: var(--accent); margin: 4px 0 10px; line-height: 1.4; }
+.board-wrap { display: flex; justify-content: center; position: relative; margin-bottom: 14px; }
+.board-wrap.ai-thinking { pointer-events: none; }
+.board-wrap.ai-thinking::after { content: "🤖 Bot überlegt …"; position: absolute; top: -6px; right: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.6); font-size: .82rem; color: #fff; pointer-events: none; }
+.game-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.online-info { text-align: center; color: var(--muted); font-size: .88rem; margin-bottom: 8px; }
+#gameView { --text: #eef1f6; --muted: #9aa4b5; }
+
+/* ---------- Ergebnis / Dialoge ---------- */
+.overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 18px; background: rgba(5, 7, 10, 0.66); backdrop-filter: blur(5px); }
+.dialog { width: min(440px, 100%); max-height: 88vh; overflow: auto; background: #171b23; border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); text-align: center; animation: pop .22s ease-out; }
+.dialog h2 { margin: 0 0 8px; font-size: 1.6rem; }
+.dialog p { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+.dialog .row { justify-content: center; }
+.dialog.help { text-align: left; width: min(620px, 100%); }
+.dialog.help h2 { text-align: left; }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 3100; background: rgba(20,24,32,.96); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
+.board-wrap .lw-board { color: var(--text); }
+.lb { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  #app { padding: 10px 12px 24px; }
+  .turn { font-size: .78rem; padding: 6px 8px; }
+  .pcard { padding: 8px; }
+  .pcard .pname { font-size: .9rem; }
+}
+
+/* ======================== Spiel-Stile (aus dem Original) ======================== */
+@keyframes gmk-pop {
+  0% { transform: scale(0.2); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.gmk-board {
+  display: grid;
+  background: #d9a441;
+  border: 3px solid #a9742a;
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: var(--shadow);
+  width: min(540px, 92vw);
+  aspect-ratio: 1 / 1;
+  container-type: inline-size;
+}
+.gmk-cell {
+  position: relative;
+  border: 1px solid #b9842f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.gmk-stone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: 900;
+  line-height: 1;
+  font-size: calc(64cqw / var(--n, 15));
+  animation: gmk-pop 0.18s ease;
+}
+.gmk-stone.p1 { color: #d6273f; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.gmk-stone.p2 { color: #1180c4; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.gmk-cell.last { background: rgba(255, 255, 255, 0.3); box-shadow: inset 0 0 0 2px var(--accent); }
+.gmk-cell.win { background: rgba(110, 231, 183, 0.7); }
+.gmk-cell.win .gmk-stone { color: #0b3d2e; }
+
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ======================== Menü ======================== -->
+  <section id="menuView" class="menu">
+    <div class="menu-head">
+      <h1>⭕ Fünf gewinnt</h1>
+      <p>Wie Tic-Tac-Toe, nur viel grösser: Bring fünf Zeichen in eine Reihe und blockier die Drohungen deines Gegners.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Spielmodus</h2>
+      <div class="modes" id="modes"></div>
+      <div id="aiLevelBox" class="hidden" style="margin-top:14px">
+        <div class="opt-row"><label>Bot-Stärke</label>
+          <div class="seg" id="aiLevels">
+            <button data-lv="easy">Leicht</button><button data-lv="medium">Mittel</button><button data-lv="hard">Schwer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="optionsPanel">
+      <h2>Einstellungen</h2>
+      <div id="optionsBox"></div>
+    </div>
+
+    <div class="panel hidden" id="onlinePanel">
+      <h2>Online gegen Freunde</h2>
+      <div class="online-grid" id="onlineSetup">
+        <div class="opt-row"><label for="nameInput">Dein Name</label><input id="nameInput" class="field" maxlength="16" placeholder="Spielername" autocomplete="nickname"></div>
+        <div class="row"><button class="btn primary" id="createBtn">Raum erstellen</button><span class="msg">oder mit Code beitreten:</span></div>
+        <div class="row"><input id="codeInput" class="field code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="btn" id="joinBtn">Beitreten</button></div>
+        <div class="msg" id="onlineMsg"></div>
+      </div>
+      <div id="onlineWait" class="hidden" style="text-align:center">
+        <p class="msg">Schick diesen Code oder Link an deinen Freund:</p>
+        <div class="code-big" id="roomCode">----</div>
+        <div class="row" style="justify-content:center;margin:12px 0">
+          <button class="btn" id="copyBtn">🔗 Link kopieren</button>
+          <button class="btn ghost" id="cancelBtn">Abbrechen</button>
+        </div>
+        <p class="msg">Warte auf Mitspieler …</p>
+      </div>
+      <details class="lb" id="lbBox"><summary class="msg" style="cursor:pointer">🏆 Online-Rangliste</summary><div id="leaderboard"></div></details>
+    </div>
+
+    <div class="start-row" id="startRow"><button class="btn primary" id="startBtn">Los geht's!</button></div>
+
+    <div class="panel howto">
+      <details open>
+        <summary>So wird gespielt</summary>
+        <ol id="howtoList"></ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- ======================== Spiel ======================== -->
+  <section id="gameView" class="hidden">
+    <div class="topbar">
+      <button class="btn small" id="menuBtn">☰ Menü</button>
+      <h1 id="gameTitle">Fünf gewinnt</h1>
+      <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
+      <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
+    </div>
+    <div class="online-info hidden" id="onlineInfo"></div>
+    <div class="scoreboard">
+      <div class="pcard p1" id="pc1"><div class="pname" id="pn1">Spieler 1</div><div class="pwins" id="pw1">0 Siege</div></div>
+      <div class="turn" id="turnBanner">…</div>
+      <div class="pcard p2" id="pc2"><div class="pname" id="pn2">Spieler 2</div><div class="pwins" id="pw2">0 Siege</div></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="board-wrap" id="boardWrap"></div>
+    <div class="game-actions">
+      <button class="btn" id="undoBtn">↶ Rückgängig</button>
+      <button class="btn" id="restartBtn">↻ Neue Runde</button>
+    </div>
+  </section>
+</div>
+
+<div class="overlay hidden" id="resultOverlay">
+  <div class="dialog">
+    <h2 id="resTitle">Sieg!</h2>
+    <p id="resText"></p>
+    <div class="row">
+      <button class="btn primary" id="againBtn">Nochmal</button>
+      <button class="btn" id="resMenuBtn">Menü</button>
+    </div>
+  </div>
+</div>
+<div class="overlay hidden" id="helpOverlay">
+  <div class="dialog help">
+    <h2>So wird gespielt</h2>
+    <ol id="helpList" style="line-height:1.5;padding-left:20px;color:#d6dbe4"></ol>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" id="helpClose">Verstanden</button></div>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script>
+/* ---------- Registry & Zufallszahlen (aus dem Original) ---------- */
+window.GameRegistry = {
+  games: [],
+  register(game) { this.games.push(game); },
+  get(id) { return this.games.find((g) => g.id === id) || null; },
+};
+window.makeRng = function (seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+</script>
+<script>
+/* ============================================================
+   Sound: hiệu ứng âm thanh sinh bằng Web Audio API (không cần file)
+   Dùng: Sound.play("place" | "capture" | "win" | "lose" | "draw"
+                     | "error" | "select" | "rotate" | "shot" | "miss"
+                     | "explode" | "flip" | "score" | "powerup" | "drop" | "coin" | "react")
+   ============================================================ */
+window.Sound = (function () {
+  let ctxAudio = null;
+  let enabled = true;
+  let masterVol = 0.8;
+  let musicOn = false;
+  let musicTimer = null;
+  let musicStep = 0;
+
+  // Khôi phục lựa chọn từ lần trước
+  try {
+    const saved = localStorage.getItem("fuenf-gewinnt-sound");
+    if (saved !== null) enabled = saved === "1";
+    const v = localStorage.getItem("fuenf-gewinnt-volume");
+    if (v !== null) masterVol = Math.max(0, Math.min(1, parseFloat(v) || 0.8));
+    musicOn = localStorage.getItem("fuenf-gewinnt-music") === "1";
+  } catch (e) { /* ignore */ }
+
+  function ac() {
+    if (!ctxAudio) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctxAudio = new AC();
+    }
+    // một số trình duyệt khóa audio cho tới khi có tương tác người dùng
+    if (ctxAudio.state === "suspended") ctxAudio.resume();
+    return ctxAudio;
+  }
+
+  // Phát một nốt: tần số, thời lượng, dạng sóng, âm lượng
+  function tone(freq, dur, type = "sine", vol = 0.2, startAt = 0) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    const v = Math.max(0.0001, vol * masterVol);
+    // bao âm: lên nhanh, tắt dần -> nghe "mượt", tránh tiếng "tách"
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(v, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(a.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  // Tiếng "nhiễu" ngắn cho hiệu ứng va chạm/nước (dùng buffer ngẫu nhiên)
+  function noise(dur, vol = 0.15, startAt = 0, filterFreq = 1000) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const len = Math.floor(a.sampleRate * dur);
+    const buffer = a.createBuffer(1, len, a.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource();
+    src.buffer = buffer;
+    const filter = a.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    const gain = a.createGain();
+    gain.gain.setValueAtTime(vol * masterVol, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(a.destination);
+    src.start(t0);
+    src.stop(t0 + dur);
+  }
+
+  const EFFECTS = {
+    place()   { tone(440, 0.08, "triangle", 0.18); },
+    select()  { tone(660, 0.05, "sine", 0.12); },
+    capture() { tone(330, 0.1, "square", 0.14); tone(220, 0.12, "square", 0.12, 0.05); },
+    rotate()  { tone(300, 0.06, "sawtooth", 0.1); tone(420, 0.08, "sawtooth", 0.1, 0.06); },
+    shot()    { noise(0.18, 0.22, 0, 800); tone(160, 0.12, "square", 0.12); },
+    miss()    { noise(0.25, 0.12, 0, 500); },
+    error()   { tone(180, 0.18, "sawtooth", 0.16); },
+    win()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.2, i * 0.1)); },
+    lose()    { [392, 330, 262].forEach((f, i) => tone(f, 0.22, "sine", 0.18, i * 0.12)); },
+    draw()    { tone(440, 0.15, "sine", 0.15); tone(440, 0.15, "sine", 0.12, 0.16); },
+    notify()  { tone(880, 0.08, "sine", 0.16); tone(1175, 0.1, "sine", 0.16, 0.09); },
+    // Hiệu ứng riêng phong phú hơn
+    explode() {
+      noise(0.45, 0.32, 0, 380);
+      tone(90, 0.35, "sawtooth", 0.22);
+      tone(60, 0.5, "sine", 0.18, 0.02);
+      noise(0.18, 0.18, 0.04, 1600);
+    },
+    flip()    { tone(520, 0.05, "sine", 0.10); tone(760, 0.06, "triangle", 0.12, 0.05); },
+    score()   { [784, 1047, 1319].forEach((f, i) => tone(f, 0.12, "triangle", 0.16, i * 0.06)); },
+    powerup() { [440, 587, 740, 988].forEach((f, i) => tone(f, 0.1, "square", 0.12, i * 0.05)); },
+    drop()    { tone(300, 0.05, "sine", 0.12); tone(180, 0.12, "triangle", 0.16, 0.05); noise(0.06, 0.08, 0.04, 1200); },
+    coin()    { tone(988, 0.07, "square", 0.12); tone(1319, 0.1, "square", 0.12, 0.06); },
+    react()   { tone(700, 0.05, "sine", 0.12); tone(1050, 0.07, "sine", 0.1, 0.04); },
+  };
+
+  function play(name) {
+    if (!enabled) return;
+    const fn = EFFECTS[name];
+    if (fn) { try { fn(); } catch (e) { /* ignore */ } }
+  }
+
+  function setEnabled(on) {
+    enabled = !!on;
+    try { localStorage.setItem("fuenf-gewinnt-sound", enabled ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (enabled) play("select");
+  }
+
+  function isEnabled() { return enabled; }
+
+  // ----- Âm lượng tổng -----
+  function setVolume(v) {
+    masterVol = Math.max(0, Math.min(1, Number(v) || 0));
+    try { localStorage.setItem("fuenf-gewinnt-volume", String(masterVol)); } catch (e) { /* ignore */ }
+  }
+  function getVolume() { return masterVol; }
+
+  // ----- Nhạc nền sinh tự động (pad ngũ cung nhẹ nhàng) -----
+  const MSCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+  function musicTick() {
+    if (!musicOn) return;
+    const i = musicStep % MSCALE.length;
+    const f = MSCALE[i];
+    try {
+      tone(f, 1.8, "sine", 0.05);
+      if (musicStep % 4 === 0) tone(f / 2, 2.6, "triangle", 0.035);
+      if (musicStep % 3 === 0) tone(f * 1.5, 1.2, "sine", 0.025, 0.4);
+    } catch (e) { /* ignore */ }
+    musicStep++;
+  }
+  function startMusic() {
+    if (musicTimer) return;
+    musicStep = 0;
+    musicTick();
+    musicTimer = setInterval(musicTick, 950);
+  }
+  function stopMusic() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  }
+  function setMusic(on) {
+    musicOn = !!on;
+    try { localStorage.setItem("fuenf-gewinnt-music", musicOn ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (musicOn) startMusic(); else stopMusic();
+  }
+  function isMusicOn() { return musicOn; }
+
+  return { play, setEnabled, isEnabled, setVolume, getVolume, setMusic, isMusicOn, startMusic, stopMusic };
+})();
+
+</script>
+<script>
+
+(function () {
+  function create(ctx) {
+    const N = (ctx.options && ctx.options.size) || 15;
+    const NEED = (ctx.options && ctx.options.need) || 5;
+    let board = Array.from({ length: N }, () => Array(N).fill(null));
+    let turn = 0;
+    let over = false;
+
+    const boardEl = document.createElement("div");
+    boardEl.className = "gmk-board";
+    boardEl.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+    boardEl.style.setProperty("--n", N);
+    ctx.boardEl.appendChild(boardEl);
+
+    const cellEls = Array.from({ length: N }, () => Array(N));
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        const cell = document.createElement("div");
+        cell.className = "gmk-cell";
+        const rr = r, cc = c;
+        cell.addEventListener("click", () => onClick(rr, cc));
+        boardEl.appendChild(cell);
+        cellEls[r][c] = cell;
+      }
+    }
+
+    function onClick(r, c) {
+      if (over || board[r][c] !== null) return;
+      if (ctx.isOnline && turn !== ctx.mySeat) return;
+      applyMove({ r, c }, false);
+    }
+
+    let lastCell = null;
+    const moveStack = []; 
+
+    function applyMove(move, fromRemote) {
+      const { r, c } = move;
+      if (over || board[r][c] !== null) return;
+      const p = turn;
+      board[r][c] = p;
+      moveStack.push({ r, c, p, prev: lastCell });
+      const stone = document.createElement("div");
+      stone.className = "gmk-stone " + (p === 0 ? "p1" : "p2");
+      stone.textContent = p === 0 ? "X" : "O";
+      cellEls[r][c].appendChild(stone);
+      
+      if (lastCell) cellEls[lastCell[0]][lastCell[1]].classList.remove("last");
+      cellEls[r][c].classList.add("last");
+      lastCell = [r, c];
+      ctx.sound("place");
+
+      if (!fromRemote) ctx.sendMove({ r, c });
+
+      const line = winningLine(r, c, p);
+      if (line) {
+        over = true;
+        line.forEach(([rr, cc]) => cellEls[rr][cc].classList.add("win"));
+        ctx.incScore(p);
+        ctx.setStatus((`🎉 Spieler ${p + 1} (${p === 0 ? "X" : "O"}) gewinnt!`));
+        ctx.setTurn(-1);
+        return;
+      }
+      if (board.every((row) => row.every((v) => v !== null))) {
+        over = true;
+        ctx.setStatus(("🤝 Unentschieden! Das Brett ist voll."));
+        ctx.setTurn(-1);
+        return;
+      }
+      turn = 1 - turn;
+      ctx.setTurn(turn);
+    }
+
+    function winningLine(r, c, p) {
+      const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (const [dr, dc] of dirs) {
+        const cells = [[r, c]];
+        let nr = r + dr, nc = c + dc;
+        while (inB(nr, nc) && board[nr][nc] === p) { cells.push([nr, nc]); nr += dr; nc += dc; }
+        nr = r - dr; nc = c - dc;
+        while (inB(nr, nc) && board[nr][nc] === p) { cells.unshift([nr, nc]); nr -= dr; nc -= dc; }
+        if (cells.length >= NEED) return cells;
+      }
+      return null;
+    }
+
+    function inB(r, c) { return r >= 0 && r < N && c >= 0 && c < N; }
+
+    
+    function lineValue(total, openEnds) {
+      if (total >= NEED) return 1000000;
+      if (total === NEED - 1) return openEnds === 2 ? 100000 : (openEnds === 1 ? 10000 : 0);
+      if (total === NEED - 2) return openEnds === 2 ? 5000 : (openEnds === 1 ? 500 : 0);
+      if (total === NEED - 3) return openEnds === 2 ? 200 : (openEnds === 1 ? 20 : 0);
+      return total;
+    }
+    function patternScore(r, c, p) {
+      const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      let score = 0;
+      board[r][c] = p;
+      for (const [dr, dc] of dirs) {
+        let total = 1, open = 0;
+        let nr = r + dr, nc = c + dc;
+        while (inB(nr, nc) && board[nr][nc] === p) { total++; nr += dr; nc += dc; }
+        if (inB(nr, nc) && board[nr][nc] === null) open++;
+        nr = r - dr; nc = c - dc;
+        while (inB(nr, nc) && board[nr][nc] === p) { total++; nr -= dr; nc -= dc; }
+        if (inB(nr, nc) && board[nr][nc] === null) open++;
+        score += lineValue(total, open);
+      }
+      board[r][c] = null;
+      return score;
+    }
+    function aiMove(level) {
+      if (over) return null;
+      const me = turn, opp = 1 - me;
+      
+      let any = false;
+      const cand = new Set();
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (board[r][c] === null) continue;
+          any = true;
+          for (let dr = -2; dr <= 2; dr++)
+            for (let dc = -2; dc <= 2; dc++) {
+              const nr = r + dr, nc = c + dc;
+              if (inB(nr, nc) && board[nr][nc] === null) cand.add(nr * N + nc);
+            }
+        }
+      }
+      if (!any) { const m = Math.floor(N / 2); return { r: m, c: m }; }
+      const candArr = [...cand];
+      
+      if (level === "easy" && Math.random() < 0.5) {
+        const k = candArr[Math.floor(Math.random() * candArr.length)];
+        return { r: Math.floor(k / N), c: k % N };
+      }
+      const offense = level === "hard" ? 1.3 : level === "normal" ? 1.15 : 1.0;
+      let best = -Infinity, pick = null;
+      candArr.forEach((key) => {
+        const r = Math.floor(key / N), c = key % N;
+        const sc = patternScore(r, c, me) * offense + patternScore(r, c, opp);
+        if (sc > best) { best = sc; pick = { r, c }; }
+      });
+      return pick;
+    }
+
+    function undo() {
+      if (!moveStack.length) return false;
+      const m = moveStack.pop();
+      board[m.r][m.c] = null;
+      const cell = cellEls[m.r][m.c];
+      cell.innerHTML = "";
+      cell.classList.remove("last", "win");
+      
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) cellEls[r][c].classList.remove("win");
+      over = false;
+      turn = m.p;
+      lastCell = m.prev;
+      if (lastCell) cellEls[lastCell[0]][lastCell[1]].classList.add("last");
+      ctx.setTurn(turn);
+      ctx.setStatus((`Spieler ${turn + 1} ist dran (${turn === 0 ? "X" : "O"}).`));
+      return true;
+    }
+
+    ctx.setNames(("Spieler 1 (X)"), ("Spieler 2 (O)"));
+    ctx.setTurn(0);
+    ctx.setStatus((`X beginnt. ${NEED} in einer Reihe gewinnen.`));
+    return { applyMove, undo, aiMove };
+  }
+
+  window.GameRegistry.register({
+    id: "gomoku",
+    name: "Fünf gewinnt",
+    emoji: "⚪",
+    description: "Setz X und O auf ein grosses Brett – fünf in einer Reihe gewinnen.",
+    onlineReady: true,
+    supportsAI: true,
+    options: [
+      {
+        id: "size", label: "Brettgrösse", default: 15,
+        choices: [
+          { value: 9, label: "9×9 (nhanh)" },
+          { value: 13, label: "13×13" },
+          { value: 15, label: "15×15 (Standard)" },
+          { value: 19, label: "19×19 (gross)" },
+        ],
+      },
+      {
+        id: "need", label: "Zeichen zum Sieg", default: 5,
+        choices: [
+          { value: 4, label: "4 (leicht)" },
+          { value: 5, label: "5 (Standard)" },
+          { value: 6, label: "6 (schwer)" },
+        ],
+      },
+    ],
+    howTo: [
+      "Gespielt wird auf einem grossen Brett (normal 15×15). Spieler 1 setzt X, Spieler 2 setzt O. X beginnt.",
+      "Wenn du dran bist, tippst du auf ein beliebiges freies Feld.",
+      "Ziel: genug eigene Zeichen ohne Lücke in eine Reihe bringen – waagrecht, senkrecht oder schräg.",
+      "Wer zuerst die nötige Anzahl in einer Reihe hat, gewinnt sofort.",
+      "In den Einstellungen kannst du Brettgrösse und Anzahl ändern – für leichtere oder schwerere Runden.",
+    ],
+    create,
+  });
+})();
+
+</script>
+<script>
+/* ======================== Hülle für langwiligi.site ======================== */
+(function () {
+  'use strict';
+  const GAME_ID = 'fuenf-gewinnt';
+  const game = window.GameRegistry.games[0];
+  const HUB = window.GameHub || null;
+  const $ = (id) => document.getElementById(id);
+  const LV_NAME = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(GAME_ID + '-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(GAME_ID + '-' + k, JSON.stringify(v)); } catch (e) { /* egal */ } },
+  };
+
+  const canAI = !!game.supportsAI;
+  const canLocal = game.localReady !== false;
+  const canOnline = !!HUB && game.onlineReady !== false;
+
+  let mode = store.get('mode', canAI ? 'ai' : 'local');
+  let aiLevel = store.get('ai', 'medium');
+  let options = Object.assign(defaultOptions(), store.get('options', {}));
+  let instance = null, ended = false, scores = [0, 0], wins = [0, 0], lastWinner = -1, aiTimer = null, resultTimer = null;
+  let curTurn = 0;
+  // Online-Zustand
+  let room = null, net = null; // net: { you, swap, round, names:[], ready:Set, started }
+
+  function defaultOptions() { const o = {}; (game.options || []).forEach((x) => { o[x.id] = x.default; }); return o; }
+  function validMode(m) { return (m === 'ai' && canAI) || (m === 'local' && canLocal) || (m === 'online' && canOnline); }
+  if (!validMode(mode)) mode = canAI ? 'ai' : canLocal ? 'local' : 'online';
+
+  /* ---------- Menü aufbauen ---------- */
+  const MODES = [
+    { id: 'ai', ok: canAI, ico: '🤖', title: 'Gegen Bot', text: 'Spiel gegen den Computer – drei Stärken.' },
+    { id: 'local', ok: canLocal, ico: '👥', title: '2 Spieler', text: 'Zu zweit an einem Gerät, abwechselnd.' },
+    { id: 'online', ok: canOnline, ico: '🌐', title: 'Online', text: 'Gegen Freunde übers Internet mit Raum-Code.' },
+  ];
+  function renderModes() {
+    const box = $('modes'); box.innerHTML = '';
+    MODES.filter((m) => m.ok).forEach((m) => {
+      const b = document.createElement('button');
+      b.className = 'mode-card' + (mode === m.id ? ' selected' : '');
+      b.innerHTML = `<span class="ico">${m.ico}</span><b>${m.title}</b><span>${m.text}</span>`;
+      b.addEventListener('click', () => { mode = m.id; store.set('mode', mode); renderModes(); });
+      box.appendChild(b);
+    });
+    $('aiLevelBox').classList.toggle('hidden', mode !== 'ai');
+    $('onlinePanel').classList.toggle('hidden', mode !== 'online');
+    $('startRow').classList.toggle('hidden', mode === 'online');
+    document.querySelectorAll('#aiLevels button').forEach((b) => b.classList.toggle('on', b.dataset.lv === aiLevel));
+    if (mode === 'online' && HUB && !renderModes.lbLoaded) { renderModes.lbLoaded = true; HUB.loadBoard(GAME_ID, $('leaderboard'), HUB.getName()); }
+  }
+  document.querySelectorAll('#aiLevels button').forEach((b) => b.addEventListener('click', () => { aiLevel = b.dataset.lv; store.set('ai', aiLevel); renderModes(); }));
+
+  function renderOptions() {
+    const opts = game.options || [];
+    $('optionsPanel').classList.toggle('hidden', !opts.length);
+    const box = $('optionsBox'); box.innerHTML = '';
+    opts.forEach((o) => {
+      const row = document.createElement('div'); row.className = 'opt-row';
+      const lab = document.createElement('label'); lab.textContent = o.label; row.appendChild(lab);
+      const seg = document.createElement('div'); seg.className = 'seg';
+      o.choices.forEach((c) => {
+        const b = document.createElement('button');
+        b.textContent = c.label;
+        b.className = String(options[o.id]) === String(c.value) ? 'on' : '';
+        b.addEventListener('click', () => { options[o.id] = c.value; store.set('options', options); renderOptions(); });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg); box.appendChild(row);
+    });
+  }
+  function renderHowto() {
+    const items = (game.howTo || []).map((s) => `<li>${esc(s)}</li>`).join('');
+    $('howtoList').innerHTML = items; $('helpList').innerHTML = items;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  /* ---------- Spiel-Kontext für das Original-Modul ---------- */
+  function seatName(seat) {
+    if (mode === 'ai') return seat === 0 ? 'Du' : 'Bot (' + LV_NAME[aiLevel] + ')';
+    if (mode === 'online' && net) {
+      const roomSeat = net.swap ? 1 - seat : seat;
+      const nm = net.names[roomSeat] || ('Spieler ' + (roomSeat + 1));
+      return roomSeat === net.you ? nm + ' (du)' : nm;
+    }
+    return 'Spieler ' + (seat + 1);
+  }
+  function setNameLabels(extra) {
+    [0, 1].forEach((s) => {
+      const suffix = extra && extra[s] ? ' ' + extra[s] : '';
+      $('pn' + (s + 1)).textContent = seatName(s) + suffix;
+    });
+  }
+  // Siege gehören online dem Raum-Platz (die Seiten wechseln jede Runde), sonst dem Sitz
+  function idOf(seat) { return mode === 'online' && net ? (net.swap ? 1 - seat : seat) : seat; }
+  function renderWins() {
+    [0, 1].forEach((s) => { const n = wins[idOf(s)]; $('pw' + (s + 1)).textContent = n + (n === 1 ? ' Sieg' : ' Siege'); });
+  }
+
+  function makeContext(seed) {
+    const online = mode === 'online' && net;
+    const mySeat = online ? (net.swap ? 1 - net.you : net.you) : -1;
+    return {
+      boardEl: $('boardWrap'),
+      isOnline: !!online,
+      mySeat,
+      roomSeat: online ? net.you : -1,
+      firstSeat: 0,
+      round: online ? net.round : 1,
+      rng: window.makeRng(seed || ((Math.random() * 4294967295) >>> 0)),
+      options: Object.assign({}, options),
+      vsAI: mode === 'ai',
+      aiLevel,
+      setStatus(text) {
+        $('status').textContent = text || '';
+        if (text && /🎉|🤝|💀/.test(text)) onGameEnd(text);
+      },
+      setTurn(idx) { setTurn(idx); },
+      setNames(n1, n2) {
+        const grab = (n) => { const m = /\(([^()]*)\)\s*$/.exec(String(n || '')); return m ? '(' + m[1] + ')' : ''; };
+        if (mode === 'local') { $('pn1').textContent = n1 || seatName(0); $('pn2').textContent = n2 || seatName(1); }
+        else setNameLabels([grab(n1), grab(n2)]);
+      },
+      incScore(idx) { scores[idx]++; lastWinner = idx; },
+      decScore(idx) { scores[idx] = Math.max(0, scores[idx] - 1); },
+      getScore(idx) { return scores[idx]; },
+      sendMove(move) { if (mode === 'online' && room && net && net.started) room.send({ t: 'mv', m: move }); },
+      sound(name) { if (window.Sound) window.Sound.play(name); },
+      t(de) { return de; },
+    };
+  }
+
+  function setTurn(idx) {
+    curTurn = idx;
+    const tb = $('turnBanner');
+    $('pc1').classList.toggle('active', idx === 0);
+    $('pc2').classList.toggle('active', idx === 1);
+    if (idx === -1) { tb.textContent = 'Runde vorbei'; tb.style.color = 'var(--text)'; return; }
+    let label;
+    if (mode === 'ai') label = idx === 0 ? 'Du bist dran' : 'Bot ist dran';
+    else if (mode === 'online' && net) label = idx === (net.swap ? 1 - net.you : net.you) ? 'Du bist dran' : 'Gegner ist dran';
+    else label = 'Spieler ' + (idx + 1) + ' ist dran';
+    tb.textContent = label;
+    tb.style.color = idx === 0 ? 'var(--p1)' : 'var(--p2)';
+    if (mode === 'ai' && idx === 1 && !ended) scheduleAI();
+  }
+
+  function scheduleAI() {
+    const wrap = $('boardWrap');
+    wrap.classList.add('ai-thinking');
+    clearTimeout(aiTimer);
+    aiTimer = setTimeout(() => {
+      wrap.classList.remove('ai-thinking');
+      if (mode !== 'ai' || ended || !instance || typeof instance.aiMove !== 'function') return;
+      try {
+        const mv = instance.aiMove(aiLevel);
+        if (mv !== null && mv !== undefined) instance.applyMove(mv, false);
+      } catch (e) { console.error(e); }
+    }, 520);
+  }
+
+  function teardown() {
+    clearTimeout(aiTimer); clearTimeout(resultTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    if (instance && typeof instance.destroy === 'function') { try { instance.destroy(); } catch (e) { /* egal */ } }
+    instance = null;
+    $('boardWrap').innerHTML = '';
+  }
+
+  function startRound(seed) {
+    teardown();
+    hide('resultOverlay');
+    ended = false; scores = [0, 0]; lastWinner = -1;
+    $('status').textContent = '';
+    show('gameView'); hide('menuView');
+    setNameLabels();
+    renderWins();
+    const online = mode === 'online' && net;
+    $('onlineInfo').classList.toggle('hidden', !online);
+    if (online) $('onlineInfo').textContent = '🌐 Online · Raum ' + room.code + ' · Runde ' + net.round + ' · ' + ((net.swap ? 1 - net.you : net.you) === 0 ? 'du beginnst' : 'Gegner beginnt');
+    $('restartBtn').textContent = online ? '↻ Neue Runde anfragen' : '↻ Neue Runde';
+    instance = game.create(makeContext(seed));
+    $('undoBtn').classList.toggle('hidden', mode !== 'local' || !instance || typeof instance.undo !== 'function');
+    window.scrollTo({ top: 0 });
+  }
+
+  function onGameEnd(text) {
+    if (ended) return;
+    ended = true;
+    clearTimeout(aiTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    const draw = /🤝/.test(text) && !/🎉/.test(text);
+    let w = -1;
+    if (!draw) {
+      w = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : lastWinner;
+      if (w === -1) {
+        // Gewinner aus dem Text lesen ("Spieler 2 …")
+        const m = /Spieler\s*([12])/.exec(text);
+        if (m) w = +m[1] - 1;
+      }
+    }
+    if (w >= 0) wins[idOf(w)]++;
+    renderWins();
+    if (mode === 'online' && net && room && net.you === 0 && net.started) {
+      try { room.result(w < 0 ? -1 : (net.swap ? 1 - w : w)); } catch (e) { /* egal */ }
+    }
+    let title;
+    if (w < 0) title = '🤝 Unentschieden';
+    else if (mode === 'ai') title = w === 0 ? '🎉 Du gewinnst!' : '🤖 Der Bot gewinnt';
+    else if (mode === 'online' && net) title = (w === (net.swap ? 1 - net.you : net.you)) ? '🎉 Du gewinnst!' : '😵 ' + seatName(w).replace(' (du)', '') + ' gewinnt';
+    else title = '🎉 ' + seatName(w) + ' gewinnt!';
+    $('resTitle').textContent = title;
+    $('resText').textContent = text.replace(/^[🎉🤝💀]\s*/u, '');
+    $('againBtn').disabled = false;
+    $('againBtn').textContent = 'Nochmal';
+    resultTimer = setTimeout(() => show('resultOverlay'), 1100);
+  }
+
+  /* ---------- Ansichten ---------- */
+  function show(id) { $(id).classList.remove('hidden'); }
+  function hide(id) { $(id).classList.add('hidden'); }
+  function toMenu() {
+    teardown();
+    hide('resultOverlay'); hide('gameView'); show('menuView');
+    if (room) { try { room.send({ t: 'bye' }); room.close(); } catch (e) { /* egal */ } }
+    room = null; net = null;
+    resetOnlineUI();
+    renderModes();
+    window.scrollTo({ top: 0 });
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    let el = document.querySelector('.toast');
+    if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.classList.remove('hidden');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+  }
+  function info(title, text) {
+    teardown();
+    $('resTitle').textContent = title; $('resText').textContent = text;
+    $('againBtn').textContent = 'Nochmal'; $('againBtn').disabled = true;
+    show('resultOverlay');
+  }
+
+  /* ---------- Online ---------- */
+  function resetOnlineUI() {
+    show('onlineSetup'); hide('onlineWait');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+    $('onlineMsg').textContent = ''; $('onlineMsg').classList.remove('err');
+  }
+  function onlineErr(e) {
+    $('onlineMsg').textContent = HUB.errorText(e); $('onlineMsg').classList.add('err');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    const n = HUB.setName($('nameInput').value) || 'Gast';
+    $('nameInput').value = n;
+    return n;
+  }
+  function newRoom() {
+    room = HUB.connect(GAME_ID);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', (m) => {
+      if (!net) return;
+      net.names = (m.players || room.players || []).map(playerName);
+      if (net.you === 0) { toast('🎮 ' + (playerName(m.name) || 'Mitspieler') + ' ist da!'); hostStart(false); }
+    });
+    room.on('peer-left', () => {
+      if (!net) return;
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    });
+    room.on('close', () => { if (net) info('📡 Verbindung verloren', 'Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', (rows) => HUB.renderBoard($('leaderboard'), rows, HUB.getName()));
+    return room;
+  }
+  async function createRoom() {
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Verbinde …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.create(name, 2);
+      net = { you: res.you, swap: false, round: 0, names: [name, ''], ready: new Set(), started: false };
+      wins = [0, 0];
+      $('roomCode').textContent = res.code;
+      hide('onlineSetup'); show('onlineWait');
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  async function joinRoom() {
+    const code = HUB.cleanCode($('codeInput').value);
+    if (code.length !== 4) { $('onlineMsg').textContent = 'Bitte den 4-stelligen Code eingeben.'; $('onlineMsg').classList.add('err'); return; }
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Trete bei …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.join(code, name);
+      net = { you: res.you, swap: false, round: 0, names: (res.players || room.players || []).map(playerName), ready: new Set(), started: false };
+      wins = [0, 0];
+      $('onlineMsg').textContent = 'Beigetreten! Warte auf den Start …';
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  function hostStart(swap) {
+    net.round++;
+    net.swap = swap;
+    net.ready.clear();
+    net.started = true;
+    const seed = (Math.random() * 4294967295) >>> 0;
+    room.send({ t: 'start', seed, swap, round: net.round, options, names: net.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    startRound(seed);
+  }
+  function onNetMsg(d) {
+    if (!d || !net) return;
+    if (d.t === 'start') {
+      net.swap = !!d.swap; net.round = d.round || 1; net.started = true; net.ready.clear();
+      if (Array.isArray(d.names)) net.names = d.names;
+      if (d.options) options = Object.assign(defaultOptions(), d.options);
+      startRound(d.seed);
+    } else if (d.t === 'mv') {
+      if (instance && instance.applyMove) { try { instance.applyMove(d.m, true); } catch (e) { console.error(e); } }
+    } else if (d.t === 'again') {
+      net.ready.add(1 - net.you);
+      if (net.you === 0 && net.ready.has(0)) hostStart(!net.swap);
+      else toast('🔁 Dein Gegner will nochmal spielen!');
+    } else if (d.t === 'bye') {
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    }
+  }
+  function requestAgain() {
+    if (mode !== 'online') { startRound(); return; }
+    if (!net || !room) return;
+    net.ready.add(net.you);
+    room.send({ t: 'again' });
+    if (net.you === 0 && net.ready.has(1)) { hostStart(!net.swap); return; }
+    $('againBtn').disabled = true; $('againBtn').textContent = 'Warte auf Gegner …';
+    $('status').textContent = 'Warte, bis dein Gegner auch nochmal will …';
+  }
+
+  /* ---------- Knöpfe ---------- */
+  $('startBtn').addEventListener('click', () => { wins = [0, 0]; startRound(); });
+  $('menuBtn').addEventListener('click', toMenu);
+  $('resMenuBtn').addEventListener('click', toMenu);
+  $('againBtn').addEventListener('click', requestAgain);
+  $('restartBtn').addEventListener('click', () => {
+    if (mode === 'online') { hide('resultOverlay'); show('resultOverlay'); $('resTitle').textContent = 'Neue Runde?'; $('resText').textContent = 'Wenn beide zustimmen, startet eine neue Runde.'; $('againBtn').disabled = false; $('againBtn').textContent = 'Ja, neue Runde'; return; }
+    startRound();
+  });
+  $('undoBtn').addEventListener('click', () => {
+    if (!instance || typeof instance.undo !== 'function') return;
+    const wasEnded = ended;
+    if (instance.undo() && wasEnded) { ended = false; hide('resultOverlay'); clearTimeout(resultTimer); }
+  });
+  $('helpBtn').addEventListener('click', () => show('helpOverlay'));
+  $('helpClose').addEventListener('click', () => hide('helpOverlay'));
+  $('helpOverlay').addEventListener('click', (e) => { if (e.target === $('helpOverlay')) hide('helpOverlay'); });
+  function renderMute() { $('muteBtn').textContent = window.Sound && window.Sound.isEnabled() ? '🔊' : '🔇'; }
+  $('muteBtn').addEventListener('click', () => { if (window.Sound) window.Sound.setEnabled(!window.Sound.isEnabled()); renderMute(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hide('helpOverlay'); } });
+
+  if (HUB) {
+    $('nameInput').value = HUB.getName();
+    $('createBtn').addEventListener('click', createRoom);
+    $('joinBtn').addEventListener('click', joinRoom);
+    $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
+    $('cancelBtn').addEventListener('click', () => { if (room) room.close(); room = null; net = null; resetOnlineUI(); });
+    $('copyBtn').addEventListener('click', async () => {
+      const link = 'https://langwiligi.site/' + GAME_ID + '/#' + $('roomCode').textContent;
+      try { await navigator.clipboard.writeText(link); toast('✅ Link kopiert!'); }
+      catch (e) { toast(link); }
+    });
+    const code = HUB.cleanCode(location.hash);
+    if (code.length === 4 && canOnline) {
+      mode = 'online';
+      $('codeInput').value = code;
+      setTimeout(() => { $('onlineMsg').textContent = 'Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.'; $('nameInput').focus(); }, 50);
+    }
+  }
+
+  renderModes(); renderOptions(); renderHowto(); renderMute();
+})();
+</script>
+</body>
+</html>

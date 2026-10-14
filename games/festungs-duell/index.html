@@ -1,0 +1,3262 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Festungs-Duell</title>
+<meta name="description" content="Schick 11 Truppenarten über drei Bahnen, bau Türme und reiss die gegnerische Festung ein – in Echtzeit.">
+<meta name="theme-color" content="#ffb74d">
+<meta name="spiel-modi" content="Lokal,Online">
+<meta name="spiel-tags" content="Echtzeit,Türme">
+<!--
+  Festungs-Duell – angepasst für langwiligi.site.
+  Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
+  MIT License – Copyright (c) 2026 tridpt
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Übersetzung, Menü, Bot-Auswahl und Online-Modus (GameHub) neu für langwiligi.site.
+-->
+<style>
+:root {
+  --bg: #0d0f13;
+  --bg-soft: #161a22;
+  --panel: #1b2029;
+  --panel-2: #232a36;
+  --text: #eef1f6;
+  --muted: #9aa4b5;
+  --p1: #ff5d73;
+  --p2: #4dd0e1;
+  --accent: #ffb74d;
+  --accent-2: #ffb74d;
+  --good: #66bb6a;
+  --line: rgba(255, 255, 255, 0.10);
+  --grad-accent: linear-gradient(135deg, #ffb74d 0%, #ffb74d 100%);
+  --grad-cool: linear-gradient(135deg, #4f8ff7 0%, #3a6fd0 100%);
+  --grad-hot: linear-gradient(135deg, #ef5350 0%, #c63c3a 100%);
+  --shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  --glow: 0 0 0 1px rgba(255,255,255,0.05), 0 16px 40px rgba(0, 0, 0, 0.55);
+  --radius: 16px;
+  --font-head: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: radial-gradient(1000px 600px at 50% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 65%), var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select { font-family: inherit; }
+.hidden { display: none !important; }
+#app { width: min(1160px, 100%); margin: 0 auto; padding: 14px 16px 28px; }
+
+/* ---------- Knöpfe ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel-2); color: var(--text); font-size: 0.98rem; font-weight: 650;
+  cursor: pointer; transition: background .15s, transform .1s, box-shadow .15s; touch-action: manipulation;
+}
+.btn:hover { background: #2d3545; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #111; border-color: transparent; font-weight: 800; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.small { padding: 6px 12px; font-size: 0.85rem; }
+.btn.ghost { background: transparent; }
+
+/* ---------- Menü ---------- */
+.menu { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.menu-head { text-align: center; padding: 10px 0 2px; }
+.menu-head h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); letter-spacing: -0.5px; color: var(--accent); text-shadow: 0 4px 24px color-mix(in srgb, var(--accent) 35%, transparent); }
+.menu-head p { margin: 8px auto 0; max-width: 560px; color: var(--muted); line-height: 1.45; }
+.panel { background: rgba(255,255,255,0.045); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; backdrop-filter: blur(6px); }
+.panel h2 { margin: 0 0 10px; font-size: 1.05rem; letter-spacing: .02em; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.mode-card {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer;
+  transition: transform .12s, border-color .15s, background .15s; font-size: 1rem;
+}
+.mode-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.mode-card.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.mode-card b { font-size: 1.08rem; }
+.mode-card span { color: var(--muted); font-size: .88rem; line-height: 1.35; }
+.mode-card .ico { font-size: 1.6rem; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: .9rem; }
+.seg button.on { background: var(--accent); color: #111; border-color: transparent; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.opt-row { display: grid; grid-template-columns: minmax(110px, 160px) 1fr; gap: 8px 12px; align-items: center; margin-bottom: 10px; }
+.opt-row label { color: var(--muted); font-size: .9rem; font-weight: 600; }
+@media (max-width: 520px) { .opt-row { grid-template-columns: 1fr; } }
+.howto ol { margin: 6px 0 0; padding-left: 20px; line-height: 1.5; color: #d6dbe4; }
+.howto li { margin-bottom: 6px; }
+.howto summary { cursor: pointer; font-weight: 700; }
+.field { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line); background: #10141b; color: var(--text); font-size: 1rem; }
+.field.code { text-transform: uppercase; letter-spacing: .25em; font-weight: 800; text-align: center; max-width: 150px; }
+.online-grid { display: grid; gap: 12px; }
+.msg { min-height: 1.3em; color: var(--muted); font-size: .92rem; }
+.msg.err { color: #ff8a80; }
+.code-big { font-size: 2.2rem; font-weight: 900; letter-spacing: .3em; color: var(--accent); text-align: center; }
+.start-row { display: flex; justify-content: center; }
+.start-row .btn { min-width: 220px; padding: 14px 22px; font-size: 1.1rem; }
+
+/* ---------- Spielansicht ---------- */
+.topbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.topbar h1 { flex: 1; margin: 0; text-align: center; font-size: 1.25rem; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 42px; height: 42px; padding: 0; font-size: 1.15rem; }
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+.pcard { padding: 10px 12px; border-radius: 14px; background: var(--panel); border: 2px solid transparent; display: flex; flex-direction: column; gap: 2px; min-width: 0; transition: border-color .2s, box-shadow .2s; }
+.pcard .pname { font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcard .pwins { font-size: .82rem; color: var(--muted); }
+.pcard.p1 .pname { color: var(--p1); }
+.pcard.p2 .pname { color: var(--p2); text-align: right; }
+.pcard.p2 { text-align: right; }
+.pcard.p1.active { border-color: var(--p1); box-shadow: 0 0 18px color-mix(in srgb, var(--p1) 35%, transparent); }
+.pcard.p2.active { border-color: var(--p2); box-shadow: 0 0 18px color-mix(in srgb, var(--p2) 35%, transparent); }
+.turn { align-self: center; padding: 8px 12px; border-radius: 999px; background: var(--panel-2); font-weight: 700; font-size: .9rem; text-align: center; max-width: 38vw; }
+.status { text-align: center; min-height: 1.5em; font-size: 1.02rem; font-weight: 600; color: var(--accent); margin: 4px 0 10px; line-height: 1.4; }
+.board-wrap { display: flex; justify-content: center; position: relative; margin-bottom: 14px; }
+.board-wrap.ai-thinking { pointer-events: none; }
+.board-wrap.ai-thinking::after { content: "🤖 Bot überlegt …"; position: absolute; top: -6px; right: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(0,0,0,.6); font-size: .82rem; color: #fff; pointer-events: none; }
+.game-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.online-info { text-align: center; color: var(--muted); font-size: .88rem; margin-bottom: 8px; }
+#gameView { --text: #eef1f6; --muted: #9aa4b5; }
+
+/* ---------- Ergebnis / Dialoge ---------- */
+.overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 18px; background: rgba(5, 7, 10, 0.66); backdrop-filter: blur(5px); }
+.dialog { width: min(440px, 100%); max-height: 88vh; overflow: auto; background: #171b23; border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); text-align: center; animation: pop .22s ease-out; }
+.dialog h2 { margin: 0 0 8px; font-size: 1.6rem; }
+.dialog p { margin: 0 0 16px; color: var(--muted); line-height: 1.45; }
+.dialog .row { justify-content: center; }
+.dialog.help { text-align: left; width: min(620px, 100%); }
+.dialog.help h2 { text-align: left; }
+@keyframes pop { from { transform: scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 3100; background: rgba(20,24,32,.96); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
+.board-wrap .lw-board { color: var(--text); }
+.lb { margin-top: 8px; }
+
+@media (max-width: 560px) {
+  #app { padding: 10px 12px 24px; }
+  .turn { font-size: .78rem; padding: 6px 8px; }
+  .pcard { padding: 8px; }
+  .pcard .pname { font-size: .9rem; }
+}
+
+/* ======================== Spiel-Stile (aus dem Original) ======================== */
+@keyframes bs-pending {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes nd2-flip { from { transform: rotateY(90deg); opacity: 0; } to { transform: rotateY(0); opacity: 1; } }
+.profile-chip {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 8px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  font-family: var(--font-body);
+  transition: background 0.16s, box-shadow 0.16s, transform 0.1s;
+}
+.profile-chip:hover { background: var(--panel-2); box-shadow: 0 4px 14px rgba(90,70,45,0.18); }
+.profile-chip:active { transform: scale(0.96); }
+@media (max-width: 480px) {
+.profile-chip { top: 12px; left: 12px; padding: 6px 11px 6px 7px; }
+.player-name-input { font-size: 16px; }
+}
+.profile-view { display: flex; flex-direction: column; gap: 18px; }
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: linear-gradient(160deg, rgba(74, 56, 38,0.7), rgba(52, 40, 27,0.85));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.profile-avatar {
+  width: 76px; height: 76px; flex: 0 0 auto;
+  display: grid; place-items: center;
+  font-size: 2.8rem;
+  border-radius: 50%;
+  background: var(--grad-cool);
+  box-shadow: 0 6px 18px rgba(77,208,225,0.4);
+}
+.profile-id { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.pstat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 16px 12px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(74, 56, 38,0.6), rgba(46, 35, 23,0.8));
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.pstat-ic { font-size: 1.5rem; }
+.pstat b { font-size: 1.3rem; font-family: var(--font-head); }
+.pstat small { color: var(--muted); font-size: 0.78rem; text-align: center; }
+.profile-h { font-family: var(--font-head); margin: 4px 0 0; }
+.poster-emoji {
+  font-size: 3.6rem;
+  line-height: 1;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.45));
+  transition: transform 0.25s cubic-bezier(0.34,1.4,0.5,1);
+  z-index: 1;
+}
+.poster-mark {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: rgba(8, 11, 27, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
+  backdrop-filter: blur(3px);
+}
+.pld-wrap {
+  width: min(620px, 94vw);
+  display: grid;
+  gap: 10px;
+}
+.pld-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+.pld-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.pld-shape.active,
+.pld-lock.active,
+.pld-bomb.active {
+  background: var(--accent);
+  color: #11142b;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.26);
+}
+.pld-gly { font-family: "Segoe UI Symbol","Noto Sans Symbols",sans-serif; font-size: 1.05em; }
+.pld-info {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.pld-side {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid transparent;
+}
+.pld-side.p1 { color: #ff8c9c; }
+.pld-side.p2 { color: #7fe2f0; }
+.pld-side.p1.active { border-color: var(--p1); box-shadow: 0 0 10px rgba(255,93,115,0.4); }
+.pld-side.p2.active { border-color: var(--p2); box-shadow: 0 0 10px rgba(77,208,225,0.4); }
+.pld-board {
+  display: grid;
+  grid-template-columns: repeat(var(--pld-n, 7), 1fr);
+  grid-template-rows: repeat(var(--pld-n, 7), 1fr);
+  gap: 5px;
+  width: min(560px, 92vw);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  padding: 10px;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 93, 115, 0.14), transparent 14%, transparent 86%, rgba(255, 93, 115, 0.14)),
+    linear-gradient(180deg, rgba(77, 208, 225, 0.14), transparent 14%, transparent 86%, rgba(77, 208, 225, 0.14)),
+    linear-gradient(135deg, #4c3a26, #483623);
+  box-shadow: var(--shadow);
+}
+.pld-cell {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s, background 0.15s, box-shadow 0.15s;
+}
+.pld-svg { width: 100%; height: 100%; display: block; }
+.pld-cell:disabled { opacity: 1; }
+.pld-cell.placeable {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgba(255, 209, 102, 0.3);
+}
+.pld-cell.placeable:hover { transform: scale(1.05); background: rgba(255, 209, 102, 0.15); }
+.player-name-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+}
+.player-name-input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+.public-rooms {
+  margin-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 12px;
+}
+.public-rooms-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+.public-rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.public-empty {
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-align: center;
+  padding: 18px 10px;
+  border: 1px dashed rgba(255,255,255,0.12);
+  border-radius: 12px;
+}
+.public-room {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(74, 56, 38,0.55), rgba(46, 35, 23,0.75));
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.pr-poster { flex: 0 0 auto; width: 56px; }
+.pr-poster .poster-emoji { font-size: 1.5rem; }
+.pr-poster .poster-mark { display: none; }
+.pr-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pr-info b { font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-info small { color: var(--muted); font-size: 0.76rem; }
+.pr-wait {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--accent);
+  font-weight: 700;
+  animation: bs-pending 1.2s ease-in-out infinite;
+}
+.pr-join { flex: 0 0 auto; }
+.pong-canvas {
+  width: min(700px, 96vw);
+  height: auto;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  background: #453421;
+  touch-action: none;
+}
+.pool-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 6px 0 18px;
+}
+.pool-hud {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(250px, 1.35fr) minmax(180px, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 920px;
+}
+.pool-player,
+.pool-mid {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015)),
+    var(--panel);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.pool-player {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  min-height: 72px;
+  padding: 11px 12px;
+}
+.pool-player span {
+  font-weight: 850;
+}
+.pool-player b {
+  color: var(--text);
+}
+.pool-player em {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 0.82rem;
+}
+.pool-player::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--p1);
+}
+.pool-player.p2::after {
+  background: var(--p2);
+}
+.pool-player.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.12), var(--shadow);
+}
+.pool-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  color: #413020;
+  font-size: 0.68rem;
+  font-weight: 900;
+  font-style: normal;
+}
+.pool-mini.power { background: #ffd166; }
+.pool-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 16px;
+  width: 100%;
+  max-width: 820px;
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.pool-legend b { color: var(--text); font-size: 0.82rem; }
+.pool-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+.pool-mid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-height: 72px;
+  min-width: 0;
+  padding: 10px 14px;
+  text-align: center;
+}
+.pool-mid b {
+  color: var(--accent);
+}
+.pool-mid span {
+  color: var(--text);
+  font-size: 0.86rem;
+  min-width: 0;
+}
+.pool-mid small {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.pool-table-wrap {
+  width: 100%;
+  max-width: 820px;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.38);
+}
+.pool-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: #40301f;
+  touch-action: none;
+}
+.pool-controls {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(190px, 1fr) auto;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: 940px;
+}
+.pool-field {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 9px 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+}
+.pool-field label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.pool-field input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.pool-field input:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.pool-val {
+  min-width: 38px;
+  color: var(--accent);
+  font-weight: 850;
+  text-align: right;
+}
+.pool-modes {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(138px, 1fr));
+  gap: 8px;
+}
+.pool-mode {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 1px 7px;
+  min-height: 50px;
+  padding: 7px 8px;
+  text-align: left;
+  white-space: normal;
+}
+.pool-mode span {
+  grid-row: 1 / -1;
+  min-width: 34px;
+  padding: 5px 6px;
+  border-radius: 7px;
+  background: rgba(255,255,255,0.09);
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-align: center;
+}
+.pool-mode b {
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.05;
+}
+.pool-mode small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.pool-mode.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.12);
+}
+.pool-mode:disabled,
+.pool-shoot:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pool-shoot {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 108px;
+  min-height: 50px;
+}
+@media (max-width: 880px) {
+.pool-hud {
+    grid-template-columns: 1fr 1fr;
+  }
+.pool-mid {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+.pool-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+.pool-modes,
+.pool-shoot {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+@media (max-width: 560px) {
+.pool-hud,
+.pool-controls {
+    grid-template-columns: 1fr;
+  }
+.pool-modes {
+    grid-template-columns: 1fr 1fr;
+  }
+.pool-field {
+    grid-template-columns: 58px 1fr 42px;
+  }
+.pool-player {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    min-height: 82px;
+  }
+.pool-player b {
+    justify-self: start;
+  }
+.pool-player em {
+    grid-column: 1;
+  }
+.pool-mode {
+    min-height: 48px;
+  }
+}
+.bd-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 6px 0 18px;
+}
+.bd-arena {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "center center"
+    "attack defense";
+  gap: 12px;
+  align-items: start;
+  width: 100%;
+  max-width: 1280px;
+}
+.bd-center-col { grid-area: center; }
+.bd-attack-panel { grid-area: attack; }
+.bd-defense-panel { grid-area: defense; }
+.bd-center-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.bd-command-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018)),
+    rgba(32,37,74,0.9);
+  box-shadow: var(--shadow);
+}
+.bd-panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 2px 2px 4px;
+}
+.bd-panel-head b {
+  color: var(--accent);
+  font-size: 0.92rem;
+}
+.bd-panel-head span,
+.bd-group-title {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+.bd-group-title {
+  margin-top: 2px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+.bd-action-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.bd-hud {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(260px, 1.15fr) minmax(210px, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 1280px;
+}
+.bd-player,
+.bd-mid {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.018)),
+    var(--panel);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.bd-player {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  min-height: 94px;
+  padding: 11px 12px 13px;
+}
+.bd-player span {
+  font-weight: 850;
+}
+.bd-player b {
+  color: var(--text);
+}
+.bd-player em,
+.bd-player small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: normal;
+}
+.bd-player.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.12), var(--shadow);
+}
+.bd-hp {
+  grid-column: 1 / -1;
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.34);
+  border-radius: 999px;
+}
+.bd-hp i {
+  display: block;
+  height: 100%;
+  background: var(--p1);
+  border-radius: inherit;
+}
+.bd-player.p2 .bd-hp i {
+  background: var(--p2);
+}
+.bd-mid {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 94px;
+  padding: 10px 14px;
+  text-align: center;
+}
+.bd-mid b {
+  color: var(--accent);
+}
+.bd-mid span {
+  color: var(--text);
+  font-size: 0.86rem;
+}
+.bd-mid small {
+  display: block;
+  max-width: 100%;
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.bd-stage-wrap {
+  width: 100%;
+  max-width: 1280px;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.38);
+}
+.bd-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: auto;
+  border-radius: 10px;
+  background: #443222;
+  touch-action: none;
+}
+.bd-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 1280px;
+}
+.bd-sidebox {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+}
+.bd-side-btn,
+.bd-action,
+.bd-online-side {
+  min-height: 54px;
+}
+.bd-side-btn.active,
+.bd-action.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.12);
+}
+.bd-online-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 174px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+}
+.bd-online-side b {
+  color: var(--accent);
+}
+.bd-online-side span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.bd-action {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 1px 7px;
+  min-height: 64px;
+  padding: 7px 8px;
+  text-align: left;
+  white-space: normal;
+}
+.bd-action span {
+  grid-row: 1 / 4;
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--ac, #ffd166) 38%, transparent), transparent 70%),
+    rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ac, #ffffff) 35%, transparent);
+  color: var(--accent);
+  font-size: 1.4rem;
+  font-weight: 900;
+  text-align: center;
+}
+.bd-action b {
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.05;
+}
+.bd-action small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.bd-action em {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 850;
+}
+.bd-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 1180px) {
+.bd-root,
+.bd-arena,
+.bd-hud,
+.bd-controls,
+.bd-command-panel,
+.bd-stage-wrap {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+.bd-hud {
+    grid-template-columns: 1fr 1fr;
+  }
+.bd-mid {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+.bd-side-btn,
+.bd-action {
+    min-width: 0;
+  }
+}
+@media (max-width: 620px) {
+.bd-arena {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "center"
+      "attack"
+      "defense";
+  }
+}
+@media (max-width: 560px) {
+.bd-hud,
+.bd-arena,
+.bd-controls {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+.bd-command-panel {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+.bd-stage-wrap {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+  }
+.bd-player {
+    grid-template-columns: 1fr;
+    min-height: 106px;
+  }
+.bd-player b {
+    justify-self: start;
+  }
+.bd-action-group {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.ptg-root { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.ptg-board {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 10px;
+  background: #55412b;
+  padding: 10px;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.ptg-quad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  background: #2a3060;
+  padding: 8px;
+  border-radius: 10px;
+  transform-origin: center center;
+  will-change: transform;
+}
+.ptg-quad.ptg-spin {
+  z-index: 5;
+  background: #344080;
+  box-shadow: 0 0 22px 4px var(--accent), inset 0 0 12px rgba(255, 255, 255, 0.15);
+}
+.ptg-quad.ptg-spin .ptg-marble { box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); }
+.ptg-cell {
+  width: 46px;
+  height: 46px;
+  background: #4e3c27;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+.ptg-cell:hover { background: #20254a; }
+.ptg-marble {
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+}
+.ptg-marble.p1 { background: radial-gradient(circle at 35% 30%, #ff8c9c, #d33049); }
+.ptg-marble.p2 { background: radial-gradient(circle at 35% 30%, #8be6f0, #1aa7bd); }
+.ptg-rotbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.ptg-rotbar.ptg-armed { opacity: 1; }
+.ptg-rotgroup { display: flex; align-items: center; gap: 4px; }
+.ptg-rotgroup span { font-size: 0.8rem; color: var(--muted); margin-right: 2px; }
+.pig-root { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 10px; }
+.pig-scores { display: flex; gap: 40px; }
+.pig-p { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pig-p span { font-size: 0.85rem; color: var(--muted); }
+.pig-p b { font-size: 2rem; }
+.pig-p.p1 b { color: var(--p1); }
+.pig-p.p2 b { color: var(--p2); }
+.pig-die-stage {
+  perspective: 800px; padding: 22px 30px; position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 50% 38%, #1f7a4d, #0c4429 78%);
+  box-shadow: inset 0 0 34px rgba(0,0,0,0.5), inset 0 0 0 3px rgba(255,255,255,0.06), 0 10px 26px rgba(0,0,0,0.4);
+}
+.pig-die-stage::after {
+  content: ""; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  width: 92px; height: 16px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); filter: blur(6px); z-index: 0;
+}
+.pig-die {
+  width: 110px; height: 110px;
+  background: linear-gradient(150deg, #ffffff 0%, #eef0f8 42%, #c9cee0 100%);
+  border-radius: 22px;
+  box-shadow: 0 6px 0 #aab0cc, 0 10px 0 #9298ba, 0 17px 24px rgba(0,0,0,0.5),
+              inset 0 4px 5px rgba(255,255,255,0.95), inset 0 -7px 10px rgba(120,126,165,0.55);
+  padding: 14px;
+  position: relative; z-index: 1;
+  user-select: none;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.pig-die-face {
+  width: 100%; height: 100%;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+}
+.pig-pip-slot { display: flex; align-items: center; justify-content: center; }
+.pig-pip-slot.on::after {
+  content: ""; width: 19px; height: 19px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #5a5f80, #14172a 75%);
+  box-shadow: inset 0 -2px 2px rgba(255,255,255,0.35), inset 0 2px 3px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.4);
+}
+.pig-temp { font-size: 1.1rem; color: var(--muted); }
+.pig-temp b { color: var(--accent); font-size: 1.4rem; }
+.pig-actions { display: flex; gap: 12px; }
+@media (prefers-reduced-motion: reduce) {
+.pr-wait { animation: none !important; }
+}
+.pd2-root { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 520px; margin: 0 auto; }
+.pd2-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pd2-pinfo { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 12px; border-radius: 12px; background: rgba(74, 56, 38,0.45); border: 1px solid rgba(255,255,255,0.12); }
+.pd2-pinfo b { font-size: 1.5rem; }
+.pd2-pinfo.p1 { box-shadow: inset 0 0 0 2px rgba(255,93,115,0.32); }
+.pd2-pinfo.p2 { box-shadow: inset 0 0 0 2px rgba(77,208,225,0.32); }
+.pd2-goal { font-size: 0.78rem; color: var(--muted); text-align: center; padding: 3px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); white-space: nowrap; }
+.pd2-hint { font-size: 0.85rem; color: var(--muted); text-align: center; line-height: 1.5; padding: 8px; }
+.pd2-reveal { min-height: 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.pd2-cards { display: flex; align-items: center; gap: 16px; }
+.pd2-vs { color: var(--muted); font-weight: 700; }
+.pd2-card {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 66px; min-height: 66px; padding: 8px 14px; border-radius: 14px; font-size: 2rem; font-weight: 800;
+  background: #eef1ff; color: #1a1f3d; box-shadow: 0 4px 10px rgba(0,0,0,0.35); animation: nd2-flip 0.4s ease;
+}
+.pd2-card small { font-size: 0.85rem; color: #6a73a0; }
+.pd2-card.p1 { box-shadow: 0 0 0 2px rgba(255,93,115,0.5), 0 4px 10px rgba(0,0,0,0.35); }
+.pd2-card.p2 { box-shadow: 0 0 0 2px rgba(77,208,225,0.5), 0 4px 10px rgba(0,0,0,0.35); }
+.pd2-verdict { font-size: 0.95rem; text-align: center; font-weight: 600; }
+.pd2-picklabel { text-align: center; font-size: 0.9rem; color: var(--muted); margin-bottom: 8px; }
+.pd2-over,
+.pd2-waitpick { color: var(--muted); font-style: italic; text-align: center; padding: 12px; }
+.pd2-payoff { font-size: 0.76rem; color: var(--muted); text-align: center; padding: 6px 10px; border-radius: 10px; background: rgba(255,255,255,0.05); }
+.pd2-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.pd2-btns .btn { min-height: 56px; font-size: 1rem; padding: 0 22px; }
+.pd2-coop { border-color: rgba(110,231,183,0.5) !important; }
+.pd2-betray { border-color: rgba(255,93,115,0.5) !important; }
+.pd2-coop:hover { box-shadow: 0 0 14px rgba(110,231,183,0.4); }
+.pd2-betray:hover { box-shadow: 0 0 14px rgba(255,93,115,0.4); }
+.pd2-hist { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; justify-content: center; }
+.pd2-histtitle { width: 100%; text-align: center; font-size: 0.75rem; color: var(--muted); }
+.pd2-hcell { font-size: 0.95rem; padding: 2px 5px; border-radius: 6px; background: rgba(74, 56, 38,0.5); }
+.bd-arena{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:1180px){.bd-root,.bd-arena,.bd-hud,.bd-controls,.bd-command-panel,.bd-stage-wrap{width:100%!important;max-width:100%!important}}
+@media (max-width:860px){.bd-arena{grid-template-columns:minmax(0,1fr)}}
+.bd-arena>*{min-width:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ======================== Menü ======================== -->
+  <section id="menuView" class="menu">
+    <div class="menu-head">
+      <h1>🏰 Festungs-Duell</h1>
+      <p>Gold sammelt sich von selbst. Investier es in Truppen, Türme und Upgrades und zerstöre die gegnerische Festung zuerst.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Spielmodus</h2>
+      <div class="modes" id="modes"></div>
+      <div id="aiLevelBox" class="hidden" style="margin-top:14px">
+        <div class="opt-row"><label>Bot-Stärke</label>
+          <div class="seg" id="aiLevels">
+            <button data-lv="easy">Leicht</button><button data-lv="medium">Mittel</button><button data-lv="hard">Schwer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel hidden" id="optionsPanel">
+      <h2>Einstellungen</h2>
+      <div id="optionsBox"></div>
+    </div>
+
+    <div class="panel hidden" id="onlinePanel">
+      <h2>Online gegen Freunde</h2>
+      <div class="online-grid" id="onlineSetup">
+        <div class="opt-row"><label for="nameInput">Dein Name</label><input id="nameInput" class="field" maxlength="16" placeholder="Spielername" autocomplete="nickname"></div>
+        <div class="row"><button class="btn primary" id="createBtn">Raum erstellen</button><span class="msg">oder mit Code beitreten:</span></div>
+        <div class="row"><input id="codeInput" class="field code" maxlength="4" placeholder="CODE" autocomplete="off"><button class="btn" id="joinBtn">Beitreten</button></div>
+        <div class="msg" id="onlineMsg"></div>
+      </div>
+      <div id="onlineWait" class="hidden" style="text-align:center">
+        <p class="msg">Schick diesen Code oder Link an deinen Freund:</p>
+        <div class="code-big" id="roomCode">----</div>
+        <div class="row" style="justify-content:center;margin:12px 0">
+          <button class="btn" id="copyBtn">🔗 Link kopieren</button>
+          <button class="btn ghost" id="cancelBtn">Abbrechen</button>
+        </div>
+        <p class="msg">Warte auf Mitspieler …</p>
+      </div>
+      <details class="lb" id="lbBox"><summary class="msg" style="cursor:pointer">🏆 Online-Rangliste</summary><div id="leaderboard"></div></details>
+    </div>
+
+    <div class="start-row" id="startRow"><button class="btn primary" id="startBtn">Los geht's!</button></div>
+
+    <div class="panel howto">
+      <details open>
+        <summary>So wird gespielt</summary>
+        <ol id="howtoList"></ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- ======================== Spiel ======================== -->
+  <section id="gameView" class="hidden">
+    <div class="topbar">
+      <button class="btn small" id="menuBtn">☰ Menü</button>
+      <h1 id="gameTitle">Festungs-Duell</h1>
+      <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
+      <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
+    </div>
+    <div class="online-info hidden" id="onlineInfo"></div>
+    <div class="scoreboard">
+      <div class="pcard p1" id="pc1"><div class="pname" id="pn1">Spieler 1</div><div class="pwins" id="pw1">0 Siege</div></div>
+      <div class="turn" id="turnBanner">…</div>
+      <div class="pcard p2" id="pc2"><div class="pname" id="pn2">Spieler 2</div><div class="pwins" id="pw2">0 Siege</div></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div class="board-wrap" id="boardWrap"></div>
+    <div class="game-actions">
+      <button class="btn" id="undoBtn">↶ Rückgängig</button>
+      <button class="btn" id="restartBtn">↻ Neue Runde</button>
+    </div>
+  </section>
+</div>
+
+<div class="overlay hidden" id="resultOverlay">
+  <div class="dialog">
+    <h2 id="resTitle">Sieg!</h2>
+    <p id="resText"></p>
+    <div class="row">
+      <button class="btn primary" id="againBtn">Nochmal</button>
+      <button class="btn" id="resMenuBtn">Menü</button>
+    </div>
+  </div>
+</div>
+<div class="overlay hidden" id="helpOverlay">
+  <div class="dialog help">
+    <h2>So wird gespielt</h2>
+    <ol id="helpList" style="line-height:1.5;padding-left:20px;color:#d6dbe4"></ol>
+    <div class="row" style="justify-content:flex-end"><button class="btn primary" id="helpClose">Verstanden</button></div>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script>
+/* ---------- Registry & Zufallszahlen (aus dem Original) ---------- */
+window.GameRegistry = {
+  games: [],
+  register(game) { this.games.push(game); },
+  get(id) { return this.games.find((g) => g.id === id) || null; },
+};
+window.makeRng = function (seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+</script>
+<script>
+/* ============================================================
+   Sound: hiệu ứng âm thanh sinh bằng Web Audio API (không cần file)
+   Dùng: Sound.play("place" | "capture" | "win" | "lose" | "draw"
+                     | "error" | "select" | "rotate" | "shot" | "miss"
+                     | "explode" | "flip" | "score" | "powerup" | "drop" | "coin" | "react")
+   ============================================================ */
+window.Sound = (function () {
+  let ctxAudio = null;
+  let enabled = true;
+  let masterVol = 0.8;
+  let musicOn = false;
+  let musicTimer = null;
+  let musicStep = 0;
+
+  // Khôi phục lựa chọn từ lần trước
+  try {
+    const saved = localStorage.getItem("festungs-duell-sound");
+    if (saved !== null) enabled = saved === "1";
+    const v = localStorage.getItem("festungs-duell-volume");
+    if (v !== null) masterVol = Math.max(0, Math.min(1, parseFloat(v) || 0.8));
+    musicOn = localStorage.getItem("festungs-duell-music") === "1";
+  } catch (e) { /* ignore */ }
+
+  function ac() {
+    if (!ctxAudio) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctxAudio = new AC();
+    }
+    // một số trình duyệt khóa audio cho tới khi có tương tác người dùng
+    if (ctxAudio.state === "suspended") ctxAudio.resume();
+    return ctxAudio;
+  }
+
+  // Phát một nốt: tần số, thời lượng, dạng sóng, âm lượng
+  function tone(freq, dur, type = "sine", vol = 0.2, startAt = 0) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const osc = a.createOscillator();
+    const gain = a.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    const v = Math.max(0.0001, vol * masterVol);
+    // bao âm: lên nhanh, tắt dần -> nghe "mượt", tránh tiếng "tách"
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(v, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(a.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  // Tiếng "nhiễu" ngắn cho hiệu ứng va chạm/nước (dùng buffer ngẫu nhiên)
+  function noise(dur, vol = 0.15, startAt = 0, filterFreq = 1000) {
+    const a = ac();
+    if (!a) return;
+    const t0 = a.currentTime + startAt;
+    const len = Math.floor(a.sampleRate * dur);
+    const buffer = a.createBuffer(1, len, a.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource();
+    src.buffer = buffer;
+    const filter = a.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    const gain = a.createGain();
+    gain.gain.setValueAtTime(vol * masterVol, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(filter).connect(gain).connect(a.destination);
+    src.start(t0);
+    src.stop(t0 + dur);
+  }
+
+  const EFFECTS = {
+    place()   { tone(440, 0.08, "triangle", 0.18); },
+    select()  { tone(660, 0.05, "sine", 0.12); },
+    capture() { tone(330, 0.1, "square", 0.14); tone(220, 0.12, "square", 0.12, 0.05); },
+    rotate()  { tone(300, 0.06, "sawtooth", 0.1); tone(420, 0.08, "sawtooth", 0.1, 0.06); },
+    shot()    { noise(0.18, 0.22, 0, 800); tone(160, 0.12, "square", 0.12); },
+    miss()    { noise(0.25, 0.12, 0, 500); },
+    error()   { tone(180, 0.18, "sawtooth", 0.16); },
+    win()     { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.2, i * 0.1)); },
+    lose()    { [392, 330, 262].forEach((f, i) => tone(f, 0.22, "sine", 0.18, i * 0.12)); },
+    draw()    { tone(440, 0.15, "sine", 0.15); tone(440, 0.15, "sine", 0.12, 0.16); },
+    notify()  { tone(880, 0.08, "sine", 0.16); tone(1175, 0.1, "sine", 0.16, 0.09); },
+    // Hiệu ứng riêng phong phú hơn
+    explode() {
+      noise(0.45, 0.32, 0, 380);
+      tone(90, 0.35, "sawtooth", 0.22);
+      tone(60, 0.5, "sine", 0.18, 0.02);
+      noise(0.18, 0.18, 0.04, 1600);
+    },
+    flip()    { tone(520, 0.05, "sine", 0.10); tone(760, 0.06, "triangle", 0.12, 0.05); },
+    score()   { [784, 1047, 1319].forEach((f, i) => tone(f, 0.12, "triangle", 0.16, i * 0.06)); },
+    powerup() { [440, 587, 740, 988].forEach((f, i) => tone(f, 0.1, "square", 0.12, i * 0.05)); },
+    drop()    { tone(300, 0.05, "sine", 0.12); tone(180, 0.12, "triangle", 0.16, 0.05); noise(0.06, 0.08, 0.04, 1200); },
+    coin()    { tone(988, 0.07, "square", 0.12); tone(1319, 0.1, "square", 0.12, 0.06); },
+    react()   { tone(700, 0.05, "sine", 0.12); tone(1050, 0.07, "sine", 0.1, 0.04); },
+  };
+
+  function play(name) {
+    if (!enabled) return;
+    const fn = EFFECTS[name];
+    if (fn) { try { fn(); } catch (e) { /* ignore */ } }
+  }
+
+  function setEnabled(on) {
+    enabled = !!on;
+    try { localStorage.setItem("festungs-duell-sound", enabled ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (enabled) play("select");
+  }
+
+  function isEnabled() { return enabled; }
+
+  // ----- Âm lượng tổng -----
+  function setVolume(v) {
+    masterVol = Math.max(0, Math.min(1, Number(v) || 0));
+    try { localStorage.setItem("festungs-duell-volume", String(masterVol)); } catch (e) { /* ignore */ }
+  }
+  function getVolume() { return masterVol; }
+
+  // ----- Nhạc nền sinh tự động (pad ngũ cung nhẹ nhàng) -----
+  const MSCALE = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25];
+  function musicTick() {
+    if (!musicOn) return;
+    const i = musicStep % MSCALE.length;
+    const f = MSCALE[i];
+    try {
+      tone(f, 1.8, "sine", 0.05);
+      if (musicStep % 4 === 0) tone(f / 2, 2.6, "triangle", 0.035);
+      if (musicStep % 3 === 0) tone(f * 1.5, 1.2, "sine", 0.025, 0.4);
+    } catch (e) { /* ignore */ }
+    musicStep++;
+  }
+  function startMusic() {
+    if (musicTimer) return;
+    musicStep = 0;
+    musicTick();
+    musicTimer = setInterval(musicTick, 950);
+  }
+  function stopMusic() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  }
+  function setMusic(on) {
+    musicOn = !!on;
+    try { localStorage.setItem("festungs-duell-music", musicOn ? "1" : "0"); } catch (e) { /* ignore */ }
+    if (musicOn) startMusic(); else stopMusic();
+  }
+  function isMusicOn() { return musicOn; }
+
+  return { play, setEnabled, isEnabled, setVolume, getVolume, setMusic, isMusicOn, startMusic, stopMusic };
+})();
+
+</script>
+<script>
+﻿/* Base Defense Duel - tower defense doi khang realtime nhe. */
+(function () {
+  const W = 1040;
+  const H = 600;
+  const LANES = [210, 300, 390];
+  const BASE_X = [112, W - 112];
+  const BASE_Y = 302;
+  const SPAWN_X = [172, W - 172];
+  const TOWER_X = [318, W - 318];
+  const MAX_TOWER_LVL = 4;
+  const UNIT_ORDER = ["grunt", "runner", "lancer", "shield", "archer", "siege", "brute", "bomber", "warlock", "medic", "golem"];
+
+  const UNIT_DEFS = {
+    grunt: {
+      label: "Rekrut",
+      icon: "🪖",
+      cost: 22,
+      hp: 62,
+      dmg: 10,
+      speed: 40,
+      cd: 0.72,
+      range: 20,
+      reward: 7,
+      color: "#ffd166",
+      hint: "billig, drückt die Bahn",
+    },
+    runner: {
+      label: "Späher",
+      icon: "🏃",
+      cost: 36,
+      hp: 48,
+      dmg: 12,
+      speed: 66,
+      cd: 0.58,
+      range: 18,
+      reward: 9,
+      color: "#8be6f0",
+      hint: "schnell",
+    },
+    shield: {
+      label: "Wächter",
+      icon: "🛡️",
+      cost: 46,
+      hp: 116,
+      dmg: 8,
+      speed: 32,
+      cd: 0.92,
+      range: 22,
+      reward: 12,
+      armor: 3,
+      color: "#a7f3d0",
+      hint: "steckt viel ein",
+    },
+    archer: {
+      label: "Bogenschütze",
+      icon: "🏹",
+      cost: 52,
+      hp: 56,
+      dmg: 18,
+      speed: 40,
+      cd: 1.04,
+      range: 96,
+      reward: 12,
+      color: "#f6f0a8",
+      hint: "Fernkampf",
+    },
+    brute: {
+      label: "Krieger",
+      icon: "🪓",
+      cost: 64,
+      hp: 142,
+      dmg: 23,
+      speed: 28,
+      cd: 1.05,
+      range: 24,
+      reward: 14,
+      color: "#ff9f5d",
+      hint: "viel Leben",
+    },
+    bomber: {
+      label: "Sprengmeister",
+      icon: "💣",
+      cost: 74,
+      hp: 72,
+      dmg: 31,
+      speed: 30,
+      cd: 1.28,
+      range: 28,
+      reward: 16,
+      splash: 38,
+      color: "#ff7a59",
+      hint: "Flächenschaden",
+    },
+    warlock: {
+      label: "Magier",
+      icon: "🧙",
+      cost: 88,
+      hp: 82,
+      dmg: 19,
+      speed: 37,
+      cd: 0.9,
+      range: 74,
+      reward: 18,
+      color: "#c792ea",
+      hint: "Fernkampf",
+    },
+    golem: {
+      label: "Steingolem",
+      icon: "🗿",
+      cost: 112,
+      hp: 235,
+      dmg: 32,
+      speed: 22,
+      cd: 1.34,
+      range: 28,
+      reward: 25,
+      armor: 5,
+      color: "#b7c1a1",
+      hint: "extrem zäh",
+    },
+    lancer: {
+      label: "Reiter",
+      icon: "🐎",
+      cost: 58,
+      hp: 78,
+      dmg: 27,
+      speed: 80,
+      cd: 0.82,
+      range: 22,
+      reward: 13,
+      color: "#f3a8c8",
+      hint: "sehr schneller Ansturm",
+    },
+    siege: {
+      label: "Kanone",
+      icon: "🚀",
+      cost: 98,
+      hp: 92,
+      dmg: 38,
+      speed: 18,
+      cd: 1.6,
+      range: 128,
+      reward: 20,
+      vsBase: 2.3,
+      color: "#cdb38b",
+      hint: "Fernkampf, gegen Festungen",
+    },
+    medic: {
+      label: "Sanitäter",
+      icon: "💉",
+      cost: 54,
+      hp: 70,
+      dmg: 0,
+      speed: 32,
+      cd: 1.0,
+      range: 66,
+      reward: 12,
+      heal: 16,
+      color: "#a8f0c8",
+      hint: "heilt Verbündete",
+    },
+  };
+
+  function create(ctx) {
+    const o = ctx.options || {};
+    const BASE_HP = o.hp || 560;
+    
+    const UNIT_LABEL_EN = { grunt: "Rekrut", runner: "Späher", shield: "Wächter", archer: "Bogenschütze", brute: "Krieger", bomber: "Sprengmeister", warlock: "Magier", golem: "Steingolem", lancer: "Reiter", siege: "Kanone", medic: "Sanitäter" };
+    const UNIT_HINT_EN = { grunt: "cheap, pushes lane", runner: "fast", shield: "tanks hits", archer: "long range", brute: "high HP", bomber: "splash", warlock: "ranged", golem: "super tanky", lancer: "very fast charge", siege: "long range, anti-base", medic: "heals allies" };
+    const unitLabel = (id) => ctx.t(UNIT_DEFS[id].label, UNIT_LABEL_EN[id] || UNIT_DEFS[id].label);
+    const unitHint = (id) => ctx.t(UNIT_DEFS[id].hint, UNIT_HINT_EN[id] || UNIT_DEFS[id].hint);
+    const START_GOLD = o.gold || 155;
+    const pace = o.pace || "normal";
+    const INCOME_BASE = pace === "fast" ? 16 : pace === "slow" ? 10 : 13;
+    const SCALING = o.scaling === "hard" ? 0.4 : o.scaling === "soft" ? 0.22 : 0.3;
+
+    const baseHp = [BASE_HP, BASE_HP];
+    const gold = [START_GOLD, START_GOLD];
+    const incomeLvl = [0, 0];
+    const armoryLvl = [0, 0];
+    const fortifyLvl = [0, 0];
+    const marchLvl = [0, 0];
+    const arsenalLvl = [0, 0];
+    const towers = [
+      [null, null, null],
+      [null, null, null],
+    ];
+    const units = [];
+    const bullets = [];
+    const pops = [];
+
+    let controlSide = ctx.isOnline ? ctx.mySeat : 0;
+    let selectedLane = [1, 1];
+    let elapsed = 0;
+    let lastTime = 0;
+    let over = false;
+    let raf = null;
+    let last = ("Schick Truppen über die Bahnen und bau Türme, um deine Festung zu schützen.");
+
+    const root = document.createElement("div");
+    root.className = "bd-root";
+    ctx.boardEl.appendChild(root);
+
+    const hud = document.createElement("div");
+    hud.className = "bd-hud";
+    root.appendChild(hud);
+
+    const arena = document.createElement("div");
+    arena.className = "bd-arena";
+    root.appendChild(arena);
+
+    const attackPanel = document.createElement("div");
+    attackPanel.className = "bd-command-panel bd-attack-panel";
+    attackPanel.innerHTML = `
+      <div class="bd-panel-head">
+        <b>${("Angriff")}</b>
+        <span>${("Truppen auf die gegnerische Bahn schicken")}</span>
+      </div>
+      <div class="bd-action-group bd-attack-actions"></div>
+    `;
+    arena.appendChild(attackPanel);
+
+    const centerCol = document.createElement("div");
+    centerCol.className = "bd-center-col";
+    arena.appendChild(centerCol);
+
+    const stageWrap = document.createElement("div");
+    stageWrap.className = "bd-stage-wrap";
+    const canvas = document.createElement("canvas");
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.className = "bd-canvas";
+    stageWrap.appendChild(canvas);
+    centerCol.appendChild(stageWrap);
+    const g = canvas.getContext("2d");
+    g.scale(DPR, DPR);
+
+    const controls = document.createElement("div");
+    controls.className = "bd-controls bd-center-controls";
+    controls.innerHTML = `
+      <div class="bd-sidebox"></div>
+    `;
+    centerCol.appendChild(controls);
+
+    const defensePanel = document.createElement("div");
+    defensePanel.className = "bd-command-panel bd-defense-panel";
+    defensePanel.innerHTML = `
+      <div class="bd-panel-head">
+        <b>${("Verteidigung")}</b>
+        <span>${("Türme, Reparatur und Upgrades")}</span>
+      </div>
+      <div class="bd-group-title">${("Türme & Festung")}</div>
+      <div class="bd-action-group bd-defense-actions"></div>
+      <div class="bd-group-title">${("Wirtschaft & Stärke")}</div>
+      <div class="bd-action-group bd-upgrade-actions"></div>
+    `;
+    arena.appendChild(defensePanel);
+
+    const sideBox = controls.querySelector(".bd-sidebox");
+    const attackBox = attackPanel.querySelector(".bd-attack-actions");
+    const defenseBox = defensePanel.querySelector(".bd-defense-actions");
+    const upgradeBox = defensePanel.querySelector(".bd-upgrade-actions");
+
+    const attackActions = [
+      ...UNIT_ORDER.map((id) => ({ id, kind: "unit", def: UNIT_DEFS[id] })),
+    ];
+    const defenseActions = [
+      { id: "tower", label: ("Turm bauen"), icon: "🗼", hint: ("gewählte Bahn") },
+      { id: "upTower", label: ("Turm verbessern"), icon: "⬆️", hint: ("max. 4") },
+      { id: "repair", label: ("Festung reparieren"), icon: "🔧", hint: ("+90 Leben") },
+    ];
+    const upgradeActions = [
+      { id: "econ", label: ("Wirtschaft"), icon: "💰", hint: ("+Gold/Sek.") },
+      { id: "armory", label: ("Schmiede"), icon: "⚒️", hint: ("+Schaden") },
+      { id: "fortify", label: ("Rüstung"), icon: "🛡️", hint: ("+Truppen-Leben") },
+      { id: "march", label: ("Marsch"), icon: "👟", hint: ("+Tempo") },
+      { id: "arsenal", label: ("Arsenal"), icon: "📡", hint: ("+Turm-Reichweite & Schaden") },
+    ];
+
+    function renderStaticControls() {
+      sideBox.innerHTML = "";
+      if (ctx.isOnline) {
+        const label = document.createElement("div");
+        label.className = "bd-online-side";
+        label.innerHTML = `<b>${(`Du: Spieler ${ctx.mySeat + 1}`)}</b><span>${(`Du steuerst die ${ctx.mySeat === 0 ? "rote" : "blaue"} Seite`)}</span>`;
+        sideBox.appendChild(label);
+      } else {
+        [0, 1].forEach((side) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn small bd-side-btn";
+          btn.dataset.side = String(side);
+          btn.textContent = "P" + (side + 1);
+          btn.addEventListener("click", () => {
+            controlSide = side;
+            ctx.setTurn(controlSide);
+            syncControls();
+            draw();
+          });
+          sideBox.appendChild(btn);
+        });
+      }
+
+      attackBox.innerHTML = "";
+      defenseBox.innerHTML = "";
+      upgradeBox.innerHTML = "";
+      [
+        [attackActions, attackBox],
+        [defenseActions, defenseBox],
+        [upgradeActions, upgradeBox],
+      ].forEach(([list, box]) => {
+        list.forEach((a) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn small bd-action";
+          btn.dataset.action = a.id;
+          const label = a.def ? unitLabel(a.id) : a.label;
+          const icon = a.def ? a.def.icon : a.icon;
+          const hint = a.def ? unitHint(a.id) : a.hint;
+          if (a.def && a.def.color) btn.style.setProperty("--ac", a.def.color);
+          btn.innerHTML = `<span>${icon}</span><b>${label}</b><small>${hint}</small><em></em>`;
+          btn.addEventListener("click", () => submitAction(a.id));
+          box.appendChild(btn);
+        });
+      });
+    }
+
+    canvas.addEventListener("click", (e) => {
+      if (over) return;
+      const p = pointerPos(e);
+      const lane = nearestLane(p.y);
+      if (lane !== -1) selectedLane[controlSide] = lane;
+      if (!ctx.isOnline) {
+        controlSide = p.x < W / 2 ? 0 : 1;
+        ctx.setTurn(controlSide);
+      }
+      syncControls();
+      draw();
+    });
+
+    function pointerPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (e.clientX - rect.left) * (W / rect.width),
+        y: (e.clientY - rect.top) * (H / rect.height),
+      };
+    }
+
+    function nearestLane(y) {
+      let best = -1, bestD = 999;
+      LANES.forEach((ly, i) => {
+        const d = Math.abs(y - ly);
+        if (d < bestD) { best = i; bestD = d; }
+      });
+      return bestD <= 48 ? best : -1;
+    }
+
+    function submitAction(action) {
+      if (over) return;
+      const side = ctx.isOnline ? ctx.mySeat : controlSide;
+      if (ctx.isOnline && side !== ctx.mySeat) return;
+      const lane = selectedLane[side];
+      const cmd = { kind: "bd", action, lane };
+      if (applyCommand(cmd, false) && ctx.isOnline) ctx.sendMove(cmd);
+    }
+
+    function applyMove(move, fromRemote) {
+      if (!move || move.kind !== "bd") return;
+      applyCommand(move, fromRemote);
+    }
+
+    function applyCommand(cmd, fromRemote) {
+      if (over) return false;
+      const side = ctx.isOnline
+        ? (fromRemote ? 1 - ctx.mySeat : ctx.mySeat)
+        : controlSide;
+      const lane = clamp(Number(cmd.lane), 0, 2);
+      const force = fromRemote && ctx.isOnline;
+      let ok = false;
+
+      if (UNIT_DEFS[cmd.action]) ok = buyUnit(side, lane, cmd.action, force);
+      else if (cmd.action === "tower") ok = buildTower(side, lane, force);
+      else if (cmd.action === "upTower") ok = upgradeTower(side, lane, force);
+      else if (cmd.action === "econ") ok = upgradeEconomy(side, force);
+      else if (cmd.action === "armory") ok = upgradeArmory(side, force);
+      else if (cmd.action === "fortify") ok = upgradeTrack(side, force, fortifyLvl, fortifyCost, ("Rüstung"));
+      else if (cmd.action === "march") ok = upgradeTrack(side, force, marchLvl, marchCost, ("Marsch"));
+      else if (cmd.action === "arsenal") ok = upgradeTrack(side, force, arsenalLvl, arsenalCost, ("Arsenal"));
+      else if (cmd.action === "repair") ok = repairBase(side, force);
+
+      if (ok) {
+        selectedLane[side] = lane;
+        renderHud();
+        syncControls();
+        updateStatus();
+      }
+      return ok;
+    }
+
+    function buyUnit(side, lane, type, force) {
+      const def = UNIT_DEFS[type];
+      if (!spend(side, def.cost, force)) return false;
+      spawnUnit(side, lane, type);
+      last = (`Spieler ${side + 1} schickt ${unitLabel(type)} auf Bahn ${lane + 1}.`);
+      ctx.sound("select");
+      return true;
+    }
+
+    function buildTower(side, lane, force) {
+      if (towers[side][lane]) return false;
+      const cost = towerBuildCost(side);
+      if (!spend(side, cost, force)) return false;
+      towers[side][lane] = { lvl: 1, cd: 0, pulse: 20 };
+      last = (`Spieler ${side + 1} baut einen Turm auf Bahn ${lane + 1}.`);
+      ctx.sound("capture");
+      return true;
+    }
+
+    function upgradeTower(side, lane, force) {
+      const tw = towers[side][lane];
+      if (!tw || tw.lvl >= MAX_TOWER_LVL) return false;
+      const cost = towerUpgradeCost(tw);
+      if (!spend(side, cost, force)) return false;
+      tw.lvl += 1;
+      tw.pulse = 28;
+      last = (`Spieler ${side + 1} verbessert den Turm auf Bahn ${lane + 1} auf Stufe ${tw.lvl}.`);
+      ctx.sound("capture");
+      return true;
+    }
+
+    function upgradeEconomy(side, force) {
+      const cost = econCost(side);
+      if (!spend(side, cost, force)) return false;
+      incomeLvl[side] += 1;
+      last = (`Spieler ${side + 1} verbessert die Wirtschaft auf Stufe ${incomeLvl[side]}.`);
+      ctx.sound("select");
+      return true;
+    }
+
+    function upgradeArmory(side, force) {
+      const cost = armoryCost(side);
+      if (!spend(side, cost, force)) return false;
+      armoryLvl[side] += 1;
+      last = (`Spieler ${side + 1} verbessert die Schmiede auf Stufe ${armoryLvl[side]}.`);
+      ctx.sound("select");
+      return true;
+    }
+
+    function upgradeTrack(side, force, lvlArr, costFn, name) {
+      const cost = costFn(side);
+      if (!spend(side, cost, force)) return false;
+      lvlArr[side] += 1;
+      last = (`Spieler ${side + 1} verbessert ${name} auf Stufe ${lvlArr[side]}.`);
+      ctx.sound("select");
+      return true;
+    }
+
+    function repairBase(side, force) {
+      const cost = repairCost(side);
+      if (baseHp[side] >= BASE_HP) return false;
+      if (!spend(side, cost, force)) return false;
+      baseHp[side] = Math.min(BASE_HP, baseHp[side] + 90);
+      last = (`Spieler ${side + 1} repariert die Festung.`);
+      ctx.sound("select");
+      return true;
+    }
+
+    function spend(side, cost, force) {
+      if (!force && gold[side] < cost) return false;
+      gold[side] = Math.max(0, gold[side] - cost);
+      return true;
+    }
+
+    function spawnUnit(owner, lane, type) {
+      const def = UNIT_DEFS[type];
+      const scale = unitScale(owner);
+      const hp0 = Math.round(def.hp * scale * (1 + fortifyLvl[owner] * 0.14));
+      const y = LANES[lane] + (ctx.rng() * 12 - 6);
+      units.push({
+        id: Math.random().toString(36).slice(2),
+        owner,
+        lane,
+        type,
+        x: SPAWN_X[owner],
+        y,
+        hp: hp0,
+        maxHp: hp0,
+        dmg: Math.round(def.dmg * (1 + armoryLvl[owner] * 0.13 + elapsed / 360 * SCALING)),
+        speed: def.speed * (1 + elapsed / 520 * 0.08) * (1 + marchLvl[owner] * 0.1),
+        cd: 0.18 + ctx.rng() * 0.24,
+        flash: 16,
+        phase: ctx.rng() * Math.PI * 2,
+      });
+      pops.push({ x: SPAWN_X[owner], y, text: "+" + def.label, color: def.color, t: 46 });
+    }
+
+    function update(dt) {
+      if (over) return;
+      elapsed += dt;
+      for (let side = 0; side < 2; side++) gold[side] += incomeRate(side) * dt;
+      updateUnits(dt);
+      updateTowers(dt);
+      updateEffects(dt);
+      checkEnd();
+      renderHud();
+      syncControls();
+      updateStatus();
+    }
+
+    function updateUnits(dt) {
+      units.forEach((u) => {
+        if (u.hp <= 0) return;
+        u.flash = Math.max(0, u.flash - dt * 35);
+        u.cd = Math.max(0, u.cd - dt);
+        u.phase += dt * (u.speed * 0.18 + 4);
+        const dir = u.owner === 0 ? 1 : -1;
+        const enemyBaseX = BASE_X[1 - u.owner];
+        const def = UNIT_DEFS[u.type];
+        const atBase = u.owner === 0 ? u.x >= enemyBaseX - 46 : u.x <= enemyBaseX + 46;
+
+        if (def.heal) {
+          const ally = woundedAllyInLane(u, def.range + 14);
+          if (ally && u.cd <= 0) {
+            const amt = def.heal + armoryLvl[u.owner] * 3;
+            ally.hp = Math.min(ally.maxHp, ally.hp + amt);
+            ally.flash = 8;
+            pops.push({ x: ally.x, y: ally.y - 22, text: "+" + amt, color: "#6ee7b7", t: 34 });
+            u.cd = def.cd;
+            ctx.sound("place");
+          } else if (!atBase) {
+            u.x += dir * u.speed * dt;
+            u.y += (LANES[u.lane] - u.y) * Math.min(1, dt * 4);
+          }
+          return;
+        }
+
+        const enemy = closestEnemyInLane(u);
+        if (enemy && Math.abs(enemy.x - u.x) <= def.range + 14) {
+          if (u.cd <= 0) {
+            attackUnit(u, enemy);
+            u.cd = def.cd;
+          }
+        } else if (atBase) {
+          if (u.cd <= 0) {
+            const dmg = Math.round(u.dmg * (def.vsBase || 1));
+            baseHp[1 - u.owner] = Math.max(0, baseHp[1 - u.owner] - dmg);
+            pops.push({ x: enemyBaseX, y: LANES[u.lane] - 34, text: "-" + dmg, color: "#ff5d73", t: 44 });
+            u.cd = def.cd;
+            ctx.sound("shot");
+          }
+        } else {
+          u.x += dir * u.speed * dt;
+          const targetY = LANES[u.lane];
+          u.y += (targetY - u.y) * Math.min(1, dt * 4);
+        }
+      });
+      for (let i = units.length - 1; i >= 0; i--) {
+        if (units[i].hp <= 0) units.splice(i, 1);
+      }
+    }
+
+    function woundedAllyInLane(medic, range) {
+      let best = null, bestPct = 1;
+      units.forEach((o) => {
+        if (o.owner !== medic.owner || o.lane !== medic.lane || o.hp <= 0) return;
+        if (o.hp >= o.maxHp) return;
+        if (Math.abs(o.x - medic.x) > range) return;
+        const pct = o.hp / o.maxHp;
+        if (pct < bestPct) { bestPct = pct; best = o; }
+      });
+      return best;
+    }
+
+    function attackUnit(attacker, target) {
+      const def = UNIT_DEFS[attacker.type];
+      damageUnit(target, attacker.dmg, attacker.owner, attacker.x, attacker.y);
+      if (!def.splash) return;
+      units.forEach((other) => {
+        if (other === target || other.owner === attacker.owner || other.hp <= 0 || other.lane !== attacker.lane) return;
+        if (dist(target.x, target.y, other.x, other.y) > def.splash) return;
+        damageUnit(other, Math.round(attacker.dmg * 0.42), attacker.owner, attacker.x, attacker.y);
+      });
+    }
+
+    function closestEnemyInLane(unit) {
+      const dir = unit.owner === 0 ? 1 : -1;
+      let best = null, bestD = 9999;
+      units.forEach((other) => {
+        if (other.owner === unit.owner || other.lane !== unit.lane || other.hp <= 0) return;
+        const ahead = (other.x - unit.x) * dir;
+        if (ahead < -8) return;
+        if (ahead < bestD) { bestD = ahead; best = other; }
+      });
+      return best;
+    }
+
+    function damageUnit(unit, dmg, bySide, x, y) {
+      const armor = UNIT_DEFS[unit.type].armor || 0;
+      const dealt = Math.max(1, Math.round(dmg - armor));
+      unit.hp -= dealt;
+      unit.flash = 16;
+      pops.push({ x: unit.x, y: unit.y - 20, text: "-" + dealt, color: "#ffd166", t: 32 });
+      if (unit.hp <= 0) {
+        const reward = UNIT_DEFS[unit.type].reward;
+        gold[bySide] += reward;
+        pops.push({ x, y: y - 28, text: "+" + reward + "g", color: "#6ee7b7", t: 38 });
+        ctx.sound("capture");
+      } else {
+        ctx.sound("place");
+      }
+    }
+
+    function updateTowers(dt) {
+      for (let side = 0; side < 2; side++) {
+        for (let lane = 0; lane < 3; lane++) {
+          const tw = towers[side][lane];
+          if (!tw) continue;
+          tw.cd = Math.max(0, tw.cd - dt);
+          tw.pulse = Math.max(0, tw.pulse - dt * 35);
+          if (tw.cd > 0) continue;
+          const target = towerTarget(side, lane, tw);
+          if (!target) continue;
+          const dmg = Math.round((9 + tw.lvl * 5) * (1 + armoryLvl[side] * 0.06 + arsenalLvl[side] * 0.1));
+          tw.cd = Math.max(0.62, 1.24 - tw.lvl * 0.05);
+          damageUnit(target, dmg, side, towerX(side), LANES[lane]);
+          bullets.push({
+            x1: towerX(side),
+            y1: LANES[lane] - 54,
+            x2: target.x,
+            y2: target.y,
+            color: side === 0 ? "#ff5d73" : "#4dd0e1",
+            t: 18,
+          });
+        }
+      }
+    }
+
+    function towerTarget(side, lane, tw) {
+      const x = towerX(side);
+      const y = LANES[lane] - 50;
+      const range = 104 + tw.lvl * 14 + arsenalLvl[side] * 18;
+      let best = null, bestD = 9999;
+      units.forEach((u) => {
+        if (u.owner === side || u.hp <= 0) return;
+        const d = dist(x, y, u.x, u.y);
+        if (d <= range && d < bestD) { best = u; bestD = d; }
+      });
+      return best;
+    }
+
+    function updateEffects(dt) {
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].t -= dt * 60;
+        if (bullets[i].t <= 0) bullets.splice(i, 1);
+      }
+      for (let i = pops.length - 1; i >= 0; i--) {
+        pops[i].t -= dt * 60;
+        pops[i].y -= dt * 16;
+        if (pops[i].t <= 0) pops.splice(i, 1);
+      }
+    }
+
+    function checkEnd() {
+      if (baseHp[0] > 0 && baseHp[1] > 0) return;
+      over = true;
+      ctx.setTurn(-1);
+      if (baseHp[0] <= 0 && baseHp[1] <= 0) {
+        ctx.setStatus(("🤝 Beide Festungen sind gefallen – unentschieden!"));
+      } else {
+        const winner = baseHp[0] <= 0 ? 1 : 0;
+        ctx.incScore(winner);
+        ctx.setStatus((`🎉 Spieler ${winner + 1} zerstört die gegnerische Festung und gewinnt!`));
+      }
+    }
+
+    function renderHud() {
+      hud.innerHTML = `
+        ${playerHud(0)}
+        <div class="bd-mid">
+          <b>${over ? ("Vorbei") : "Base Defense Duel"}</b>
+          <span>${timeText()} · ${(`Truppenstärke x${unitScale(0).toFixed(2)}`)}</span>
+          <small>${last}</small>
+        </div>
+        ${playerHud(1)}
+      `;
+    }
+
+    function playerHud(side) {
+      const hpPct = Math.max(0, baseHp[side] / BASE_HP * 100);
+      const towersBuilt = towers[side].filter(Boolean).length;
+      return `
+        <div class="bd-player p${side + 1} ${controlSide === side && !over ? "active" : ""}">
+          <span>${(`Spieler ${side + 1}`)}</span>
+          <b>${Math.ceil(baseHp[side])}/${BASE_HP} HP</b>
+          <em>${(`${Math.floor(gold[side])} Gold · +${incomeRate(side).toFixed(1)}/s · ${towersBuilt}/3 Türme`)}</em>
+          <i class="bd-hp"><i style="width:${hpPct}%"></i></i>
+          <small>💰${incomeLvl[side]} ⚒️${armoryLvl[side]} 🛡️${fortifyLvl[side]} 👟${marchLvl[side]} 📡${arsenalLvl[side]}</small>
+        </div>
+      `;
+    }
+
+    function syncControls() {
+      if (!root.isConnected) return;
+      const side = ctx.isOnline ? ctx.mySeat : controlSide;
+      if (!ctx.isOnline) {
+        sideBox.querySelectorAll(".bd-side-btn").forEach((btn) => {
+          btn.classList.toggle("active", Number(btn.dataset.side) === controlSide);
+        });
+      }
+      root.querySelectorAll(".bd-action").forEach((btn) => {
+        const id = btn.dataset.action;
+        const cost = actionCost(side, id, selectedLane[side]);
+        const label = cost === Infinity ? ("nicht verfügbar") : ctx.t(cost + " Gold", cost + " gold");
+        btn.querySelector("em").textContent = label;
+        btn.disabled = over || (ctx.isOnline && side !== ctx.mySeat) || cost === Infinity || gold[side] < cost;
+      });
+    }
+
+    function updateStatus() {
+      if (over) return;
+      const side = ctx.isOnline ? ctx.mySeat : controlSide;
+      if (ctx.isOnline) {
+        ctx.setStatus((`Du bist Spieler ${ctx.mySeat + 1}. Tippe auf eine Bahn, dann schick Truppen, bau Türme und verbessere.`));
+      } else {
+        ctx.setStatus((`Du steuerst Spieler ${side + 1}. Tippe auf eine Bahn zum Auswählen – auf die andere Spielfeldhälfte, um die Seite zu wechseln.`));
+      }
+      ctx.setTurn(side);
+    }
+
+    function actionCost(side, id, lane) {
+      if (UNIT_DEFS[id]) return UNIT_DEFS[id].cost;
+      if (id === "tower") return towers[side][lane] ? Infinity : towerBuildCost(side);
+      if (id === "upTower") {
+        const tw = towers[side][lane];
+        return !tw || tw.lvl >= MAX_TOWER_LVL ? Infinity : towerUpgradeCost(tw);
+      }
+      if (id === "econ") return econCost(side);
+      if (id === "armory") return armoryCost(side);
+      if (id === "fortify") return fortifyCost(side);
+      if (id === "march") return marchCost(side);
+      if (id === "arsenal") return arsenalCost(side);
+      if (id === "repair") return baseHp[side] >= BASE_HP ? Infinity : repairCost(side);
+      return Infinity;
+    }
+
+    function towerBuildCost(side) {
+      return 82 + towers[side].filter(Boolean).length * 26;
+    }
+
+    function towerUpgradeCost(tw) {
+      return 68 + tw.lvl * 48;
+    }
+
+    function econCost(side) {
+      return 84 + incomeLvl[side] * 58;
+    }
+
+    function armoryCost(side) {
+      return 112 + armoryLvl[side] * 78;
+    }
+
+    function fortifyCost(side) {
+      return 96 + fortifyLvl[side] * 70;
+    }
+
+    function marchCost(side) {
+      return 90 + marchLvl[side] * 66;
+    }
+
+    function arsenalCost(side) {
+      return 104 + arsenalLvl[side] * 74;
+    }
+
+    function repairCost(side) {
+      return 74 + Math.floor((BASE_HP - baseHp[side]) / 180) * 12;
+    }
+
+    function incomeRate(side) {
+      return INCOME_BASE + incomeLvl[side] * 3.4 + elapsed / 120;
+    }
+
+    function unitScale(side) {
+      return 1 + armoryLvl[side] * 0.12 + elapsed / 200 * SCALING;
+    }
+
+    function towerX(side) {
+      return TOWER_X[side];
+    }
+
+    function timeText() {
+      const m = Math.floor(elapsed / 60);
+      const s = Math.floor(elapsed % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function draw() {
+      drawBackground();
+      drawBases();
+      drawTowers();
+      drawUnits();
+      drawEffects();
+      drawSelection();
+    }
+
+    function drawBackground() {
+      const sky = g.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#10213c");
+      sky.addColorStop(0.52, "#173251");
+      sky.addColorStop(1, "#0b1726");
+      g.fillStyle = sky;
+      g.fillRect(0, 0, W, H);
+
+      
+      g.fillStyle = "rgba(255,255,255,0.045)";
+      for (let i = 0; i < 7; i++) {
+        g.beginPath();
+        g.ellipse(90 + i * 118, 70 + (i % 3) * 22, 46, 11, 0, 0, Math.PI * 2);
+        g.fill();
+      }
+
+      
+      g.fillStyle = "rgba(255,255,255,0.022)";
+      roundRect(g, 58, LANES[0] - 44, W - 116, LANES[2] - LANES[0] + 88, 26);
+      g.fill();
+
+      LANES.forEach((y, lane) => {
+        const sel = lane === selectedLane[controlSide];
+        const road = g.createLinearGradient(0, y - 26, 0, y + 26);
+        road.addColorStop(0, "rgba(255,255,255,0.11)");
+        road.addColorStop(0.5, "rgba(255,255,255,0.17)");
+        road.addColorStop(1, "rgba(0,0,0,0.12)");
+        g.fillStyle = road;
+        roundRect(g, 68, y - 26, W - 136, 52, 26);
+        g.fill();
+        g.strokeStyle = sel ? "rgba(255,209,102,0.6)" : "rgba(255,255,255,0.1)";
+        g.lineWidth = sel ? 3 : 1.5;
+        roundRect(g, 68, y - 26, W - 136, 52, 26);
+        g.stroke();
+        drawLaneFlow(y);
+        g.fillStyle = "rgba(255,255,255,0.3)";
+        g.font = "800 11px Segoe UI, sans-serif";
+        g.textAlign = "center";
+        g.fillText("BAHN " + (lane + 1), W / 2, y + 4);
+      });
+
+      g.fillStyle = "rgba(0,0,0,0.2)";
+      g.fillRect(0, H - 48, W, 48);
+      g.fillStyle = "rgba(255,255,255,0.72)";
+      g.font = "900 12px Segoe UI, sans-serif";
+      g.textAlign = "center";
+      g.fillText("FESTUNGS-DUELL", W / 2, 28);
+      g.textAlign = "left";
+    }
+
+    function drawLaneFlow(y) {
+      const off = (elapsed * 26) % 40;
+      g.lineCap = "round";
+      g.lineWidth = 3;
+      g.strokeStyle = "rgba(255,93,115,0.22)";
+      for (let x = 150 - off; x < W / 2 - 26; x += 40) {
+        g.beginPath();
+        g.moveTo(x - 7, y - 7); g.lineTo(x, y); g.lineTo(x - 7, y + 7);
+        g.stroke();
+      }
+      g.strokeStyle = "rgba(77,208,225,0.22)";
+      for (let x = W - 150 + off; x > W / 2 + 26; x -= 40) {
+        g.beginPath();
+        g.moveTo(x + 7, y - 7); g.lineTo(x, y); g.lineTo(x + 7, y + 7);
+        g.stroke();
+      }
+    }
+
+    function drawBases() {
+      [0, 1].forEach((side) => {
+        const x = BASE_X[side];
+        const color = side === 0 ? "#ff5d73" : "#4dd0e1";
+        const hpPct = Math.max(0, baseHp[side] / BASE_HP);
+        g.save();
+        g.translate(x, BASE_Y);
+        g.fillStyle = "rgba(0,0,0,0.32)";
+        g.beginPath();
+        g.ellipse(0, 112, 54, 13, 0, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = side === 0 ? "#502b45" : "#224451";
+        roundRect(g, -38, -64, 76, 142, 10);
+        g.fill();
+        g.fillStyle = color;
+        roundRect(g, -30, -52, 60, 32, 8);
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,0.12)";
+        for (let i = -32; i <= 32; i += 32) g.fillRect(i - 5, -8, 10, 62);
+        g.fillStyle = "#101422";
+        g.font = "900 13px Segoe UI, sans-serif";
+        g.textAlign = "center";
+        g.fillText("P" + (side + 1), 0, -30);
+        g.fillStyle = "rgba(0,0,0,0.42)";
+        roundRect(g, -46, -86, 92, 9, 999);
+        g.fill();
+        g.fillStyle = hpPct > 0.32 ? "#6ee7b7" : "#ff5d73";
+        roundRect(g, -46, -86, 92 * hpPct, 9, 999);
+        g.fill();
+        g.restore();
+      });
+    }
+
+    function drawTowers() {
+      [0, 1].forEach((side) => {
+        LANES.forEach((y, lane) => {
+          const x = towerX(side);
+          const tw = towers[side][lane];
+          const selected = controlSide === side && selectedLane[side] === lane;
+          g.save();
+          g.translate(x, y - 50);
+          g.strokeStyle = selected ? "rgba(255,209,102,0.72)" : "rgba(255,255,255,0.18)";
+          g.lineWidth = selected ? 3 : 1;
+          g.setLineDash(tw ? [] : [6, 6]);
+          roundRect(g, -24, -20, 48, 44, 8);
+          g.stroke();
+          g.setLineDash([]);
+          if (tw) {
+            const color = side === 0 ? "#ff5d73" : "#4dd0e1";
+            g.fillStyle = "#2a3060";
+            roundRect(g, -20, -18, 40, 40, 7);
+            g.fill();
+            g.fillStyle = color;
+            g.beginPath();
+            g.arc(0, -3, 13 + tw.lvl, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = "#101422";
+            g.font = "900 10px Segoe UI, sans-serif";
+            g.textAlign = "center";
+            g.textBaseline = "middle";
+            g.fillText(String(tw.lvl), 0, -3);
+            if (tw.pulse > 0) {
+              g.strokeStyle = "rgba(255,209,102,0.45)";
+              g.beginPath();
+              g.arc(0, -3, 22 + tw.pulse * 0.6, 0, Math.PI * 2);
+              g.stroke();
+            }
+          } else {
+            g.fillStyle = "rgba(255,255,255,0.32)";
+            g.font = "800 10px Segoe UI, sans-serif";
+            g.textAlign = "center";
+            g.textBaseline = "middle";
+            g.fillText("+", 0, 1);
+          }
+          g.restore();
+          g.textBaseline = "alphabetic";
+        });
+      });
+    }
+
+    function drawUnits() {
+      units.forEach((u) => {
+        if (u.hp <= 0) return;
+        const def = UNIT_DEFS[u.type];
+        const sideColor = u.owner === 0 ? "#ff5d73" : "#4dd0e1";
+        const dir = u.owner === 0 ? 1 : -1;
+        const body = u.flash > 0 ? "#ffffff" : def.color;
+        const walk = Math.sin(u.phase);
+        const stride = Math.cos(u.phase);
+        g.save();
+        g.translate(u.x, u.y);
+        g.fillStyle = "rgba(0,0,0,0.28)";
+        const big = u.type === "brute" || u.type === "golem";
+        g.beginPath();
+        g.ellipse(0, 18, big ? 25 : 18, 6, 0, 0, Math.PI * 2);
+        g.fill();
+        g.scale(dir, 1);
+        drawUnitLegs(walk, stride, sideColor, big ? 1.18 : 1);
+        if (u.type === "brute") drawBruteUnit(body, sideColor, walk);
+        else if (u.type === "runner") drawRunnerUnit(body, sideColor, walk);
+        else if (u.type === "shield") drawShieldUnit(body, sideColor, walk);
+        else if (u.type === "archer") drawArcherUnit(body, sideColor, walk);
+        else if (u.type === "bomber") drawBomberUnit(body, sideColor, walk);
+        else if (u.type === "warlock") drawWarlockUnit(body, sideColor, walk);
+        else if (u.type === "golem") drawGolemUnit(body, sideColor, walk);
+        else if (u.type === "lancer") drawLancerUnit(body, sideColor, walk);
+        else if (u.type === "siege") drawSiegeUnit(body, sideColor, walk);
+        else if (u.type === "medic") drawMedicUnit(body, sideColor, walk);
+        else drawGruntUnit(body, sideColor, walk);
+        g.restore();
+
+        const pct = Math.max(0, u.hp / u.maxHp);
+        g.save();
+        g.translate(u.x, u.y);
+        g.fillStyle = "rgba(0,0,0,0.48)";
+        roundRect(g, -18, -34, 36, 5, 999);
+        g.fill();
+        g.fillStyle = pct > 0.35 ? "#6ee7b7" : "#ff5d73";
+        roundRect(g, -18, -34, 36 * pct, 5, 999);
+        g.fill();
+        g.restore();
+      });
+    }
+
+    function drawUnitLegs(walk, stride, color, scale) {
+      g.strokeStyle = color;
+      g.lineWidth = 3;
+      g.lineCap = "round";
+      g.beginPath();
+      g.moveTo(-7, 6);
+      g.lineTo(-11 + walk * 5, 18 * scale);
+      g.lineTo(-18 + walk * 6, 20 * scale);
+      g.moveTo(7, 6);
+      g.lineTo(12 - walk * 5, 18 * scale);
+      g.lineTo(18 - walk * 6, 20 * scale);
+      g.stroke();
+      g.strokeStyle = "rgba(255,255,255,0.22)";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(-5, 7);
+      g.lineTo(-5 + stride * 4, 16 * scale);
+      g.moveTo(5, 7);
+      g.lineTo(5 - stride * 4, 16 * scale);
+      g.stroke();
+    }
+
+    function drawGruntUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      roundRect(g, -12, -18, 24, 25, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      roundRect(g, -9, -26, 18, 12, 6);
+      g.fill();
+      g.fillStyle = "#101422";
+      g.fillRect(-6, -22, 12, 3);
+      g.strokeStyle = "#d8dee9";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(12, -5);
+      g.lineTo(23, -13 + walk * 2);
+      g.stroke();
+      g.fillStyle = "rgba(255,255,255,0.2)";
+      roundRect(g, -18, -9, 9, 17, 4);
+      g.fill();
+    }
+
+    function drawRunnerUnit(body, sideColor, walk) {
+      g.save();
+      g.rotate(-0.18);
+      g.fillStyle = body;
+      g.beginPath();
+      g.moveTo(-14, 9);
+      g.quadraticCurveTo(-8, -18, 14, -12);
+      g.quadraticCurveTo(20, -2, 8, 9);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = sideColor;
+      g.lineWidth = 3;
+      g.stroke();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(13, -17, 8, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "#f8fafc";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(-13, -6);
+      g.lineTo(-23, -10 - walk * 4);
+      g.moveTo(8, -3);
+      g.lineTo(21, 4 + walk * 2);
+      g.stroke();
+      g.restore();
+    }
+
+    function drawBruteUnit(body, sideColor, walk) {
+      g.fillStyle = "#2a3060";
+      roundRect(g, -19, -25, 38, 36, 10);
+      g.fill();
+      g.fillStyle = body;
+      roundRect(g, -15, -20, 30, 29, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      roundRect(g, -13, -33, 26, 16, 8);
+      g.fill();
+      g.fillStyle = "#101422";
+      g.fillRect(-8, -27, 16, 4);
+      g.strokeStyle = "rgba(255,255,255,0.5)";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(-18, -28);
+      g.lineTo(-27, -36);
+      g.moveTo(18, -28);
+      g.lineTo(27, -36);
+      g.stroke();
+      g.strokeStyle = sideColor;
+      g.lineWidth = 5;
+      g.beginPath();
+      g.moveTo(-19, -8);
+      g.lineTo(-29, 3 + walk * 2);
+      g.moveTo(19, -8);
+      g.lineTo(29, 3 - walk * 2);
+      g.stroke();
+    }
+
+    function drawShieldUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      roundRect(g, -12, -20, 24, 26, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      roundRect(g, -9, -29, 18, 12, 6);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,0.3)";
+      roundRect(g, -24, -18, 16, 30, 7);
+      g.fill();
+      g.strokeStyle = sideColor;
+      g.lineWidth = 3;
+      g.stroke();
+      g.strokeStyle = "#d8dee9";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(11, -4);
+      g.lineTo(23, -10 + walk * 2);
+      g.stroke();
+    }
+
+    function drawArcherUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      roundRect(g, -12, -18, 24, 24, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(0, -24, 9, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "#f2d7a2";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.arc(18, -7, 12, -1.1, 1.1);
+      g.stroke();
+      g.strokeStyle = sideColor;
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(11, -7);
+      g.lineTo(31, -10 + walk * 2);
+      g.stroke();
+    }
+
+    function drawBomberUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      roundRect(g, -13, -19, 26, 25, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      roundRect(g, -10, -29, 20, 12, 6);
+      g.fill();
+      g.fillStyle = "#2a1f1d";
+      g.beginPath();
+      g.arc(19, -6, 11, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "#ffcf8a";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(24, -15);
+      g.quadraticCurveTo(31, -24 + walk * 2, 35, -15);
+      g.stroke();
+      g.fillStyle = "#ffb15c";
+      g.beginPath();
+      g.arc(35, -15, 4, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    function drawWarlockUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      g.beginPath();
+      g.moveTo(0, -31);
+      g.lineTo(19, 12);
+      g.lineTo(-19, 12);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = sideColor;
+      g.lineWidth = 3;
+      g.stroke();
+      g.fillStyle = "#101422";
+      g.beginPath();
+      g.arc(0, -17, 8, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = "#c9a98a";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(17, -21);
+      g.lineTo(28, 13);
+      g.stroke();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(17, -21, 5 + Math.max(0, walk) * 1.5, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,0.22)";
+      g.beginPath();
+      g.arc(-7, -2, 4, 0, Math.PI * 2);
+      g.arc(6, 5, 3, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    function drawGolemUnit(body, sideColor, walk) {
+      g.fillStyle = "#505b50";
+      roundRect(g, -22, -25, 44, 36, 10);
+      g.fill();
+      g.fillStyle = body;
+      roundRect(g, -17, -20, 34, 28, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(0, -26, 12, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "#101422";
+      g.fillRect(-8, -29, 16, 4);
+      g.strokeStyle = "rgba(255,255,255,0.35)";
+      g.lineWidth = 4;
+      g.beginPath();
+      g.moveTo(-17, -10);
+      g.lineTo(-31, 5 + walk * 2);
+      g.moveTo(17, -10);
+      g.lineTo(31, 5 - walk * 2);
+      g.stroke();
+    }
+
+    function drawLancerUnit(body, sideColor, walk) {
+      
+      g.fillStyle = "#6b4a3a";
+      roundRect(g, -18, -6, 32, 16, 8);
+      g.fill();
+      g.fillStyle = "#5a3d30";
+      g.beginPath();
+      g.moveTo(12, -4);
+      g.quadraticCurveTo(22, -10, 20, 2);
+      g.lineTo(12, 4);
+      g.closePath();
+      g.fill();
+      
+      g.fillStyle = body;
+      roundRect(g, -8, -22, 16, 18, 6);
+      g.fill();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(0, -26, 6, 0, Math.PI * 2);
+      g.fill();
+      
+      g.strokeStyle = "#e6e0cf";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(2, -18);
+      g.lineTo(34, -22 + walk * 2);
+      g.stroke();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.moveTo(34, -22 + walk * 2);
+      g.lineTo(28, -27 + walk * 2);
+      g.lineTo(29, -18 + walk * 2);
+      g.closePath();
+      g.fill();
+    }
+
+    function drawSiegeUnit(body, sideColor, walk) {
+      
+      g.fillStyle = "#3a3320";
+      roundRect(g, -16, -6, 30, 14, 5);
+      g.fill();
+      g.fillStyle = "#1c1a12";
+      g.beginPath();
+      g.arc(-9, 9, 7, 0, Math.PI * 2);
+      g.arc(9, 9, 7, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(-9, 9, 3, 0, Math.PI * 2);
+      g.arc(9, 9, 3, 0, Math.PI * 2);
+      g.fill();
+      
+      g.save();
+      g.rotate(-0.28);
+      g.fillStyle = body;
+      roundRect(g, -8, -20, 38, 13, 6);
+      g.fill();
+      g.fillStyle = "#11141d";
+      g.beginPath();
+      g.arc(30, -13, 6, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      g.fillStyle = sideColor;
+      g.beginPath();
+      g.arc(-6, -14, 7, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    function drawMedicUnit(body, sideColor, walk) {
+      g.fillStyle = body;
+      roundRect(g, -12, -18, 24, 24, 8);
+      g.fill();
+      g.fillStyle = sideColor;
+      roundRect(g, -9, -28, 18, 12, 6);
+      g.fill();
+      
+      g.fillStyle = "#ffffff";
+      roundRect(g, -7, -12, 14, 14, 3);
+      g.fill();
+      g.fillStyle = "#e23a3a";
+      g.fillRect(-2, -11, 4, 12);
+      g.fillRect(-6, -7, 12, 4);
+      
+      g.fillStyle = "#d8dee9";
+      roundRect(g, 11, -6, 10, 12, 3);
+      g.fill();
+      g.fillStyle = "#e23a3a";
+      g.fillRect(14, -2 + walk, 4, 1.6);
+    }
+
+    function drawEffects() {
+      bullets.forEach((b) => {
+        g.strokeStyle = b.color;
+        g.globalAlpha = Math.max(0, b.t / 18);
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(b.x1, b.y1);
+        g.lineTo(b.x2, b.y2);
+        g.stroke();
+        g.globalAlpha = 1;
+      });
+      pops.forEach((p) => {
+        g.globalAlpha = Math.max(0, p.t / 46);
+        g.fillStyle = p.color;
+        g.font = "800 12px Segoe UI, sans-serif";
+        g.textAlign = "center";
+        g.fillText(p.text, p.x, p.y);
+        g.globalAlpha = 1;
+      });
+    }
+
+    function drawSelection() {
+      const side = ctx.isOnline ? ctx.mySeat : controlSide;
+      const lane = selectedLane[side];
+      const y = LANES[lane];
+      g.strokeStyle = "rgba(255,209,102,0.55)";
+      g.lineWidth = 2;
+      g.setLineDash([10, 8]);
+      g.beginPath();
+      g.moveTo(122, y);
+      g.lineTo(W - 122, y);
+      g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = "rgba(255,209,102,0.9)";
+      g.font = "900 12px Segoe UI, sans-serif";
+      g.textAlign = "center";
+      g.fillText((`Gewählt: P${side + 1} · Bahn ${lane + 1}`), W / 2, y - 36);
+    }
+
+    function roundRect(gc, x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      gc.beginPath();
+      gc.moveTo(x + rr, y);
+      gc.lineTo(x + w - rr, y);
+      gc.quadraticCurveTo(x + w, y, x + w, y + rr);
+      gc.lineTo(x + w, y + h - rr);
+      gc.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      gc.lineTo(x + rr, y + h);
+      gc.quadraticCurveTo(x, y + h, x, y + h - rr);
+      gc.lineTo(x, y + rr);
+      gc.quadraticCurveTo(x, y, x + rr, y);
+      gc.closePath();
+    }
+
+    function dist(x1, y1, x2, y2) {
+      return Math.hypot(x1 - x2, y1 - y2);
+    }
+
+    function clamp(n, min, max) {
+      if (!Number.isFinite(n)) return min;
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function loop(ts) {
+      if (!lastTime) lastTime = ts;
+      const dt = Math.min(0.05, (ts - lastTime) / 1000 || 0);
+      lastTime = ts;
+      update(dt);
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(root)) {
+        cancelAnimationFrame(raf);
+        observer.disconnect();
+      }
+    });
+    observer.observe(ctx.boardEl.parentNode || document.body, { childList: true, subtree: true });
+
+    renderStaticControls();
+    ctx.setTurn(controlSide);
+    renderHud();
+    syncControls();
+    updateStatus();
+    draw();
+    raf = requestAnimationFrame(loop);
+    return { applyMove };
+  }
+
+  window.GameRegistry.register({
+    id: "basedefenseduel",
+    name: "Festungs-Duell",
+    emoji: "🏰",
+    description: "Verteidige deine Festung mit Türmen und schick 11 Truppenarten gegen den Gegner.",
+    onlineReady: true,
+    options: [
+      {
+        id: "hp",
+        label: "Leben der Festung",
+        default: 560,
+        choices: [
+          { value: 460, label: "460 (schnell)" },
+          { value: 560, label: "560" },
+          { value: 760, label: "760 (lang)" },
+        ],
+      },
+      {
+        id: "gold",
+        label: "Startgold",
+        default: 155,
+        choices: [
+          { value: 120, label: "120 (langsam)" },
+          { value: 155, label: "155" },
+          { value: 210, label: "210 (schnell)" },
+        ],
+      },
+      {
+        id: "pace",
+        label: "Gold-Tempo",
+        default: "normal",
+        choices: [
+          { value: "slow", label: "Langsam" },
+          { value: "normal", label: "Mittel" },
+          { value: "fast", label: "Schnell" },
+        ],
+      },
+      {
+        id: "scaling",
+        label: "Truppenstärke im Spätspiel",
+        default: "normal",
+        choices: [
+          { value: "soft", label: "Schwach" },
+          { value: "normal", label: "Mittel" },
+          { value: "hard", label: "Stark" },
+        ],
+      },
+    ],
+    howTo: [
+      "Jede Seite hat eine Festung am Ende der Karte. Ziel: die gegnerische Festung zuerst zerstören.",
+      "Wähle Bahn 1, 2 oder 3 und schick Truppen los. Es gibt 11 Arten: 🪖 Rekrut, 🏃 Späher, 🐎 Reiter (sehr schnell), 🛡️ Wächter, 🏹 Bogenschütze, 🚀 Kanone (Fernkampf, stark gegen Festungen), 🪓 Krieger, 💣 Sprengmeister (Flächenschaden), 🧙 Magier, 💉 Sanitäter (heilt Verbündete), 🗿 Steingolem.",
+      "Sanitäter kämpfen nicht, sondern heilen verletzte Truppen auf ihrer Bahn – zusammen mit zähen Einheiten hält dein Angriff länger.",
+      "Bau Türme 🗼 auf den Bahnen – sie schiessen auf gegnerische Truppen.",
+      "Upgrades: 💰 Wirtschaft (+Gold/Sek.), ⚒️ Schmiede (+Schaden), 🛡️ Rüstung (+Truppen-Leben), 👟 Marsch (+Tempo), 📡 Arsenal (+Turm-Reichweite & Schaden).",
+      "Mit „Festung reparieren“ 🔧 heilst du deine Festung gegen Gold.",
+      "Die Truppen werden mit der Zeit stärker. Es geht schnell – schick ständig Truppen und verbessere.",
+      "Zu zweit an einem Gerät: Tippe auf eine Spielfeldhälfte oder auf P1/P2, um die Seite zu wechseln. Online steuert jeder seine eigene Seite.",
+    ],
+    create,
+  });
+})();
+
+</script>
+<script>
+/* ======================== Hülle für langwiligi.site ======================== */
+(function () {
+  'use strict';
+  const GAME_ID = 'festungs-duell';
+  const game = window.GameRegistry.games[0];
+  const HUB = window.GameHub || null;
+  const $ = (id) => document.getElementById(id);
+  const LV_NAME = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer' };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(GAME_ID + '-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(GAME_ID + '-' + k, JSON.stringify(v)); } catch (e) { /* egal */ } },
+  };
+
+  const canAI = !!game.supportsAI;
+  const canLocal = game.localReady !== false;
+  const canOnline = !!HUB && game.onlineReady !== false;
+
+  let mode = store.get('mode', canAI ? 'ai' : 'local');
+  let aiLevel = store.get('ai', 'medium');
+  let options = Object.assign(defaultOptions(), store.get('options', {}));
+  let instance = null, ended = false, scores = [0, 0], wins = [0, 0], lastWinner = -1, aiTimer = null, resultTimer = null;
+  let curTurn = 0;
+  // Online-Zustand
+  let room = null, net = null; // net: { you, swap, round, names:[], ready:Set, started }
+
+  function defaultOptions() { const o = {}; (game.options || []).forEach((x) => { o[x.id] = x.default; }); return o; }
+  function validMode(m) { return (m === 'ai' && canAI) || (m === 'local' && canLocal) || (m === 'online' && canOnline); }
+  if (!validMode(mode)) mode = canAI ? 'ai' : canLocal ? 'local' : 'online';
+
+  /* ---------- Menü aufbauen ---------- */
+  const MODES = [
+    { id: 'ai', ok: canAI, ico: '🤖', title: 'Gegen Bot', text: 'Spiel gegen den Computer – drei Stärken.' },
+    { id: 'local', ok: canLocal, ico: '👥', title: '2 Spieler', text: 'Zu zweit an einem Gerät, abwechselnd.' },
+    { id: 'online', ok: canOnline, ico: '🌐', title: 'Online', text: 'Gegen Freunde übers Internet mit Raum-Code.' },
+  ];
+  function renderModes() {
+    const box = $('modes'); box.innerHTML = '';
+    MODES.filter((m) => m.ok).forEach((m) => {
+      const b = document.createElement('button');
+      b.className = 'mode-card' + (mode === m.id ? ' selected' : '');
+      b.innerHTML = `<span class="ico">${m.ico}</span><b>${m.title}</b><span>${m.text}</span>`;
+      b.addEventListener('click', () => { mode = m.id; store.set('mode', mode); renderModes(); });
+      box.appendChild(b);
+    });
+    $('aiLevelBox').classList.toggle('hidden', mode !== 'ai');
+    $('onlinePanel').classList.toggle('hidden', mode !== 'online');
+    $('startRow').classList.toggle('hidden', mode === 'online');
+    document.querySelectorAll('#aiLevels button').forEach((b) => b.classList.toggle('on', b.dataset.lv === aiLevel));
+    if (mode === 'online' && HUB && !renderModes.lbLoaded) { renderModes.lbLoaded = true; HUB.loadBoard(GAME_ID, $('leaderboard'), HUB.getName()); }
+  }
+  document.querySelectorAll('#aiLevels button').forEach((b) => b.addEventListener('click', () => { aiLevel = b.dataset.lv; store.set('ai', aiLevel); renderModes(); }));
+
+  function renderOptions() {
+    const opts = game.options || [];
+    $('optionsPanel').classList.toggle('hidden', !opts.length);
+    const box = $('optionsBox'); box.innerHTML = '';
+    opts.forEach((o) => {
+      const row = document.createElement('div'); row.className = 'opt-row';
+      const lab = document.createElement('label'); lab.textContent = o.label; row.appendChild(lab);
+      const seg = document.createElement('div'); seg.className = 'seg';
+      o.choices.forEach((c) => {
+        const b = document.createElement('button');
+        b.textContent = c.label;
+        b.className = String(options[o.id]) === String(c.value) ? 'on' : '';
+        b.addEventListener('click', () => { options[o.id] = c.value; store.set('options', options); renderOptions(); });
+        seg.appendChild(b);
+      });
+      row.appendChild(seg); box.appendChild(row);
+    });
+  }
+  function renderHowto() {
+    const items = (game.howTo || []).map((s) => `<li>${esc(s)}</li>`).join('');
+    $('howtoList').innerHTML = items; $('helpList').innerHTML = items;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+  /* ---------- Spiel-Kontext für das Original-Modul ---------- */
+  function seatName(seat) {
+    if (mode === 'ai') return seat === 0 ? 'Du' : 'Bot (' + LV_NAME[aiLevel] + ')';
+    if (mode === 'online' && net) {
+      const roomSeat = net.swap ? 1 - seat : seat;
+      const nm = net.names[roomSeat] || ('Spieler ' + (roomSeat + 1));
+      return roomSeat === net.you ? nm + ' (du)' : nm;
+    }
+    return 'Spieler ' + (seat + 1);
+  }
+  function setNameLabels(extra) {
+    [0, 1].forEach((s) => {
+      const suffix = extra && extra[s] ? ' ' + extra[s] : '';
+      $('pn' + (s + 1)).textContent = seatName(s) + suffix;
+    });
+  }
+  // Siege gehören online dem Raum-Platz (die Seiten wechseln jede Runde), sonst dem Sitz
+  function idOf(seat) { return mode === 'online' && net ? (net.swap ? 1 - seat : seat) : seat; }
+  function renderWins() {
+    [0, 1].forEach((s) => { const n = wins[idOf(s)]; $('pw' + (s + 1)).textContent = n + (n === 1 ? ' Sieg' : ' Siege'); });
+  }
+
+  function makeContext(seed) {
+    const online = mode === 'online' && net;
+    const mySeat = online ? (net.swap ? 1 - net.you : net.you) : -1;
+    return {
+      boardEl: $('boardWrap'),
+      isOnline: !!online,
+      mySeat,
+      roomSeat: online ? net.you : -1,
+      firstSeat: 0,
+      round: online ? net.round : 1,
+      rng: window.makeRng(seed || ((Math.random() * 4294967295) >>> 0)),
+      options: Object.assign({}, options),
+      vsAI: mode === 'ai',
+      aiLevel,
+      setStatus(text) {
+        $('status').textContent = text || '';
+        if (text && /🎉|🤝|💀/.test(text)) onGameEnd(text);
+      },
+      setTurn(idx) { setTurn(idx); },
+      setNames(n1, n2) {
+        const grab = (n) => { const m = /\(([^()]*)\)\s*$/.exec(String(n || '')); return m ? '(' + m[1] + ')' : ''; };
+        if (mode === 'local') { $('pn1').textContent = n1 || seatName(0); $('pn2').textContent = n2 || seatName(1); }
+        else setNameLabels([grab(n1), grab(n2)]);
+      },
+      incScore(idx) { scores[idx]++; lastWinner = idx; },
+      decScore(idx) { scores[idx] = Math.max(0, scores[idx] - 1); },
+      getScore(idx) { return scores[idx]; },
+      sendMove(move) { if (mode === 'online' && room && net && net.started) room.send({ t: 'mv', m: move }); },
+      sound(name) { if (window.Sound) window.Sound.play(name); },
+      t(de) { return de; },
+    };
+  }
+
+  function setTurn(idx) {
+    curTurn = idx;
+    const tb = $('turnBanner');
+    $('pc1').classList.toggle('active', idx === 0);
+    $('pc2').classList.toggle('active', idx === 1);
+    if (idx === -1) { tb.textContent = 'Runde vorbei'; tb.style.color = 'var(--text)'; return; }
+    let label;
+    if (mode === 'ai') label = idx === 0 ? 'Du bist dran' : 'Bot ist dran';
+    else if (mode === 'online' && net) label = idx === (net.swap ? 1 - net.you : net.you) ? 'Du bist dran' : 'Gegner ist dran';
+    else label = 'Spieler ' + (idx + 1) + ' ist dran';
+    tb.textContent = label;
+    tb.style.color = idx === 0 ? 'var(--p1)' : 'var(--p2)';
+    if (mode === 'ai' && idx === 1 && !ended) scheduleAI();
+  }
+
+  function scheduleAI() {
+    const wrap = $('boardWrap');
+    wrap.classList.add('ai-thinking');
+    clearTimeout(aiTimer);
+    aiTimer = setTimeout(() => {
+      wrap.classList.remove('ai-thinking');
+      if (mode !== 'ai' || ended || !instance || typeof instance.aiMove !== 'function') return;
+      try {
+        const mv = instance.aiMove(aiLevel);
+        if (mv !== null && mv !== undefined) instance.applyMove(mv, false);
+      } catch (e) { console.error(e); }
+    }, 520);
+  }
+
+  function teardown() {
+    clearTimeout(aiTimer); clearTimeout(resultTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    if (instance && typeof instance.destroy === 'function') { try { instance.destroy(); } catch (e) { /* egal */ } }
+    instance = null;
+    $('boardWrap').innerHTML = '';
+  }
+
+  function startRound(seed) {
+    teardown();
+    hide('resultOverlay');
+    ended = false; scores = [0, 0]; lastWinner = -1;
+    $('status').textContent = '';
+    show('gameView'); hide('menuView');
+    setNameLabels();
+    renderWins();
+    const online = mode === 'online' && net;
+    $('onlineInfo').classList.toggle('hidden', !online);
+    if (online) $('onlineInfo').textContent = '🌐 Online · Raum ' + room.code + ' · Runde ' + net.round + ' · ' + ((net.swap ? 1 - net.you : net.you) === 0 ? 'du beginnst' : 'Gegner beginnt');
+    $('restartBtn').textContent = online ? '↻ Neue Runde anfragen' : '↻ Neue Runde';
+    instance = game.create(makeContext(seed));
+    $('undoBtn').classList.toggle('hidden', mode !== 'local' || !instance || typeof instance.undo !== 'function');
+    window.scrollTo({ top: 0 });
+  }
+
+  function onGameEnd(text) {
+    if (ended) return;
+    ended = true;
+    clearTimeout(aiTimer);
+    $('boardWrap').classList.remove('ai-thinking');
+    const draw = /🤝/.test(text) && !/🎉/.test(text);
+    let w = -1;
+    if (!draw) {
+      w = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : lastWinner;
+      if (w === -1) {
+        // Gewinner aus dem Text lesen ("Spieler 2 …")
+        const m = /Spieler\s*([12])/.exec(text);
+        if (m) w = +m[1] - 1;
+      }
+    }
+    if (w >= 0) wins[idOf(w)]++;
+    renderWins();
+    if (mode === 'online' && net && room && net.you === 0 && net.started) {
+      try { room.result(w < 0 ? -1 : (net.swap ? 1 - w : w)); } catch (e) { /* egal */ }
+    }
+    let title;
+    if (w < 0) title = '🤝 Unentschieden';
+    else if (mode === 'ai') title = w === 0 ? '🎉 Du gewinnst!' : '🤖 Der Bot gewinnt';
+    else if (mode === 'online' && net) title = (w === (net.swap ? 1 - net.you : net.you)) ? '🎉 Du gewinnst!' : '😵 ' + seatName(w).replace(' (du)', '') + ' gewinnt';
+    else title = '🎉 ' + seatName(w) + ' gewinnt!';
+    $('resTitle').textContent = title;
+    $('resText').textContent = text.replace(/^[🎉🤝💀]\s*/u, '');
+    $('againBtn').disabled = false;
+    $('againBtn').textContent = 'Nochmal';
+    resultTimer = setTimeout(() => show('resultOverlay'), 1100);
+  }
+
+  /* ---------- Ansichten ---------- */
+  function show(id) { $(id).classList.remove('hidden'); }
+  function hide(id) { $(id).classList.add('hidden'); }
+  function toMenu() {
+    teardown();
+    hide('resultOverlay'); hide('gameView'); show('menuView');
+    if (room) { try { room.send({ t: 'bye' }); room.close(); } catch (e) { /* egal */ } }
+    room = null; net = null;
+    resetOnlineUI();
+    renderModes();
+    window.scrollTo({ top: 0 });
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    let el = document.querySelector('.toast');
+    if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+    el.textContent = msg; el.classList.remove('hidden');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+  }
+  function info(title, text) {
+    teardown();
+    $('resTitle').textContent = title; $('resText').textContent = text;
+    $('againBtn').textContent = 'Nochmal'; $('againBtn').disabled = true;
+    show('resultOverlay');
+  }
+
+  /* ---------- Online ---------- */
+  function resetOnlineUI() {
+    show('onlineSetup'); hide('onlineWait');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+    $('onlineMsg').textContent = ''; $('onlineMsg').classList.remove('err');
+  }
+  function onlineErr(e) {
+    $('onlineMsg').textContent = HUB.errorText(e); $('onlineMsg').classList.add('err');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+  }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() {
+    const n = HUB.setName($('nameInput').value) || 'Gast';
+    $('nameInput').value = n;
+    return n;
+  }
+  function newRoom() {
+    room = HUB.connect(GAME_ID);
+    room.on('msg', onNetMsg);
+    room.on('peer-join', (m) => {
+      if (!net) return;
+      net.names = (m.players || room.players || []).map(playerName);
+      if (net.you === 0) { toast('🎮 ' + (playerName(m.name) || 'Mitspieler') + ' ist da!'); hostStart(false); }
+    });
+    room.on('peer-left', () => {
+      if (!net) return;
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    });
+    room.on('close', () => { if (net) info('📡 Verbindung verloren', 'Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+    room.on('leaderboard', (rows) => HUB.renderBoard($('leaderboard'), rows, HUB.getName()));
+    return room;
+  }
+  async function createRoom() {
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Verbinde …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.create(name, 2);
+      net = { you: res.you, swap: false, round: 0, names: [name, ''], ready: new Set(), started: false };
+      wins = [0, 0];
+      $('roomCode').textContent = res.code;
+      hide('onlineSetup'); show('onlineWait');
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  async function joinRoom() {
+    const code = HUB.cleanCode($('codeInput').value);
+    if (code.length !== 4) { $('onlineMsg').textContent = 'Bitte den 4-stelligen Code eingeben.'; $('onlineMsg').classList.add('err'); return; }
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true;
+    $('onlineMsg').textContent = 'Trete bei …'; $('onlineMsg').classList.remove('err');
+    try {
+      newRoom();
+      const res = await room.join(code, name);
+      net = { you: res.you, swap: false, round: 0, names: (res.players || room.players || []).map(playerName), ready: new Set(), started: false };
+      wins = [0, 0];
+      $('onlineMsg').textContent = 'Beigetreten! Warte auf den Start …';
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    } catch (e) { room = null; onlineErr(e); }
+  }
+  function hostStart(swap) {
+    net.round++;
+    net.swap = swap;
+    net.ready.clear();
+    net.started = true;
+    const seed = (Math.random() * 4294967295) >>> 0;
+    room.send({ t: 'start', seed, swap, round: net.round, options, names: net.names });
+    try { room.roundStart(); } catch (e) { /* egal */ }
+    startRound(seed);
+  }
+  function onNetMsg(d) {
+    if (!d || !net) return;
+    if (d.t === 'start') {
+      net.swap = !!d.swap; net.round = d.round || 1; net.started = true; net.ready.clear();
+      if (Array.isArray(d.names)) net.names = d.names;
+      if (d.options) options = Object.assign(defaultOptions(), d.options);
+      startRound(d.seed);
+    } else if (d.t === 'mv') {
+      if (instance && instance.applyMove) { try { instance.applyMove(d.m, true); } catch (e) { console.error(e); } }
+    } else if (d.t === 'again') {
+      net.ready.add(1 - net.you);
+      if (net.you === 0 && net.ready.has(0)) hostStart(!net.swap);
+      else toast('🔁 Dein Gegner will nochmal spielen!');
+    } else if (d.t === 'bye') {
+      net.started = false;
+      info('👋 Gegner weg', 'Dein Gegner hat das Spiel verlassen.');
+    }
+  }
+  function requestAgain() {
+    if (mode !== 'online') { startRound(); return; }
+    if (!net || !room) return;
+    net.ready.add(net.you);
+    room.send({ t: 'again' });
+    if (net.you === 0 && net.ready.has(1)) { hostStart(!net.swap); return; }
+    $('againBtn').disabled = true; $('againBtn').textContent = 'Warte auf Gegner …';
+    $('status').textContent = 'Warte, bis dein Gegner auch nochmal will …';
+  }
+
+  /* ---------- Knöpfe ---------- */
+  $('startBtn').addEventListener('click', () => { wins = [0, 0]; startRound(); });
+  $('menuBtn').addEventListener('click', toMenu);
+  $('resMenuBtn').addEventListener('click', toMenu);
+  $('againBtn').addEventListener('click', requestAgain);
+  $('restartBtn').addEventListener('click', () => {
+    if (mode === 'online') { hide('resultOverlay'); show('resultOverlay'); $('resTitle').textContent = 'Neue Runde?'; $('resText').textContent = 'Wenn beide zustimmen, startet eine neue Runde.'; $('againBtn').disabled = false; $('againBtn').textContent = 'Ja, neue Runde'; return; }
+    startRound();
+  });
+  $('undoBtn').addEventListener('click', () => {
+    if (!instance || typeof instance.undo !== 'function') return;
+    const wasEnded = ended;
+    if (instance.undo() && wasEnded) { ended = false; hide('resultOverlay'); clearTimeout(resultTimer); }
+  });
+  $('helpBtn').addEventListener('click', () => show('helpOverlay'));
+  $('helpClose').addEventListener('click', () => hide('helpOverlay'));
+  $('helpOverlay').addEventListener('click', (e) => { if (e.target === $('helpOverlay')) hide('helpOverlay'); });
+  function renderMute() { $('muteBtn').textContent = window.Sound && window.Sound.isEnabled() ? '🔊' : '🔇'; }
+  $('muteBtn').addEventListener('click', () => { if (window.Sound) window.Sound.setEnabled(!window.Sound.isEnabled()); renderMute(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hide('helpOverlay'); } });
+
+  if (HUB) {
+    $('nameInput').value = HUB.getName();
+    $('createBtn').addEventListener('click', createRoom);
+    $('joinBtn').addEventListener('click', joinRoom);
+    $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
+    $('cancelBtn').addEventListener('click', () => { if (room) room.close(); room = null; net = null; resetOnlineUI(); });
+    $('copyBtn').addEventListener('click', async () => {
+      const link = 'https://langwiligi.site/' + GAME_ID + '/#' + $('roomCode').textContent;
+      try { await navigator.clipboard.writeText(link); toast('✅ Link kopiert!'); }
+      catch (e) { toast(link); }
+    });
+    const code = HUB.cleanCode(location.hash);
+    if (code.length === 4 && canOnline) {
+      mode = 'online';
+      $('codeInput').value = code;
+      setTimeout(() => { $('onlineMsg').textContent = 'Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.'; $('nameInput').focus(); }, 50);
+    }
+  }
+
+  renderModes(); renderOptions(); renderHowto(); renderMute();
+})();
+</script>
+</body>
+</html>

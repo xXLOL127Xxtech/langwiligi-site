@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+  (function() {
+    var ua = navigator.userAgent;
+    var isPhone = /iPhone|iPad|iPod|Android/i.test(ua) || window.innerWidth < 768;
+    if (isPhone) {
+      var meta = document.querySelector('meta[name="viewport"]');
+      if (meta) {
+        var targetWidth = 780;
+        var scale = window.innerWidth / targetWidth;
+        meta.setAttribute('content', 'width=' + targetWidth + ', initial-scale=' + scale + ', maximum-scale=3.0, user-scalable=yes');
+      }
+    }
+  })();
+  </script>
+  <title>Das Königliche Spiel von Ur</title>
+<meta name="description" content="Das 4500 Jahre alte Rennspiel aus Mesopotamien: würfeln, schlagen, Rosetten nutzen – gegen Bot oder Freund.">
+<meta name="theme-color" content="#ffd23f">
+<meta name="spiel-modi" content="Lokal,Bots">
+<meta name="spiel-tags" content="Uralt,Würfel">
+<!--
+  Das Königliche Spiel von Ur – angepasst für langwiligi.site.
+  Original: „Royal Game of Ur“ aus github.com/mf4633/board-gaming von Michael Flynn (MIT-Lizenz).
+  MIT License – Copyright (c) 2026 Michael Flynn
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+  Änderungen: deutsche Texte, ohne Werbung/Tracking/Navigation der Originalseite.
+-->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #2c1810;
+      color: #e0d0c0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 1.6em;
+      color: #ffd700;
+      margin-bottom: 15px;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 0;
+      margin-bottom: 14px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid #8b6914;
+    }
+
+    .mode-btn {
+      padding: 6px 18px;
+      font-size: 0.95em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      border: none;
+      background: #3d2814;
+      color: #a09080;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn:not(:last-child) { border-right: 1px solid #8b6914; }
+
+    .mode-btn.active {
+      background: #8b6914;
+      color: #fff;
+      cursor: default;
+    }
+
+    .mode-btn:hover:not(.active) { background: #5c3d1a; color: #e0d0c0; }
+
+    .game-info { text-align: center; margin-bottom: 12px; }
+
+    #turn-indicator { font-size: 1.2em; font-weight: bold; margin-bottom: 6px; }
+
+    .dice-container {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin: 8px 0;
+      min-height: 36px;
+    }
+
+    .die {
+      width: 32px;
+      height: 32px;
+      background: #5c3d1a;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2em;
+      color: #a09080;
+      font-weight: bold;
+      box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+      border: 2px solid #6b4f2a;
+    }
+
+    .die.marked {
+      background: #ffd700;
+      color: #2c1810;
+      border-color: #e0b800;
+    }
+
+    #dice-total { font-size: 1.1em; margin-bottom: 4px; }
+
+    #message {
+      font-size: 1em;
+      color: #ffd700;
+      min-height: 1.4em;
+      margin-bottom: 8px;
+    }
+
+    .buttons { margin-bottom: 15px; }
+
+    button {
+      padding: 8px 22px;
+      font-size: 1em;
+      font-family: 'Georgia', serif;
+      cursor: pointer;
+      margin: 0 5px;
+      border: 2px solid #8b6914;
+      border-radius: 6px;
+      background: #5c3d1a;
+      color: #e0d0c0;
+      transition: background 0.2s;
+    }
+
+    button:hover:not(:disabled) { background: #7a5020; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .container {
+      display: flex;
+      align-items: flex-start;
+      gap: 25px;
+    }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 70px;
+    }
+
+    .side-panel h3 {
+      font-size: 0.85em;
+      margin-bottom: 8px;
+      color: #c0a878;
+    }
+
+    .staging-area, .scored-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 12px;
+      max-width: 90px;
+    }
+
+    .staging-piece {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: default;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .staging-piece.white { background: radial-gradient(circle at 35% 35%, #fff, #c0b0a0); }
+    .staging-piece.black { background: radial-gradient(circle at 35% 35%, #666, #222); }
+
+    .staging-piece.selectable {
+      cursor: pointer;
+      border-color: #ffd700;
+      box-shadow: 0 0 10px #ffd700;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .scored-piece {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      opacity: 0.5;
+    }
+
+    .scored-piece.white { background: #c0b0a0; }
+    .scored-piece.black { background: #444; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(8, 80px);
+      gap: 2px;
+      background: #1a0e08;
+      padding: 2px;
+      border: 3px solid #8b6914;
+      border-radius: 4px;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      border: 1px solid #6b4f2a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #3d2814;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .cell.empty-cell {
+      border: none;
+      background: #1a0e08 !important;
+      cursor: default;
+    }
+
+    .cell.rosette { box-shadow: inset 0 0 10px rgba(255, 215, 0, 0.35); }
+
+    .piece {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      cursor: default;
+      z-index: 10;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .piece.white { background: radial-gradient(circle at 35% 35%, #fff, #c0b0a0); }
+    .piece.black { background: radial-gradient(circle at 35% 35%, #666, #222); }
+
+    .piece.selectable {
+      cursor: pointer;
+      border-color: #ffd700;
+      box-shadow: 0 0 12px #ffd700;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 8px #ffd700; }
+      50% { box-shadow: 0 0 18px #ffd700; }
+    }
+
+    .rules {
+      margin-top: 25px;
+      max-width: 500px;
+      font-size: 0.8em;
+      color: #a09080;
+      line-height: 1.5;
+    }
+
+    .rules h3 { color: #c0a878; margin-bottom: 6px; }
+    .rules ul { padding-left: 18px; }
+    .rules li { margin-bottom: 3px; }
+    /* Mobile game nav */
+  </style>
+</head>
+<body>
+<h1>Das Königliche Spiel von Ur</h1>
+  <div class="mode-selector">
+    <button class="mode-btn active" id="mode-1p" onclick="setMode(true)">1 Spieler</button>
+    <button class="mode-btn" id="mode-2p" onclick="setMode(false)">2 Spieler</button>
+  </div>
+  <div class="game-info">
+    <div id="turn-indicator"></div>
+    <div class="dice-container" id="dice-container"></div>
+    <div id="dice-total"></div>
+    <div id="message"></div>
+  </div>
+  <div class="buttons">
+    <button id="roll-btn" onclick="rollDice()">Würfeln</button>
+    <button onclick="resetGame()">Neues Spiel</button>
+  </div>
+  <div class="container">
+    <div class="side-panel">
+      <h3>Weiss (S1)</h3>
+      <div class="staging-area" id="p1-staging"></div>
+      <h3>Im Ziel</h3>
+      <div class="scored-area" id="p1-scored"></div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="side-panel">
+      <h3 id="p2-label">Schwarz (Bot)</h3>
+      <div class="staging-area" id="p2-staging"></div>
+      <h3>Im Ziel</h3>
+      <div class="scored-area" id="p2-scored"></div>
+    </div>
+  </div>
+  <div class="rules">
+    <h3>Regeln</h3>
+    <ul>
+      <li>Jeder hat 7 Steine und jagt sie über den Weg vom Start ins Ziel.</li>
+      <li>Geworfen werden 4 Pyramiden-Würfel (Summe 0–4). Zieh einen Stein so viele Felder vor.</li>
+      <li>Weiss läuft links hinunter, durch die gemeinsame Mitte und wieder links hinauf. Schwarz macht dasselbe auf der rechten Seite.</li>
+      <li>Landest du in der Mitte auf einem gegnerischen Stein, wird er geschlagen und muss zurück an den Start.</li>
+      <li>Blumenfelder (Rosetten) geben einen Extrawurf und sind sicher vor dem Schlagen.</li>
+      <li>Ins Ziel kommst du nur mit genau passender Augenzahl.</li>
+      <li>Wer zuerst alle 7 Steine ins Ziel bringt, gewinnt!</li>
+    </ul>
+  </div>
+
+<script>
+  // =============================================
+  //  Constants
+  // =============================================
+  var NUM_PIECES   = 7;
+  var START        = 0;
+  var FINISH       = 15;
+  var ROSETTES     = new Set([4, 8, 14]);
+  var SHARED_START = 5;
+  var SHARED_END   = 12;
+
+  /*  Board layout (vertical, 3 columns x 8 rows):
+
+      Col 0 (White)  Col 1 (Shared)  Col 2 (Black)
+      -------------  --------------  -------------
+  R0  [ 4  r ]       [ 5  ]          [ 4  r ]
+  R1  [ 3   ]        [ 6  ]          [ 3   ]
+  R2  [ 2   ]        [ 7  ]          [ 2   ]
+  R3  [ 1   ]        [ 8  r]         [ 1   ]
+  R4    gap           [ 9  ]            gap
+  R5    gap           [10  ]            gap
+  R6  [14  r ]       [11  ]          [14  r ]
+  R7  [13   ]        [12  ]          [13   ]
+
+  Path per player:
+    0(start) -> 1 -> 2 -> 3 -> 4 -> 5 -> ... -> 12 -> 13 -> 14 -> 15(finish)
+    Positions 5-12 are shared.  r = rosette.
+  */
+
+  var POS_TO_CELL = {
+    1: { 1:[3,0], 2:[2,0], 3:[1,0], 4:[0,0],
+         5:[0,1], 6:[1,1], 7:[2,1], 8:[3,1], 9:[4,1], 10:[5,1], 11:[6,1], 12:[7,1],
+         13:[7,0], 14:[6,0] },
+    2: { 1:[3,2], 2:[2,2], 3:[1,2], 4:[0,2],
+         5:[0,1], 6:[1,1], 7:[2,1], 8:[3,1], 9:[4,1], 10:[5,1], 11:[6,1], 12:[7,1],
+         13:[7,2], 14:[6,2] }
+  };
+
+  var CELL_IMAGES = [
+    'flower.png','dots.png', 'flower.png',
+    'eyes.png',  'cer.png',  'eyes.png',
+    'start.png', 'eyes.png', 'start.png',
+    'dots.png',  'flower.png','dots.png',
+    null,        'dots.png', null,
+    null,        'cer.png',  null,
+    'flower.png','start.png','flower.png',
+    'eyes.png',  'eyes.png', 'eyes.png'
+  ];
+
+  // =============================================
+  //  Game State
+  // =============================================
+  var pieces     = { 1: Array(NUM_PIECES).fill(START), 2: Array(NUM_PIECES).fill(START) };
+  var playerTurn = 1;
+  var diceValue  = 0;
+  var diceRolls  = [];
+  var phase      = 'roll';
+  var gameOver   = false;
+  var aiMode     = true;       // true = 1 Player (vs AI)
+  var aiTimeout  = null;       // track pending AI action
+
+  var boardEl = document.getElementById('board');
+  var rollBtn = document.getElementById('roll-btn');
+
+  // =============================================
+  //  Mode Selection
+  // =============================================
+  function setMode(isAi) {
+    if (aiMode === isAi) return;
+    aiMode = isAi;
+    document.getElementById('mode-1p').classList.toggle('active', isAi);
+    document.getElementById('mode-2p').classList.toggle('active', !isAi);
+    document.getElementById('p2-label').textContent = isAi ? 'Schwarz (Bot)' : 'Schwarz (S2)';
+    resetGame();
+  }
+
+  // =============================================
+  //  Board Creation
+  // =============================================
+  function createBoard() {
+    boardEl.innerHTML = '';
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 3; c++) {
+        var cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+
+        var isGap = (r === 4 || r === 5) && (c === 0 || c === 2);
+        if (isGap) {
+          cell.classList.add('empty-cell');
+        } else {
+          var img = CELL_IMAGES[r * 3 + c];
+          if (img) cell.style.backgroundImage = "url('" + img + "')";
+          if ((r === 0 && c !== 1) || (r === 3 && c === 1) || (r === 6 && c !== 1)) {
+            cell.classList.add('rosette');
+          }
+        }
+
+        (function(row, col) {
+          cell.addEventListener('click', function() { handleCellClick(row, col); });
+        })(r, c);
+        boardEl.appendChild(cell);
+      }
+    }
+  }
+
+  // =============================================
+  //  Rendering
+  // =============================================
+  function render() {
+    boardEl.querySelectorAll('.piece').forEach(function(p) { p.remove(); });
+
+    for (var pl = 1; pl <= 2; pl++) {
+      for (var i = 0; i < NUM_PIECES; i++) {
+        var pos = pieces[pl][i];
+        if (pos >= 1 && pos <= 14) {
+          var rc = POS_TO_CELL[pl][pos];
+          var cell = getCell(rc[0], rc[1]);
+          if (cell) {
+            var el = document.createElement('div');
+            el.classList.add('piece', pl === 1 ? 'white' : 'black');
+            el.dataset.player = pl;
+            el.dataset.index = i;
+            cell.appendChild(el);
+          }
+        }
+      }
+    }
+
+    renderStaging(1);
+    renderStaging(2);
+    renderScored(1);
+    renderScored(2);
+    highlightSelectable();
+    updateUI();
+
+    // Trigger AI if it's the AI's turn
+    scheduleAi();
+  }
+
+  function renderStaging(player) {
+    var container = document.getElementById('p' + player + '-staging');
+    container.innerHTML = '';
+    for (var i = 0; i < NUM_PIECES; i++) {
+      if (pieces[player][i] === START) {
+        var el = document.createElement('div');
+        el.classList.add('staging-piece', player === 1 ? 'white' : 'black');
+        el.dataset.player = player;
+        el.dataset.index = i;
+        (function(pl, idx) {
+          el.addEventListener('click', function() { handleStagingClick(pl, idx); });
+        })(player, i);
+        container.appendChild(el);
+      }
+    }
+  }
+
+  function renderScored(player) {
+    var container = document.getElementById('p' + player + '-scored');
+    container.innerHTML = '';
+    for (var i = 0; i < NUM_PIECES; i++) {
+      if (pieces[player][i] === FINISH) {
+        var el = document.createElement('div');
+        el.classList.add('scored-piece', player === 1 ? 'white' : 'black');
+        container.appendChild(el);
+      }
+    }
+  }
+
+  function highlightSelectable() {
+    document.querySelectorAll('.selectable').forEach(function(el) {
+      el.classList.remove('selectable');
+    });
+    if (phase !== 'move' || gameOver) return;
+    // Don't highlight during AI's turn
+    if (aiMode && playerTurn === 2) return;
+
+    var moves = getValidMoves(playerTurn, diceValue);
+    var canEnter = moves.some(function(m) { return m.from === START; });
+    var movablePositions = new Set();
+    moves.forEach(function(m) {
+      if (m.from !== START) movablePositions.add(m.from);
+    });
+
+    if (canEnter) {
+      document.querySelectorAll('#p' + playerTurn + '-staging .staging-piece').forEach(function(el) {
+        el.classList.add('selectable');
+      });
+    }
+
+    movablePositions.forEach(function(pos) {
+      var rc = POS_TO_CELL[playerTurn][pos];
+      var cell = getCell(rc[0], rc[1]);
+      if (cell) {
+        var pe = cell.querySelector('.piece[data-player="' + playerTurn + '"]');
+        if (pe) pe.classList.add('selectable');
+      }
+    });
+  }
+
+  function getCell(r, c) {
+    return boardEl.querySelector('.cell[data-row="' + r + '"][data-col="' + c + '"]');
+  }
+
+  function updateUI() {
+    var isAiTurn = aiMode && playerTurn === 2;
+    var name = playerTurn === 1 ? 'Weiss' : 'Schwarz';
+    var suffix = isAiTurn ? ' (Bot überlegt …)' : ' ist dran';
+    document.getElementById('turn-indicator').textContent = name + suffix;
+    rollBtn.disabled = phase !== 'roll' || gameOver || isAiTurn;
+  }
+
+  function setMessage(msg) {
+    document.getElementById('message').textContent = msg;
+  }
+
+  // =============================================
+  //  Dice
+  // =============================================
+  function rollDice() {
+    if (phase !== 'roll' || gameOver) return;
+    // Block human from rolling during AI turn
+    if (aiMode && playerTurn === 2) return;
+    doRoll();
+  }
+
+  function doRoll() {
+    if (phase !== 'roll' || gameOver) return;
+    setMessage('');
+
+    diceRolls = [];
+    diceValue = 0;
+    for (var i = 0; i < 4; i++) {
+      var d = Math.random() < 0.5 ? 1 : 0;
+      diceRolls.push(d);
+      diceValue += d;
+    }
+
+    var dc = document.getElementById('dice-container');
+    dc.innerHTML = '';
+    for (var j = 0; j < diceRolls.length; j++) {
+      var die = document.createElement('div');
+      die.classList.add('die');
+      if (diceRolls[j]) die.classList.add('marked');
+      die.textContent = diceRolls[j] ? '\u25B2' : '\u25CB';
+      dc.appendChild(die);
+    }
+    document.getElementById('dice-total').textContent = 'Wurf: ' + diceValue;
+
+    var moves = getValidMoves(playerTurn, diceValue);
+
+    if (diceValue === 0) {
+      phase = 'move'; // prevent re-roll during the 1200 ms pause
+      setMessage('0 geworfen \u2014 der andere ist dran.');
+      rollBtn.disabled = true;
+      setTimeout(function() { phase = 'roll'; switchTurn(); render(); }, 1200);
+    } else if (moves.length === 0) {
+      phase = 'move'; // prevent re-roll during the 1200 ms pause
+      setMessage('Kein Zug möglich \u2014 der andere ist dran.');
+      rollBtn.disabled = true;
+      setTimeout(function() { phase = 'roll'; switchTurn(); render(); }, 1200);
+    } else {
+      phase = 'move';
+      setMessage(isAiTurn() ? '' : 'Wähle einen Stein zum Ziehen.');
+      render();
+    }
+  }
+
+  function isAiTurn() {
+    return aiMode && playerTurn === 2;
+  }
+
+  // =============================================
+  //  Move Validation
+  // =============================================
+  function getValidMoves(player, roll) {
+    if (roll === 0) return [];
+    var moves = [];
+    var seen = {};
+
+    for (var i = 0; i < NUM_PIECES; i++) {
+      var cur = pieces[player][i];
+      if (cur === FINISH) continue;
+      var nxt = cur + roll;
+      if (nxt > FINISH) continue;
+
+      var key = cur + '>' + nxt;
+      if (seen[key]) continue;
+      seen[key] = true;
+
+      if (nxt !== FINISH && pieces[player].indexOf(nxt) !== -1) continue;
+
+      var opp = 3 - player;
+      if (nxt >= SHARED_START && nxt <= SHARED_END && ROSETTES.has(nxt)) {
+        if (pieces[opp].indexOf(nxt) !== -1) continue;
+      }
+
+      moves.push({ pieceIndex: i, from: cur, to: nxt });
+    }
+    return moves;
+  }
+
+  // =============================================
+  //  Human Actions
+  // =============================================
+  function handleCellClick(r, c) {
+    if (phase !== 'move' || gameOver) return;
+    if (aiMode && playerTurn === 2) return;
+
+    var cell = getCell(r, c);
+    if (!cell) return;
+
+    var pe = cell.querySelector('.piece.selectable[data-player="' + playerTurn + '"]');
+    if (!pe) return;
+
+    var idx = parseInt(pe.dataset.index);
+    var cur = pieces[playerTurn][idx];
+    var nxt = cur + diceValue;
+    if (nxt > FINISH) return;
+
+    var valid = getValidMoves(playerTurn, diceValue).some(function(m) { return m.from === cur; });
+    if (!valid) return;
+
+    executeMove(playerTurn, idx, nxt);
+  }
+
+  function handleStagingClick(player, idx) {
+    if (phase !== 'move' || gameOver || player !== playerTurn) return;
+    if (aiMode && playerTurn === 2) return;
+    if (pieces[player][idx] !== START) return;
+
+    var valid = getValidMoves(playerTurn, diceValue).some(function(m) { return m.from === START; });
+    if (!valid) return;
+
+    executeMove(playerTurn, idx, START + diceValue);
+  }
+
+  // =============================================
+  //  Execute Move (shared by human & AI)
+  // =============================================
+  function executeMove(player, idx, nxt) {
+    var opp = 3 - player;
+    var msg = '';
+
+    // Capture
+    if (nxt >= SHARED_START && nxt <= SHARED_END && !ROSETTES.has(nxt)) {
+      var ci = pieces[opp].indexOf(nxt);
+      if (ci !== -1) {
+        pieces[opp][ci] = START;
+        msg = 'Geschlagen! Der gegnerische Stein muss zurück an den Start.';
+      }
+    }
+
+    pieces[player][idx] = nxt;
+
+    // Scored
+    if (nxt === FINISH) {
+      msg = msg || 'Stein im Ziel!';
+    }
+
+    // Win
+    if (pieces[player].every(function(p) { return p === FINISH; })) {
+      gameOver = true;
+      phase = 'roll';
+      render();
+      var winner = player === 1 ? 'Weiss' : 'Schwarz';
+      if (aiMode && player === 2) winner = 'Schwarz (Bot)';
+      setMessage(winner + ' gewinnt!');
+      return;
+    }
+
+    // Rosette — extra turn
+    if (ROSETTES.has(nxt)) {
+      msg = (msg ? msg + ' ' : '') + 'Rosette \u2014 nochmal würfeln!';
+      setMessage(msg);
+      phase = 'roll';
+      render();
+      return;
+    }
+
+    setMessage(msg);
+    phase = 'roll';
+    switchTurn();
+    render();
+  }
+
+  function switchTurn() {
+    playerTurn = 3 - playerTurn;
+    diceValue = 0;
+    diceRolls = [];
+    document.getElementById('dice-container').innerHTML = '';
+    document.getElementById('dice-total').textContent = '';
+  }
+
+  function resetGame() {
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+    pieces = { 1: Array(NUM_PIECES).fill(START), 2: Array(NUM_PIECES).fill(START) };
+    playerTurn = 1;
+    diceValue = 0;
+    diceRolls = [];
+    phase = 'roll';
+    gameOver = false;
+    document.getElementById('dice-container').innerHTML = '';
+    document.getElementById('dice-total').textContent = '';
+    setMessage('');
+    render();
+  }
+
+  // =============================================
+  //  AI Logic
+  // =============================================
+  function scheduleAi() {
+    if (!aiMode || playerTurn !== 2 || gameOver) return;
+    if (aiTimeout) { clearTimeout(aiTimeout); aiTimeout = null; }
+
+    if (phase === 'roll') {
+      aiTimeout = setTimeout(function() { aiTimeout = null; doRoll(); }, 800);
+    } else if (phase === 'move') {
+      aiTimeout = setTimeout(function() { aiTimeout = null; aiMove(); }, 700);
+    }
+  }
+
+  function aiMove() {
+    var moves = getValidMoves(2, diceValue);
+    if (moves.length === 0) return;
+
+    var best = pickBestMove(moves);
+    executeMove(2, best.pieceIndex, best.to);
+  }
+
+  function pickBestMove(moves) {
+    var bestScore = -Infinity;
+    var bestMove = moves[0];
+
+    for (var i = 0; i < moves.length; i++) {
+      var s = scoreMove(moves[i]);
+      if (s > bestScore) {
+        bestScore = s;
+        bestMove = moves[i];
+      }
+    }
+    return bestMove;
+  }
+
+  function scoreMove(move) {
+    var score = 0;
+    var opp = 1;  // AI is player 2, human is player 1
+
+    // Bear off — always do this
+    if (move.to === FINISH) return 1000;
+
+    // Capture — very valuable
+    if (move.to >= SHARED_START && move.to <= SHARED_END && !ROSETTES.has(move.to)) {
+      if (pieces[opp].indexOf(move.to) !== -1) {
+        score += 500;
+        // Bonus for capturing a piece that's far along
+        score += move.to * 5;
+      }
+    }
+
+    // Rosette — extra turn + safety
+    if (ROSETTES.has(move.to)) score += 300;
+
+    // Enter a new piece onto the board
+    if (move.from === START) score += 100;
+
+    // Escape from a dangerous shared square
+    if (move.from >= SHARED_START && move.from <= SHARED_END && !ROSETTES.has(move.from)) {
+      if (canBeReached(opp, move.from)) score += 80;
+    }
+
+    // General progress — prefer advancing pieces further along
+    score += move.to * 3;
+
+    // Danger at destination — penalize landing where opponent can capture next turn
+    if (move.to >= SHARED_START && move.to <= SHARED_END && !ROSETTES.has(move.to)) {
+      if (canBeReached(opp, move.to)) score -= 120;
+    }
+
+    // Prefer not to stack too many pieces on the private entry (1-4)
+    // — encourages pushing forward rather than hoarding
+    if (move.to >= 1 && move.to <= 4) {
+      var countPrivate = 0;
+      for (var i = 0; i < NUM_PIECES; i++) {
+        var p = pieces[2][i];
+        if (p >= 1 && p <= 4) countPrivate++;
+      }
+      if (countPrivate >= 3) score -= 30;
+    }
+
+    return score;
+  }
+
+  // Check if any of 'player's pieces can reach 'pos' with a roll of 1-4
+  function canBeReached(player, pos) {
+    for (var i = 0; i < NUM_PIECES; i++) {
+      var p = pieces[player][i];
+      if (p === FINISH) continue;
+      var diff = pos - p;
+      if (diff >= 1 && diff <= 4) return true;
+    }
+    return false;
+  }
+
+  // =============================================
+  //  Initialize
+  // =============================================
+  createBoard();
+  render();
+</script>
+
+</body>
+</html>
