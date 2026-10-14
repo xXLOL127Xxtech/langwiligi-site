@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 
 SERVER="root@46.224.94.231"
 KEY="$HOME/.ssh/langwiligi-github-deploy"
-DEFAULT_REPO="langwiligi-spiele"
+DEFAULT_REPO="langwiligi-site"
 
 schritt() { printf '\n\033[1;33m== %s ==\033[0m\n' "$1"; }
 ok()      { printf '\033[1;32m✓\033[0m %s\n' "$1"; }

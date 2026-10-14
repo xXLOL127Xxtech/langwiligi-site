@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Eigenes Spiel hochladen</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mona+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2128; --line: #30363d; --text: #e6edf3; --muted: #8d96a0;
+    --green: #3fb950; --green-btn: #238636; --purple: #a371f7; --blue: #4493f8; --orange: #f0883e;
+    --sans: "Mona Sans", "Segoe UI", system-ui, sans-serif; --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1080px; height: 1350px; overflow: hidden; background: var(--bg); }
+  body { position: relative; color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  .bg { position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(700px 480px at 85% -5%, rgba(163,113,247,.28), transparent 65%),
+      radial-gradient(760px 520px at 0% 8%, rgba(63,185,80,.22), transparent 65%),
+      radial-gradient(900px 500px at 50% 112%, rgba(68,147,248,.18), transparent 65%); }
+  .dots { position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background-image: radial-gradient(rgba(255,255,255,.09) 1.4px, transparent 1.4px); background-size: 36px 36px;
+    -webkit-mask-image: linear-gradient(#000, transparent 55%); }
+  main { position: relative; padding: 62px 68px 0; }
+  svg.i { width: 1em; height: 1em; fill: currentColor; flex: none; }
+
+  /* Repo-Kopf */
+  .repo { display: flex; align-items: center; gap: 16px; font-size: 32px; color: var(--blue); }
+  .repo svg { color: var(--muted); width: 34px; height: 34px; }
+  .repo b { font-weight: 700; }
+  .repo .slash { color: var(--muted); }
+  .pill { font-size: 22px; font-weight: 600; color: var(--muted); border: 2px solid var(--line); border-radius: 99px; padding: 3px 16px; }
+
+  h1 { margin-top: 46px; font-size: 128px; line-height: .98; font-weight: 900; letter-spacing: -.04em; }
+  h1 span { display: block; background: linear-gradient(95deg, #56d364 0%, #3fb950 35%, #2ea8a0 70%, #4493f8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 8px; }
+  .lead { margin-top: 26px; font-size: 37px; line-height: 1.32; color: var(--muted); font-weight: 500; max-width: 920px; }
+  .lead b { color: var(--text); font-weight: 700; }
+
+  /* Ablauf */
+  .flow { margin-top: 44px; display: flex; flex-direction: column; gap: 26px; position: relative; }
+  .flow::before { content: ""; position: absolute; left: 33px; top: 107px; bottom: 44px; width: 4px; border-radius: 4px;
+    background: linear-gradient(var(--green), var(--purple)); opacity: .55; }
+  .step { display: flex; gap: 30px; align-items: center; }
+  .num { position: relative; z-index: 1; flex: none; display: grid; place-items: center; width: 70px; height: 70px; border-radius: 50%;
+    font-size: 34px; font-weight: 800; background: var(--bg); border: 4px solid var(--c); color: var(--c); box-shadow: 0 0 0 8px var(--bg); }
+  .card { flex: 1; background: var(--panel); border: 2px solid var(--line); border-radius: 18px; overflow: hidden;
+    box-shadow: 0 18px 50px -20px rgba(0,0,0,.8); }
+  .card .head { display: flex; align-items: center; gap: 14px; padding: 18px 24px; background: var(--panel2); border-bottom: 2px solid var(--line);
+    font-size: 27px; font-weight: 600; }
+  .card .head .path { font-family: var(--mono); font-size: 25px; color: var(--muted); }
+  .card .head .path b { color: var(--blue); font-weight: 700; }
+  .btn { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; padding: 8px 18px; border-radius: 10px; font-size: 24px; font-weight: 700;
+    color: #fff; background: var(--green-btn); border: 2px solid rgba(240,246,252,.12); }
+  .body { padding: 20px 24px; font-size: 27px; }
+  .drop { display: flex; align-items: center; gap: 18px; padding: 18px 22px; border: 3px dashed #3d444d; border-radius: 14px; color: var(--muted); }
+  .drop .folder { font-family: var(--mono); font-weight: 700; color: var(--text); }
+  .drop svg { width: 38px; height: 38px; color: var(--green); }
+  .files { margin-left: auto; display: flex; gap: 10px; }
+  .files span { font-family: var(--mono); font-size: 21px; padding: 4px 12px; border-radius: 8px; background: rgba(68,147,248,.12); color: #79c0ff; }
+
+  .pr { display: flex; align-items: center; gap: 16px; font-size: 31px; font-weight: 700; }
+  .pr .nr { color: var(--muted); font-weight: 500; }
+  .state { display: inline-flex; align-items: center; gap: 8px; padding: 6px 18px; border-radius: 99px; font-size: 24px; font-weight: 700; color: #fff; }
+  .state svg { width: 26px; height: 26px; }
+  .open { background: var(--green-btn); } .merged { background: #8957e5; }
+  .check { margin-top: 14px; display: flex; align-items: center; gap: 12px; font-size: 26px; color: var(--muted); }
+  .check svg { width: 30px; height: 30px; color: var(--green); }
+  .check b { color: var(--text); font-weight: 600; }
+  .live { display: flex; align-items: center; gap: 16px; }
+  .url { font-family: var(--mono); font-size: 27px; font-weight: 700; color: var(--text); }
+  .url em { font-style: normal; color: var(--orange); }
+
+  /* Fuss */
+  footer { position: absolute; left: 68px; right: 68px; bottom: 52px; display: flex; align-items: center; gap: 22px; }
+  .cta { display: flex; align-items: center; gap: 14px; padding: 20px 28px; border-radius: 16px; font-size: 29px; font-weight: 700;
+    background: var(--green-btn); color: #fff; border: 2px solid rgba(240,246,252,.14); box-shadow: 0 12px 40px -12px rgba(46,160,67,.7); }
+  .cta svg { width: 32px; height: 32px; }
+  .site { margin-left: auto; text-align: right; font-size: 25px; color: var(--muted); line-height: 1.3; }
+  .site b { display: block; font-size: 31px; color: var(--text); }
+  .graph { position: absolute; left: 68px; right: 68px; bottom: 160px; display: grid; grid-template-columns: repeat(52, 1fr); gap: 5px; opacity: .9; }
+  .graph i { aspect-ratio: 1; border-radius: 3px; background: #161b22; outline: 1px solid rgba(255,255,255,.03); }
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="dots"></div>
+<main>
+  <div class="repo">
+    <svg class="i" viewBox="0 0 16 16"><path d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.71 1.71.75.75 0 0 1-1.07 1.05A2.5 2.5 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.71A2.5 2.5 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.09a.25.25 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+    <span>xXLOL127Xxtech <span class="slash">/</span> <b>langwiligi-site</b></span>
+    <span class="pill">Public</span>
+  </div>
+
+  <h1>Eigenes Spiel <span>hochladen!</span></h1>
+  <p class="lead">Bau ein Browser-Spiel, lade den Ordner auf GitHub hoch und nach dem Merge spielen es <b>alle auf langwiligi.site</b>.</p>
+
+  <div class="flow">
+    <div class="step" style="--c: var(--green)">
+      <div class="num">1</div>
+      <div class="card">
+        <div class="head"><span class="path">langwiligi-site / <b>games</b> /</span>
+          <span class="btn"><svg class="i" viewBox="0 0 16 16"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .14.11.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14ZM11.78 4.72a.75.75 0 1 1-1.06 1.06L8.75 3.81V9.5a.75.75 0 0 1-1.5 0V3.81L5.28 5.78a.75.75 0 0 1-1.06-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z"/></svg>Upload files</span></div>
+        <div class="body">
+          <div class="drop">
+            <svg class="i" viewBox="0 0 16 16"><path d="M1.75 1A1.75 1.75 0 0 0 0 2.75v10.5C0 14.22.78 15 1.75 15h12.5A1.75 1.75 0 0 0 16 13.25v-8.5A1.75 1.75 0 0 0 14.25 3H7.5a.25.25 0 0 1-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75Z"/></svg>
+            <span class="folder">mein-spiel/</span>
+            <span class="files"><span>index.html</span><span>cover.webp</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" style="--c: var(--blue)">
+      <div class="num">2</div>
+      <div class="card">
+        <div class="body">
+          <div class="pr">
+            <span class="state open"><svg class="i" viewBox="0 0 16 16"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.12v5.26a2.25 2.25 0 1 1-1.5 0V5.37A2.25 2.25 0 0 1 1.5 3.25Zm5.68-.53L9.72.17a.25.25 0 0 1 .43.18V2h.6A2.75 2.75 0 0 1 13.5 4.75v5.88a2.25 2.25 0 1 1-1.5 0V4.75c0-.69-.56-1.25-1.25-1.25h-.6v1.65a.25.25 0 0 1-.43.18L7.18 2.78a.25.25 0 0 1 0-.36ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>Open</span>
+            <span>Neues Spiel: Mein Spiel</span>
+          </div>
+          <div class="check"><svg class="i" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 1 8 0a8 8 0 0 1 0 16Zm3.78-9.72a.75.75 0 0 0-1.06-1.06L6.75 9.19 5.28 7.72a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0Z"/></svg>
+            <b>Spiel prüfen</b>&nbsp;· Alles in Ordnung</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" style="--c: var(--purple)">
+      <div class="num">3</div>
+      <div class="card">
+        <div class="body live">
+          <span class="state merged"><svg class="i" viewBox="0 0 16 16"><path d="M5.45 5.15A3.75 3.75 0 0 0 8.75 7.5h1.38a2.25 2.25 0 1 1 0 1.5H8.75A5.24 5.24 0 0 1 5 7.43v3.2a2.25 2.25 0 1 1-1.5 0V5.37a2.25 2.25 0 1 1 1.95-.22ZM12.75 9a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-8.5 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg>Merged</span>
+          <span class="url">🚀 langwiligi.site/<em>mein-spiel</em></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="graph" id="graph"></div>
+
+<footer>
+  <div class="cta"><svg class="i" viewBox="0 0 16 16"><path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.12v5.26a2.25 2.25 0 1 1-1.5 0V5.37A2.25 2.25 0 0 1 1.5 3.25Zm5.68-.53L9.72.17a.25.25 0 0 1 .43.18V2h.6A2.75 2.75 0 0 1 13.5 4.75v5.88a2.25 2.25 0 1 1-1.5 0V4.75c0-.69-.56-1.25-1.25-1.25h-.6v1.65a.25.25 0 0 1-.43.18L7.18 2.78a.25.25 0 0 1 0-.36ZM3.75 2.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm0 9.5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm8.25.75a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Z"/></svg>Mach mit auf GitHub</div>
+  <div class="site"><b>🎮 langwiligi.site</b>github.com/xXLOL127Xxtech</div>
+</footer>
+
+<script>
+  // Beitrags-Raster im GitHub-Stil (fest vorgegeben, damit das Bild immer gleich aussieht)
+  var g = document.getElementById('graph'), shades = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'], s = 7;
+  for (var i = 0; i < 52 * 2; i++) {
+    s = (s * 9301 + 49297) % 233280;
+    var col = i % 52, r = s / 233280, bias = col / 52;
+    var lvl = r < .32 - bias * .2 ? 0 : r < .55 ? 1 : r < .75 ? 2 : r < .9 ? 3 : 4;
+    var el = document.createElement('i'); el.style.background = shades[lvl]; g.appendChild(el);
+  }
+</script>
+</body>
+</html>

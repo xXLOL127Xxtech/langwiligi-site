@@ -1,6 +1,6 @@
 # Dein Spiel auf langwiligi.site 🎮
 
-Du hast ein Browser-Spiel gebaut (oder willst eins bauen)? So kommt es auf **[langwiligi.site](https://langwiligi.site/:**.
+Du hast ein Browser-Spiel gebaut (oder willst eins bauen)? So kommt es auf **[langwiligi.site](https://langwiligi.site/)**.
 Du brauchst nur einen Browser und ein kostenloses GitHub-Konto. Kein Git, keine Kommandozeile.
 
 ---
