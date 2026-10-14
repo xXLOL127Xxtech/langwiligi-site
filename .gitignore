@@ -1,0 +1,12 @@
+# Nur lokal (nicht auf GitHub)
+LIESMICH.txt
+alt/
+vorschau/
+.claude/
+# Versteckte Arbeitsdateien in Spielordnern (werden auch nicht auf die Webseite geladen)
+games/**/.*
+
+Thumbs.db
+desktop.ini
+.DS_Store
+*.tmp

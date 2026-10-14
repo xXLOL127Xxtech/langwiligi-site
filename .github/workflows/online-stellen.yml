@@ -1,0 +1,59 @@
+# Stellt die Webseite online, sobald etwas in "main" landet (z.B. ein angenommener Pull Request).
+# Braucht das Repository-Secret DEPLOY_SSH_KEY (privater Schlüssel, eingerichtet von einrichten.cmd).
+# Auf dem Server darf dieser Schlüssel nur /usr/local/bin/langwiligi-deploy ausführen.
+name: Online stellen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'games/**'
+      - 'deploy.sh'
+      - 'server/langwiligi-deploy.sh'
+      - '.github/workflows/online-stellen.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: online-stellen
+  cancel-in-progress: false
+
+jobs:
+  hochladen:
+    name: Auf langwiligi.site hochladen
+    runs-on: ubuntu-latest
+    environment:
+      name: langwiligi.site
+      url: https://langwiligi.site/
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zugang zum Server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Secret DEPLOY_SSH_KEY fehlt. Bitte einrichten.cmd ausführen."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Fingerabdruck des Servers fest eingetragen, damit niemand sich als Server ausgeben kann
+          echo "46.224.94.231 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPCcT41ogSDGwfqORd0SzEYmsltc9OgD+lpr71Hwn4Bg" > ~/.ssh/known_hosts
+
+      - name: Hochladen
+        run: bash deploy.sh
+
+      - name: Zusammenfassung
+        run: |
+          echo "### ✅ Online: https://langwiligi.site/" >> "$GITHUB_STEP_SUMMARY"
+          for d in games/*/; do
+            s="$(basename "$d")"; [ "$s" = "_shared" ] || [ ! -f "$d/index.html" ] || echo "- [$s](https://langwiligi.site/$s/)" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Schlüssel entfernen
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

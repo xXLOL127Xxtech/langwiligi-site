@@ -1,0 +1,31 @@
+# Prüft bei jedem Pull Request, ob die Spiele den Regeln aus SPIEL-VORGABEN.md entsprechen.
+# Ergebnis: im Pull Request unter "Checks" bzw. direkt an den Dateien.
+name: Spiel prüfen
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefen:
+    name: Spiel prüfen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Geänderte Dateien ermitteln
+        if: github.event_name == 'pull_request'
+        run: git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD > "$RUNNER_TEMP/geaendert.txt"
+
+      - name: Spiele prüfen
+        run: |
+          if [ -f "$RUNNER_TEMP/geaendert.txt" ]; then
+            node tools/spiel-pruefen.js --changed "$RUNNER_TEMP/geaendert.txt"
+          else
+            node tools/spiel-pruefen.js
+          fi

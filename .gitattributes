@@ -1,0 +1,12 @@
+* text=auto
+# Skripte laufen auf Linux (GitHub, Server) bzw. unter Windows
+*.sh  text eol=lf
+*.yml text eol=lf
+*.cmd text eol=crlf
+*.webp binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.mp3  binary
+*.ogg  binary
+*.wav  binary
