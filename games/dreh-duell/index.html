@@ -191,6 +191,23 @@ button, input, select { font-family: inherit; }
   box-shadow: 0 0 22px 4px var(--accent), inset 0 0 12px rgba(255, 255, 255, 0.15);
 }
 .ptg-quad.ptg-spin .ptg-marble { box-shadow: 0 0 10px rgba(255, 255, 255, 0.4); }
+/* Nummern der Viertel an den Brett-Ecken, passend zu den Knöpfen in der Leiste */
+.ptg-board { position: relative; }
+.ptg-qnum {
+  position: absolute; z-index: 6; width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #111; font-weight: 900; font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); pointer-events: none;
+}
+.ptg-qnum.q0 { top: -11px; left: -11px; }
+.ptg-qnum.q1 { top: -11px; right: -11px; }
+.ptg-qnum.q2 { bottom: -11px; left: -11px; }
+.ptg-qnum.q3 { bottom: -11px; right: -11px; }
+.ptg-quad.ptg-hint { box-shadow: 0 0 0 3px var(--accent); }
+.ptg-rotgroup .ptg-qtag {
+  display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px;
+  border-radius: 50%; background: var(--accent); color: #111; font-weight: 900; font-size: 0.85rem; margin-left: 2px;
+}
 .ptg-cell {
   width: 46px;
   height: 46px;
@@ -535,6 +552,10 @@ window.Sound = (function () {
       }
       grid.appendChild(quad);
       quadEls.push(quad);
+      const num = document.createElement("div");
+      num.className = "ptg-qnum q" + q;
+      num.textContent = q + 1;
+      grid.appendChild(num);
     }
 
     
@@ -545,7 +566,10 @@ window.Sound = (function () {
       const group = document.createElement("div");
       group.className = "ptg-rotgroup";
       const label = document.createElement("span");
-      label.textContent = (`Viertel ${q + 1}`);
+      label.innerHTML = 'Viertel <b class="ptg-qtag">' + (q + 1) + '</b>';
+      // Beim Zeigen auf die Knöpfe leuchtet das passende Viertel auf
+      group.addEventListener("mouseenter", () => quadEls[q].classList.add("ptg-hint"));
+      group.addEventListener("mouseleave", () => quadEls[q].classList.remove("ptg-hint"));
       const ccw = document.createElement("button");
       ccw.className = "btn small"; ccw.textContent = "↺";
       ccw.addEventListener("click", () => onRotate(q, "ccw"));
