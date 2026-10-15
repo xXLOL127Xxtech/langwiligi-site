@@ -71,7 +71,7 @@ for dir in "$SRC"/*/; do
   page="$dir/index.html"
   title="$({ grep -o -i -m1 '<title>[^<]*</title>' "$page" || true; } | sed -E 's/<\/?[Tt][Ii][Tt][Ll][Ee]>//g' | tr -d '\r')"
   [ -n "$title" ] || title="$slug"
-  title="$(printf '%s' "$title" | html_escape)"
+  title="$(printf '%s' "$title" | html_unescape | html_escape)"
   desc="$(meta description "$page")"
   color="$(meta theme-color "$page")"
   [[ "$color" =~ ^#[0-9a-fA-F]{3,8}$ ]] || color="#ff2e88"

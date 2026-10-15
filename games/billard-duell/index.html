@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Billard-Duell</title>
+<title>Billard</title>
 <meta name="description" content="Abwechselnd dieselbe Kugel stossen, versenken, punkten – mit Bomben-Kugel, Superkraft und grossen Löchern.">
 <meta name="theme-color" content="#00d26a">
 <meta name="spiel-modi" content="Lokal,Online">
 <meta name="spiel-tags" content="Physik,Power-ups">
 <!--
-  Billard-Duell – angepasst für langwiligi.site.
+  Billard (früher Billard-Duell) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -851,7 +851,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>🎱 Billard-Duell</h1>
+      <h1>🎱 Billard</h1>
       <p>Ihr stosst abwechselnd dieselbe weisse Kugel. Jede versenkte Kugel zählt für den, der gestossen hat. Power-ups machen es wild!</p>
     </div>
 
@@ -906,7 +906,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Billard-Duell</h1>
+      <h1 id="gameTitle">Billard</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -1694,7 +1694,7 @@ window.Sound = (function () {
       }
       const winner = scores[0] > scores[1] ? 0 : 1;
       ctx.incScore(winner);
-      ctx.setStatus((`🎉 Spieler ${winner + 1} gewinnt das Billard-Duell ${scores[0]}:${scores[1]}!`));
+      ctx.setStatus((`🎉 Spieler ${winner + 1} gewinnt die Partie ${scores[0]}:${scores[1]}!`));
       return true;
     }
 
@@ -2238,7 +2238,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "poolbattle",
-    name: "Billard-Duell",
+    name: "Billard",
     emoji: "🎱",
     description: "Billard im Duell: Beide stossen abwechselnd dieselbe weisse Kugel.",
     onlineReady: true,

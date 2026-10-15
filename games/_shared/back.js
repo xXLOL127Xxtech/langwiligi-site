@@ -85,7 +85,7 @@
     box.id = 'lw-rate';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', 'Spiel bewerten');
-    var name = String(document.title || 'dieses Spiel').replace(/[<>&"]/g, '');
+    var name = String(document.title || 'dieses Spiel').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
     box.innerHTML = '<div class="lw-k">// Bewertung</div><button class="lw-x" type="button">Später ✕</button>' +
       '<div class="lw-q">Wie gefällt dir ' + name + '?</div><div class="lw-s">' +
       [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" aria-label="' + n + ' Stern' + (n > 1 ? 'e' : '') + '">★</button>'; }).join('') +

@@ -11,36 +11,36 @@
 | Spiel | Modi | Worum geht's? |
 |---|---|---|
 | [Backgammon](https://langwiligi.site/backgammon/) | Lokal · Online · Bots | Würfeln, ziehen, abtragen – der Brettspiel-Klassiker. |
-| [Berg-Bastler](https://langwiligi.site/berg-bastler/) | Solo | Bau dein eigenes Auto und bezwinge den Berg. |
-| [Billard-Duell](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
-| [Blasen-Arena](https://langwiligi.site/blasen-arena/) | Bots | Team gegen Bots: Gegner in Blasen fangen, 8 Level. |
-| [Blech-Duell](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
-| [Bleifuss-Flucht](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
+| [Billard](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
 | [Bogen-Duell](https://langwiligi.site/bogen-duell/) | Online · Bots | 1 gegen 1 mit Pfeil und Bogen in 3D. |
-| [Bubble-Duell](https://langwiligi.site/bubble-duell/) | Online · Bots | Bubble-Shooter im Duell. |
+| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Bots | Team gegen Bots: Gegner in Blasen fangen, 8 Level. |
+| [Bubble-Sturm](https://langwiligi.site/bubble-duell/) | Online · Bots | Bubble-Shooter im Duell. |
+| [Burgbrecher](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
+| [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
 | [Dame](https://langwiligi.site/dame/) | Lokal · Online · Bots | Springen, schlagen, zur Dame werden. |
-| [Dead Maze](https://langwiligi.site/dead-maze/) | Solo | Tower-Defense gegen Zombie-Horden. |
-| [Dreh-Duell](https://langwiligi.site/dreh-duell/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
-| [Farben-Duell](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
-| [Festungs-Duell](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
+| [Dreh & Gewinn](https://langwiligi.site/dreh-duell/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
+| [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
+| [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
 | [Flaschen-Flip](https://langwiligi.site/flaschen-flip/) | Solo | Flip die Flasche und lande sie aufrecht. |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |
+| [Hillclimber](https://langwiligi.site/berg-bastler/) | Solo | Bau dein eigenes Auto und bezwinge den Berg. |
 | [Käsekästchen](https://langwiligi.site/kaesekaestchen/) | Lokal · Online · Bots | Linien ziehen, Kästchen schliessen, Extrazüge holen. |
-| [Katapult-Krieg](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
-| [Das Königliche Spiel von Ur](https://langwiligi.site/koenigliches-ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
-| [Kopf Voraus!](https://langwiligi.site/kopf-voraus/) | Lokal · Online · Bots · Solo | Pixel-Autoduell mit verrückter Physik. |
+| [Kopf voraus!](https://langwiligi.site/kopf-voraus/) | Lokal · Online · Bots · Solo | Pixel-Autoduell mit verrückter Physik. |
 | [Kronenwacht](https://langwiligi.site/kronenwacht/) | Solo · Online | Tower Defense mit Helden, solo oder im Online-Koop. |
-| [Laser-Duell](https://langwiligi.site/laser-duell/) | Lokal · Online · Bots | Spiegel drehen, bis der Laser den Kern trifft. |
+| [Laserlabyrinth](https://langwiligi.site/laser-duell/) | Lokal · Online · Bots | Spiegel drehen, bis der Laser den Kern trifft. |
 | [Mancala](https://langwiligi.site/mancala/) | Lokal · Online · Bots | Das uralte Säspiel mit Steinen und Mulden. |
-| [Mauer-Duell](https://langwiligi.site/mauer-duell/) | Lokal · Online · Bots | Ans Ziel rennen und dem Gegner den Weg verbauen. |
-| [Panzer-Taktik](https://langwiligi.site/panzer-taktik/) | Lokal · Online | Rundenbasiertes Panzer-Duell mit Minen und Raketen. |
+| [Mauerbauer](https://langwiligi.site/mauer-duell/) | Lokal · Online · Bots | Ans Ziel rennen und dem Gegner den Weg verbauen. |
+| [Neon-Schlangen](https://langwiligi.site/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
+| [Panzerzug](https://langwiligi.site/panzer-taktik/) | Lokal · Online | Rundenbasiertes Panzer-Duell mit Minen und Raketen. |
 | [Reversi](https://langwiligi.site/reversi/) | Lokal · Online · Bots | Steine einschliessen und umdrehen. |
+| [Road-Runner](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
 | [SBB Runner](https://langwiligi.site/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
 | [Schach](https://langwiligi.site/schach/) | Lokal · Online · Bots | Gegen einen Bot mit vier Stärken und drei Stilen. |
-| [Schlangen-Arena](https://langwiligi.site/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
-| [Ultimate Tic-Tac-Toe](https://langwiligi.site/ultimate-tic-tac-toe/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
+| [Tic-Tac-Turbo](https://langwiligi.site/ultimate-tic-tac-toe/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
+| [Ur](https://langwiligi.site/koenigliches-ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
 | [Vier gewinnt](https://langwiligi.site/vier-gewinnt/) | Lokal · Online · Bots | Steine fallen lassen, vier in eine Reihe bringen. |
+| [Zombie-Labyrinth](https://langwiligi.site/dead-maze/) | Solo | Tower-Defense gegen Zombie-Horden. |
 
 ## Eigenes Spiel hochladen
 

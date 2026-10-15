@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mauer-Duell</title>
+<title>Mauerbauer</title>
 <meta name="description" content="Renn ans andere Ende des Bretts und verbau deinem Gegner mit Mauern den Weg. Taktik pur.">
 <meta name="theme-color" content="#ff8a50">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Labyrinth">
 <!--
-  Mauer-Duell – angepasst für langwiligi.site.
+  Mauerbauer (früher Mauer-Duell) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -276,7 +276,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>🧱 Mauer-Duell</h1>
+      <h1>🧱 Mauerbauer</h1>
       <p>Zieh deine Figur oder setz eine Mauer: Wer zuerst die andere Seite erreicht, gewinnt. Aber Achtung – ganz zumauern ist verboten!</p>
     </div>
 
@@ -331,7 +331,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Mauer-Duell</h1>
+      <h1 id="gameTitle">Mauerbauer</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -997,7 +997,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "quoridor",
-    name: "Mauer-Duell",
+    name: "Mauerbauer",
     emoji: "🧱",
     description: "Renn auf die andere Seite und bau Mauern, um den Gegner aufzuhalten.",
     onlineReady: true,

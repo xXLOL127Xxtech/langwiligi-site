@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Farben-Duell</title>
+<title>Farbfalle</title>
 <meta name="description" content="Wo du landest, bestimmt den nächsten Zug des Gegners: das bunte Taktik-Duell auf dem 8×8-Farbenbrett.">
 <meta name="theme-color" content="#ff6fb5">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Knobeln">
 <!--
-  Farben-Duell – angepasst für langwiligi.site.
+  Farbfalle (früher Farben-Duell) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -228,7 +228,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>🌈 Farben-Duell</h1>
+      <h1>🌈 Farbfalle</h1>
       <p>Zieh deine Türme Richtung Gegner. Die Farbe deines Zielfeldes legt fest, welchen Turm der Gegner bewegen muss – denk zwei Züge voraus!</p>
     </div>
 
@@ -283,7 +283,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Farben-Duell</h1>
+      <h1 id="gameTitle">Farbfalle</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -812,7 +812,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "kamisado",
-    name: "Farben-Duell",
+    name: "Farbfalle",
     emoji: "🎨",
     description: "Die Farbe des Feldes, auf dem du landest, bestimmt, welchen Turm der Gegner ziehen muss.",
     onlineReady: true,

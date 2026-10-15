@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ultimate Tic-Tac-Toe</title>
+<title>Tic-Tac-Turbo</title>
 <meta name="description" content="Neun Tic-Tac-Toe-Felder in einem: Dein Zug bestimmt, wo der Gegner als Nächstes spielen muss.">
 <meta name="theme-color" content="#9575ff">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Knobeln">
 <!--
-  Ultimate Tic-Tac-Toe – angepasst für langwiligi.site.
+  Tic-Tac-Turbo (früher Ultimate Tic-Tac-Toe) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -235,7 +235,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>❌ Ultimate Tic-Tac-Toe</h1>
+      <h1>❌ Tic-Tac-Turbo</h1>
       <p>Gewinne kleine Felder, um das grosse Brett zu erobern. Aber pass auf, wohin du deinen Gegner schickst!</p>
     </div>
 
@@ -290,7 +290,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Ultimate Tic-Tac-Toe</h1>
+      <h1 id="gameTitle">Tic-Tac-Turbo</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -842,7 +842,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "ultimatettt",
-    name: "Ultimate Tic-Tac-Toe",
+    name: "Tic-Tac-Turbo",
     emoji: "⊞",
     description: "Tic-Tac-Toe im Tic-Tac-Toe: Dein Zug bestimmt, wo der Gegner als Nächstes spielen muss.",
     onlineReady: true,

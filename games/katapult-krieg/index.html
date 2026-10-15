@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Katapult-Krieg</title>
+<title>Burgbrecher</title>
 <meta name="description" content="Baut, zielt, zerstört: Schiess die Burg deines Gegners in Trümmer – mit Wind und Spezialmunition.">
 <meta name="theme-color" content="#f5c542">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
@@ -580,7 +580,7 @@ function showMenu() {
   const opt = (attr, id, o, sel) => `<button class="opt ${sel ? 'sel' : ''}" data-${attr}="${id}"><span class="ic">${o.icon}</span><b>${o.name}</b><small>${o.desc}</small></button>`;
   const M = MAPS[CFG.map];
   overlay(`
-    <h1>🏰 Katapult-Krieg 🏰</h1>
+    <h1>🏰 Burgbrecher 🏰</h1>
     <p class="muted" style="margin-top:0">Für 2 Leute an einem Rechner, online mit Code – oder gegen den Computer. Baut, zielt, zerstört!</p>
     ${netMenuHtml()}
     <div class="sec"><h3>1 · Gegner</h3><div class="opts">
@@ -1978,7 +1978,7 @@ function renderTop() {
     const timer = CFG.timer && S.bs === 'aim' && !isNpcTurn() ? ` &nbsp;·&nbsp; <span style="color:${S.tLeft < 600 ? '#ff8a80' : '#fff'}">⏱️ ${Math.max(0, Math.ceil(S.tLeft / 60))} s</span>` : '';
     mid = `Runde ${S.rounds} &nbsp;·&nbsp; <span class="wind">💨 Wind: ${w}</span>${mods ? ` &nbsp;·&nbsp; <span style="color:var(--gold)">${mods}</span>` : ''}${timer}`;
   } else if (S.phase === 'over') mid = 'Spielende';
-  else mid = '🏰 Katapult-Krieg';
+  else mid = '🏰 Burgbrecher';
   setHtml($('mid'), mid);
   lockBars();
 }
