@@ -1709,7 +1709,7 @@ function frame(ts) {
   if (G.kind === 'client') { clientFrame(dt); return; }
   if (!G.sim) { ctx.fillStyle = '#0d0f13'; ctx.fillRect(0, 0, cv.width, cv.height); return; }
   if (!G.paused) {
-    G.acc += dt; let n = 0;
+    G.acc += Math.abs(dt - DT) < 0.0015 ? DT : dt; let n = 0;   // Messrauschen der Bildzeit glätten
     while (G.acc >= DT && n < 5) { G.acc -= DT; n++; step(); if (G.kind === null) return; }
     if (n === 5) G.acc = 0;
   }

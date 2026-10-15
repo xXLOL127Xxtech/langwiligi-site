@@ -1245,7 +1245,7 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now; rt += dt;
   if (state === 'play') {
-    acc += dt;
+    acc += Math.abs(dt - 1 / 60) < 0.0015 ? 1 / 60 : dt;   // Messrauschen der Bildzeit glätten, sonst zuckt das Bild
     while (acc >= STEP) { step(STEP); acc -= STEP; if (state !== 'play') { acc = 0; break; } }
   } else if (state === 'menu') gt += dt;
   if (state !== 'pause') updateVisual(dt);

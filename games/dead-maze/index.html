@@ -1897,7 +1897,7 @@ const STEP = 1 / 60;
 function frame(now){
   const rdt = Math.min(0.1, (now - last) / 1000); last = now;
   if (running && !paused && !modalOpen) {
-    acc += rdt * (S.over ? 0.5 : speed);
+    acc += (Math.abs(rdt - STEP) < 0.0015 ? STEP : rdt) * (S.over ? 0.5 : speed);   // Messrauschen glätten
     let n = 0;
     while (acc >= STEP && n < 12) { update(STEP); acc -= STEP; n++; }
     if (n >= 12) acc = 0;

@@ -1157,9 +1157,18 @@ class Car {
       }
     }
   }
+  // Anzeigeposition zwischen letztem und aktuellem Physikschritt (k = 0…1)
+  lerpTo(k) {
+    const jump = this.px === undefined || Math.abs(this.x - this.px) + Math.abs(this.z - this.pz) > 20;
+    if (jump) { this.ix = this.x; this.iy = this.y; this.iz = this.z; this.ia = this.a; return; }
+    let da = this.a - this.pa; da -= Math.round(da / (2 * Math.PI)) * 2 * Math.PI;
+    this.ix = this.px + (this.x - this.px) * k; this.iy = this.py + (this.y - this.py) * k;
+    this.iz = this.pz + (this.z - this.pz) * k; this.ia = this.pa + da * k;
+  }
   sync(dt, t) {
     const m = this.m;
-    m.group.position.set(this.x, this.y, this.z); m.group.rotation.y = this.a;
+    if (this.ix === undefined) m.group.position.set(this.x, this.y, this.z), m.group.rotation.y = this.a;
+    else m.group.position.set(this.ix, this.iy, this.iz), m.group.rotation.y = this.ia;
     const acc = dt > 0 ? (this.vf - this.prevVf) / dt : 0; this.prevVf = this.vf;
     this.pitch = lerp(this.pitch, clamp(-acc * 0.004, -0.06, 0.06), Math.min(1, dt * 6));
     this.roll = lerp(this.roll, clamp(this.av * (this.vf || 0) * 0.0035, -0.09, 0.09), Math.min(1, dt * 6));
@@ -1801,10 +1810,16 @@ class Game {
   frame(dt) {
     if (!paused || (this.net && !this.over)) {
       this.acc += dt; let n = 0;
-      while (this.acc >= STEP && n < 5) { this.step(STEP); this.acc -= STEP; n++; }
+      while (this.acc >= STEP && n < 5) {
+        for (const c of this.cars) { c.px = c.x; c.py = c.y; c.pz = c.z; c.pa = c.a; }
+        this.step(STEP); this.acc -= STEP; n++;
+      }
       if (n === 5) this.acc = 0;
     }
     const t = this.t;
+    // Physik läuft in festen 1/60-s-Schritten. Gezeichnet wird zwischen den letzten zwei Schritten, sonst zuckt das Bild.
+    const k = paused ? 1 : Math.min(1, this.acc / STEP);
+    for (const c of this.cars) c.lerpTo(k);
     for (const c of this.cars) c.sync(paused ? 0 : dt, t);
     if (!paused) FX.update(dt);
     Coins.update(performance.now() / 1000);
@@ -1833,8 +1848,9 @@ class Game {
     for (const v of this.views) {
       const c = v.car;
       const la = 0.42;
-      v.tx += (c.x + c.vx * la - v.tx) * Math.min(1, dt * 5);
-      v.tz += (c.z + c.vz * la - v.tz) * Math.min(1, dt * 5);
+      const cx = c.ix === undefined ? c.x : c.ix, cz = c.iz === undefined ? c.z : c.iz;
+      v.tx += (cx + c.vx * la - v.tx) * Math.min(1, dt * 5);
+      v.tz += (cz + c.vz * la - v.tz) * Math.min(1, dt * 5);
       const asp = v.rect.w / v.rect.h;
       const zt = (1 + c.spd / 95) * Math.max(1, Math.pow(1.35 / asp, 0.45)) * (this.demo ? 0.92 : 1);
       v.zoom += (zt - v.zoom) * Math.min(1, dt * 2);

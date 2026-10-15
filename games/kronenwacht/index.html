@@ -3746,7 +3746,7 @@ function loop(ts) {
     else {
       if (G && (!net || net.host)) {
         if (!G.paused && G.state === 'play') {
-          acc += dt * G.speed; let n = 0;
+          acc += (Math.abs(dt - STEP) < 0.0015 ? STEP : dt) * G.speed; let n = 0;   // Messrauschen glätten
           while (acc >= STEP && n < 10) { step(STEP); acc -= STEP; n++; }
           if (n >= 10) acc = 0;
         }

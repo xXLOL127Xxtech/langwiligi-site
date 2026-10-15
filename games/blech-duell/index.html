@@ -1682,7 +1682,7 @@ function frame(now) {
   const time = now / 1000;
   const live = world && (phase === 'countdown' || phase === 'fight' || phase === 'roundEnd');
   if (live && !paused) {
-    acc += dt;
+    acc += Math.abs(dt - STEP) < 0.0015 ? STEP : dt;   // Messrauschen der Bildzeit glätten, sonst zuckt das Bild
     let n = 0;
     while (acc >= STEP && n < 5) { step(STEP); acc -= STEP; n++; if (!(phase === 'countdown' || phase === 'fight' || phase === 'roundEnd')) break; }
     if (n >= 5) acc = 0;
