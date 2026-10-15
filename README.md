@@ -41,6 +41,7 @@
 | [Tic-Tac-Turbo](https://langwiligi.site/ultimate-tic-tac-toe/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
 | [Ur](https://langwiligi.site/koenigliches-ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
 | [Vier gewinnt](https://langwiligi.site/vier-gewinnt/) | Lokal · Online · Bots | Steine fallen lassen, vier in eine Reihe bringen. |
+| [Weltenbrand](https://langwiligi.site/weltenbrand/) | Online · Bots | Weltkriegs-Strategie in Echtzeit: Wirtschaft, Forschung, Armeen zu Land, Luft und See. |
 
 ## Eigenes Spiel hochladen
 
