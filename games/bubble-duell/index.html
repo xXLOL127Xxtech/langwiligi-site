@@ -245,6 +245,19 @@
   </div>
 </div>
 
+<script>
+// Ton anhalten, solange der Tab im Hintergrund ist (spart Akku, keine hängenden Töne)
+(function () {
+  var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  var all = [];
+  function P(o) { var c = o === undefined ? new A() : new A(o); all.push(c); return c; }
+  P.prototype = A.prototype;
+  window.AudioContext = P; if (window.webkitAudioContext) window.webkitAudioContext = P;
+  document.addEventListener('visibilitychange', function () {
+    all.forEach(function (c) { try { var r = document.hidden ? c.suspend() : c.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {} });
+  });
+})();
+</script>
 <script src="../_shared/hub.js"></script>
 <script>
 'use strict';
@@ -1312,7 +1325,13 @@ $('btn-copy').onclick = () => {
   if (navigator.clipboard) navigator.clipboard.writeText(inp.value).then(done, () => { inp.select(); document.execCommand('copy'); done(); });
   else { inp.select(); document.execCommand('copy'); done(); }
 };
-$('btn-quit').onclick = () => { if (G.state === 'over' || confirm('Spiel wirklich verlassen?')) location.href = location.href.split('#')[0]; };
+let quitArmed = 0;
+$('btn-quit').onclick = () => {
+  // Zweimal tippen statt Browser-Popup
+  if (G.state === 'over' || Date.now() - quitArmed < 2500) { location.href = location.href.split('#')[0]; return; }
+  quitArmed = Date.now(); const b = $('btn-quit'), old = b.textContent;
+  b.textContent = '❓'; b.title = 'Nochmal tippen zum Verlassen'; setTimeout(() => { b.textContent = old; }, 2500);
+};
 $('btn-mute').onclick = () => { muted = !muted; $('btn-mute').textContent = muted ? '🔇' : '🔊'; try { localStorage.setItem('bubbleduell-mute', muted ? '1' : '0'); } catch (e) {} };
 $('btn-mute').textContent = muted ? '🔇' : '🔊';
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { location.href = location.href.split('#')[0]; });

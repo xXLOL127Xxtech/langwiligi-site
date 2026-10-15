@@ -257,7 +257,30 @@
   </div>
 </div>
 
+<script>
+// Ton anhalten, solange der Tab im Hintergrund ist (spart Akku, keine hängenden Töne)
+(function () {
+  var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  var all = [];
+  function P(o) { var c = o === undefined ? new A() : new A(o); all.push(c); return c; }
+  P.prototype = A.prototype;
+  window.AudioContext = P; if (window.webkitAudioContext) window.webkitAudioContext = P;
+  document.addEventListener('visibilitychange', function () {
+    all.forEach(function (c) { try { var r = document.hidden ? c.suspend() : c.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {} });
+  });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// Falls die Bibliothek nicht geladen werden konnte (kein Internet, Blocker): verständliche Meldung statt schwarzem Bildschirm
+if (!window.THREE) window.addEventListener('DOMContentLoaded', () => {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0b1020;color:#fff;font:600 17px system-ui,sans-serif;text-align:center;padding:24px';
+  d.innerHTML = '<div style="font-size:44px">📡</div><div>Das Spiel konnte nicht vollständig geladen werden.<br><span style="font-weight:400;opacity:.75;font-size:14px">Bitte Internetverbindung prüfen und neu laden.</span></div><button style="font:inherit;padding:10px 22px;border:0;border-radius:10px;background:#4f7cff;color:#fff;cursor:pointer">Neu laden</button>';
+  d.querySelector('button').onclick = () => location.reload();
+  document.body.appendChild(d);
+});
+</script>
 <script src="../_shared/hub.js"></script>
 <script>
 "use strict";
