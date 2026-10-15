@@ -636,6 +636,12 @@ function lavaF(x) {
   if (m < 10) y = 4.2; else if (m < 12) y = 4.2 + (m - 10) * 0.6; else if (m < 13) y = 5.4 - (m - 12) * 4.8; else y = 0.6;
   return y + qp(x, 3);
 }
+const sstep = t => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+const mir = x => x > W / 2 ? W - x : x; // Abstand vom näheren Rand, damit alle Arenen spiegelgleich sind
+// Sprungschanze: Anlauf, gebogener Kicker, flache Rückseite
+function kicker(m, a, b, c, h) { if (m < a || m > c) return 0; if (m < b) { const u = (m - a) / (b - a); return h * u * u; } return h * (1 - sstep((m - b) / (c - b))); }
+function skateF(x) { return 2 + qp(x, 5) + 1.4 * sstep((mir(x) - 9.5) / 3); }
+function skiF(x) { const m = mir(x); return 2 + qp(x, 2.5) + 3.2 * (1 - sstep(m / 8)) + kicker(m, 8.5, 11, 14, 1); }
 function setupSeesaw(sim, w, g) {
   const b = w.createBody({ type: 'dynamic', position: V2(16, 3.35), angularDamping: 0.6 });
   b.createFixture(new P.Box(5.5, 0.18), { density: 1.1, friction: 0.95, userData: { k: 'ground' } });
@@ -656,9 +662,35 @@ const ARENAS = [
   { id: 'mond', name: 'Mondbasis', theme: 'moon', grav: -8, f: x => 2 + qp(x, 3.5) + 0.6 * Math.sin(x * 0.8 + 0.4) * Math.sin(clamp((x - 3.5) / 25, 0, 1) * Math.PI) },
   { id: 'eis', name: 'Eisbahn', theme: 'ice', fric: 0.04, f: x => 2 + qp(x, 4) + 0.9 * Math.exp(-(((x - 16) / 1.9) ** 2)) },
   { id: 'baustelle', name: 'Baustelle', theme: 'site', f: x => 2 + qp(x, 3), plats: [{ s: 'girder', p: [[3, 8], [9, 8], [9, 8.5], [3, 8.5]] }, { s: 'girder', p: [[23, 8], [29, 8], [29, 8.5], [23, 8.5]] }], setup: setupLift },
+  { id: 'schanze', name: 'Sprungschanzen', theme: 'sunset', f: x => 2 + qp(x, 3) + kicker(mir(x), 6, 10, 14, 1.6), spawn: [4.5, 27.5] },
+  { id: 'tafelberg', name: 'Tafelberg', theme: 'canyon', f: x => 2 + qp(x, 4) + 2.6 * sstep((mir(x) - 7) / 5.5), spawn: [4.5, 27.5] },
+  { id: 'wellen', name: 'Wellenbahn', theme: 'hills', f: x => 2 + qp(x, 3) + (x > 7 && x < 25 ? 0.75 * Math.sin(Math.PI * (x - 7) / 6) ** 2 : 0), spawn: [4.5, 27.5] },
+  { id: 'skatepark', name: 'Skatepark', theme: 'night', f: skateF, spawn: [5, 27] },
+  { id: 'skisprung', name: 'Skisprung', theme: 'snow', f: skiF, spawn: [4, 28] },
   { id: 'stadion', name: 'Stadion', theme: 'stadium', f: () => 2, goals: true, spawn: [8, 24], only: 'fussball',
     plats: [{ s: 'bar', p: [[0, 6.2], [2.4, 6.2], [2.4, 6.55], [0, 7.3]] }, { s: 'bar', p: [[W, 6.2], [W - 2.4, 6.2], [W - 2.4, 6.55], [W, 7.3]] }] },
 ];
+// Startlage eines Autos: an die Bodenneigung anpassen und so hoch setzen, dass weder Räder noch Karosserie im Boden stecken
+function spawnPose(A, def, f, sx) {
+  const xs = def.wheels.map(q => q[0] * S * f);
+  const xa = sx + Math.min(...xs), xb = sx + Math.max(...xs);
+  const a = clamp(Math.atan2(A.f(xb) - A.f(xa), xb - xa), -0.7, 0.7);
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const rot = (x, y) => [x * ca - y * sa, x * sa + y * ca];
+  const g = x => A.f(clamp(x, 0, W));
+  let y = -Infinity;
+  const circ = (lx, ly, r) => { const [px, py] = rot(lx, ly); for (let k = -8; k <= 8; k++) { const dx = r * k / 8; y = Math.max(y, g(sx + px + dx) - py + Math.sqrt(r * r - dx * dx)); } };
+  for (const [wx, wy, wr] of def.wheels) circ(wx * S * f, -wy * S, wr * S);
+  circ(def.hd[0] * S * f, -def.hd[1] * S, def.hd[2] * S);
+  for (const pt of def.parts) {
+    const q = pt.p;
+    for (let k = 0; k < q.length; k++) {
+      const [x0, y0] = q[k], [x1, y1] = q[(k + 1) % q.length];
+      for (let t = 0; t <= 1; t += 0.25) { const [px, py] = rot(lerp(x0, x1, t) * S * f, -lerp(y0, y1, t) * S); y = Math.max(y, g(sx + px) - py + 0.05); }
+    }
+  }
+  return [a, y + 0.06];
+}
 const ARENA_BY_ID = {}; ARENAS.forEach(a => { ARENA_BY_ID[a.id] = a; a.minF = Math.min(...Array.from({ length: 57 }, (_, i) => a.f(2 + i * 0.5))); });
 
 const GRASS = { top: '#7bd95a', top2: '#4fae3c', body: '#8b5a33', dark: '#6b4126', speck: '#a8754a', wall: '#4a3022' };
@@ -671,6 +703,10 @@ const THEMES = {
   moon: { sky: ['#030308', '#070714', '#0d0d22', '#141432'], stars: true, planet: [24, 14.5, 2.4], far: ['craters', '#34344a', 4, 1.5], g: { top: '#d6d6e2', top2: '#b4b4c4', body: '#8e8ea2', dark: '#6e6e84', speck: '#5d5d70', wall: '#3a3a4c' }, dust: '#cfcfdc' },
   ice: { sky: ['#030818', '#061232', '#0b1f4c', '#123268', '#1b4682'], stars: true, aurora: true, far: ['mountain', '#24477a', 5, 7, '#dcecff'], near: ['pines', '#12294a', 2.5], g: { top: '#ffffff', top2: '#dcefff', body: '#9fd3f0', dark: '#6fb2dc', speck: '#c8ecff', wall: '#2a4a6e' }, dust: '#eef7ff', amb: 'snow' },
   site: { sky: ['#e9824a', '#f29b55', '#f8b664', '#fbd07c', '#fde4a6'], sun: [10, 12.5, 2.2, '#fff3c4'], far: ['city', '#c58761', 1], near: ['cranes', '#7a5232'], g: { top: '#c98d58', top2: '#a87246', body: '#8a5a38', dark: '#6c4329', speck: '#b09078', wall: '#4d3020' }, dust: '#d4a77c', amb: 'dust' },
+  sunset: { sky: ['#2b1b4a', '#5a2a6b', '#9a3d6e', '#e0605e', '#f79a5a', '#ffcf7a'], sun: [9, 10.5, 2.4, '#ffe9a8'], far: ['hills', '#7a3f6e', 5, 3], near: ['trees', '#3a2347', 2.5], g: GRASS, dust: '#c9a77a', amb: 'firefly' },
+  canyon: { sky: ['#2a6fc9', '#4a8fdc', '#73afe8', '#a5cdf0', '#d6e8f5'], sun: [24, 14.5, 1.8, '#fff6d6'], far: ['mesa', '#b4543c', 6, 5], near: ['cactus', '#7a3a24', 2.5], g: { top: '#e8885a', top2: '#c9663c', body: '#a24a2a', dark: '#7e3720', speck: '#d9905e', wall: '#4f2416' }, dust: '#e0a37a', amb: 'dust' },
+  night: { sky: ['#05060f', '#0a0f26', '#121b3f', '#1c2a5a'], stars: true, far: ['city', '#141d3d', 2], near: ['city2', '#0b1128', 1.5], g: { top: '#a3abbb', top2: '#7c8496', body: '#5c6373', dark: '#474d5c', speck: '#3a3f4c', wall: '#22252f' }, dust: '#a8aebb', amb: 'firefly' },
+  snow: { sky: ['#3d8fe0', '#5aa5ec', '#7fbdf4', '#a8d4fa', '#d4ebff'], sun: [7, 14.5, 1.8, '#fffbe8'], far: ['mountain', '#7a9cc9', 5, 7, '#ffffff'], near: ['pines', '#1e4a3a', 2.5], clouds: true, g: { top: '#ffffff', top2: '#e6f2fb', body: '#c4dbeb', dark: '#9ebfd6', speck: '#dbeefa', wall: '#3a5a7a' }, dust: '#f4faff', amb: 'snow' },
   stadium: { sky: ['#04060f', '#080d22', '#0d1534', '#132048'], stars: true, far: ['stands', '#18203d'], g: { top: '#6be052', top2: '#45b336', body: '#3a8a2c', dark: '#2c6b22', speck: '#4aa53a', wall: '#262c3c' }, dust: '#9be07a', grass: true },
 };
 
@@ -898,20 +934,20 @@ class Sim {
   makeCar(i, old) {
     const def = CAR_BY_ID[this.cfg.cars[i]]; const f = i === 0 ? 1 : -1;
     const sx = (this.A.spawn || [6, W - 6])[i];
-    let low = 0; for (const wh of def.wheels) low = Math.max(low, (wh[1] + wh[2]) * S);
-    const by = this.A.f(sx) + low + 0.06 + (old ? 1.2 : 0);
+    const [ba, by0] = spawnPose(this.A, def, f, sx);
+    const by = by0 + (old ? 1.2 : 0);
     const w = this.world, grp = -(i + 1);
-    const body = w.createBody({ type: 'dynamic', position: V2(sx, by), angularDamping: 0.35, linearDamping: 0.02 });
+    const body = w.createBody({ type: 'dynamic', position: V2(sx, by), angle: ba, angularDamping: 0.35, linearDamping: 0.02 });
     for (const pt of def.parts) body.createFixture(new P.Polygon(pt.p.map(([x, y]) => V2(x * S * f, -y * S))), { density: def.st.dens * (pt.d || 1), friction: 0.55, restitution: 0.22, filterGroupIndex: grp, userData: { k: 'car', i } });
     const [hx, hy, hr] = def.hd;
     const headLocal = V2(hx * S * f, -hy * S);
     const headFix = body.createFixture(new P.Circle(headLocal, hr * S), { density: 0.3, friction: 0.5, restitution: 0.2, filterGroupIndex: grp, userData: { k: 'head', i } });
     const minX = Math.min(...def.wheels.map(q => q[0]));
     const wheels = def.wheels.map(([wx, wy, wr]) => {
-      const b = w.createBody({ type: 'dynamic', position: V2(sx + wx * S * f, by - wy * S), angularDamping: 0.05 });
+      const b = w.createBody({ type: 'dynamic', position: body.getWorldPoint(V2(wx * S * f, -wy * S)), angle: ba, angularDamping: 0.05 });
       const r = wr * S;
       const fix = b.createFixture(new P.Circle(V2(0, 0), r), { density: def.st.wd ?? 1.0, friction: def.st.grip, restitution: 0.05, filterGroupIndex: grp, userData: { k: 'wheel', i } });
-      const j = w.createJoint(new P.WheelJoint({ enableMotor: true, maxMotorTorque: 0, motorSpeed: 0, frequencyHz: def.st.susp, dampingRatio: 0.75 }, body, b, b.getPosition(), V2(0, 1)));
+      const j = w.createJoint(new P.WheelJoint({ enableMotor: true, maxMotorTorque: 0, motorSpeed: 0, frequencyHz: def.st.susp, dampingRatio: 0.75 }, body, b, b.getPosition(), body.getWorldVector(V2(0, 1))));
       const drive = def.drive === 'rear' ? wx === minX : true;
       return { b, fix, j, r, r0: r, drive };
     });
