@@ -17,10 +17,10 @@ panzer-pong/          ← Ordnername = Link: langwiligi.site/panzer-pong/
 ```
 
 - **Ordnername**: nur Kleinbuchstaben, Ziffern und Bindestriche (`panzer-pong`, nicht `Panzer Pong`).
-- **Oben in `index.html`**, direkt unter `<title>`:
+- **Oben in `index.html`** im `<head>`:
 
   ```html
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
   <title>Panzer-Pong</title>
   <meta name="description" content="Ein Satz, der Lust aufs Spiel macht.">
   <meta name="theme-color" content="#ff6b4a">

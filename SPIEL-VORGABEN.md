@@ -12,10 +12,11 @@ Du brauchst keinen Zugriff auf die Webseite. Halte dich an diese Regeln und lief
 | **Ein Ordner pro Spiel** | Der Ordnername ist die **Spiel-ID** und wird Teil des Links: `https://langwiligi.site/<spiel-id>/`. Nur Kleinbuchstaben, Ziffern und Bindestriche, keine Umlaute oder Leerzeichen, höchstens 40 Zeichen. Beispiel: `panzer-pong`. |
 | **Startdatei `index.html`** | Das Spiel startet mit `<spiel-id>/index.html`. Am besten steckt alles in dieser einen Datei (HTML, CSS, JS). |
 | **Nur relative Pfade** | Bilder und Sounds liegen im selben Ordner und werden relativ eingebunden (`sprite.png`, nicht `/sprite.png` oder `C:\...`). |
-| **Reines Frontend** | Kein eigener Server, kein PHP, kein Node, kein Build-Schritt (kein npm, Vite, Webpack). Die Datei muss direkt im Browser laufen, auch per Doppelklick lokal. |
+| **Reines Frontend** | Kein eigener Server, kein PHP, kein Node, kein Build-Schritt (kein npm, Vite, Webpack). Die Datei muss direkt im Browser laufen, auch per Doppelklick lokal. Ausnahme: Fertig gebaute Open-Source-Spiele (z.B. die Formenfabrik). Dann liegt nur das gebaute Ergebnis im Spielordner und das Bauskript in `tools/<spiel-id>/`. Das richtet der Besitzer der Seite ein. |
 | **Externe Bibliotheken** | Nur von `https://cdnjs.cloudflare.com/` mit fester Versionsnummer, z.B. `three.js/r128/three.min.js` oder `planck-js/1.4.3/planck.min.js`. Google Fonts sind erlaubt. Sonst nichts von fremden Servern. |
 | **Sprache** | Alle Texte auf Deutsch, Schweizer Schreibweise **ohne ß** (also „Spass“, „schiess“, „gross“). |
-| **Desktop und Handy** | Das Spiel muss mit Maus/Tastatur **und** mit Touch bedienbar sein. Der Viewport-Meta-Tag ist Pflicht. |
+| **Laptop mit Touchpad** | Gespielt wird am Laptop, oft **ohne Maus**. Das Spiel muss komplett mit Tastatur und Touchpad spielbar sein: Linksklick, Ziehen mit gedrückter Taste und Scrollen mit zwei Fingern (kommt im Spiel wie ein Mausrad an). Kein Mittelklick nötig. Rechtsklick und Mausrad nur, wenn es dafür auch eine Taste gibt. Handys müssen nicht unterstützt werden. |
+| **Grösse** | Höchstens **100 MB** pro Spielordner und **25 MB** pro Datei (grössere Dateien lädt GitHub im Browser nicht hoch). Am besten bleibt das ganze Spiel unter 30 MB, damit es schnell lädt. |
 | **Keine Werbung oder Tracking** | Keine Analytics, keine Cookies, keine Werbung, keine Logins und keine Abfrage von persönlichen Daten ausser einem Spielernamen. |
 | **Keine Popups** | Kein `alert()`, `confirm()` oder `prompt()`. Meldungen gehören ins eigene Spiel-UI. |
 
@@ -28,7 +29,6 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panzer-Pong</title>
 <meta name="description" content="Ein Satz, max. ~110 Zeichen, der Lust aufs Spiel macht.">
 <meta name="theme-color" content="#ff6b4a">
@@ -142,14 +142,14 @@ Regeln des Servers, sonst wird das Ergebnis abgelehnt:
 
 ## 8. Qualität und Stil (empfohlen)
 
-- **Ablauf**: Startbildschirm mit Spielname, kurzer Anleitung (Steuerung für Tastatur **und** Touch) und Moduswahl (z.B. „Gegen Bot“, „2 Spieler – 1 Tastatur“, „Online“), dann Spiel, dann Ergebnis mit „Nochmal“ und „Menü“.
+- **Ablauf**: Startbildschirm mit Spielname, kurzer Anleitung (Steuerung für Tastatur und Touchpad) und Moduswahl (z.B. „Gegen Bot“, „2 Spieler – 1 Tastatur“, „Online“), dann Spiel, dann Ergebnis mit „Nochmal“ und „Menü“.
 - **Optik der anderen Spiele**: dunkler Hintergrund (z.B. `#0d0f13`), halbtransparente Panels mit runden Ecken, `system-ui` als Schrift, eine kräftige Akzentfarbe (dieselbe wie `theme-color`), Spieler 1 blau (`#4f8ff7`), Spieler 2 rot (`#ef5350`).
-- **Vollbild**: Das Canvas füllt das Fenster und reagiert auf `resize`. `devicePixelRatio` höchstens 2, damit es auf Handys flüssig bleibt.
-- **Leistung**: `requestAnimationFrame`, keine Endlosschleifen, flüssig auf normalen Laptops und Handys.
+- **Vollbild**: Das Canvas füllt das Fenster und reagiert auf `resize`. `devicePixelRatio` höchstens 2, damit es flüssig bleibt.
+- **Leistung**: `requestAnimationFrame`, keine Endlosschleifen, flüssig auf normalen Laptops ohne eigene Grafikkarte, auch im Akkubetrieb.
 - **Ton**: optional, mit Stumm-Knopf. Starte ihn erst nach der ersten Eingabe (Browser-Regel).
 - **Pause**: Wird der Tab verlassen (`visibilitychange`), pausiert das Spiel, ausser online.
 - **Bots** (falls vorhanden): mehrere Stufen (Leicht/Mittel/Schwer), die sich spürbar unterscheiden.
-- **Grösse**: Der ganze Ordner bleibt möglichst unter 5 MB.
+- **Grösse**: Der ganze Ordner bleibt möglichst unter 30 MB. Bilder als WebP, Musik als MP3/OGG mit niedriger Bitrate.
 
 ### Rundenende melden (empfohlen)
 
@@ -165,6 +165,9 @@ if (window.LW) LW.rundeFertig();   // am Ende jeder Runde aufrufen, egal ob gewo
 Hochladen über GitHub (Schritt für Schritt in [MITMACHEN.md](MITMACHEN.md)) oder als ZIP an den Besitzer der Seite.
 Bei GitHub prüft eine automatische Kontrolle die Punkte unten und sagt dir, was noch fehlt.
 
+**Sobald ein Spiel fertig gebaut oder geändert ist, sofort einen Pull Request erstellen**, nicht erst sammeln.
+Das gilt auch für KI-Assistenten (Claude, Codex usw.): Spiel bauen → testen → committen → pushen → Pull Request.
+
 Liefere einen **Ordner `<spiel-id>/`** mit:
 1. `index.html` mit dem Pflicht-Kopf aus Abschnitt 2,
 2. `cover.webp` (16:10),
@@ -176,7 +179,8 @@ Liefere einen **Ordner `<spiel-id>/`** mit:
 - [ ] `cover.webp` im 16:10-Format ohne Text
 - [ ] Startet lokal per Doppelklick ohne Fehler in der Konsole (F12)
 - [ ] Läuft auch ohne `GameHub` (Online-Teil wird dann ausgeblendet)
-- [ ] Mit Touch bedienbar, auf Handybreite nichts abgeschnitten
+- [ ] Komplett mit Touchpad und Tastatur spielbar (ohne Maus), auf kleinen Laptops (1366 × 768) nichts abgeschnitten
+- [ ] Ordner höchstens 100 MB, keine Datei über 25 MB
 - [ ] Linker Rand in der Mitte frei, kein eigener Zurück-zur-Startseite-Knopf
 - [ ] localStorage-Schlüssel beginnen mit der Spiel-ID
 - [ ] Keine externen Dateien ausser cdnjs und Google Fonts, kein Tracking, keine Popups

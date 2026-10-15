@@ -19,6 +19,8 @@ const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, 
 // Der Besitzer darf auch die Webseite selbst ändern (LW_BESITZER=1 setzt der Workflow)
 const OWNER = process.env.LW_BESITZER === '1';
 const MB = 1024 * 1024;
+// Grössen: Jeder Upload schickt die ganze Webseite auf den Server, GitHub lädt im Browser nur Dateien bis 25 MB hoch
+const MAX_GAME = 100 * MB, HINT_GAME = 30 * MB, MAX_FILE = 25 * MB;
 
 const results = [];   // { title, errors: [], warnings: [] }
 function report(title) {
@@ -108,10 +110,11 @@ function check(slug) {
     if (/\.zip$/i.test(name)) err(`\`${name}\` ist eine ZIP-Datei. Bitte entpackt hochladen.`, `${rel}/${name}`);
     if (f.link) err(`\`${name}\` ist eine Verknüpfung (Symlink). Bitte die echte Datei hochladen.`, `${rel}/${name}`);
     else if (/[^A-Za-z0-9._\-/]/.test(name)) warn(`Dateiname \`${name}\` enthält Leerzeichen, Umlaute oder Sonderzeichen. Das kann Links kaputt machen.`, `${rel}/${name}`);
+    if (f.size > MAX_FILE) err(`\`${name}\` ist ${kb(f.size)} gross. Erlaubt sind höchstens 25 MB pro Datei (z.B. Bilder als WebP, Musik als MP3 mit niedrigerer Bitrate).`, `${rel}/${name}`);
   }
   const total = files.reduce((s, f) => s + (f.size || 0), 0);
-  if (total > 20 * MB) err(`Der Ordner ist ${kb(total)} gross. Erlaubt sind höchstens 20 MB (besser unter 5 MB).`);
-  else if (total > 5 * MB) warn(`Der Ordner ist ${kb(total)} gross. Bitte möglichst unter 5 MB bleiben.`);
+  if (total > MAX_GAME) err(`Der Ordner ist ${kb(total)} gross. Erlaubt sind höchstens 100 MB (besser unter 30 MB).`);
+  else if (total > HINT_GAME) warn(`Der Ordner ist ${kb(total)} gross. Bitte möglichst unter 30 MB bleiben, damit das Spiel schnell lädt.`);
 
   const indexFile = path.join(dir, 'index.html');
   if (!fs.existsSync(indexFile)) {
@@ -125,7 +128,6 @@ function check(slug) {
   // Pflicht-Kopf
   const title = (html.match(/<title>([^<]*)<\/title>/i) || [])[1];
   if (!title || !title.trim()) err('`<title>` fehlt. Daraus kommt der Name auf der Startseite.', file);
-  if (!/<meta\s+name=["']viewport["']/i.test(html)) err('Viewport-Zeile fehlt: `<meta name="viewport" content="width=device-width, initial-scale=1">`', file);
 
   const desc = meta(html, 'description');
   if (!desc) warn('`<meta name="description" content="...">` fehlt. Ohne Beschreibung bleibt die Karte leer.', file);
