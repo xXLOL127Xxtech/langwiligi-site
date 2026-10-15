@@ -75,84 +75,243 @@ details.help ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; color: 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 #hud > * { pointer-events: auto; }
-#topbar { position: absolute; top: 0; left: 0; right: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
-  padding: 6px 8px; background: linear-gradient(180deg, rgba(10, 12, 16, 0.92), rgba(10, 12, 16, 0.75));
-  border-bottom: 1px solid var(--line); }
-#resbar { display: flex; gap: 4px; flex-wrap: wrap; flex: 1 1 auto; }
-.res { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.06);
-  font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
-.res small { color: var(--good); font-weight: 600; font-size: 11px; }
-.res small.neg { color: var(--bad); }
-.res.low { box-shadow: inset 0 0 0 1px rgba(239, 83, 80, 0.7); }
-#tools { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-.tb { border: 0; background: rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 9px; font-weight: 700; position: relative; min-width: 36px; }
-.tb.on { background: var(--accent); color: #1b1305; }
-.tb .badge { position: absolute; top: -4px; right: -4px; background: var(--bad); color: #fff; border-radius: 9px; font-size: 10px; padding: 1px 5px; }
-#clock { font-weight: 700; padding: 4px 8px; color: var(--accent-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
-
-#panel { position: absolute; right: 8px; top: 64px; width: 350px; max-height: calc(100% - 80px); overflow-y: auto;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px; }
-#panel h2 { margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; }
-#panel .x { margin-left: auto; border: 0; background: rgba(255, 255, 255, 0.08); border-radius: 8px; width: 30px; height: 30px; font-size: 16px; }
+.ic { width: 1em; height: 1em; fill: currentColor; flex: none; display: inline-block; vertical-align: -0.15em; }
+.r-geld { color: #f2c14e; } .r-nahrung { color: #c6d96b; } .r-stahl { color: #aebdcf; } .r-oel { color: #e08a5a; } .r-ak { color: #7cc6f2; }
 .meta { color: var(--muted); font-size: 12px; margin: 3px 0 8px; }
-.sect { margin-top: 10px; }
-.sect > b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 5px; }
-.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.05); border-radius: 9px; padding: 6px 8px; font-size: 12px; }
-.opt:not(:disabled):hover { background: rgba(232, 163, 61, 0.18); border-color: rgba(232, 163, 61, 0.5); }
-.opt:disabled { opacity: 0.45; cursor: default; }
-.opt .t { font-weight: 700; font-size: 13px; }
-.opt .c { color: var(--muted); font-size: 11px; line-height: 1.3; }
-.bar { height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-top: 3px; width: 100%; }
-.bar > i { display: block; height: 100%; background: var(--accent); }
-.bar.hp > i { background: var(--good); }
-.line { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid var(--line); }
-.line:first-of-type { border-top: 0; }
-.line .grow { flex: 1; min-width: 0; }
-.hint { background: rgba(232, 163, 61, 0.12); border: 1px solid rgba(232, 163, 61, 0.35); border-radius: 9px; padding: 7px 9px; font-size: 12px; margin-top: 8px; }
+
+#topbar { position: absolute; top: 0; left: 0; right: 0; min-height: 54px; display: flex; align-items: center; gap: 10px; padding: 5px 10px;
+  background: linear-gradient(180deg, rgba(26, 31, 40, 0.98), rgba(14, 17, 23, 0.94)); border-bottom: 1px solid rgba(232, 163, 61, 0.4);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); }
+#nationBox { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 0 0 auto; }
+#natFlag { width: 34px; height: 24px; border-radius: 5px; border: 1px solid rgba(0, 0, 0, 0.6); position: relative; overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 2px 6px rgba(0, 0, 0, 0.5); }
+#natFlag::after { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), transparent 55%), linear-gradient(0deg, rgba(0, 0, 0, 0.25), transparent 50%); }
+#natName { display: block; font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+#clock { display: block; color: var(--accent-2); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#resbar { display: flex; gap: 6px; flex: 1 1 auto; justify-content: center; min-width: 0; }
+.res { display: flex; align-items: center; gap: 7px; padding: 4px 11px 4px 7px; border-radius: 11px; cursor: default;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)); border: 1px solid rgba(255, 255, 255, 0.08);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.res > .ic { width: 24px; height: 24px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.7)); }
+.res b { font-size: 14px; display: block; line-height: 1.1; }
+.res small { display: block; font-size: 10.5px; color: var(--good); font-weight: 700; line-height: 1.15; }
+.res small.neg { color: var(--bad); }
+.res.low { border-color: rgba(239, 83, 80, 0.75); background: rgba(239, 83, 80, 0.14); }
+#speedBox { display: flex; gap: 2px; background: rgba(0, 0, 0, 0.35); padding: 3px; border-radius: 11px; border: 1px solid var(--line); flex: 0 0 auto; }
+.sp { border: 0; background: transparent; border-radius: 8px; padding: 6px 9px; font-weight: 800; font-size: 12.5px; color: var(--muted);
+  display: flex; align-items: center; justify-content: center; }
+.sp:hover { color: #fff; }
+.sp.on { background: var(--accent); color: #1b1305; }
+.sp .ic { width: 15px; height: 15px; }
+#bSound { background: rgba(0, 0, 0, 0.35); border: 1px solid var(--line); border-radius: 11px; padding: 8px 10px; flex: 0 0 auto; }
+#bSound .ic { width: 17px; height: 17px; }
+
+#dock { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 3px; padding: 5px;
+  background: linear-gradient(180deg, rgba(30, 36, 46, 0.98), rgba(15, 18, 24, 0.96)); border: 1px solid rgba(232, 163, 61, 0.4);
+  border-radius: 17px; box-shadow: var(--shadow); }
+.dk { position: relative; border: 0; background: transparent; border-radius: 12px; padding: 7px 12px 5px; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; min-width: 78px; color: #dfe4ec; }
+.dk .ic { width: 25px; height: 25px; color: var(--accent-2); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6)); }
+.dk span { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.dk:hover, .dk.on { background: rgba(232, 163, 61, 0.17); }
+.dk .badge { position: absolute; top: 2px; right: 12px; background: var(--bad); color: #fff; border-radius: 9px; font-size: 10px; padding: 1px 5px; font-weight: 800; }
+
+#mini { position: absolute; left: 10px; bottom: 10px; width: 210px; height: 136px; border-radius: 12px; cursor: pointer; touch-action: none;
+  border: 1px solid rgba(232, 163, 61, 0.4); box-shadow: var(--shadow); background: #132a3c; }
+
+/* ---------- Seitenfenster ---------- */
+#panel { position: absolute; right: 10px; top: 64px; width: 380px; max-height: calc(100% - 150px); overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(17, 21, 28, 0.97); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; box-shadow: var(--shadow); }
+.ph { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 11px; padding: 12px; border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.emb { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.28); flex: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); }
+.emb .ic { width: 28px; height: 28px; color: #fff; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5)); }
+.ph h2 { margin: 0; font-size: 18px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph .sub2 { font-size: 12px; color: #dfe5ee; opacity: 0.85; }
+.xb { margin-left: auto; align-self: flex-start; border: 0; background: rgba(0, 0, 0, 0.35); border-radius: 9px; width: 32px; height: 32px;
+  display: grid; place-items: center; flex: none; }
+.xb .ic { width: 16px; height: 16px; }
+.xb:hover { background: rgba(239, 83, 80, 0.45); }
+.pb { padding: 10px 12px 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 9px; border-radius: 999px; font-weight: 600;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.06); }
+.chip .ic { width: 14px; height: 14px; }
+.chip.warn { background: rgba(239, 83, 80, 0.16); color: #ffb3ad; }
+.tabs { display: flex; gap: 4px; padding: 0 12px; margin-top: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.tab { flex: 1; border: 0; background: transparent; padding: 9px 4px 8px; font-weight: 700; font-size: 12.5px; color: var(--muted);
+  display: flex; align-items: center; justify-content: center; gap: 6px; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tab .ic { width: 17px; height: 17px; }
+.tab:hover { color: #fff; }
+.tab.on { color: #fff; border-bottom-color: var(--accent); }
+.tab.on .ic { color: var(--accent-2); }
+.tab i { font-style: normal; background: var(--accent); color: #1b1305; border-radius: 8px; font-size: 10px; padding: 0 5px; }
+.sect-t { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 7px; font-weight: 700;
+  display: flex; align-items: center; gap: 6px; }
+.sect-t:first-child { margin-top: 2px; }
+.sect-t .ic { width: 14px; height: 14px; }
+.prod { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.prod div { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 10px; padding: 7px 2px 6px;
+  text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.prod .ic { width: 22px; height: 22px; display: block; margin: 0 auto 3px; }
+.crow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.bgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.bt { position: relative; border: 1px solid rgba(255, 255, 255, 0.09); background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  border-radius: 13px; padding: 9px 4px 7px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-height: 128px; }
+.bt .bi { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; position: relative;
+  background: radial-gradient(circle at 35% 30%, #424c5c, #1a1f28); border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45); }
+.bt .bi .ic { width: 28px; height: 28px; color: #e9edf3; }
+.bt.has .bi { border-color: #66bb6a; background: radial-gradient(circle at 35% 30%, #4a6b4e, #1b2a1e); }
+.bt.has .bi .ic { color: #c8f5ca; }
+.bt b { font-size: 12.5px; }
+.bt .st { font-size: 11px; color: var(--muted); }
+.bt .st.ok { color: #a5e3a8; font-weight: 700; }
+.bt:not(:disabled):hover { border-color: rgba(232, 163, 61, 0.65); background: rgba(232, 163, 61, 0.13); }
+.bt:not(:disabled):hover .bi { border-color: var(--accent); }
+.bt:disabled { cursor: default; }
+.bt.no { opacity: 0.5; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.16); }
+.pips i.on { background: var(--accent); box-shadow: 0 0 4px rgba(232, 163, 61, 0.8); }
+.costs { display: flex; flex-wrap: wrap; gap: 2px 7px; justify-content: center; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cc { display: inline-flex; align-items: center; gap: 2px; }
+.cc.no { color: #ff8a80; }
+.cc .ic { width: 13px; height: 13px; }
+.busy { display: flex; align-items: center; gap: 10px; padding: 9px; border-radius: 13px; margin-bottom: 9px;
+  background: rgba(232, 163, 61, 0.1); border: 1px solid rgba(232, 163, 61, 0.38); }
+
+.uic { width: 54px; height: 54px; border-radius: 13px; display: grid; place-items: center; flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.4); }
+.uic .ic { width: 36px; height: 36px; color: #fff; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55)); }
+.ucard { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 13px; margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); }
+.ucard .mid { flex: 1; min-width: 0; }
+.nm { font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+.lvl { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: rgba(232, 163, 61, 0.22); color: var(--accent-2); }
+.stats { display: flex; gap: 9px; font-size: 11.5px; color: #cdd5e0; margin: 3px 0; font-variant-numeric: tabular-nums; }
+.stats span { display: inline-flex; align-items: center; gap: 2px; }
+.stats .ic { width: 12px; height: 12px; color: var(--muted); }
+.ucard .costs { justify-content: flex-start; }
+.ucard.off { opacity: 0.5; }
+.ubtn { flex: none; border: 0; border-radius: 11px; width: 44px; height: 44px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #f0b04d, #d48a22); color: #1b1305; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); }
+.ubtn .ic { width: 22px; height: 22px; }
+.ubtn:disabled { background: rgba(255, 255, 255, 0.08); color: var(--muted); box-shadow: none; cursor: default; }
+.ubtn:not(:disabled):hover { filter: brightness(1.12); }
+.queue { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
+.qi { position: relative; width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); }
+.qi:first-child { border-color: rgba(102, 187, 106, 0.7); background: rgba(102, 187, 106, 0.12); }
+.qi .ic { width: 30px; height: 30px; }
+.qi .qx { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: #c63c3a; color: #fff;
+  display: grid; place-items: center; padding: 0; }
+.qi .qx .ic { width: 11px; height: 11px; }
+.qi .bar { position: absolute; left: 5px; right: 5px; bottom: 4px; width: auto; margin: 0; height: 4px; }
+.qi small { position: absolute; top: 2px; left: 5px; font-size: 9.5px; color: #c8f5ca; font-weight: 700; }
+
+.acard { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 11px; margin-bottom: 5px; width: 100%; text-align: left;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); border-left: 4px solid var(--nc); }
+.acard:hover { background: rgba(255, 255, 255, 0.09); }
+.types { display: flex; gap: 9px; flex-wrap: wrap; font-size: 12.5px; font-weight: 700; }
+.types span { display: inline-flex; align-items: center; gap: 3px; }
+.types .ic { width: 18px; height: 18px; }
+.urow { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.urow:first-of-type { border-top: 0; }
+.urow .uic { width: 42px; height: 42px; border-radius: 11px; }
+.urow .uic .ic { width: 28px; height: 28px; }
+.acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+.act { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 9px 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; }
+.act .ic { width: 21px; height: 21px; color: var(--accent-2); }
+.act:not(:disabled):hover { background: rgba(232, 163, 61, 0.15); border-color: rgba(232, 163, 61, 0.5); }
+.act:disabled { opacity: 0.35; cursor: default; }
+.act.main { background: linear-gradient(135deg, #f0b04d, #d48a22); color: #1b1305; border: 0; }
+.act.main .ic { color: #1b1305; }
+.status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); }
+.status .ic { width: 14px; height: 14px; }
+.status.fight { background: rgba(239, 83, 80, 0.22); color: #ffb3ad; }
+.status.move { background: rgba(79, 143, 247, 0.22); color: #c3d8ff; }
+.bar { height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-top: 4px; width: 100%; }
+.bar > i { display: block; height: 100%; background: linear-gradient(90deg, #d48a22, #f5c26b); }
+.bar.hp > i { background: linear-gradient(90deg, #3f9a45, #7dd47f); }
+.hint { display: flex; gap: 8px; align-items: flex-start; background: rgba(232, 163, 61, 0.1); border: 1px solid rgba(232, 163, 61, 0.35);
+  border-radius: 11px; padding: 8px 10px; font-size: 12px; margin-top: 10px; line-height: 1.4; }
+.hint .ic { width: 18px; height: 18px; color: var(--accent-2); margin-top: 1px; }
 .cnt { display: flex; align-items: center; gap: 4px; }
-.cnt button { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.07); font-weight: 800; }
-.tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); }
+.cnt button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); font-weight: 800; }
+.tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 7px; background: rgba(255, 255, 255, 0.1); font-weight: 700; }
 .tag.war { background: rgba(239, 83, 80, 0.25); color: #ff9e9b; }
 .tag.peace { background: rgba(102, 187, 106, 0.25); color: #a5e3a8; }
 
-#toasts { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px;
+/* ---------- Meldungen und Fenster ---------- */
+#toasts { position: absolute; top: 64px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px;
   align-items: center; pointer-events: none; width: min(92vw, 440px); }
-.toast { background: rgba(16, 19, 25, 0.95); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px;
-  padding: 8px 12px; box-shadow: var(--shadow); font-size: 13px; animation: tin 0.25s ease-out; pointer-events: auto; width: 100%; }
+.toast { background: rgba(16, 19, 25, 0.96); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 11px;
+  padding: 9px 12px; box-shadow: var(--shadow); font-size: 13px; animation: tin 0.25s ease-out; pointer-events: auto; width: 100%; }
 .toast.bad { border-left-color: var(--bad); }
 .toast.good { border-left-color: var(--good); }
 .toast .row { margin-top: 6px; }
 @keyframes tin { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-
-#modal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); padding: 12px; z-index: 20; }
-#modal .card { max-width: 640px; max-height: calc(100% - 20px); overflow-y: auto; padding: 16px; }
-#modal .head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-#modal .head h2 { margin: 0; flex: 1; }
+#modal { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.55); padding: 12px; z-index: 20; }
+#modal .card { max-width: 720px; max-height: calc(100% - 20px); overflow-y: auto; padding: 16px; }
+#modal .head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+#modal .head h2 { margin: 0; flex: 1; display: flex; align-items: center; gap: 9px; }
+#modal .head h2 .ic { width: 26px; height: 26px; color: var(--accent-2); }
 table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.tbl th { text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; padding: 4px; }
-table.tbl td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
+table.tbl td { padding: 7px 4px; border-top: 1px solid var(--line); vertical-align: middle; }
 table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.techs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
 .msgs { display: flex; flex-direction: column; gap: 4px; }
-.msgs div { padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); font-size: 13px; }
+.msgs div { padding: 7px 9px; border-radius: 9px; background: rgba(255, 255, 255, 0.04); font-size: 13px; }
 .msgs time { color: var(--muted); font-size: 11px; margin-right: 6px; }
-.vp { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); position: relative; overflow: hidden; margin: 6px 0 12px; }
+.vp { height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); position: relative; overflow: hidden; margin: 6px 0 2px; }
 .vp i { position: absolute; top: 0; bottom: 0; left: 0; }
 .vp b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; }
+.flagbox { display: inline-block; width: 22px; height: 15px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2); }
+.rslots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.rslot { padding: 10px; border-radius: 13px; border: 1px dashed rgba(255, 255, 255, 0.2); min-height: 66px; display: flex; align-items: center;
+  gap: 10px; font-size: 12.5px; color: var(--muted); }
+.rslot.on { border-style: solid; border-color: rgba(232, 163, 61, 0.55); background: rgba(232, 163, 61, 0.09); color: var(--text); }
+.rslot .uic { width: 44px; height: 44px; } .rslot .uic .ic { width: 28px; height: 28px; }
+.rcat { margin-bottom: 14px; }
+.rcat h4 { margin: 0 0 7px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.rcat h4 .ic { width: 16px; height: 16px; color: var(--accent-2); }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 7px; }
+.rcard { display: flex; gap: 10px; padding: 9px; border-radius: 13px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left; align-items: flex-start; }
+.rcard:not(:disabled):hover { border-color: rgba(232, 163, 61, 0.65); background: rgba(232, 163, 61, 0.11); }
+.rcard:disabled { cursor: default; }
+.rcard.dim { opacity: 0.55; }
+.rcard .uic { width: 44px; height: 44px; } .rcard .uic .ic { width: 28px; height: 28px; }
+.rcard .costs { justify-content: flex-start; }
+.rcard .rd { font-size: 11px; color: var(--muted); margin: 3px 0; line-height: 1.35; }
 
 @media (max-width: 720px) {
-  #panel { left: 6px; right: 6px; top: auto; bottom: 6px; width: auto; max-height: 46%; }
-  #topbar { gap: 4px; padding: 4px 6px; }
-  #resbar { gap: 3px; justify-content: space-between; flex-basis: 100%; }
-  .res { padding: 3px 5px; font-size: 12px; gap: 2px; }
+  #topbar { flex-wrap: wrap; padding: 5px 6px; gap: 5px; min-height: 0; }
+  #nationBox { flex: 1 1 auto; }
+  #natFlag { width: 28px; height: 20px; }
+  #resbar { order: 3; flex-basis: 100%; gap: 3px; justify-content: space-between; }
+  .res { padding: 3px 6px 3px 4px; gap: 3px; border-radius: 9px; }
+  .res > .ic { width: 17px; height: 17px; }
+  .res b { font-size: 12px; }
   .res small { display: none; }
-  #tools { gap: 3px; flex-basis: 100%; flex-wrap: nowrap; }
-  #clock { font-size: 12px; padding: 2px 2px; margin-right: auto; }
-  .tb { padding: 5px 4px; min-width: 30px; font-size: 13px; }
+  .sp { padding: 6px 7px; }
   #bSound { display: none; }
-  #toasts { top: 76px; bottom: auto; }
+  #dock { left: 6px; right: 6px; transform: none; bottom: 6px; justify-content: space-between; padding: 4px; border-radius: 15px; }
+  .dk { min-width: 0; flex: 1; padding: 6px 2px 4px; }
+  .dk .ic { width: 23px; height: 23px; }
+  .dk span { font-size: 10px; }
+  .dk .badge { right: 4px; }
+  #panel { left: 6px; right: 6px; top: auto; bottom: 72px; width: auto; max-height: 52%; }
+  #mini { display: none; }
+  #toasts { top: 86px; }
+  .bt { min-height: 118px; }
+  .bt .bi { width: 44px; height: 44px; }
+  .uic { width: 48px; height: 48px; }
+  .uic .ic { width: 32px; height: 32px; }
   .card h1 { font-size: 30px; }
 }
 </style>
@@ -162,24 +321,25 @@ table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 <div id="hud" class="hidden">
   <div id="topbar">
+    <div id="nationBox"><span id="natFlag"></span><div><b id="natName">–</b><span id="clock">Tag 1</span></div></div>
     <div id="resbar"></div>
-    <div id="tools">
-      <span id="clock">Tag 1</span>
-      <span id="speedBox" class="row" style="gap:3px;flex:0 0 auto">
-        <button class="tb" data-speed="0" title="Pause (Leertaste)">⏸</button>
-        <button class="tb" data-speed="1">1×</button>
-        <button class="tb" data-speed="2">2×</button>
-        <button class="tb" data-speed="4">4×</button>
-      </span>
-      <button class="tb" id="bResearch" title="Forschung">🔬</button>
-      <button class="tb" id="bDiplo" title="Diplomatie">🤝</button>
-      <button class="tb" id="bStats" title="Rangliste">🏆</button>
-      <button class="tb" id="bMsgs" title="Meldungen">📰<span class="badge hidden" id="msgBadge">0</span></button>
-      <button class="tb" id="bSound" title="Ton">🔊</button>
-      <button class="tb" id="bMenu" title="Menü">☰</button>
+    <div id="speedBox">
+      <button class="sp" data-speed="0" title="Pause (Leertaste)"><i data-ic="pause"></i></button>
+      <button class="sp" data-speed="1" title="Normales Tempo">1×</button>
+      <button class="sp" data-speed="2" title="Doppeltes Tempo">2×</button>
+      <button class="sp" data-speed="4" title="Vierfaches Tempo">4×</button>
     </div>
+    <button id="bSound" title="Ton an/aus"></button>
   </div>
+  <canvas id="mini" title="Übersichtskarte"></canvas>
   <div id="panel" class="hidden"></div>
+  <div id="dock">
+    <button class="dk" id="bResearch"><i data-ic="research"></i><span>Forschung</span></button>
+    <button class="dk" id="bDiplo"><i data-ic="diplo"></i><span>Diplomatie</span></button>
+    <button class="dk" id="bStats"><i data-ic="stats"></i><span>Rangliste</span></button>
+    <button class="dk" id="bMsgs"><i data-ic="msgs"></i><span>Meldungen</span><b class="badge hidden" id="msgBadge">0</b></button>
+    <button class="dk" id="bMenu"><i data-ic="menu"></i><span>Menü</span></button>
+  </div>
   <div id="toasts"></div>
   <div id="modal" class="hidden"><div class="card" id="modalCard"></div></div>
 </div>
@@ -383,6 +543,76 @@ const MAPS = [
   { n: 'Mittel', W: 2700, H: 1750, cells: 300, nations: 6 },
   { n: 'Gross', W: 3300, H: 2150, cells: 430, nations: 8 },
 ];
+
+// ---------------------------------------------------------------------------
+// Icons (eigene Vektorgrafiken, 24×24). [Pfad, evenodd?]
+// ---------------------------------------------------------------------------
+function gearD() {
+  const pts = [], n = 8, ro = 10.6, ri = 8, w = Math.PI * 2 / n;
+  for (let i = 0; i < n; i++) {
+    const a0 = i * w;
+    for (const [a, r] of [[a0 - w * 0.24, ri], [a0 - w * 0.15, ro], [a0 + w * 0.15, ro], [a0 + w * 0.24, ri]])
+      pts.push((12 + Math.cos(a) * r).toFixed(2) + ' ' + (12 + Math.sin(a) * r).toFixed(2));
+  }
+  return 'M' + pts.join('L') + 'zM12 8.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4z';
+}
+const ICONS = {
+  // Einheiten
+  inf: ['M6.5 9C6.5 5.4 9 3 12 3s5.5 2.4 5.5 6zM5 9h14v1.6H5zM8.6 10.6h6.8V12a3.4 3.4 0 0 1-6.8 0zM5 22v-3.2c0-2.6 2.1-4.3 4.6-4.3h4.8c2.5 0 4.6 1.7 4.6 4.3V22zM17.8 12.6l1.2-.8 4.2 6.4-1.2.8z'],
+  pz: ['M3.5 14.5h17a2.75 2.75 0 0 1 0 5.5h-17a2.75 2.75 0 0 1 0-5.5zM4.5 14.5l1.8-3h11.5l2.2 3zM8 11.5V9.2c0-.7.5-1.2 1.2-1.2h4.6l2.2 3.5zM14.8 8.6l7.9-1.1.2 1.3-7.9 1.1z'],
+  art: ['M8.5 13a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM7.6 15.6l13.6-8.2.9 1.5-13.6 8.2zM10 18.2l11 2.8-.4 1.5-11-2.8zM3 12.5l4.5-1.5 1 3.6-4.5 1.5z'],
+  flak: ['M3 19.5h18V22H3zM7 19.5l1.5-5h7l1.5 5zM10.4 14.5l5.8-11.3 1.4.7-5.8 11.3zM12.9 15l5.8-11.3 1.4.7-5.8 11.3z'],
+  jag: ['M11.2 1.5h1.6l.7 6.5 9 3.6v2.2l-9-1.3-.5 5.4 3 2.1v1.7L12 20.6l-4 1.1V20l3-2.1-.5-5.4-9 1.3v-2.2l9-3.6z'],
+  bom: ['M11 1.5h2l.6 7.5 9.4 2.8v2.4l-9.4-1.1-.5 4.6 3.4 2.2v1.6l-4.5-1-4.5 1v-1.6l3.4-2.2-.5-4.6L1 14.2v-2.4L10.4 9zM5 9.3h2.2v3.6H5zM16.8 9.3H19v3.6h-2.2z'],
+  zer: ['M1 14.5h22l-3.2 5H4.2zM7.5 10.5h6v4h-6zM9.8 5.5H11v5H9.8zM14.5 12h3v2.5h-3zM17.5 12.8H22v.9h-4.5z'],
+  ubo: ['M1.5 15.5c4-2.6 17-2.6 21 0-4 2.6-17 2.6-21 0zM9.5 10H13l1 4H8.5zM10.7 6.5h.9V10h-.9z'],
+  sch: ['M.8 14.2h22.4l-3.6 6H4.4zM8.5 8.5h7v5.7h-7zM10.8 4h2.4v4.5h-2.4zM3 11.8h4.5v2.4H3zM16.5 11.8H21v2.4h-4.5zM6.5 12.3H10v.9H6.5zM14 12.3h3.5v.9H14z'],
+  // Gebäude
+  kas: ['M2 11.5L12 6l10 5.5zM4 11.5h16V21H4zM10.3 14.5h3.4V21h-3.4zM6 13.5h2.5V16H6zM15.5 13.5H18V16h-2.5zM11.5 1.5h1V6h-1zM12.5 1.5h5l-1.2 1.4 1.2 1.4h-5z', 1],
+  fab: ['M2 21V10.5l5 3v-3l5 3v-3l5 3V3.5h3.5V21zM4.5 16h2v2h-2zM9.5 16h2v2h-2zM14.5 16h2v2h-2z', 1],
+  flu: ['M4 21L8.5 3h7L20 21zM11.3 6h1.4v3h-1.4zM11.3 11h1.4v3h-1.4zM11.3 16h1.4v3h-1.4z', 1],
+  haf: ['M12 1.8a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8zM12 3.1a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2zM11 6.6h2v14.7h-2zM7.5 8.5H11v1.8H7.5zM13 8.5h3.5v1.8H13zM3.5 13.5l2.6-1.6.4 3c.8 2.4 2.5 4 4.5 4.5v1.9c-3.4-.4-6.3-2.8-7.3-6.2zM20.5 13.5l-2.6-1.6-.4 3c-.8 2.4-2.5 4-4.5 4.5v1.9c3.4-.4 6.3-2.8 7.3-6.2z', 1],
+  ind: [gearD(), 1],
+  fes: ['M2 21V8.5h3.2v2.3h2.4V8.5h3.2v2.3h2.4V8.5h3.2v2.3h2.4V8.5H22V21h-7v-4.5a3 3 0 0 0-6 0V21z'],
+  // Rohstoffe
+  geld: ['M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19zM12 5.2a6.8 6.8 0 1 0 0 13.6 6.8 6.8 0 0 0 0-13.6zM12 7.6a4.4 4.4 0 1 1 0 8.8 4.4 4.4 0 0 1 0-8.8z', 1],
+  nahrung: ['M11.4 7.5h1.2V22h-1.2zM12 1.8c1.7 1.6 1.7 4 0 5.6-1.7-1.6-1.7-4 0-5.6zM6.8 6.5c2.4.2 4.3 2 4.6 4.4-2.4-.2-4.3-2-4.6-4.4zM17.2 6.5c-2.4.2-4.3 2-4.6 4.4 2.4-.2 4.3-2 4.6-4.4zM6.8 11c2.4.2 4.3 2 4.6 4.4-2.4-.2-4.3-2-4.6-4.4zM17.2 11c-2.4.2-4.3 2-4.6 4.4 2.4-.2 4.3-2 4.6-4.4z'],
+  stahl: ['M4 3.5h16v3.6h-6.2v9.8H20v3.6H4v-3.6h6.2V7.1H4z'],
+  oel: ['M12 2c3.8 5.2 6.8 8.8 6.8 12.6a6.8 6.8 0 0 1-13.6 0C5.2 10.8 8.2 7.2 12 2zM9 14.5a3 3 0 0 0 3 3v-1.6a1.4 1.4 0 0 1-1.4-1.4z', 1],
+  ak: ['M9 3.5a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4zM2.5 21c0-4 2.9-7 6.5-7s6.5 3 6.5 7zM17 5.5a2.6 2.6 0 1 1 0 5.2 2.6 2.6 0 0 1 0-5.2zM16.5 21c0-2.6-.7-4.9-2-6.4.8-.4 1.6-.6 2.5-.6 3 0 5.5 2.8 5.5 7z'],
+  // Oberfläche
+  research: ['M8.5 2h7v2h-1.2v5.2l5.6 9.4c.9 1.5-.2 3.4-2 3.4H6.1c-1.8 0-2.9-1.9-2-3.4l5.6-9.4V4H8.5zM10 16.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM14 14.5a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6z', 1],
+  diplo: ['M5 2.5h10.5L19 6v15.5H5zM7.5 8h7v1.3h-7zM7.5 11h9v1.3h-9zM7.5 14h9v1.3h-9zM7.5 17h5v1.3h-5z', 1],
+  stats: ['M3 20h18v2H3zM5 12h3.2v7H5zM10.4 6h3.2v13h-3.2zM15.8 9.5H19V19h-3.2z'],
+  msgs: ['M3 4h15v14.5a1.5 1.5 0 0 0 3 0V8h1.5v10.5a3 3 0 0 1-3 3h-14A2.5 2.5 0 0 1 3 19zM5.5 6.5h10v4h-10zM5.5 12.5H10v1.3H5.5zM11 12.5h4.5v1.3H11zM5.5 15.5H10v1.3H5.5zM11 15.5h4.5v1.3H11z', 1],
+  menu: ['M3 5h18v2.5H3zM3 10.75h18v2.5H3zM3 16.5h18V19H3z'],
+  sound: ['M3 9h4l5-4v14l-5-4H3zM15 8.5a5 5 0 0 1 0 7l-1-1a3.6 3.6 0 0 0 0-5zM17.5 6a8.5 8.5 0 0 1 0 12l-1-1a7 7 0 0 0 0-10z'],
+  mute: ['M3 9h4l5-4v14l-5-4H3zM14.3 9.4l1.1-1.1 2.4 2.4 2.4-2.4 1.1 1.1-2.4 2.4 2.4 2.4-1.1 1.1-2.4-2.4-2.4 2.4-1.1-1.1 2.4-2.4z'],
+  pause: ['M6 4h4v16H6zM14 4h4v16h-4z'],
+  play: ['M7 4l13 8-13 8z'],
+  city: ['M2 21V12l4.5-3.5L11 12V7.5L16.5 3 22 7.5V21zM5 15h2.5v2.5H5zM14 9h2.5v2.5H14zM14 14h2.5v2.5H14zM18.5 14h2v2.5h-2z', 1],
+  star: ['M12 1.8l3 6.4 7 .8-5.2 4.8 1.4 6.9L12 17.2l-6.2 3.5 1.4-6.9L2 9l7-.8z'],
+  flag: ['M5 2h1.8v20H5zM7.6 3H20l-2.6 4.2 2.6 4.2H7.6z'],
+  close: ['M5.6 4.2l6.4 6.4 6.4-6.4 1.4 1.4-6.4 6.4 6.4 6.4-1.4 1.4-6.4-6.4-6.4 6.4-1.4-1.4 6.4-6.4-6.4-6.4z'],
+  plus: ['M10.8 4h2.4v6.8H20v2.4h-6.8V20h-2.4v-6.8H4v-2.4h6.8z'],
+  stop: ['M6 6h12v12H6z'],
+  move: ['M4 10.8h11.2l-4-4 1.7-1.7L20 12l-7.1 6.9-1.7-1.7 4-4H4z'],
+  split: ['M10.6 3h2.8v8.4l5.8 5.8-2 2-5.2-5.2-5.2 5.2-2-2 5.8-5.8z'],
+  merge: ['M10.6 21h2.8v-8.4l5.8-5.8-2-2-5.2 5.2-5.2-5.2-2 2 5.8 5.8z'],
+  time: ['M12 2.5a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19zM12 4.5a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM11 7h2v4.6l3.2 2-1 1.6-4.2-2.5z', 1],
+  atk: ['M20.5 2H22v1.5L11.2 14.3l1.6 1.6-1.4 1.4-1.7-1.7-3.9 3.9a1.6 1.6 0 0 1-2.3-2.3l3.9-3.9-1.7-1.7 1.4-1.4 1.6 1.6z'],
+  def: ['M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5z'],
+  hp: ['M12 21s-8.5-5.3-8.5-11A4.8 4.8 0 0 1 12 7a4.8 4.8 0 0 1 8.5 3c0 5.7-8.5 11-8.5 11z'],
+  spd: ['M3 5.5l7 6.5-7 6.5zM12 5.5l7 6.5-7 6.5z'],
+  lock: ['M7 10V7.5a5 5 0 0 1 10 0V10h1.5v11h-13V10zM9.3 10h5.4V7.5a2.7 2.7 0 0 0-5.4 0z', 1],
+  target: ['M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18zM12 5.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z', 1],
+  log: ['M1.5 6H14v10H1.5zM15 9h4.2l3.3 4.2V16H15zM5.5 15.5a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6zM17.5 15.5a2.3 2.3 0 1 1 0 4.6 2.3 2.3 0 0 1 0-4.6z'],
+  swords: ['M3 3h3.2l10 10-1.6 1.6-10-10zM13 17.5l4.5-4.5 1.4 1.4-4.5 4.5zM16.7 17.4l1.1-1.1 3.7 3.7-1.1 1.1zM21 3h-3.2l-10 10 1.6 1.6 10-10zM11 17.5L6.5 13l-1.4 1.4 4.5 4.5zM7.3 17.4l-1.1-1.1L2.5 20l1.1 1.1z'],
+};
+ICONS.mil = ICONS.inf;
+ICONS.eco = ICONS.ind;
+const RES_COLOR = { geld: '#f2c14e', nahrung: '#c6d96b', stahl: '#aebdcf', oel: '#e08a5a', ak: '#7cc6f2' };
+const ic = (n, cls) => `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="${ICONS[n][1] ? 'evenodd' : 'nonzero'}" d="${ICONS[n][0]}"/></svg>`;
 
 // ---------------------------------------------------------------------------
 // Kartengenerator (Voronoi mit welligen Grenzen)
@@ -1638,37 +1868,51 @@ function mainUnit(a) {
   for (const t in cnt) if (cnt[t] > bs) { bs = cnt[t]; best = t; }
   return best;
 }
-function drawSymbol(t, x, y, s, sea) {
-  ctx.save();
-  ctx.translate(x, y); ctx.scale(s, s);
-  ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 1.4;
-  if (sea && UNITS[t].dom === 'land') {
-    ctx.beginPath(); ctx.moveTo(-8, 1); ctx.lineTo(8, 1); ctx.lineTo(5, 5); ctx.lineTo(-5, 5); ctx.closePath(); ctx.fill();
-    ctx.strokeRect(-4, -5, 8, 5);
-  } else if (t === 'inf' || t === 'mil') {
-    ctx.strokeRect(-7, -5, 14, 10); ctx.beginPath(); ctx.moveTo(-7, -5); ctx.lineTo(7, 5); ctx.moveTo(7, -5); ctx.lineTo(-7, 5); ctx.stroke();
-  } else if (t === 'pz') {
-    ctx.strokeRect(-7, -5, 14, 10); ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 2.6, 0, 0, Math.PI * 2); ctx.stroke();
-  } else if (t === 'art') {
-    ctx.strokeRect(-7, -5, 14, 10); ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill();
-  } else if (t === 'flak') {
-    ctx.strokeRect(-7, -5, 14, 10); ctx.beginPath(); ctx.arc(0, 4, 5, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
-  } else if (t === 'jag' || t === 'bom') {
-    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(1.3, -1); ctx.lineTo(8, 1); ctx.lineTo(8, 2.5); ctx.lineTo(1.3, 1.5); ctx.lineTo(1, 4);
-    ctx.lineTo(3, 6); ctx.lineTo(-3, 6); ctx.lineTo(-1, 4); ctx.lineTo(-1.3, 1.5); ctx.lineTo(-8, 2.5); ctx.lineTo(-8, 1); ctx.lineTo(-1.3, -1); ctx.closePath();
-    if (t === 'bom') ctx.fill(); else ctx.stroke();
-  } else if (t === 'ubo') {
-    ctx.beginPath(); ctx.ellipse(0, 2, 8, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-1.5, -3, 3, 3);
-  } else {
-    ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(5.5, 4.5); ctx.lineTo(-5.5, 4.5); ctx.closePath(); ctx.fill();
-    ctx.fillRect(-3, -3.5, 5, 3.5);
-    if (t === 'sch') { ctx.fillRect(-6, -2, 2.5, 2); ctx.fillRect(3, -2, 3, 2); }
-  }
-  ctx.restore();
-}
 function roundRect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+const P2D = {};
+const iconPath = n => P2D[n] || (P2D[n] = new Path2D(ICONS[n][0]));
+function drawIcon(n, x, y, size, color) {
+  ctx.save();
+  ctx.translate(x - size / 2, y - size / 2); ctx.scale(size / 24, size / 24);
+  ctx.fillStyle = color;
+  ctx.fill(iconPath(n), ICONS[n][1] ? 'evenodd' : 'nonzero');
+  ctx.restore();
+}
+const lightCache = {};
+function lighter(col) {
+  if (!lightCache[col]) lightCache[col] = rgb(mix(hexRgb(col), [255, 255, 255], 0.28));
+  return lightCache[col];
+}
+function drawBadge(x, y, r, n, ring, prog, progCol, lvl) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(14,17,23,0.92)'; ctx.fill();
+  ctx.lineWidth = 1.7; ctx.strokeStyle = ring; ctx.stroke();
+  drawIcon(n, x, y, r * 1.32, '#f1f4f8');
+  if (prog !== undefined) {
+    ctx.beginPath(); ctx.arc(x, y, r + 2.4, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, r + 2.4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(prog, 0, 1));
+    ctx.strokeStyle = progCol; ctx.lineWidth = 3; ctx.stroke();
+  }
+  if (lvl > 1) {
+    ctx.fillStyle = '#ffd56b';
+    for (let l = 0; l < lvl; l++) { ctx.beginPath(); ctx.arc(x + (l - (lvl - 1) / 2) * 4.6, y + r + 4.2, 1.8, 0, Math.PI * 2); ctx.fill(); }
+  }
+}
+function drawEmblem(x, y, s, cap, col) {
+  const r = (cap ? 13 : 11) * s;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 7; ctx.shadowOffsetY = 2;
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+  g.addColorStop(0, lighter(col)); g.addColorStop(1, col);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.lineWidth = cap ? 2.8 : 1.8; ctx.strokeStyle = cap ? '#ffd56b' : 'rgba(10,12,16,0.9)'; ctx.stroke();
+  drawIcon(cap ? 'star' : 'city', x, y, r * 1.22, '#fff');
 }
 
 function draw(now) {
@@ -1689,70 +1933,92 @@ function draw(now) {
   }
   ctx.lineJoin = 'round';
   ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 1 / z; ctx.stroke(edgePaths.thin);
-  ctx.strokeStyle = 'rgba(225,235,210,0.55)'; ctx.lineWidth = 1.6 / z; ctx.stroke(edgePaths.coast);
-  ctx.strokeStyle = 'rgba(15,15,20,0.8)'; ctx.lineWidth = 2.6 / z; ctx.stroke(edgePaths.border);
+  ctx.strokeStyle = 'rgba(160,215,235,0.18)'; ctx.lineWidth = 7 / z; ctx.stroke(edgePaths.coast);
+  ctx.strokeStyle = 'rgba(225,235,210,0.6)'; ctx.lineWidth = 1.6 / z; ctx.stroke(edgePaths.coast);
+  ctx.strokeStyle = 'rgba(12,12,16,0.85)'; ctx.lineWidth = 2.8 / z; ctx.stroke(edgePaths.border);
   // Nebel
-  ctx.fillStyle = 'rgba(8,12,20,0.38)';
+  ctx.fillStyle = 'rgba(8,12,20,0.4)';
   for (let i = 0; i < cells.length; i++) if (!VIS[i] && inView(cells[i].bb)) ctx.fill(cells[i].path);
   // Auswahl
-  if (hoverCell >= 0) { ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 2 / z; ctx.stroke(cells[hoverCell].path); }
-  if (sel && sel.k === 'cell') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 / z; ctx.stroke(cells[sel.i].path); }
+  if (hoverCell >= 0) { ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2 / z; ctx.stroke(cells[hoverCell].path); }
+  if (sel && sel.k === 'cell') {
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill(cells[sel.i].path);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3 / z; ctx.stroke(cells[sel.i].path);
+  }
   // Wege der eigenen Armeen
   const selA = sel && sel.k === 'army' ? G.armies.find(a => a.id === sel.id) : null;
-  ctx.setLineDash([6 / z, 5 / z]);
+  ctx.setLineDash([7 / z, 5 / z]);
+  ctx.lineDashOffset = -now / 60 / z;
   for (const a of G.armies) {
     if (a.o !== ME || !a.p.length) continue;
     const p = apos(a);
     ctx.beginPath(); ctx.moveTo(p.x, p.y);
     for (const j of a.p) ctx.lineTo(cells[j].x, cells[j].y);
-    ctx.strokeStyle = a === selA ? 'rgba(255,230,140,0.95)' : 'rgba(255,255,255,0.45)';
-    ctx.lineWidth = (a === selA ? 2.5 : 1.6) / z;
+    ctx.strokeStyle = a === selA ? 'rgba(255,230,140,0.95)' : 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = (a === selA ? 3 : 2) / z;
     ctx.stroke();
   }
+  ctx.lineDashOffset = 0;
   if (selA && hoverPath && hoverPath.length > 1) {
     ctx.beginPath();
     hoverPath.forEach((j, k) => k ? ctx.lineTo(cells[j].x, cells[j].y) : ctx.moveTo(apos(selA).x, apos(selA).y));
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2 / z; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2.2 / z; ctx.stroke();
   }
   ctx.setLineDash([]);
 
   // ---- Bildschirm-Ebene ----
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const s = clamp(0.75 + z * 0.35, 0.75, 1.3);
+  const s = clamp(0.7 + z * 0.4, 0.75, 1.35);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  // Ziele der eigenen Armeen
+  for (const a of G.armies) {
+    if (a.o !== ME || !a.p.length) continue;
+    const T = cells[a.p[a.p.length - 1]], [x, y] = toScreen(T.x, T.y);
+    const isSel = a === selA, r = (isSel ? 15 : 9) * s * (isSel ? 1 + 0.08 * Math.sin(now / 200) : 1);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.strokeStyle = isSel ? '#ffe68c' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = isSel ? 2.5 : 1.5; ctx.stroke();
+  }
   for (let i = 0; i < cells.length; i++) {
     const c = cells[i];
     if (!c.land || !inView(c.bb)) continue;
-    const cs = G.cells[i];
+    const cs = G.cells[i], vis = VIS[i];
     const [x, y] = toScreen(c.x, c.y);
-    if (c.city) {
-      ctx.fillStyle = cs.o >= 0 ? natColor(cs.o) : '#cfcbb0';
-      ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5;
-      if (c.city === 2) {
-        ctx.beginPath();
-        for (let k = 0; k < 10; k++) { const r = (k % 2 ? 4 : 9) * s, an = -Math.PI / 2 + k * Math.PI / 5; ctx.lineTo(x + Math.cos(an) * r, y - 14 * s + Math.sin(an) * r); }
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-      } else {
-        ctx.fillRect(x - 5 * s, y - 19 * s, 10 * s, 10 * s); ctx.strokeRect(x - 5 * s, y - 19 * s, 10 * s, 10 * s);
+    // Eroberung läuft
+    if (vis && cs.cp > 0 && cs.cpBy >= 0) {
+      const p = clamp((cs.cp + (G.frac || 0)) / captureNeed(i), 0, 1);
+      ctx.beginPath(); ctx.arc(x, y, 25 * s, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 25 * s, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.strokeStyle = natColor(cs.cpBy); ctx.lineWidth = 4; ctx.stroke();
+    }
+    if (c.city) drawEmblem(x, y - 27 * s, s, c.city === 2, natColor(cs.o));
+    // Name
+    if ((c.city && z > 0.42) || z > 1.15) {
+      const fs = Math.round((c.city ? 12.5 : 10.5) * Math.min(s, 1.15));
+      ctx.font = `${c.city ? 800 : 600} ${fs}px system-ui, sans-serif`;
+      const ly = y - (c.city ? 48 : 19) * s;
+      const showRes = z > 1.3;
+      const tw = ctx.measureText(c.name).width;
+      const tx = showRes ? x + fs * 0.55 : x;
+      ctx.lineWidth = 3.2; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.strokeText(c.name, tx, ly);
+      ctx.fillStyle = c.city ? '#fff' : 'rgba(255,255,255,0.82)';
+      ctx.fillText(c.name, tx, ly);
+      if (showRes) {
+        const ix = tx - tw / 2 - fs * 0.75;
+        ctx.beginPath(); ctx.arc(ix, ly, fs * 0.62, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+        drawIcon(c.res, ix, ly, fs * 0.95, RES_COLOR[c.res]);
       }
     }
-    if ((c.city && z > 0.42) || z > 1.25) {
-      ctx.font = `${c.city ? 700 : 500} ${Math.round((c.city ? 12 : 10.5) * Math.min(s, 1.15))}px system-ui, sans-serif`;
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.65)';
-      const ly = y + (c.city ? 22 : 14) * s;
-      ctx.strokeText(c.name, x, ly);
-      ctx.fillStyle = c.city ? '#fff' : 'rgba(255,255,255,0.75)';
-      ctx.fillText(c.name, x, ly);
-    }
-    if (z > 1.0 && VIS[i]) {
-      const icons = [];
-      if (z > 1.5) icons.push(RES_INFO[c.res].i);
-      for (const k of BLD_ORDER) if (cs.b[k]) icons.push(BLD[k].i + (cs.b[k] > 1 ? cs.b[k] : ''));
-      if (cs.bq) icons.push('🔨');
-      if (icons.length) {
-        ctx.font = `${Math.round(10 * s)}px system-ui, sans-serif`;
-        ctx.fillStyle = '#fff';
-        ctx.fillText(icons.join(' '), x, y + (c.city ? 35 : 26) * s);
+    // Gebäude, Bau und Ausbildung
+    if (vis && (c.city ? z > 0.5 : z > 0.8)) {
+      const items = [];
+      for (const k of BLD_ORDER) if (cs.b[k] && !(cs.bq && cs.bq.k === k)) items.push([k, undefined, '', cs.b[k]]);
+      if (cs.bq) items.push([cs.bq.k, 1 - (cs.bq.t - (G.frac || 0)) / cs.bq.tot, '#ffb74d', cs.b[cs.bq.k]]);
+      if (cs.uq.length) { const q = cs.uq[0]; items.push([q.u, 1 - (q.t - (G.frac || 0)) / q.tot, '#7dd47f', 0]); }
+      if (items.length) {
+        const r = 8.8 * s, gap = 2 * r + 4, y0 = y + 25 * s;
+        let x0 = x - (items.length - 1) * gap / 2;
+        const ring = cs.o >= 0 ? natColor(cs.o) : '#bbb';
+        for (const it of items) { drawBadge(x0, y0, r, it[0], ring, it[1], it[2], it[3]); x0 += gap; }
       }
     }
   }
@@ -1765,16 +2031,22 @@ function draw(now) {
     const [x, y] = toScreen(A.x, A.y);
     if (f.k === 'cap') {
       ctx.strokeStyle = `rgba(255,220,120,${1 - age})`; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(x, y, 10 + age * 40 * s, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 10 + age * 44 * s, 0, Math.PI * 2); ctx.stroke();
     } else if (f.k === 'shot' && f.b >= 0) {
       const B = cells[f.b], [bx, by] = toScreen(B.x, B.y);
-      const t = Math.min(1, age * 2.5);
-      ctx.strokeStyle = `rgba(255,200,90,${1 - age})`; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + (x - bx) * t, by + (y - by) * t); ctx.stroke();
-      if (age > 0.35) { ctx.fillStyle = `rgba(255,150,60,${1 - age})`; ctx.beginPath(); ctx.arc(x + Math.sin(f.t) * 8, y + Math.cos(f.t) * 6, 6 + age * 10, 0, Math.PI * 2); ctx.fill(); }
+      const t = Math.min(1, age * 2.5), mx = bx + (x - bx) * t, my = by + (y - by) * t - Math.sin(t * Math.PI) * 30 * s;
+      if (age < 0.4) { ctx.fillStyle = `rgba(255,220,140,${1 - age * 2})`; ctx.beginPath(); ctx.arc(mx, my, 3.5, 0, Math.PI * 2); ctx.fill(); }
+      if (age > 0.35) {
+        const r = 6 + age * 16;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, `rgba(255,230,150,${1 - age})`); g.addColorStop(0.5, `rgba(255,120,40,${0.8 * (1 - age)})`); g.addColorStop(1, 'rgba(120,40,10,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + Math.sin(f.t) * 8, y + Math.cos(f.t) * 6, r, 0, Math.PI * 2); ctx.fill();
+      }
     } else if (f.k === 'fight') {
-      ctx.fillStyle = `rgba(255,120,60,${0.5 * (1 - age)})`;
-      ctx.beginPath(); ctx.arc(x + Math.sin(f.t * 7) * 10, y + Math.cos(f.t * 3) * 8, 5 + age * 14, 0, Math.PI * 2); ctx.fill();
+      const r = 6 + age * 16;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(255,200,120,${0.7 * (1 - age)})`); g.addColorStop(1, 'rgba(255,90,30,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x + Math.sin(f.t * 7) * 12, y + Math.cos(f.t * 3) * 9, r, 0, Math.PI * 2); ctx.fill();
     }
   }
   // Armeen
@@ -1787,55 +2059,99 @@ function draw(now) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(a);
   }
-  const W = 34 * s, H = 21 * s;
+  const W = 46 * s, H = 26 * s;
   for (const list of groups.values()) {
     list.sort((a, b) => (a.o === ME) - (b.o === ME));
     list.forEach((a, k) => {
       const p = apos(a);
       let [x, y] = toScreen(p.x, p.y);
-      x += (k - (list.length - 1) / 2) * (W + 3);
-      if (a.dom === 'air') y -= 16 * s;
-      if (x < -50 || y < -50 || x > VW + 50 || y > VH + 50) return;
-      const isSel = selA === a;
-      const sea = embarked(a);
-      ctx.fillStyle = 'rgba(0,0,0,0.45)';
-      roundRect(x - W / 2 + 1.5, y - H / 2 + 2, W, H, 5 * s); ctx.fill();
-      ctx.fillStyle = natColor(a.o);
-      roundRect(x - W / 2, y - H / 2, W, H, 5 * s); ctx.fill();
-      ctx.lineWidth = isSel ? 3 : 1.4;
-      ctx.strokeStyle = isSel ? '#ffe68c' : 'rgba(0,0,0,0.75)';
-      ctx.stroke();
-      drawSymbol(mainUnit(a), x - 7 * s, y, s * 0.9, sea);
-      ctx.fillStyle = '#fff';
-      ctx.font = `800 ${Math.round(11 * s)}px system-ui, sans-serif`;
-      ctx.fillText(String(a.u.length), x + 9 * s, y + 0.5);
+      x += (k - (list.length - 1) / 2) * (W + 4);
+      if (a.dom === 'air') y -= 20 * s;
+      if (x < -60 || y < -60 || x > VW + 60 || y > VH + 60) return;
+      const isSel = selA === a, col = natColor(a.o);
+      const x0 = x - W / 2, y0 = y - H / 2;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      roundRect(x0 + 1.5, y0 + 2.5, W, H, 7 * s); ctx.fill();
+      const gr = ctx.createLinearGradient(0, y0, 0, y0 + H);
+      gr.addColorStop(0, lighter(col)); gr.addColorStop(1, col);
+      roundRect(x0, y0, W, H, 7 * s); ctx.fillStyle = gr; ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      roundRect(x0 + 2, y0 + 2, H - 4, H - 4, 5 * s); ctx.fill();
+      const icn = embarked(a) ? 'zer' : mainUnit(a);
+      drawIcon(icn, x0 + H / 2, y, H * 0.74, '#fff');
+      ctx.font = `800 ${Math.round(13 * s)}px system-ui, sans-serif`;
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.strokeText(String(a.u.length), x + H / 2, y + 0.5);
+      ctx.fillStyle = '#fff'; ctx.fillText(String(a.u.length), x + H / 2, y + 0.5);
+      roundRect(x0, y0, W, H, 7 * s);
+      if (isSel) { ctx.save(); ctx.shadowColor = '#ffe68c'; ctx.shadowBlur = 12; ctx.lineWidth = 2.8; ctx.strokeStyle = '#ffe68c'; ctx.stroke(); ctx.restore(); }
+      else { ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke(); }
       const hp = armyHp(a) / armyMaxHp(a);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - W / 2, y + H / 2 + 2, W, 3.5);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; roundRect(x0, y0 + H + 2.5, W, 4, 2); ctx.fill();
       ctx.fillStyle = hp > 0.6 ? '#66bb6a' : hp > 0.3 ? '#ffca28' : '#ef5350';
-      ctx.fillRect(x - W / 2, y + H / 2 + 2, W * hp, 3.5);
+      roundRect(x0, y0 + H + 2.5, Math.max(4, W * hp), 4, 2); ctx.fill();
       if (a.fight) {
-        ctx.font = `${Math.round(13 * s)}px system-ui, sans-serif`;
-        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now / 150);
-        ctx.fillText('⚔️', x, y - H / 2 - 9 * s);
-        ctx.globalAlpha = 1;
+        const sc = 1 + 0.12 * Math.sin(now / 110), cy = y0 - 12 * s;
+        ctx.beginPath(); ctx.arc(x, cy, 11 * s * sc, 0, Math.PI * 2); ctx.fillStyle = 'rgba(60,12,8,0.85)'; ctx.fill();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff6e40'; ctx.stroke();
+        drawIcon('swords', x, cy, 15 * s * sc, '#ffab91');
       } else if (a.dom === 'air' && a.o === ME && a.f < maxFuel(a)) {
-        ctx.font = `700 ${Math.round(9 * s)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(9.5 * s)}px system-ui, sans-serif`;
         ctx.fillStyle = a.f <= 2 ? '#ff8a80' : '#ffe68c';
-        ctx.fillText('⛽' + Math.ceil(a.f) + 'h', x, y - H / 2 - 7 * s);
+        ctx.fillText(Math.ceil(a.f) + ' h Treibstoff', x, y0 - 8 * s);
       }
-      armyRects.push({ a, x0: x - W / 2, y0: y - H / 2, x1: x + W / 2, y1: y + H / 2 });
+      armyRects.push({ a, x0, y0, x1: x0 + W, y1: y0 + H });
     });
   }
   // Wegzeit beim Zielen
   if (selA && hoverPath && hoverPath.length > 1 && pointerType === 'mouse') {
     const T = cells[hoverPath[hoverPath.length - 1]], [x, y] = toScreen(T.x, T.y);
-    const txt = `⏱ ${hoverEta < 1 ? '<1' : Math.round(hoverEta)} h`;
-    ctx.font = '700 12px system-ui, sans-serif';
-    const w = ctx.measureText(txt).width + 12;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)'; roundRect(x - w / 2, y - 34, w, 20, 6); ctx.fill();
-    ctx.fillStyle = '#ffe68c'; ctx.fillText(txt, x, y - 24);
+    const txt = `${hoverEta < 1 ? '<1' : Math.round(hoverEta)} h`;
+    ctx.font = '800 12.5px system-ui, sans-serif';
+    const w = ctx.measureText(txt).width + 30;
+    ctx.fillStyle = 'rgba(10,12,16,0.88)'; roundRect(x - w / 2, y - 40, w, 24, 8); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,230,140,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+    drawIcon('time', x - w / 2 + 13, y - 28, 14, '#ffe68c');
+    ctx.fillStyle = '#ffe68c'; ctx.fillText(txt, x + 8, y - 28);
   }
+  drawMini(now);
 }
+
+// ---------- Übersichtskarte ----------
+const mini = $('mini'), mctx = mini.getContext('2d');
+let miniBg = null, miniT = 0, miniGeo = null;
+function drawMini(now) {
+  if (!MAP || !mini.offsetWidth) return;
+  const w = mini.offsetWidth, h = mini.offsetHeight;
+  if (mini.width !== Math.round(w * DPR)) { mini.width = Math.round(w * DPR); mini.height = Math.round(h * DPR); miniBg = null; }
+  const sc = Math.min(w / MAP.W, h / MAP.H), ox = (w - MAP.W * sc) / 2, oy = (h - MAP.H * sc) / 2;
+  miniGeo = { sc, ox, oy };
+  if (!miniBg || now - miniT > 1000) {
+    miniT = now;
+    if (!miniBg) miniBg = document.createElement('canvas');
+    miniBg.width = mini.width; miniBg.height = mini.height;
+    const b = miniBg.getContext('2d');
+    b.fillStyle = '#163148'; b.fillRect(0, 0, miniBg.width, miniBg.height);
+    b.setTransform(DPR * sc, 0, 0, DPR * sc, ox * DPR, oy * DPR);
+    for (const c of MAP.cells) if (c.land) { b.fillStyle = cellFill[c.id]; b.fill(c.path); }
+    b.fillStyle = '#fff';
+    G.armies.forEach(a => { if (a.o === ME) { const p = apos(a); b.fillRect(p.x - 12, p.y - 12, 24, 24); } });
+  }
+  mctx.setTransform(1, 0, 0, 1, 0, 0);
+  mctx.drawImage(miniBg, 0, 0);
+  mctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  mctx.strokeStyle = '#ffe68c'; mctx.lineWidth = 1.5;
+  mctx.strokeRect(ox + cam.x * sc, oy + cam.y * sc, VW / cam.z * sc, VH / cam.z * sc);
+}
+function miniJump(e) {
+  if (!miniGeo || !G) return;
+  const r = mini.getBoundingClientRect();
+  const wx = (e.clientX - r.left - miniGeo.ox) / miniGeo.sc, wy = (e.clientY - r.top - miniGeo.oy) / miniGeo.sc;
+  cam.x = wx - VW / 2 / cam.z; cam.y = wy - VH / 2 / cam.z;
+  clampCam();
+}
+mini.addEventListener('pointerdown', e => { mini.setPointerCapture(e.pointerId); miniJump(e); });
+mini.addEventListener('pointermove', e => { if (e.buttons) miniJump(e); });
 
 // ---------- Treffer ----------
 function hitArmy(sx, sy) {
@@ -2001,14 +2317,42 @@ function sendCmd(c) {
 function select(s) {
   sel = s; splitDraft = null; hoverPath = null;
   refreshUI(true);
+  if (s) keepVisible(s);
+}
+// Gewählte Provinz/Armee nicht unter dem Fenster verstecken
+let camAnim = null;
+function keepVisible(s) {
+  let wx, wy;
+  if (s.k === 'cell') { wx = MAP.cells[s.i].x; wy = MAP.cells[s.i].y; }
+  else { const a = G.armies.find(x => x.id === s.id); if (!a) return; const p = apos(a); wx = p.x; wy = p.y; }
+  const [sx, sy] = toScreen(wx, wy);
+  let tx = sx, ty = sy;
+  if (VW <= 720) { const top = 100, bottom = VH * 0.42; if (sy < top || sy > bottom) ty = (top + bottom) / 2; }
+  else { const right = VW - 410; if (sx > right) tx = right / 2 + 120; }
+  if (tx === sx && ty === sy) return;
+  camAnim = { x: cam.x + (sx - tx) / cam.z, y: cam.y + (sy - ty) / cam.z };
 }
 
+let ptab = store.get('tab', 'bld');
+function costChips(cost, n, f = 1) {
+  return `<span class="costs">${RES.filter(r => cost[r]).map(r => `<span class="cc${n && n.res[r] < cost[r] * f ? ' no' : ''}" title="${RES_INFO[r].n}">${ic(r, 'r-' + r)}${Math.ceil(cost[r] * f)}</span>`).join('')}</span>`;
+}
+function headStyle(col) { const c = hexRgb(col).join(','); return `background:linear-gradient(135deg, rgba(${c},0.7), rgba(${c},0.25) 55%, rgba(20,25,33,0.98) 100%)`; }
+function pips(n, max) { if (max <= 1) return ''; let h = '<span class="pips">'; for (let i = 1; i <= max; i++) h += `<i class="${i <= n ? 'on' : ''}"></i>`; return h + '</span>'; }
+function headerHtml(col, icon, title, sub) {
+  return `<div class="ph" style="${headStyle(col)}"><div class="emb">${ic(icon)}</div><div style="min-width:0;flex:1"><h2>${title}</h2><div class="sub2">${sub}</div></div>` +
+    `<button class="xb" data-act="close" title="Schliessen">${ic('close')}</button></div>`;
+}
+function unitBox(t, col) { const c = hexRgb(col).join(','); return `<div class="uic" style="background:linear-gradient(160deg, rgba(${c},0.95), rgba(${c},0.35))">${ic(t)}</div>`; }
+function typeCounts(a) { const c = {}; for (const u of a.u) c[u.t] = (c[u.t] || 0) + 1; return c; }
+
+let resHtml = '';
 function resBar() {
   const n = nat(ME);
   if (!n) return '';
   const inc = nationIncome(ME);
-  return RES.map(r => `<span class="res${n.res[r] < 30 ? ' low' : ''}" title="${RES_INFO[r].n}">${RES_INFO[r].i} ${fmt(n.res[r])}` +
-    `<small class="${inc[r] < 0 ? 'neg' : ''}">${inc[r] >= 0 ? '+' : ''}${Math.round(inc[r])}</small></span>`).join('');
+  return RES.map(r => `<div class="res${n.res[r] < 30 ? ' low' : ''}" title="${RES_INFO[r].n}: ${inc[r] >= 0 ? '+' : ''}${inc[r].toFixed(1)} pro Stunde">${ic(r, 'r-' + r)}` +
+    `<div><b>${fmt(n.res[r])}</b><small class="${inc[r] < 0 ? 'neg' : ''}">${inc[r] >= 0 ? '+' : ''}${Math.round(inc[r])}/h</small></div></div>`).join('');
 }
 function bar(key, cls) { return `<div class="bar ${cls || ''}"><i data-prog="${key}"></i></div>`; }
 function progValue(key) {
@@ -2016,6 +2360,7 @@ function progValue(key) {
   if (k === 'bq') { const q = G.cells[+a].bq; return q ? 1 - (q.t - (G.frac || 0)) / q.tot : 0; }
   if (k === 'uq') { const q = G.cells[+a].uq[+b]; return q && +b === 0 ? 1 - (q.t - (G.frac || 0)) / q.tot : 0; }
   if (k === 'rs') { const r = nat(ME).rs.find(x => x.k === a); return r ? 1 - (r.t - (G.frac || 0)) / r.tot : 0; }
+  if (k === 'cp') { const c = G.cells[+a]; return c.cp ? (c.cp + (G.frac || 0)) / captureNeed(+a) : 0; }
   if (k === 'hp') { const ar = G.armies.find(x => x.id === +a); if (!ar) return 0; const us = ar.u.filter(u => u.t === b); return us.reduce((s, u) => s + u.hp, 0) / (us.length * UNITS[b].hp); }
   if (k === 'vp') return G.vp && G.vpTotal ? G.vp[+a] / G.vpTotal : 0;
   return 0;
@@ -2024,113 +2369,152 @@ function updateBars(root) {
   for (const el of root.querySelectorAll('[data-prog]')) el.style.width = (clamp(progValue(el.dataset.prog), 0, 1) * 100).toFixed(1) + '%';
 }
 
+// ---------- Provinz ----------
 function cellPanel(i) {
   const cg = MAP.cells[i], cs = G.cells[i], me = nat(ME);
   if (!cg.land) {
     const here = G.armies.filter(a => lc(a) === i && (VIS[i] || a.o === ME));
-    return `<h2>🌊 Meer <button class="x" data-act="close">✕</button></h2><div class="meta">Hier fahren Schiffe. Landtruppen schiffen an der Küste automatisch ein.</div>` + armyList(here);
+    return headerHtml('#2c6282', 'zer', 'Offenes Meer', 'Seegebiet') + `<div class="pb"><div class="sect-t">${ic('zer')} Einheiten hier</div>` +
+      (here.length ? armyList(here) : '<div class="meta">Keine sichtbaren Einheiten.</div>') +
+      `<div class="hint">${ic('haf')}<span>Schiffe fahren über das Meer und legen in eigenen Häfen an. Landtruppen werden an der Küste automatisch eingeschifft, sind auf See aber verwundbar.</span></div></div>`;
   }
-  const owner = cs.o, mineCell = owner === ME && me && me.alive;
-  const prod = cellProd(i);
-  let h = `<h2><span class="dot" style="background:${natColor(owner)}"></span>${esc(cg.name)} ${cg.city === 2 ? '⭐' : cg.city ? '🏙️' : ''}<button class="x" data-act="close">✕</button></h2>`;
-  h += `<div class="meta">${esc(natName(owner))}${cs.core !== owner && owner >= 0 ? ' · besetzt' : ''} · ${cg.city === 2 ? 'Hauptstadt' : cg.city ? 'Stadt' : 'Provinz'} · ${RES_INFO[cg.res].i} ${RES_INFO[cg.res].n}${cg.coast ? ' · Küste' : ''} · ${cg.vp} Siegpunkt${cg.vp > 1 ? 'e' : ''}</div>`;
-  if (VIS[i] || mineCell) {
-    h += `<div class="sect"><b>Produktion pro Stunde</b><div class="row" style="gap:6px">` +
-      RES.filter(r => prod[r] >= 0.5).map(r => `<span class="tag">${RES_INFO[r].i} ${prod[r].toFixed(1)}</span>`).join('') + `</div></div>`;
-    const blds = BLD_ORDER.filter(k => cs.b[k]).map(k => `<span class="tag">${BLD[k].i} ${BLD[k].n}${BLD[k].max > 1 ? ' ' + cs.b[k] : ''}</span>`).join(' ');
-    if (!mineCell) h += `<div class="sect"><b>Gebäude</b>${blds || '<span class="meta">keine</span>'}</div>`;
+  const owner = cs.o, mine = owner === ME && me && me.alive;
+  const kind = cg.city === 2 ? 'Hauptstadt' : cg.city ? 'Stadt' : 'Provinz';
+  let h = headerHtml(natColor(owner), cg.city === 2 ? 'star' : cg.city ? 'city' : 'flag', esc(cg.name),
+    `${esc(natName(owner))} · ${kind}${cs.core !== owner && owner >= 0 ? ' · besetzt' : ''}`);
+  h += `<div class="pb" style="padding-bottom:6px"><div class="chips"><span class="chip" title="Siegpunkte">${ic('flag')} ${cg.vp} Siegpunkt${cg.vp > 1 ? 'e' : ''}</span>` +
+    `<span class="chip">${ic(cg.res, 'r-' + cg.res)} ${RES_INFO[cg.res].n}</span>${cg.coast ? `<span class="chip">${ic('haf')} Küste</span>` : ''}` +
+    `${cs.b.fes ? `<span class="chip" title="Verteidiger nehmen ${cs.b.fes * 20} % weniger Schaden">${ic('fes')} Festung ${cs.b.fes}</span>` : ''}` +
+    `${cs.core !== owner && owner >= 0 ? '<span class="chip warn">Besetzt: 30 % Produktion</span>' : ''}</div></div>`;
+  if (mine) {
+    const tabs = [['over', 'stats', 'Übersicht', ''], ['bld', 'kas', 'Gebäude', cs.bq ? '1' : ''], ['units', 'inf', 'Truppen', cs.uq.length ? String(cs.uq.length) : '']];
+    h += `<div class="tabs">${tabs.map(([k, n, t, b]) => `<button class="tab${ptab === k ? ' on' : ''}" data-act="tab" data-t="${k}">${ic(n)}${t}${b ? `<i>${b}</i>` : ''}</button>`).join('')}</div>`;
   }
-  if (mineCell) {
-    h += `<div class="sect"><b>Bauen</b>`;
-    if (cs.bq) {
-      h += `<div class="line"><div class="grow">${BLD[cs.bq.k].i} ${BLD[cs.bq.k].n} ${BLD[cs.bq.k].max > 1 ? 'Stufe ' + (cs.b[cs.bq.k] + 1) : ''} · noch ${Math.ceil(cs.bq.t)} h${bar('bq:' + i)}</div>` +
-        `<button class="btn small" data-act="cancelBuild">✕</button></div>`;
-    }
-    h += `<div class="grid2">`;
-    for (const k of BLD_ORDER) {
-      const B = BLD[k], lvl = cs.b[k] + 1;
-      if (B.coast && !cg.coast) continue;
-      if (lvl > B.max) { h += `<button class="opt" disabled><span class="t">${B.i} ${B.n}</span><span class="c">${B.max > 1 ? 'Höchste Stufe' : 'Vorhanden'}</span></button>`; continue; }
-      const cost = bldCost(k, lvl), ok = !cs.bq && canPay(me, cost);
-      h += `<button class="opt" data-act="build" data-b="${k}" ${ok ? '' : 'disabled'} title="${esc(B.d)}"><span class="t">${B.i} ${B.n}${B.max > 1 ? ' ' + lvl : ''}</span>` +
-        `<span class="c">${costStr(cost)} · ${B.t * lvl} h</span></button>`;
-    }
-    h += `</div></div>`;
-    const avail = UNIT_ORDER.filter(t => cs.b[UNITS[t].bld]);
-    h += `<div class="sect"><b>Truppen ausbilden</b>`;
-    if (!avail.length) h += `<div class="meta">Baue eine Kaserne, Fabrik, einen Flugplatz oder Hafen, um hier Truppen auszubilden.</div>`;
-    else {
-      h += `<div class="grid2">`;
-      for (const t of avail) {
-        const U = UNITS[t], unlocked = me.tech[t] > 0;
-        const ok = unlocked && cs.uq.length < 5 && canPay(me, U.cost);
-        h += `<button class="opt" data-act="unit" data-u="${t}" ${ok ? '' : 'disabled'} title="${esc(U.d || '')}"><span class="t">${U.n}${unlocked && me.tech[t] > 1 ? ' ' + 'I'.repeat(me.tech[t]) : ''}</span>` +
-          `<span class="c">${unlocked ? costStr(U.cost) + ' · ' + U.t + ' h' : '🔒 Forschung nötig'}</span></button>`;
-      }
-      h += `</div>`;
-    }
-    if (cs.uq.length) {
-      h += `<div style="margin-top:6px">` + cs.uq.map((q, k) => `<div class="line"><div class="grow">${UNITS[q.u].n} · ${k ? 'wartet' : 'noch ' + Math.ceil(q.t) + ' h'}${k ? '' : bar('uq:' + i + ':0')}</div>` +
-        `<button class="btn small" data-act="cancelUnit" data-i="${k}">✕</button></div>`).join('') + `</div>`;
-    }
-    h += `</div>`;
-  }
-  const here = G.armies.filter(a => lc(a) === i && (VIS[i] || a.o === ME));
-  if (here.length) h += `<div class="sect"><b>Armeen hier</b>${armyList(here)}</div>`;
-  else if (!VIS[i]) h += `<div class="hint">Diese Provinz liegt im Nebel. Schick Truppen in die Nähe, um zu sehen, was dort steht.</div>`;
-  if (cs.b.fes && !mineCell && VIS[i]) h += `<div class="meta">🏰 Festung Stufe ${cs.b.fes}: Verteidiger nehmen ${cs.b.fes * 20} % weniger Schaden.</div>`;
+  const tab = mine ? ptab : 'over';
+  h += '<div class="pb">' + (tab === 'bld' ? cellBuildings(i) : tab === 'units' ? cellUnits(i) : cellOverview(i, mine)) + '</div>';
   return h;
 }
-function armySummary(a) {
-  const cnt = {};
-  for (const u of a.u) cnt[u.t] = (cnt[u.t] || 0) + 1;
-  return Object.entries(cnt).map(([t, n]) => `${n}× ${UNITS[t].n}`).join(', ');
+function cellOverview(i, mine) {
+  const cs = G.cells[i];
+  let h = '';
+  if (VIS[i] || mine) {
+    const prod = cellProd(i);
+    h += `<div class="sect-t">${ic('time')} Produktion pro Stunde</div><div class="prod">` +
+      RES.map(r => `<div title="${RES_INFO[r].n}">${ic(r, 'r-' + r)}${prod[r] >= 0.05 ? '+' + prod[r].toFixed(1) : '–'}</div>`).join('') + `</div>`;
+    const bl = BLD_ORDER.filter(k => cs.b[k]);
+    h += `<div class="sect-t">${ic('kas')} Gebäude</div>` + (bl.length
+      ? `<div class="chips">${bl.map(k => `<span class="chip">${ic(k)} ${BLD[k].n}${BLD[k].max > 1 ? ' ' + cs.b[k] : ''}</span>`).join('')}</div>`
+      : `<div class="meta">Noch keine Gebäude.${mine ? ' Im Tab „Gebäude“ kannst du bauen.' : ''}</div>`);
+    if (cs.cp > 0 && cs.cpBy >= 0) h += `<div class="sect-t">${ic('flag')} Wird erobert von ${esc(natName(cs.cpBy))}</div>${bar('cp:' + i)}`;
+  }
+  const here = G.armies.filter(a => lc(a) === i && (VIS[i] || a.o === ME));
+  h += `<div class="sect-t">${ic('inf')} Einheiten hier</div>` + (here.length ? armyList(here)
+    : `<div class="meta">${VIS[i] ? 'Keine Einheiten.' : 'Im Nebel. Schick Truppen in die Nähe, um mehr zu sehen.'}</div>`);
+  return h;
 }
+function cellBuildings(i) {
+  const cg = MAP.cells[i], cs = G.cells[i], me = nat(ME);
+  let h = '';
+  if (cs.bq) {
+    const B = BLD[cs.bq.k];
+    h += `<div class="busy">${unitBox(cs.bq.k, '#e8a33d')}<div style="flex:1;min-width:0"><b>${B.n}${B.max > 1 ? ' Stufe ' + (cs.b[cs.bq.k] + 1) : ''}</b>` +
+      `<div class="meta" style="margin:2px 0 4px">Im Bau · noch ${Math.ceil(cs.bq.t)} h</div>${bar('bq:' + i)}</div>` +
+      `<button class="xb" data-act="cancelBuild" title="Abbrechen (75 % zurück)">${ic('close')}</button></div>`;
+  }
+  h += `<div class="bgrid">`;
+  for (const k of BLD_ORDER) {
+    const B = BLD[k], lvl = cs.b[k], next = lvl + 1;
+    if (B.coast && !cg.coast) {
+      h += `<button class="bt no" disabled title="${esc(B.d)}"><div class="bi">${ic(k)}</div><b>${B.n}</b><span class="st">Nur an der Küste</span></button>`;
+      continue;
+    }
+    const maxed = next > B.max, cost = maxed ? null : bldCost(k, next);
+    const ok = !maxed && !cs.bq && canPay(me, cost);
+    h += `<button class="bt${lvl ? ' has' : ''}" data-act="build" data-b="${k}" ${ok ? '' : 'disabled'} title="${esc(B.d)}"><div class="bi">${ic(k)}</div><b>${B.n}</b>${pips(lvl, B.max)}` +
+      (maxed ? `<span class="st ok">${B.max > 1 ? 'Höchste Stufe' : '✓ Gebaut'}</span>`
+        : `${costChips(cost, me)}<span class="st">${lvl ? 'Ausbau' : 'Bauen'} · ${B.t * next} h</span>`) + `</button>`;
+  }
+  h += `</div><div class="hint">${ic('kas')}<span>Kaserne: Infanterie, Artillerie, Flak · Fabrik: Panzer · Flugplatz: Flugzeuge · Hafen: Schiffe. Pro Provinz wird ein Gebäude gleichzeitig gebaut.</span></div>`;
+  return h;
+}
+function unitStats(t, lvl) {
+  const U = UNITS[t], m = techMult(lvl);
+  const a = Math.max(...U.atk) * m, d = Math.max(...U.def) * m;
+  const per = (v) => v.map((x, k) => `${CLS_N[k]}: ${(x * m).toFixed(1)}`).join(', ');
+  return `<div class="stats"><span title="Angriff – ${per(U.atk)}">${ic('atk')}${a.toFixed(1)}</span><span title="Verteidigung – ${per(U.def)}">${ic('def')}${d.toFixed(1)}</span>` +
+    `<span title="Lebenspunkte">${ic('hp')}${U.hp}</span><span title="Tempo">${ic('spd')}${U.spd}</span>` +
+    `${U.rng ? `<span title="Fernkampf gegen Nachbarprovinzen: ${(Math.max(...U.rng) * m).toFixed(1)}">${ic('target')}${(Math.max(...U.rng) * m).toFixed(1)}</span>` : ''}</div>`;
+}
+function cellUnits(i) {
+  const cs = G.cells[i], me = nat(ME), col = natColor(ME);
+  let h = '';
+  if (cs.uq.length) {
+    h += `<div class="sect-t">${ic('time')} In Ausbildung (${cs.uq.length}/5)</div><div class="queue">` + cs.uq.map((q, k) =>
+      `<div class="qi" title="${UNITS[q.u].n}${k ? ' (wartet)' : ' · noch ' + Math.ceil(q.t) + ' h'}">${ic(q.u)}` +
+      `${k ? '' : `<small>${Math.ceil(q.t)} h</small>${bar('uq:' + i + ':0', 'hp')}`}<button class="qx" data-act="cancelUnit" data-i="${k}" title="Abbrechen">${ic('close')}</button></div>`).join('') + `</div>`;
+  }
+  h += `<div class="sect-t">${ic('plus')} Ausbilden</div>`;
+  for (const t of UNIT_ORDER) {
+    const U = UNITS[t];
+    if (U.bld === 'haf' && !MAP.cells[i].coast) continue;
+    const hasB = cs.b[U.bld] > 0, unl = me.tech[t] > 0;
+    const ok = hasB && unl && cs.uq.length < 5 && canPay(me, U.cost);
+    const why = !unl ? `${ic('lock')} Muss erforscht werden` : !hasB ? `${ic('lock')} Braucht ${BLD[U.bld].n}` : '';
+    h += `<div class="ucard${hasB && unl ? '' : ' off'}" title="${esc(U.d || '')}">${unitBox(t, col)}<div class="mid"><div class="nm">${U.n}${unl ? `<span class="lvl">Stufe ${me.tech[t]}</span>` : ''}</div>` +
+      unitStats(t, me.tech[t] || 1) +
+      (why ? `<div class="meta" style="margin:0">${why}</div>` : `<div class="crow">${costChips(U.cost, me)}<span class="meta" style="margin:0;white-space:nowrap">${ic('time')} ${U.t} h</span></div>`) +
+      `</div><button class="ubtn" data-act="unit" data-u="${t}" ${ok ? '' : 'disabled'} title="${U.n} ausbilden">${ic('plus')}</button></div>`;
+  }
+  return h;
+}
+
+// ---------- Armee ----------
 function armyList(list) {
-  return list.map(a => `<div class="line"><span class="dot" style="background:${natColor(a.o)}"></span><div class="grow">` +
-    `<div style="font-size:12px">${esc(armySummary(a))}</div><div class="bar hp"><i style="width:${(armyHp(a) / armyMaxHp(a) * 100).toFixed(0)}%"></i></div></div>` +
-    `<button class="btn small" data-act="selArmy" data-id="${a.id}">Wählen</button></div>`).join('');
+  return list.map(a => {
+    const c = typeCounts(a);
+    return `<button class="acard" style="--nc:${natColor(a.o)}" data-act="selArmy" data-id="${a.id}"><div style="flex:1;min-width:0">` +
+      `<div class="types">${Object.entries(c).map(([t, n]) => `<span title="${UNITS[t].n}">${ic(t)}${n}</span>`).join('')}</div>` +
+      `<div class="bar hp"><i style="width:${(armyHp(a) / armyMaxHp(a) * 100).toFixed(0)}%"></i></div></div>` +
+      `<span class="meta" style="margin:0;text-align:right">${esc(natName(a.o))}${a.fight ? '<br>⚔ Kampf' : a.p.length ? '<br>unterwegs' : ''}</span></button>`;
+  }).join('');
 }
-function armyState(a) {
-  if (a.fight) return '⚔️ Im Kampf';
-  if (a.blk) return '⛔ Aufgehalten';
-  if (a.p.length) return `➡️ Unterwegs nach ${esc(cellName(a.p[a.p.length - 1]))} (${Math.max(1, Math.round(pathHours(a, [lc(a), ...a.p.slice(a.g >= 0.5 ? 1 : 0)])))} h)`;
-  if (embarked(a)) return '🚢 Eingeschifft';
-  return '⏸ Wartet';
+function armyStatus(a) {
+  if (a.fight) return `<span class="status fight">${ic('swords')} Im Kampf</span>`;
+  if (a.blk) return `<span class="status fight">${ic('stop')} Aufgehalten</span>`;
+  if (a.p.length) return `<span class="status move">${ic('move')} ${esc(cellName(a.p[a.p.length - 1]))} · ${Math.max(1, Math.round(pathHours(a, [lc(a), ...a.p.slice(a.g >= 0.5 ? 1 : 0)])))} h</span>`;
+  if (embarked(a)) return `<span class="status move">${ic('zer')} Eingeschifft</span>`;
+  return `<span class="status">${ic('pause')} Wartet</span>`;
 }
 function armyPanel(a) {
-  const mineA = a.o === ME;
-  let h = `<h2><span class="dot" style="background:${natColor(a.o)}"></span>${a.dom === 'air' ? 'Fliegerstaffel' : a.dom === 'sea' ? 'Flotte' : a.o < 0 ? 'Miliz' : 'Armee'}<button class="x" data-act="close">✕</button></h2>`;
-  h += `<div class="meta">${esc(natName(a.o))} · ${esc(cellName(lc(a)))} · ${armyState(a)}${a.dom === 'air' ? ` · ⛽ ${Math.ceil(a.f)}/${maxFuel(a)} h` : ''}</div>`;
-  const cnt = {};
-  for (const u of a.u) cnt[u.t] = (cnt[u.t] || 0) + 1;
-  h += `<div class="sect"><b>Einheiten</b>`;
+  const mineA = a.o === ME && nat(ME) && nat(ME).alive;
+  const kind = a.dom === 'air' ? 'Fliegerstaffel' : a.dom === 'sea' ? 'Flotte' : a.o < 0 ? 'Miliz' : embarked(a) ? 'Truppentransport' : 'Armee';
+  let h = headerHtml(natColor(a.o), embarked(a) ? 'zer' : mainUnit(a), kind, `${esc(natName(a.o))} · ${esc(cellName(lc(a)))}`);
+  h += `<div class="pb"><div class="chips">${armyStatus(a)}<span class="chip" title="Kampfkraft">${ic('atk')} ${armyPower(a).toFixed(1)}</span>` +
+    `<span class="chip" title="Tempo">${ic('spd')} ${Math.round(armySpeed(a))}</span><span class="chip" title="Lebenspunkte">${ic('hp')} ${Math.round(armyHp(a))}/${armyMaxHp(a)}</span>` +
+    `${a.dom === 'air' ? `<span class="chip${a.f <= 2 ? ' warn' : ''}" title="Treibstoff">${ic('oel')} ${Math.ceil(a.f)}/${maxFuel(a)} h</span>` : ''}</div>`;
+  h += `<div class="sect-t">${ic('inf')} Einheiten (${a.u.length})</div>`;
+  const cnt = typeCounts(a);
   for (const t in cnt) {
-    const lvl = lvlOf(a.o, t);
-    h += `<div class="line"><div class="grow"><b>${cnt[t]}× ${UNITS[t].n}</b> <span class="meta">Stufe ${lvl}</span>${bar('hp:' + a.id + ':' + t, 'hp')}</div>`;
+    h += `<div class="urow">${unitBox(t, natColor(a.o))}<div style="flex:1;min-width:0"><div class="nm">${cnt[t]}× ${UNITS[t].n} <span class="lvl">Stufe ${lvlOf(a.o, t)}</span></div>${bar('hp:' + a.id + ':' + t, 'hp')}</div>`;
     if (mineA && splitDraft) h += `<div class="cnt"><button data-act="sp-" data-u="${t}">−</button><b style="min-width:20px;text-align:center">${splitDraft[t] || 0}</b><button data-act="sp+" data-u="${t}">+</button></div>`;
     h += `</div>`;
   }
-  h += `</div>`;
-  const pw = armyPower(a);
-  h += `<div class="meta">Kampfkraft ${pw.toFixed(1)} · Tempo ${Math.round(armySpeed(a))}</div>`;
-  if (mineA && nat(ME).alive) {
+  if (mineA) {
     if (splitDraft) {
       const n = Object.values(splitDraft).reduce((s, v) => s + v, 0);
-      h += `<div class="row" style="margin-top:8px"><button class="btn small main" data-act="doSplit" ${n && n < a.u.length ? '' : 'disabled'}>Abspalten (${n})</button><button class="btn small" data-act="noSplit">Abbrechen</button></div>`;
+      h += `<div class="acts" style="grid-template-columns:1fr 1fr"><button class="act main" data-act="doSplit" ${n && n < a.u.length ? '' : 'disabled'}>${ic('split')} Abspalten (${n})</button>` +
+        `<button class="act" data-act="noSplit">${ic('close')} Abbrechen</button></div>`;
     } else {
       const others = G.armies.filter(x => x !== a && x.o === ME && x.dom === a.dom && !x.p.length && x.c === a.c);
-      h += `<div class="row" style="margin-top:8px">`;
-      if (a.p.length) h += `<button class="btn small" data-act="stop">⏹ Anhalten</button>`;
-      if (!a.p.length && a.u.length > 1) h += `<button class="btn small" data-act="split">✂ Aufteilen</button>`;
-      if (!a.p.length && others.length) h += `<button class="btn small" data-act="merge">➕ Vereinen (${others.length})</button>`;
-      h += `</div>`;
-      h += `<div class="hint">👉 Tippe auf ein Ziel auf der Karte${pointerType === 'mouse' ? ' (oder Rechtsklick)' : ''}, um die ${a.dom === 'air' ? 'Staffel' : a.dom === 'sea' ? 'Flotte' : 'Armee'} dorthin zu schicken.` +
-        `${a.dom === 'air' ? ' Flugzeuge kämpfen gegen alles in ihrer Zielprovinz und müssen nach Ablauf des Treibstoffs heim.' : ''}` +
-        `${a.u.some(u => UNITS[u.t].rng) ? ' Stehende Artillerie und Schlachtschiffe beschiessen Feinde in Nachbarprovinzen.' : ''}</div>`;
+      h += `<div class="acts"><button class="act" data-act="stop" ${a.p.length ? '' : 'disabled'}>${ic('stop')} Anhalten</button>` +
+        `<button class="act" data-act="split" ${!a.p.length && a.u.length > 1 ? '' : 'disabled'}>${ic('split')} Aufteilen</button>` +
+        `<button class="act" data-act="merge" ${!a.p.length && others.length ? '' : 'disabled'}>${ic('merge')} Vereinen${others.length ? ' (' + others.length + ')' : ''}</button></div>`;
+      h += `<div class="hint">${ic('move')}<span>Tippe auf ein Ziel auf der Karte${pointerType === 'mouse' ? ' (oder Rechtsklick)' : ''}, um ${a.dom === 'air' ? 'die Staffel' : a.dom === 'sea' ? 'die Flotte' : 'die Armee'} dorthin zu schicken.` +
+        `${a.dom === 'air' ? ' Flugzeuge greifen alles in der Zielprovinz an und müssen vor Ablauf des Treibstoffs heim.' : ''}` +
+        `${a.u.some(u => UNITS[u.t].rng) ? ' Stehende Artillerie und Schlachtschiffe beschiessen Feinde in Nachbarprovinzen.' : ''}</span></div>`;
     }
   }
-  return h;
+  return h + '</div>';
 }
 
 let panelHtml = '';
@@ -2139,11 +2523,11 @@ function renderPanel(force) {
   if (sel && sel.k === 'cell') h = cellPanel(sel.i);
   else if (sel && sel.k === 'army') {
     const a = G.armies.find(x => x.id === sel.id);
-    if (!a || (a.o !== ME && !VIS[lc(a)])) { sel = null; }
+    if (!a || (a.o !== ME && !VIS[lc(a)])) sel = null;
     else h = armyPanel(a);
   }
   panel.classList.toggle('hidden', !h);
-  if (h !== panelHtml || force) { if (h !== panelHtml) panel.innerHTML = h; panelHtml = h; }
+  if (h !== panelHtml) { panel.innerHTML = h; panelHtml = h; }
   updateBars(panel);
 }
 panel.addEventListener('click', e => {
@@ -2155,6 +2539,7 @@ panel.addEventListener('click', e => {
   const ci = sel && sel.k === 'cell' ? sel.i : -1;
   switch (act) {
     case 'close': select(null); break;
+    case 'tab': ptab = b.dataset.t; store.set('tab', ptab); panel.scrollTop = 0; break;
     case 'selArmy': select({ k: 'army', id: +b.dataset.id }); break;
     case 'build': sendCmd({ k: 'build', cell: ci, b: b.dataset.b }); sound('build'); break;
     case 'cancelBuild': sendCmd({ k: 'cancelBuild', cell: ci }); break;
@@ -2176,68 +2561,88 @@ panel.addEventListener('click', e => {
 
 // ---------- Fenster (Forschung, Diplomatie, Rangliste, Meldungen, Menü) ----------
 let modalKind = null, modalHtml = '', warConfirm = -1;
-function openModal(k) { modalKind = k; warConfirm = -1; $('modal').classList.remove('hidden'); modalHtml = ''; if (k === 'msgs') { unread = 0; updateBadge(); } renderModal(); }
-function closeModal() { modalKind = null; $('modal').classList.add('hidden'); }
+function openModal(k) {
+  modalKind = k; warConfirm = -1; modalHtml = '';
+  $('modal').classList.remove('hidden');
+  for (const [id, m] of [['bResearch', 'research'], ['bDiplo', 'diplo'], ['bStats', 'stats'], ['bMsgs', 'msgs'], ['bMenu', 'menu']]) $(id).classList.toggle('on', m === k);
+  if (k === 'msgs') { unread = 0; updateBadge(); }
+  renderModal();
+}
+function closeModal() { modalKind = null; $('modal').classList.add('hidden'); for (const b of document.querySelectorAll('.dk')) b.classList.remove('on'); }
 $('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+const TECH_CATS = [['Infanterie und Artillerie', 'inf', ['inf', 'art', 'flak']], ['Panzer', 'pz', ['pz']], ['Luftwaffe', 'jag', ['jag', 'bom']],
+  ['Marine', 'zer', ['zer', 'ubo', 'sch']], ['Wirtschaft und Logistik', 'ind', ['eco', 'log']]];
+function techCard(k, me) {
+  const T = TECH_INFO[k], cur = me.tech[k] || 0, lvl = cur + 1, busy = me.rs.some(r => r.k === k);
+  const icon = k === 'log' ? 'log' : k;
+  const col = cur ? '#4f6d8f' : '#555b66';
+  let desc, foot = '';
+  if (lvl > T.max) desc = 'Voll erforscht.';
+  else if (k === 'eco' || k === 'log') desc = `Stufe ${lvl}: ${T.d}.`;
+  else desc = lvl === 1 ? `Schaltet ${T.n} frei.` : `Stufe ${lvl}: +25 % Angriff und Verteidigung für alle ${T.n}-Einheiten.`;
+  const reqOk = !T.req || (me.tech[T.req[0]] || 0) >= T.req[1];
+  let ok = false;
+  if (lvl <= T.max) {
+    const tc = techCost(k, lvl);
+    if (busy) foot = `<div class="meta" style="margin:0;color:var(--accent-2)">Wird erforscht …</div>`;
+    else if (!reqOk) foot = `<div class="meta" style="margin:0">${ic('lock')} Braucht ${TECH_INFO[T.req[0]].n} Stufe ${T.req[1]}</div>`;
+    else { foot = `<div class="crow">${costChips(tc.cost, me)}<span class="meta" style="margin:0">${ic('time')} ${tc.t} h</span></div>`; ok = me.rs.length < 2 && canPay(me, tc.cost) && me.alive; }
+  }
+  return `<button class="rcard${!reqOk || lvl > T.max ? ' dim' : ''}" data-act="research" data-t="${k}" ${ok ? '' : 'disabled'}>${unitBox(icon, col)}<div style="flex:1;min-width:0">` +
+    `<div class="nm">${T.n}</div>${pips(cur, T.max) || ''}<div class="rd">${desc}</div>${foot}</div></button>`;
+}
 function renderModal() {
   if (!modalKind) return;
   const me = nat(ME);
   let h = '';
-  const head = t => `<div class="head"><h2>${t}</h2><button class="btn small" data-act="mclose">✕</button></div>`;
+  const head = (icon, t) => `<div class="head"><h2>${ic(icon)}${t}</h2><button class="xb" data-act="mclose" title="Schliessen">${ic('close')}</button></div>`;
   if (modalKind === 'research') {
-    h = head('🔬 Forschung');
-    h += `<p class="sub">Zwei Forschungen gleichzeitig. Jede Stufe macht eine Einheit um 25 % stärker – auch alle bestehenden.</p>`;
-    if (me.rs.length) h += me.rs.map(r => `<div class="line"><div class="grow"><b>${TECH_INFO[r.k].n} ${r.lvl > 1 ? 'Stufe ' + r.lvl : '(freischalten)'}</b> · noch ${Math.ceil(r.t)} h${bar('rs:' + r.k)}</div></div>`).join('');
-    h += `<div class="techs" style="margin-top:8px">`;
-    for (const k of TECH_ORDER) {
-      const T = TECH_INFO[k], cur = me.tech[k] || 0, lvl = cur + 1;
-      const busy = me.rs.some(r => r.k === k);
-      const label = k === 'eco' || k === 'log' ? `${T.n} ${cur ? 'Stufe ' + cur : '–'}` : `${T.n} ${cur ? 'Stufe ' + cur : '🔒'}`;
-      if (lvl > T.max) { h += `<button class="opt" disabled><span class="t">${label}</span><span class="c">Voll erforscht</span></button>`; continue; }
-      const reqOk = !T.req || (me.tech[T.req[0]] || 0) >= T.req[1];
-      const tc = techCost(k, lvl);
-      const ok = reqOk && !busy && me.rs.length < 2 && canPay(me, tc.cost) && me.alive;
-      const what = k === 'eco' || k === 'log' ? T.d : lvl === 1 ? 'freischalten' : `→ Stufe ${lvl}`;
-      h += `<button class="opt" data-act="research" data-t="${k}" ${ok ? '' : 'disabled'}><span class="t">${label}</span>` +
-        `<span class="c">${busy ? 'wird erforscht …' : !reqOk ? `Braucht ${TECH_INFO[T.req[0]].n} Stufe ${T.req[1]}` : `${what} · ${costStr(tc.cost)} · ${tc.t} h`}</span></button>`;
+    h = head('research', 'Forschung');
+    h += `<div class="rslots">`;
+    for (let k = 0; k < 2; k++) {
+      const r = me.rs[k];
+      h += r ? `<div class="rslot on">${unitBox(r.k === 'log' ? 'log' : r.k, '#e8a33d')}<div style="flex:1;min-width:0"><b>${TECH_INFO[r.k].n} ${r.lvl > 1 ? 'Stufe ' + r.lvl : '(Freischaltung)'}</b>` +
+        `<div class="meta" style="margin:2px 0 4px">noch ${Math.ceil(r.t)} h</div>${bar('rs:' + r.k)}</div></div>`
+        : `<div class="rslot">${ic('research')}<span>Freier Forschungsplatz. Wähle unten eine Forschung.</span></div>`;
     }
     h += `</div>`;
+    for (const [name, icon, keys] of TECH_CATS) h += `<div class="rcat"><h4>${ic(icon)}${name}</h4><div class="rgrid">${keys.map(k => techCard(k, me)).join('')}</div></div>`;
   } else if (modalKind === 'diplo') {
-    h = head('🤝 Diplomatie');
+    h = head('diplo', 'Diplomatie');
     h += `<p class="sub">Alle starten im Frieden. Im Frieden könnt ihr euch nicht angreifen und nicht ins Gebiet des anderen ziehen. Neutrale Gebiete darf jeder erobern.</p><table class="tbl"><tr><th>Nation</th><th>Status</th><th></th></tr>`;
     for (const n of G.nations) {
       if (n.id === ME) continue;
       const who = n.ctrl === 'bot' ? `Bot (${DIFF_N[n.diff]})` : esc(n.player || 'Spieler');
-      const st = !n.alive ? '<span class="tag">besiegt</span>' : me.rel[n.id] === 'krieg' ? '<span class="tag war">Krieg</span>' : '<span class="tag peace">Frieden</span>';
+      const st = !n.alive ? '<span class="tag">besiegt</span>' : me.rel[n.id] === 'krieg' ? '<span class="tag war">⚔ Krieg</span>' : '<span class="tag peace">🕊 Frieden</span>';
       let btn = '';
       const offerIn = G.offers.find(o => o.from === n.id && o.to === ME), offerOut = G.offers.find(o => o.from === ME && o.to === n.id);
       if (n.alive && me.alive) {
         if (offerIn) btn = `<button class="btn small main" data-act="answer" data-from="${n.id}" data-yes="1">Frieden annehmen</button> <button class="btn small" data-act="answer" data-from="${n.id}" data-yes="0">✕</button>`;
-        else if (me.rel[n.id] === 'krieg') btn = offerOut ? '<span class="meta">Angebot offen</span>' : `<button class="btn small" data-act="peace" data-to="${n.id}">🕊️ Frieden anbieten</button>`;
+        else if (me.rel[n.id] === 'krieg') btn = offerOut ? '<span class="meta">Angebot offen</span>' : `<button class="btn small" data-act="peace" data-to="${n.id}">🕊 Frieden anbieten</button>`;
         else if (warConfirm === n.id) btn = `<button class="btn small red" data-act="war" data-to="${n.id}">Wirklich Krieg?</button> <button class="btn small" data-act="noWar">✕</button>`;
-        else btn = `<button class="btn small" data-act="warAsk" data-to="${n.id}">⚔️ Krieg erklären</button>`;
+        else btn = `<button class="btn small" data-act="warAsk" data-to="${n.id}">⚔ Krieg erklären</button>`;
       }
-      h += `<tr><td><span class="dot" style="background:${n.color}"></span> <b>${n.name}</b><div class="meta">${who}</div></td><td>${st}</td><td style="text-align:right">${btn}</td></tr>`;
+      h += `<tr${n.alive ? '' : ' style="opacity:.5"'}><td><span class="flagbox" style="background:${n.color}"></span><b>${n.name}</b><div class="meta" style="margin:2px 0 0 28px">${who} · ${G.vp ? G.vp[n.id] : 0} Punkte</div></td><td>${st}</td><td style="text-align:right">${btn}</td></tr>`;
     }
     h += `</table>`;
   } else if (modalKind === 'stats') {
-    h = head('🏆 Rangliste');
-    const goal = G.goal >= 100 ? 'Letzte Nation gewinnt' : `Siegziel: ${G.goal} % der Siegpunkte (${Math.ceil(G.vpTotal * G.goal / 100)} von ${G.vpTotal})`;
+    h = head('stats', 'Rangliste');
+    const goal = G.goal >= 100 ? 'Die letzte Nation gewinnt' : `Siegziel: ${G.goal} % der Siegpunkte (${Math.ceil(G.vpTotal * G.goal / 100)} von ${G.vpTotal})`;
     h += `<p class="sub">${goal} · ${dayStr(G.hour)}</p>`;
     const rows = G.nations.map(n => ({ n, vp: G.vp ? G.vp[n.id] : 0, prov: G.cells.filter(c => c && c.o === n.id).length,
       units: G.armies.filter(a => a.o === n.id).reduce((s, a) => s + a.u.length, 0) })).sort((a, b) => b.vp - a.vp);
     h += `<table class="tbl"><tr><th>Nation</th><th class="num">Punkte</th><th class="num">Provinzen</th><th class="num">Einheiten</th><th class="num">Verluste</th></tr>`;
     for (const r of rows) {
-      h += `<tr style="${r.n.id === ME ? 'color:#ffe68c' : ''}${r.n.alive ? '' : ';opacity:.45'}"><td><span class="dot" style="background:${r.n.color}"></span> ${r.n.name}` +
+      h += `<tr style="${r.n.id === ME ? 'color:#ffe68c' : ''}${r.n.alive ? '' : ';opacity:.45'}"><td><span class="flagbox" style="background:${r.n.color}"></span>${r.n.name}` +
         `${r.n.ctrl !== 'bot' ? ' · ' + esc(r.n.player || '') : ''}<div class="vp"><i style="background:${r.n.color}" data-prog="vp:${r.n.id}"></i>${G.goal < 100 ? `<b style="left:${G.goal}%"></b>` : ''}</div></td>` +
         `<td class="num">${r.vp}</td><td class="num">${r.prov}</td><td class="num">${r.units}</td><td class="num">${r.n.lost}</td></tr>`;
     }
     h += `</table>`;
   } else if (modalKind === 'msgs') {
-    h = head('📰 Meldungen');
+    h = head('msgs', 'Meldungen');
     h += LOG.length ? `<div class="msgs">${LOG.slice().reverse().map(m => `<div ${m.cell !== undefined ? `data-act="goto" data-cell="${m.cell}" style="cursor:pointer"` : ''}><time>${dayStr(m.h)}</time>${esc(m.text)}</div>`).join('')}</div>` : '<p class="sub">Noch keine Meldungen.</p>';
   } else if (modalKind === 'menu') {
-    h = head('☰ Menü');
+    h = head('menu', 'Menü');
     h += `<div style="display:flex;flex-direction:column;gap:8px">`;
     h += `<button class="btn main" data-act="mclose">▶ Weiterspielen</button>`;
     if (!NET) h += `<button class="btn" data-act="saveQuit">💾 Speichern und zum Hauptmenü</button>`;
@@ -2268,11 +2673,11 @@ $('modalCard').addEventListener('click', e => {
   renderModal();
 });
 
-$('bResearch').onclick = () => openModal('research');
-$('bDiplo').onclick = () => openModal('diplo');
-$('bStats').onclick = () => openModal('stats');
-$('bMsgs').onclick = () => openModal('msgs');
-$('bMenu').onclick = () => openModal('menu');
+$('bResearch').onclick = () => modalKind === 'research' ? closeModal() : openModal('research');
+$('bDiplo').onclick = () => modalKind === 'diplo' ? closeModal() : openModal('diplo');
+$('bStats').onclick = () => modalKind === 'stats' ? closeModal() : openModal('stats');
+$('bMsgs').onclick = () => modalKind === 'msgs' ? closeModal() : openModal('msgs');
+$('bMenu').onclick = () => modalKind === 'menu' ? closeModal() : openModal('menu');
 $('bSound').onclick = () => toggleMute();
 for (const b of document.querySelectorAll('#speedBox [data-speed]')) b.onclick = () => setSpeed(+b.dataset.speed);
 function setSpeed(v) {
@@ -2316,15 +2721,18 @@ function toast(text, kind, cell, extra, ms) {
 let uiT = 0;
 function refreshUI(force) {
   if (!G) return;
-  $('resbar').innerHTML = resBar();
+  const rb = resBar();
+  if (rb !== resHtml) { $('resbar').innerHTML = rb; resHtml = rb; }
   $('clock').textContent = dayStr(G.hour);
+  const n = nat(ME);
+  if (n) { $('natName').textContent = n.name + (n.alive ? '' : ' ☠'); $('natFlag').style.background = n.color; }
   renderPanel(force);
   renderModal();
 }
 
 // ---------- Ton ----------
 let actx = null, muted = store.get('mute', false);
-function updateSoundBtn() { $('bSound').textContent = muted ? '🔇' : '🔊'; }
+function updateSoundBtn() { $('bSound').innerHTML = ic(muted ? 'mute' : 'sound'); }
 function toggleMute() { muted = !muted; store.set('mute', muted); updateSoundBtn(); }
 function sound(k) {
   if (muted) return;
@@ -2466,6 +2874,11 @@ function frame(now) {
   lastT = now;
   if (G && running) {
     keyPan(dt);
+    if (camAnim) {
+      const k = Math.min(1, dt * 9);
+      cam.x += (camAnim.x - cam.x) * k; cam.y += (camAnim.y - cam.y) * k; clampCam();
+      if (Math.abs(camAnim.x - cam.x) + Math.abs(camAnim.y - cam.y) < 0.5 || dragging || ptrs.size) camAnim = null;
+    }
     const speed = NET ? G.speed : (paused || endShown ? 0 : G.speed);
     const hours = dt * 1000 / HOUR_MS * speed;
     if (hours > 0 && !G.over) {
@@ -2661,6 +3074,7 @@ if (HUB && location.hash.length > 1) {
   $('codeIn').value = HUB.cleanCode(location.hash);
   setTimeout(() => { $('nameIn').focus(); setOnlineErr('Einladung erkannt: Namen eingeben und „Beitreten“ drücken.'); }, 50);
 }
+for (const el of document.querySelectorAll('[data-ic]')) el.outerHTML = ic(el.dataset.ic);
 updateSoundBtn();
 initMenu();
 resize();
