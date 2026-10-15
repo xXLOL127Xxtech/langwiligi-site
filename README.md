@@ -37,6 +37,7 @@
 | [Mancala](https://langwiligi.site/mancala/) | Lokal · Online · Bots | Das uralte Säspiel mit Steinen und Mulden. |
 | [Mauerbauer](https://langwiligi.site/mauer-duell/) | Lokal · Online · Bots | Ans Ziel rennen und dem Gegner den Weg verbauen. |
 | [Panzer-Duell](https://langwiligi.site/panzer-taktik/) | Lokal · Online | Rundenbasiertes Panzer-Duell mit Minen und Raketen. |
+| [Pfeilhagel](https://langwiligi.site/pfeilhagel/) | Lokal · Online · Bots | Pixel-Bogenduell für bis zu 4: Pfeile sammeln, ausweichen, treffen oder draufspringen. |
 | [Reversi](https://langwiligi.site/reversi/) | Lokal · Online · Bots | Steine einschliessen und umdrehen. |
 | [Road-Runner](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
 | [SBB Runner](https://langwiligi.site/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
