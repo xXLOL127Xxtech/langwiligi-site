@@ -26,9 +26,17 @@ update_hub() {
   if cmp -s "$new" "$js"; then return 0; fi
   node="$(printf '%s' "$exec_line" | grep -oE '[^ ;=]*/node\b' | head -1 || true)"
   node="${node:-$(command -v node || true)}"
-  if [ -n "$node" ] && ! "$node" --check "$new"; then
-    echo "Fehler: game-hub.js hat einen Syntaxfehler, Spiel-Server nicht aktualisiert." >&2
-    return 0
+  if [ -n "$node" ]; then
+    # node --check verlangt eine Datei mit Endung .js
+    local chk
+    chk="$(mktemp --suffix=.js)"
+    cp "$new" "$chk"
+    if ! "$node" --check "$chk"; then
+      rm -f "$chk"
+      echo "Fehler: game-hub.js hat einen Syntaxfehler, Spiel-Server nicht aktualisiert." >&2
+      return 0
+    fi
+    rm -f "$chk"
   fi
   cp -p "$js" "$js.bak"
   install -m 644 "$new" "$js"
@@ -64,7 +72,7 @@ fi
 # Spiel-Server gehört nicht auf die Webseite
 HUB_TMP=""
 if [ -f "$REMOTE_DIR.new/.server/game-hub.js" ]; then
-  HUB_TMP="$(mktemp)"
+  HUB_TMP="$(mktemp --suffix=.js)"
   mv "$REMOTE_DIR.new/.server/game-hub.js" "$HUB_TMP"
 fi
 rm -rf "$REMOTE_DIR.new/.server"
