@@ -33,6 +33,10 @@ ssh -o BatchMode=yes "$SERVER" "
     echo 'command=\"/usr/local/bin/langwiligi-deploy\",restrict $PUB github-actions@langwiligi.site' >> ~/.ssh/authorized_keys
   fi
 "
+# Spiel-Server (Online-Modus, Ranglisten, Bewertungen) auf den neusten Stand bringen
+scp -q -o BatchMode=yes server/game-hub.js "$SERVER:/tmp/game-hub.js"
+ssh -o BatchMode=yes "$SERVER" "/usr/local/bin/langwiligi-deploy --hub /tmp/game-hub.js; rm -f /tmp/game-hub.js"
+ok "Spiel-Server aktuell"
 # Test: Mit dem GitHub-Schlüssel darf nur das Upload-Skript laufen. Ein leeres Paket wird abgelehnt, nichts ändert sich.
 test_out="$(tar -czf - -T /dev/null | ssh -o BatchMode=yes -o IdentitiesOnly=yes -i "$KEY" "$SERVER" id 2>&1 || true)"
 if [[ "$test_out" == *"fehlt die Startseite"* ]]; then

@@ -1,4 +1,6 @@
-# Stellt die Webseite online, sobald etwas in "main" landet (z.B. ein angenommener Pull Request).
+# Stellt die Webseite online, sobald etwas in "main" landet (angenommener Pull Request oder Upload direkt auf GitHub).
+# Ablauf: zuerst alle Spiele prüfen (tools/spiel-pruefen.js), nur wenn alles in Ordnung ist hochladen.
+# Von Hand synchronisieren: Actions → "Online stellen" → "Run workflow".
 # Braucht das Repository-Secret DEPLOY_SSH_KEY (privater Schlüssel, eingerichtet von einrichten.cmd).
 # Auf dem Server darf dieser Schlüssel nur /usr/local/bin/langwiligi-deploy ausführen.
 name: Online stellen
@@ -8,8 +10,10 @@ on:
     branches: [main]
     paths:
       - 'games/**'
+      - 'startseite/**'
       - 'deploy.sh'
-      - 'server/langwiligi-deploy.sh'
+      - 'server/**'
+      - 'tools/**'
       - '.github/workflows/online-stellen.yml'
   workflow_dispatch:
 
@@ -21,14 +25,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pruefen:
+    name: Spiele prüfen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Alle Spiele prüfen
+        run: node tools/spiel-pruefen.js
+
   hochladen:
     name: Auf langwiligi.site hochladen
+    needs: pruefen
     runs-on: ubuntu-latest
     environment:
       name: langwiligi.site
       url: https://langwiligi.site/
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ganze Geschichte: daraus kommt das "Neu"-Datum der Spiele
 
       - name: Zugang zum Server
         env:

@@ -23,6 +23,9 @@ jobs:
         run: git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD > "$RUNNER_TEMP/geaendert.txt"
 
       - name: Spiele prüfen
+        env:
+          # Der Besitzer darf auch die Webseite selbst ändern (Startseite, Server, Skripte)
+          LW_BESITZER: ${{ github.event.pull_request.author_association == 'OWNER' && '1' || '0' }}
         run: |
           if [ -f "$RUNNER_TEMP/geaendert.txt" ]; then
             node tools/spiel-pruefen.js --changed "$RUNNER_TEMP/geaendert.txt"

@@ -15,7 +15,9 @@ const GAMES = path.join(ROOT, 'games');
 const MODI = ['Lokal', 'Online', 'Bots', 'Solo'];
 const ALLOWED_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'langwiligi.site'];
 // Dateien, die nur der Besitzer der Webseite ändern sollte
-const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./];
+const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^startseite\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./];
+// Der Besitzer darf auch die Webseite selbst ändern (LW_BESITZER=1 setzt der Workflow)
+const OWNER = process.env.LW_BESITZER === '1';
 const MB = 1024 * 1024;
 
 const results = [];   // { title, errors: [], warnings: [] }
@@ -23,6 +25,12 @@ function report(title) {
   const r = { title, errors: [], warnings: [] };
   results.push(r);
   return r;
+}
+
+// Datei liegt direkt in games/ statt in einem Spielordner (typisch beim Hochladen im Browser)
+function strayMsg(f) {
+  if (/\.zip$/i.test(f)) return `\`${f}\` ist eine ZIP-Datei. Bitte entpacken und den ganzen Spielordner hochladen.`;
+  return `\`${f}\` liegt direkt in \`games/\`. Bitte den ganzen Spielordner hochladen, also z.B. \`games/panzer-pong/index.html\`.`;
 }
 
 // ---------- Welche Spiele prüfen? ----------
@@ -35,7 +43,11 @@ if (args[0] === '--changed') {
   for (const f of changed) {
     const m = f.match(/^games\/([^/]+)\/./);
     if (m && m[1] !== '_shared') { set.add(m[1]); continue; }
-    if (PROTECTED.some(re => re.test(f))) outside.errors.push(`\`${f}\` gehört zur Webseite selbst. Bitte nur Dateien in \`games/<dein-spiel>/\` ändern.`);
+    if (/^games\/[^/]+$/.test(f)) {
+      if (fs.existsSync(path.join(ROOT, f))) outside.errors.push(strayMsg(f));
+      continue;
+    }
+    if (PROTECTED.some(re => re.test(f))) (OWNER ? outside.warnings : outside.errors).push(`\`${f}\` gehört zur Webseite selbst. Bitte nur Dateien in \`games/<dein-spiel>/\` ändern.`);
     else outside.warnings.push(`\`${f}\` liegt nicht in einem Spielordner.`);
   }
   slugs = [...set];
@@ -51,6 +63,11 @@ if (args[0] === '--changed') {
 } else if (args.length) {
   slugs = args.map(a => path.basename(path.resolve(a)));
 } else {
+  const stray = fs.readdirSync(GAMES, { withFileTypes: true }).filter(d => !d.isDirectory() && !d.name.startsWith('.'));
+  if (stray.length) {
+    const r = report('Dateien direkt in games/');
+    for (const d of stray) r.errors.push(strayMsg(`games/${d.name}`));
+  }
   slugs = fs.readdirSync(GAMES, { withFileTypes: true })
     .filter(d => d.isDirectory() && d.name !== '_shared' && !d.name.startsWith('.')).map(d => d.name);
 }
@@ -88,6 +105,7 @@ function check(slug) {
   const files = walk(dir);
   for (const f of files) {
     const name = path.relative(dir, f.p).replace(/\\/g, '/');
+    if (/\.zip$/i.test(name)) err(`\`${name}\` ist eine ZIP-Datei. Bitte entpackt hochladen.`, `${rel}/${name}`);
     if (f.link) err(`\`${name}\` ist eine Verknüpfung (Symlink). Bitte die echte Datei hochladen.`, `${rel}/${name}`);
     else if (/[^A-Za-z0-9._\-/]/.test(name)) warn(`Dateiname \`${name}\` enthält Leerzeichen, Umlaute oder Sonderzeichen. Das kann Links kaputt machen.`, `${rel}/${name}`);
   }
