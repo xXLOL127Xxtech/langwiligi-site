@@ -25,6 +25,7 @@
 | [Dots and Boxes](https://langwiligi.site/kaesekaestchen/) | Lokal · Online · Bots | Linien ziehen, Kästchen schliessen, Extrazüge holen. |
 | [Dreh & Gewinn](https://langwiligi.site/dreh-duell/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
 | [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
+| [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |

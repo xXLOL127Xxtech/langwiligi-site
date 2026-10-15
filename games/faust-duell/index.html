@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Faust-Duell</title>
+<meta name="description" content="Prügel-Klassiker im Dojo: Schläge, Tritte, Uppercuts – zu zweit an einer Tastatur, online oder gegen den Bot.">
+<meta name="theme-color" content="#ff7a3d">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
+<meta name="spiel-tags" content="1 gegen 1,Kampf">
+<style>
+  :root {
+    --bg: #0d0f13; --panel: rgba(20, 22, 30, 0.92); --line: rgba(255, 255, 255, 0.12);
+    --text: #f1eee8; --muted: #a7a3b3; --akzent: #ff7a3d; --p1: #4f8ff7; --p2: #ef5350;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text); overflow: hidden;
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- Spielfeld ---------- */
+  #spiel { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 600px; height: 400px; }
+  #arena, #arena canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #arena canvas { border-radius: 10px; }
+  #hud { position: absolute; inset: 0; pointer-events: none; font-weight: 800; }
+  .seite { position: absolute; top: 3%; width: 40%; }
+  .seite.l { left: 3%; } .seite.r { right: 3%; text-align: right; }
+  .name { font-size: clamp(11px, 2.4vmin, 18px); letter-spacing: .04em; text-transform: uppercase; text-shadow: 0 2px 0 rgba(0,0,0,.5); display: flex; gap: 8px; align-items: center; }
+  .seite.r .name { justify-content: flex-end; }
+  .siege { display: inline-flex; gap: 4px; }
+  .siege i { width: 9px; height: 9px; border-radius: 50%; border: 2px solid rgba(255,255,255,.7); display: inline-block; }
+  .siege i.an { background: #ffd23f; border-color: #ffd23f; box-shadow: 0 0 8px #ffd23f; }
+  .balken { position: relative; height: clamp(10px, 2.6vmin, 18px); margin-top: 4px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.85); border-radius: 4px; overflow: hidden; }
+  .balken .spur, .balken .leben { position: absolute; top: 0; bottom: 0; width: 100%; }
+  .balken .spur { background: #fff3b0; transition: width .6s ease .25s; }
+  .seite.l .balken .spur, .seite.l .balken .leben { left: 0; } .seite.r .balken .spur, .seite.r .balken .leben { right: 0; }
+  .seite.l .leben { background: linear-gradient(#7fb0ff, var(--p1)); }
+  .seite.r .leben { background: linear-gradient(#ff8f8c, var(--p2)); }
+  #ansage {
+    position: absolute; left: 0; right: 0; top: 34%; text-align: center; pointer-events: none;
+    font-size: clamp(26px, 8vmin, 64px); font-weight: 900; font-style: italic; letter-spacing: .03em; color: #ffd23f;
+    text-shadow: 0 4px 0 #8a2d0f, 0 0 30px rgba(255,140,40,.55); opacity: 0; transform: scale(.7); transition: opacity .2s, transform .25s;
+  }
+  #ansage.an { opacity: 1; transform: scale(1); }
+  #ansage small { display: block; font-size: .42em; font-style: normal; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.6); margin-top: 6px; }
+
+  /* ---------- Knöpfe (im Menü oben rechts, im Kampf oben in der Mitte zwischen den Balken) ---------- */
+  #knoepfe { position: fixed; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 20; }
+  #knoepfe button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,.45); font-size: 19px; cursor: pointer; padding: 0; }
+  #knoepfe.kampf { position: absolute; top: 2.2%; left: 50%; right: auto; transform: translateX(-50%); gap: 4px; }
+  #knoepfe.kampf button { width: clamp(26px, 5.4cqw, 34px); height: clamp(26px, 5.4cqw, 34px); font-size: clamp(13px, 2.8cqw, 17px); border-radius: 9px; }
+  #spiel { container-type: size; }
+  #menuKnopf { display: none; }
+
+  /* ---------- Menüs ---------- */
+  .ebene { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 10;
+    background: radial-gradient(ellipse at 50% 30%, rgba(255,122,61,.18), transparent 60%), rgba(8,9,12,.82); overflow: auto; }
+  .ebene.an { display: flex; }
+  @media (max-width: 760px) { .ebene { padding: 60px 12px 16px 58px; } }
+  .karte { width: min(560px, 100%); max-height: 100%; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 22px 18px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); -webkit-user-select: text; user-select: text; }
+  h1 { margin: 0 0 4px; font-size: clamp(30px, 6vw, 44px); font-style: italic; letter-spacing: .02em; color: var(--akzent); text-shadow: 0 3px 0 #6b230b; }
+  h2 { margin: 18px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  p { margin: 0 0 10px; color: var(--muted); }
+  .reihe { display: flex; flex-wrap: wrap; gap: 8px; }
+  .gross { flex: 1 1 150px; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.06); font-weight: 700; cursor: pointer; text-align: left; }
+  .gross:hover, .gross:focus-visible { border-color: var(--akzent); background: rgba(255,122,61,.12); outline: none; }
+  .gross small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .gross.haupt { background: var(--akzent); color: #1d0c03; border-color: var(--akzent); }
+  .gross.haupt small { color: rgba(29,12,3,.75); }
+  .wahl button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-weight: 600; }
+  .wahl button.an { background: var(--akzent); border-color: var(--akzent); color: #1d0c03; }
+  input[type=text] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,.35); color: var(--text); font: inherit; }
+  .zeile { display: flex; gap: 8px; margin-bottom: 8px; }
+  .zeile > * { flex: 1; }
+  .zeile button { flex: 0 0 auto; padding: 10px 14px; border-radius: 10px; border: 0; background: var(--akzent); color: #1d0c03; font-weight: 700; cursor: pointer; }
+  .zeile button.zweit { background: rgba(255,255,255,.1); color: var(--text); border: 1px solid var(--line); }
+  #onlineStatus { min-height: 1.4em; font-size: 14px; color: #ffd8a8; }
+  #code { font: 800 28px/1 ui-monospace, Consolas, monospace; letter-spacing: .2em; color: #fff; }
+  .tasten { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px; color: var(--muted); }
+  .tasten b { color: var(--text); }
+  kbd { display: inline-block; min-width: 20px; padding: 1px 5px; border-radius: 5px; border: 1px solid var(--line); background: rgba(255,255,255,.08); font: 600 12px/1.4 ui-monospace, Consolas, monospace; color: var(--text); text-align: center; }
+  .klein { font-size: 12px; color: #807c8c; margin-top: 14px; }
+  .klein a { color: #a7a3b3; }
+  .zurueck { margin-top: 14px; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 0; }
+  #rangliste { margin-top: 6px; }
+  .verborgen { display: none !important; }
+
+  /* ---------- Touch-Steuerung ---------- */
+  #touch { position: fixed; left: 0; right: 0; bottom: 0; display: none; justify-content: space-between; align-items: flex-end; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); pointer-events: none; z-index: 5; }
+  #touch.an { display: flex; }
+  #touch .gruppe { display: grid; gap: 8px; pointer-events: auto; }
+  #touch .kreuz { grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(2, 54px); }
+  #touch .angriff { grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 54px); }
+  #touch button {
+    border: 2px solid rgba(255,255,255,.35); border-radius: 14px; background: rgba(15,17,24,.55); color: #fff;
+    font-weight: 800; font-size: 13px; touch-action: none; padding: 0; -webkit-user-select: none; user-select: none;
+  }
+  #touch button.druck { background: rgba(255,122,61,.55); border-color: #ffb08a; }
+  #touch .kreuz .hoch { grid-column: 2; grid-row: 1; }
+  #touch .kreuz .links { grid-column: 1; grid-row: 2; }
+  #touch .kreuz .runter { grid-column: 2; grid-row: 2; }
+  #touch .kreuz .rechts { grid-column: 3; grid-row: 2; }
+  #touch .angriff .block { grid-row: 1 / span 2; grid-column: 3; }
+  @media (max-height: 420px) {
+    #touch .kreuz { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); }
+    #touch .angriff { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(2, 46px); }
+  }
+</style>
+</head>
+<body>
+  <div id="spiel">
+    <div id="arena"></div>
+    <div id="hud" class="verborgen">
+      <div class="seite l"><div class="name"><span id="name0">Blitz</span><span class="siege" id="siege0"><i></i><i></i></span></div>
+        <div class="balken"><div class="spur" id="spur0"></div><div class="leben" id="leben0"></div></div></div>
+      <div class="seite r"><div class="name"><span class="siege" id="siege1"><i></i><i></i></span><span id="name1">Glut</span></div>
+        <div class="balken"><div class="spur" id="spur1"></div><div class="leben" id="leben1"></div></div></div>
+    </div>
+    <div id="ansage"></div>
+  </div>
+
+  <div id="knoepfe">
+    <button id="menuKnopf" type="button" title="Menü" aria-label="Menü">☰</button>
+    <button id="tonKnopf" type="button" title="Ton an/aus" aria-label="Ton an/aus">🔊</button>
+  </div>
+
+  <!-- Hauptmenü -->
+  <div class="ebene an" id="menu">
+    <div class="karte">
+      <h1>Faust-Duell</h1>
+      <p>Zwei Kämpfer, eine Arena. Wer zuerst zwei Runden gewinnt, holt sich das Duell.</p>
+      <div class="reihe">
+        <button class="gross haupt" id="btnBot" type="button">Gegen Bot<small>Du bist Blitz (blau)</small></button>
+        <button class="gross" id="btnLokal" type="button">2 Spieler – 1 Tastatur<small>Blitz gegen Glut am selben Gerät</small></button>
+        <button class="gross" id="btnOnline" type="button">Online<small>Gegen Freunde über das Internet</small></button>
+      </div>
+      <h2>Bot-Stärke</h2>
+      <div class="reihe wahl" id="stufe">
+        <button type="button" data-v="0">Leicht</button><button type="button" data-v="1" class="an">Mittel</button><button type="button" data-v="2">Schwer</button>
+      </div>
+      <h2>Arena</h2>
+      <div class="reihe wahl" id="arenaWahl">
+        <button type="button" data-v="0" class="an">Dojo</button><button type="button" data-v="1">Dach</button>
+      </div>
+      <h2>Steuerung</h2>
+      <div class="tasten">
+        <div><b>Blitz (Spieler 1)</b><br>Laufen/Springen/Ducken <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><br>
+          Schlag <kbd>R</kbd> · Tritt <kbd>T</kbd><br>Stoss <kbd>F</kbd> · Feger <kbd>G</kbd><br>Block <kbd>Q</kbd> oder <kbd>Shift</kbd></div>
+        <div><b>Glut (Spieler 2)</b><br>Laufen/Springen/Ducken <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd><br>
+          Schlag <kbd>I</kbd> · Tritt <kbd>O</kbd><br>Stoss <kbd>K</kbd> · Feger <kbd>L</kbd><br>Block <kbd>J</kbd> oder <kbd>Shift</kbd></div>
+      </div>
+      <p class="klein" style="margin-top:10px">Spezialschläge: Ducken + Schlag = Uppercut · Zurück + Tritt = Drehtritt · Sprung + Tritt/Schlag = Sprungangriff.
+        Gegen den Bot und online gehen beide Tastenbelegungen. Auf dem Handy erscheinen Knöpfe am Bildschirmrand.</p>
+      <h2>Online-Rangliste</h2>
+      <div id="rangliste"></div>
+      <p class="klein">Kampf-Engine: <a href="https://github.com/mgechev/mk.js" target="_blank" rel="noopener">mk.js</a> von Minko Gechev (MIT-Lizenz, siehe <a href="LIZENZ.txt" target="_blank">LIZENZ.txt</a>).
+        Figuren und Arenen sind neu gezeichnet.</p>
+    </div>
+  </div>
+
+  <!-- Online -->
+  <div class="ebene" id="online">
+    <div class="karte">
+      <h1>Online</h1>
+      <p id="onlineHinweis">Erstelle einen Raum und schick den Link an einen Freund – oder tritt mit einem Code bei.</p>
+      <h2>Dein Name</h2>
+      <div class="zeile"><input type="text" id="name" maxlength="16" placeholder="Name"></div>
+      <h2>Raum erstellen</h2>
+      <div class="zeile"><button type="button" id="btnErstellen">Raum erstellen</button></div>
+      <div id="raumInfo" class="verborgen">
+        <p>Code: <span id="code">----</span></p>
+        <div class="zeile"><button type="button" id="btnLink" class="zweit">Link kopieren</button></div>
+      </div>
+      <h2>Beitreten</h2>
+      <div class="zeile"><input type="text" id="codeEingabe" maxlength="4" placeholder="Code, z.B. K7QD" style="text-transform:uppercase"><button type="button" id="btnBeitreten">Beitreten</button></div>
+      <div id="onlineStatus"></div>
+      <button type="button" class="zurueck" id="btnOnlineZurueck">← Zurück</button>
+    </div>
+  </div>
+
+  <!-- Ergebnis -->
+  <div class="ebene" id="ende">
+    <div class="karte" style="text-align:center">
+      <h1 id="endeTitel">Sieg!</h1>
+      <p id="endeText"></p>
+      <div class="reihe" style="justify-content:center">
+        <button class="gross haupt" id="btnNochmal" type="button" style="flex:0 1 200px;text-align:center">Nochmal</button>
+        <button class="gross" id="btnMenu" type="button" style="flex:0 1 200px;text-align:center">Menü</button>
+      </div>
+      <p id="endeWarte" class="klein"></p>
+    </div>
+  </div>
+
+  <!-- Touch-Steuerung -->
+  <div id="touch">
+    <div class="gruppe kreuz">
+      <button class="hoch" data-a="UP" aria-label="Springen">▲</button>
+      <button class="links" data-a="LEFT" aria-label="Links">◀</button>
+      <button class="runter" data-a="DOWN" aria-label="Ducken">▼</button>
+      <button class="rechts" data-a="RIGHT" aria-label="Rechts">▶</button>
+    </div>
+    <div class="gruppe angriff">
+      <button data-a="HP">Schlag</button>
+      <button data-a="HK">Tritt</button>
+      <button class="block" data-a="BLOCK">Block</button>
+      <button data-a="LP">Stoss</button>
+      <button data-a="LK">Feger</button>
+    </div>
+  </div>
+
+  <script src="js/figuren.js"></script>
+  <script src="js/arenen.js"></script>
+  <script src="js/mk.js"></script>
+  <script src="../_shared/hub.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var GAME_ID = 'faust-duell';     // muss exakt dem Ordnernamen entsprechen
+    var HUB = window.GameHub || null;
+    var NAMEN = ['Blitz', 'Glut'];
+    var $ = function (id) { return document.getElementById(id); };
+
+    // ---------- Einstellungen ----------
+    var SAVE = 'faust-duell-einstellungen';
+    var cfg = (function () { try { return JSON.parse(localStorage.getItem(SAVE)) || {}; } catch (e) { return {}; } })();
+    cfg.stufe = cfg.stufe == null ? 1 : cfg.stufe; cfg.arena = cfg.arena || 0; cfg.ton = cfg.ton !== false;
+    function speichern() { try { localStorage.setItem(SAVE, JSON.stringify(cfg)); } catch (e) {} }
+    function wahl(id, key) {
+      var el = $(id);
+      [].forEach.call(el.querySelectorAll('button'), function (b) {
+        b.classList.toggle('an', +b.dataset.v === cfg[key]);
+        b.addEventListener('click', function () {
+          cfg[key] = +b.dataset.v; speichern();
+          [].forEach.call(el.querySelectorAll('button'), function (x) { x.classList.toggle('an', x === b); });
+        });
+      });
+    }
+    wahl('stufe', 'stufe'); wahl('arenaWahl', 'arena');
+
+    // ---------- Ton (kleine Synth-Geräusche, startet erst nach der ersten Eingabe) ----------
+    var audio = null;
+    function ac() {
+      if (!cfg.ton) return null;
+      if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+      if (audio.state === 'suspended') audio.resume();
+      return audio;
+    }
+    function rauschen(dauer, freq, laut) {
+      var a = ac(); if (!a) return;
+      var n = Math.floor(a.sampleRate * dauer), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+      for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+      var src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+      src.buffer = buf; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = laut;
+      src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+    }
+    function ton(freq, bis, dauer, laut, typ) {
+      var a = ac(); if (!a) return;
+      var o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+      o.type = typ || 'sine'; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(bis, t + dauer);
+      g.gain.setValueAtTime(laut, t); g.gain.exponentialRampToValueAtTime(0.001, t + dauer);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dauer);
+    }
+    var SFX = {
+      treffer: function (stark) { rauschen(0.12, 1800, 0.5); ton(stark ? 140 : 190, 50, 0.16, 0.6); },
+      block: function () { rauschen(0.06, 4000, 0.25); ton(900, 500, 0.06, 0.15, 'square'); },
+      ko: function () { ton(110, 30, 0.9, 0.7, 'sawtooth'); rauschen(0.5, 600, 0.4); },
+      gong: function () { ton(330, 320, 1.2, 0.25, 'triangle'); ton(495, 480, 1.0, 0.12, 'sine'); }
+    };
+    function tonAnzeige() { $('tonKnopf').textContent = cfg.ton ? '🔊' : '🔇'; }
+    tonAnzeige();
+    $('tonKnopf').addEventListener('click', function () { cfg.ton = !cfg.ton; speichern(); tonAnzeige(); this.blur(); });
+    ['keydown', 'pointerdown'].forEach(function (ev) { document.addEventListener(ev, function () { if (cfg.ton) ac(); }, { once: true }); });
+
+    // ---------- Grösse ----------
+    function anpassen() {
+      var touchAn = $('touch').classList.contains('an');
+      var hoch = window.innerHeight > window.innerWidth;
+      var verfuegbarH = window.innerHeight - (touchAn ? (hoch ? 150 : 0) : 0);
+      var s = Math.min(window.innerWidth / 600, verfuegbarH / 400);
+      var el = $('spiel');
+      el.style.width = Math.floor(600 * s) + 'px';
+      el.style.height = Math.floor(400 * s) + 'px';
+      el.style.top = (touchAn && hoch) ? (Math.max(8, (verfuegbarH - 400 * s) / 2) + 400 * s / 2) + 'px' : '50%';
+    }
+    window.addEventListener('resize', anpassen);
+    anpassen();
+
+    // ---------- Spielzustand ----------
+    var modus = null;        // 'bot' | 'lokal' | 'online'
+    var lokal = 0;           // eigener Kämpfer (Bot/Online)
+    var runde = 1, siege = [0, 0], rundeVorbei = true, matchVorbei = false;
+    var room = null, isHost = false, transport = null, gegnerName = '';
+    var timer = [];
+    function spaeter(fn, ms) { var t = setTimeout(fn, ms); timer.push(t); return t; }
+    function timerWeg() { timer.forEach(clearTimeout); timer = []; }
+
+    function ansage(text, klein, ms) {
+      var el = $('ansage');
+      el.innerHTML = text + (klein ? '<small>' + klein + '</small>' : '');
+      el.classList.add('an');
+      if (ms) spaeter(function () { el.classList.remove('an'); }, ms);
+    }
+
+    function hudSiege() {
+      for (var p = 0; p < 2; p++) {
+        [].forEach.call($('siege' + p).children, function (i, k) { i.classList.toggle('an', k < siege[p]); });
+      }
+    }
+    // Lebensbalken laufend nachführen (auch bei Online-Updates)
+    (function hudLoop() {
+      if (mk.game && mk.game.fighters) {
+        for (var p = 0; p < 2; p++) {
+          var l = mk.game.fighters[p].getLife();
+          $('leben' + p).style.width = l + '%';
+          $('spur' + p).style.width = l + '%';
+        }
+      }
+      requestAnimationFrame(hudLoop);
+    })();
+
+    function kaempferZurueck(f, i) {
+      if (f._currentMove) f._currentMove.stop();
+      f.unlock();
+      f._dead = false;
+      f.setLife(100);
+      f._height = 60;
+      f._position.x = mk.config.START_X[i];
+      f.setY(mk.config.PLAYER_TOP);
+      f._currentMove = null;
+      f.setMove(mk.moves.types.STAND);
+    }
+
+    function starteRunde(n) {
+      if (!mk.game) return;
+      runde = n; rundeVorbei = false;
+      var f = mk.game.fighters;
+      kaempferZurueck(f[0], 0); kaempferZurueck(f[1], 1);
+      mk.game.arena._setFightersOrientation(f[0], f[1]);
+      mk.input.clear(); mk.input.enabled = false;
+      hudSiege();
+      ansage('Runde ' + n, '', 0);
+      SFX.gong();
+      spaeter(function () {
+        ansage('Kampf!', '', 700);
+        mk.input.enabled = true;
+      }, 1300);
+    }
+
+    // ---------- Match starten ----------
+    function starteMatch(m, arena) {
+      beenden();
+      modus = m; matchVorbei = false; siege = [0, 0];
+      lokal = m === 'online' ? (isHost ? 0 : 1) : 0;
+      mk.input.single = m === 'lokal' ? -1 : lokal;
+      mk.input.enabled = false;
+      zeige(null);
+      $('hud').classList.remove('verborgen');
+      $('menuKnopf').style.display = 'block';
+      $('spiel').appendChild($('knoepfe')); $('knoepfe').classList.add('kampf');
+      $('name0').textContent = m === 'online' ? namenOnline(0) : (m === 'bot' ? 'Blitz (du)' : 'Blitz');
+      $('name1').textContent = m === 'online' ? namenOnline(1) : (m === 'bot' ? 'Glut (Bot)' : 'Glut');
+      touchModus();
+      var opts = {
+        arena: { container: $('arena'), arena: arena },
+        fighters: [{ name: 'Blitz' }, { name: 'Glut' }],
+        callbacks: { attack: getroffen, 'game-end': ko },
+        gameType: m === 'online' ? 'network' : 'multiplayer'
+      };
+      if (m === 'online') {
+        transport = neuerTransport();
+        opts.isHost = isHost; opts.gameName = 'raum'; opts.transport = transport;
+      }
+      mk.start(opts).ready(function () {
+        if (m === 'bot') bot.start(cfg.stufe);
+        if (m === 'online' && isHost && room) room.roundStart();
+        starteRunde(1);
+      });
+    }
+
+    function beenden() {
+      timerWeg();
+      bot.stop();
+      mk.input.clear();
+      if (mk.game) { try { mk.reset(); } catch (e) {} }
+      $('arena').innerHTML = '';
+      $('ansage').classList.remove('an');
+    }
+
+    function getroffen(f, o, schaden) {
+      var arena = mk.game && mk.game.arena;
+      if (!arena) return;
+      var t = f.getMove().type, T = mk.moves.types;
+      var geblockt = o.getMove().type === T.BLOCK;
+      var tief = /low|squat/.test(t) && t !== T.UPPERCUT;
+      var stark = t === T.UPPERCUT || t === T.SPIN_KICK;
+      var x = (f.getX() + o.getX()) / 2 + Figuren.AX;
+      var y = mk.config.FLOOR - (tief ? 45 : 95) + (Math.random() * 16 - 8);
+      arena.hit(x, y, geblockt, stark);
+      if (geblockt) SFX.block(); else SFX.treffer(stark);
+    }
+
+    function ko(tot) {
+      if (rundeVorbei || !mk.game) return;
+      rundeVorbei = true;
+      var verlierer = mk.game.fighters.indexOf(tot);
+      var sieger = 1 - verlierer;
+      siege[sieger]++;
+      hudSiege();
+      mk.input.clear(); mk.input.enabled = false;
+      SFX.ko();
+      // Online: der Besitzer des besiegten Kämpfers meldet das K.O.
+      if (modus === 'online' && room && verlierer === lokal) room.send({ t: 'ko', r: runde, v: verlierer });
+      ansage('K.O.!', $('name' + sieger).textContent + ' gewinnt die Runde', 0);
+      var fertig = siege[sieger] >= 2;
+      spaeter(function () {
+        $('ansage').classList.remove('an');
+        if (fertig) matchEnde(sieger);
+        else if (modus !== 'online' || isHost) {
+          if (modus === 'online' && room) room.send({ t: 'runde', n: runde + 1 });
+          starteRunde(runde + 1);
+        }
+      }, 2600);
+    }
+
+    function matchEnde(sieger) {
+      matchVorbei = true;
+      bot.stop();
+      if (window.LW && LW.rundeFertig) LW.rundeFertig();
+      if (modus === 'online' && isHost && room) room.result(sieger);
+      var titel, text;
+      if (modus === 'bot') { titel = sieger === 0 ? 'Sieg!' : 'Niederlage'; text = sieger === 0 ? 'Du hast den Bot besiegt.' : 'Der Bot war diesmal stärker.'; }
+      else if (modus === 'online') { titel = sieger === lokal ? 'Sieg!' : 'Niederlage'; text = $('name' + sieger).textContent + ' gewinnt das Duell ' + siege[sieger] + ':' + siege[1 - sieger] + '.'; }
+      else { titel = NAMEN[sieger] + ' gewinnt!'; text = 'Endstand ' + siege[0] + ':' + siege[1] + '.'; }
+      $('endeTitel').textContent = titel;
+      $('endeText').textContent = text;
+      var gast = modus === 'online' && !isHost;
+      $('btnNochmal').classList.toggle('verborgen', gast);
+      $('endeWarte').textContent = gast ? 'Warte, bis ' + (gegnerName || 'der Host') + ' eine neue Runde startet …' : '';
+      zeige('ende');
+    }
+
+    // ---------- Menüs ----------
+    function zeige(id) {
+      ['menu', 'online', 'ende'].forEach(function (x) { $(x).classList.toggle('an', x === id); });
+      if (id === 'menu') {
+        $('hud').classList.add('verborgen');
+        $('menuKnopf').style.display = 'none';
+        document.body.appendChild($('knoepfe')); $('knoepfe').classList.remove('kampf');
+        touchModus();
+        rangliste();
+      }
+    }
+    function zumMenu() {
+      beenden();
+      if (room) { try { room.close(); } catch (e) {} room = null; }
+      modus = null;
+      zeige('menu');
+    }
+    $('btnBot').addEventListener('click', function () { isHost = false; starteMatch('bot', cfg.arena); });
+    $('btnLokal').addEventListener('click', function () { isHost = false; starteMatch('lokal', cfg.arena); });
+    $('btnOnline').addEventListener('click', function () { zeigeOnline(''); });
+    $('btnMenu').addEventListener('click', zumMenu);
+    $('menuKnopf').addEventListener('click', function () { zumMenu(); this.blur(); });
+    $('btnNochmal').addEventListener('click', function () {
+      if (modus === 'online') { if (isHost && room) { var a = cfg.arena; room.send({ t: 'start', arena: a }); starteMatch('online', a); } }
+      else starteMatch(modus, cfg.arena);
+    });
+    // Tasten im Menü
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modus) { zumMenu(); }
+    });
+
+    // ---------- Touch ----------
+    var istTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    function touchModus() {
+      var an = istTouch && (modus === 'bot' || modus === 'online');
+      $('touch').classList.toggle('an', an);
+      anpassen();
+    }
+    [].forEach.call(document.querySelectorAll('#touch button'), function (b) {
+      var a = b.dataset.a, aktiv = false;
+      function an(e) { e.preventDefault(); if (aktiv) return; aktiv = true; b.classList.add('druck'); mk.input.press(lokal, a); }
+      function aus(e) { if (!aktiv) return; aktiv = false; b.classList.remove('druck'); mk.input.release(lokal, a); }
+      b.addEventListener('pointerdown', function (e) { b.setPointerCapture && b.setPointerCapture(e.pointerId); an(e); });
+      b.addEventListener('pointerup', aus); b.addEventListener('pointercancel', aus); b.addEventListener('lostpointercapture', aus);
+      b.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    });
+
+    // Tab verlassen: Bot-Spiel anhalten (online läuft weiter)
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { mk.input.clear(); bot.pause(true); }
+      else bot.pause(false);
+    });
+
+    // ---------- Bot ----------
+    var bot = (function () {
+      var STUFEN = [
+        { takt: 430, block: 0.12, angriff: 0.45, spezial: 0.05, fehl: 0.35 },
+        { takt: 260, block: 0.4, angriff: 0.7, spezial: 0.15, fehl: 0.15 },
+        { takt: 140, block: 0.7, angriff: 0.9, spezial: 0.3, fehl: 0.04 }
+      ];
+      var st = null, t = null, pausiert = false, P = 1;
+      var T = mk.moves.types;
+      var ANGRIFFE = [T.HIGH_PUNCH, T.LOW_PUNCH, T.HIGH_KICK, T.LOW_KICK, T.UPPERCUT, T.SPIN_KICK,
+        T.SQUAT_LOW_KICK, T.SQUAT_HIGH_KICK, T.SQUAT_LOW_PUNCH, T.FORWARD_JUMP_KICK, T.BACKWARD_JUMP_KICK, T.FORWARD_JUMP_PUNCH, T.BACKWARD_JUMP_PUNCH];
+      function loslassen() { var s = mk.input.state[P]; Object.keys(s).forEach(function (a) { mk.input.release(P, a); }); }
+      function tippe(akt, ms) {
+        loslassen();
+        akt.forEach(function (a) { mk.input.press(P, a); });
+        setTimeout(function () { akt.forEach(function (a) { mk.input.release(P, a); }); }, ms || 90);
+      }
+      function denke() {
+        t = setTimeout(denke, st.takt * (0.75 + Math.random() * 0.5));
+        if (pausiert || !mk.game || !mk.game.fighters || !mk.input.enabled || rundeVorbei) { if (mk.game) loslassen(); return; }
+        var ich = mk.game.fighters[P], er = mk.game.fighters[1 - P];
+        if (ich._locked) return;
+        var d = Math.abs((ich.getX()) - (er.getX()));
+        var vor = er.getX() > ich.getX() ? 'RIGHT' : 'LEFT', zurueck = vor === 'RIGHT' ? 'LEFT' : 'RIGHT';
+        var erTyp = er.getMove().type, r = Math.random();
+        var greiftAn = ANGRIFFE.indexOf(erTyp) >= 0;
+        if (Math.random() < st.fehl) { loslassen(); return; }          // zögern
+        if (greiftAn && d < mk.config.REACH + 25) {
+          if (r < st.block) { loslassen(); mk.input.press(P, 'BLOCK'); setTimeout(function () { mk.input.release(P, 'BLOCK'); }, 380); return; }
+          if (r < st.block + 0.15) { tippe([zurueck], 220); return; }
+        }
+        if (d > mk.config.REACH - 8) {
+          // näher kommen, ab und zu mit Sprungangriff
+          if (d < mk.config.REACH + 90 && Math.random() < st.spezial * 0.5) { tippe([vor, 'UP'], 120); setTimeout(function () { tippe([Math.random() < 0.5 ? 'HK' : 'HP'], 80); }, 260); return; }
+          loslassen(); mk.input.press(P, vor);
+          return;
+        }
+        // in Reichweite: angreifen
+        if (Math.random() > st.angriff) { tippe([zurueck], 160); return; }
+        if (Math.random() < st.spezial) {
+          if (Math.random() < 0.5) tippe(['DOWN', 'HP'], 120);            // Uppercut
+          else tippe([zurueck, 'HK'], 120);                             // Drehtritt
+          return;
+        }
+        var wahl = ['HP', 'LP', 'HK', 'LK'][Math.floor(Math.random() * 4)];
+        if (er.getMove().type === T.SQUAT && Math.random() < 0.6) { tippe(['DOWN', 'LK'], 110); return; }
+        tippe([wahl], 90);
+      }
+      return {
+        start: function (stufe) { this.stop(); st = STUFEN[stufe] || STUFEN[1]; pausiert = false; t = setTimeout(denke, 1600); },
+        stop: function () { clearTimeout(t); t = null; st = null; if (mk.game && mk.game.fighters) loslassen(); },
+        pause: function (p) { pausiert = p; }
+      };
+    })();
+
+    // ---------- Online (GameHub) ----------
+    function namenOnline(p) {
+      var meiner = (HUB && GameHub.getName()) || 'Du';
+      var n = p === lokal ? meiner : (gegnerName || 'Gegner');
+      return NAMEN[p] + ' · ' + n;
+    }
+    function neuerTransport() {
+      var h = {};
+      return {
+        init: function () {},
+        emit: function (typ, data) {
+          if (typ === 'create-game' || typ === 'join-game' || !room) return;
+          room.send({ t: 'mk', k: typ, d: data, r: runde });
+        },
+        on: function (typ, cb) {
+          if (typ === 'connect') { setTimeout(cb, 0); return; }
+          (h[typ] = h[typ] || []).push(cb);
+        },
+        deliver: function (m) {
+          if (m.r !== runde || rundeVorbei && m.k !== 'event') return;
+          (h[m.k] || []).forEach(function (cb) { cb(m.d); });
+        }
+      };
+    }
+    function status(t) { $('onlineStatus').textContent = t; }
+    function zeigeOnline(code) {
+      zeige('online');
+      if (!HUB) {
+        $('onlineHinweis').textContent = 'Online spielen geht nur auf langwiligi.site.';
+        ['btnErstellen', 'btnBeitreten', 'name', 'codeEingabe'].forEach(function (id) { $(id).disabled = true; });
+        return;
+      }
+      $('name').value = GameHub.getName();
+      if (code) $('codeEingabe').value = code;
+      status(code ? 'Gib deinen Namen ein und tritt bei.' : '');
+    }
+    function nameOk() {
+      var n = $('name').value.trim();
+      if (!n) { status('Bitte gib zuerst einen Namen ein.'); $('name').focus(); return false; }
+      GameHub.setName(n); return true;
+    }
+    function raumEinrichten(r) {
+      room = r;
+      r.on('peer-join', function (m) {
+        gegnerName = m.name || 'Gegner';
+        if (isHost) {
+          status(gegnerName + ' ist da – los geht\'s!');
+          var a = cfg.arena;
+          setTimeout(function () { if (room) { room.send({ t: 'start', arena: a }); starteMatch('online', a); } }, 600);
+        }
+      });
+      r.on('peer-left', function () {
+        if (modus === 'online') {
+          beenden(); modus = null;
+          zeige('online'); status('Dein Gegner hat das Spiel verlassen.');
+          if (isHost) status('Dein Gegner hat das Spiel verlassen. Warte auf einen neuen Gegner …');
+        }
+      });
+      r.on('close', function () {
+        if (room !== r) return;
+        room = null;
+        if (modus === 'online') { beenden(); modus = null; }
+        zeige('online'); status('Verbindung verloren.');
+      });
+      r.on('msg', function (m) {
+        if (!m || typeof m !== 'object') return;
+        if (m.t === 'mk') { if (transport && modus === 'online') transport.deliver(m); return; }
+        if (m.t === 'hallo') { gegnerName = m.name || gegnerName; return; }
+        if (m.t === 'start' && !isHost) { starteMatch('online', m.arena === 1 ? 1 : 0); return; }
+        if (m.t === 'runde' && !isHost && modus === 'online') { starteRunde(m.n); return; }
+        if (m.t === 'ko' && modus === 'online' && mk.game && m.r === runde && !rundeVorbei) {
+          var f = mk.game.fighters[m.v];
+          if (!f || m.v === lokal) return;
+          f.setLife(0); f._dead = true;
+          mk.game.fighterDead(f);
+          f.unlock(); f.setMove(mk.moves.types.FALL);
+        }
+      });
+      r.on('leaderboard', function (rows) { GameHub.renderBoard($('rangliste'), rows, GameHub.getName()); });
+    }
+    $('btnErstellen').addEventListener('click', function () {
+      if (!nameOk()) return;
+      if (room) { try { room.close(); } catch (e) {} room = null; }
+      status('Erstelle Raum …');
+      var r = GameHub.connect(GAME_ID);
+      r.create(GameHub.getName(), 2).then(function (info) {
+        isHost = true; raumEinrichten(r);
+        $('raumInfo').classList.remove('verborgen');
+        $('code').textContent = info.code;
+        status('Warte auf einen Gegner … Schick ihm den Link oder den Code.');
+      }, function (e) { status(GameHub.errorText(e)); });
+    });
+    $('btnLink').addEventListener('click', function () {
+      var link = location.origin + location.pathname + '#' + $('code').textContent;
+      var ok = function () { status('Link kopiert!'); };
+      if (navigator.clipboard) navigator.clipboard.writeText(link).then(ok, function () { status(link); });
+      else status(link);
+    });
+    $('btnBeitreten').addEventListener('click', function () {
+      if (!nameOk()) return;
+      var code = GameHub.cleanCode($('codeEingabe').value);
+      if (!code) { status('Bitte gib einen Code ein.'); return; }
+      if (room) { try { room.close(); } catch (e) {} room = null; }
+      status('Trete bei …');
+      var r = GameHub.connect(GAME_ID);
+      r.join(code, GameHub.getName()).then(function (info) {
+        isHost = false; raumEinrichten(r);
+        var p = (info && info.players) || [];
+        if (p[0] && p[0].name) gegnerName = p[0].name;
+        r.send({ t: 'hallo', name: GameHub.getName() });
+        status('Verbunden! Gleich geht\'s los …');
+      }, function (e) { status(GameHub.errorText(e)); });
+    });
+    $('btnOnlineZurueck').addEventListener('click', function () { if (room) { try { room.close(); } catch (e) {} room = null; } zeige('menu'); });
+    ['name', 'codeEingabe'].forEach(function (id) {
+      $(id).addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') $(id === 'name' ? 'btnErstellen' : 'btnBeitreten').click(); });
+    });
+
+    function rangliste() {
+      if (HUB && GameHub.loadBoard) GameHub.loadBoard(GAME_ID, $('rangliste'), GameHub.getName());
+      else $('rangliste').innerHTML = '<p class="klein" style="margin:0">Die Online-Rangliste gibt es auf langwiligi.site.</p>';
+    }
+
+    // Einladungslink #CODE
+    var start = HUB && location.hash.length > 1 ? GameHub.cleanCode(location.hash) : '';
+    if (start) zeigeOnline(start); else zeige('menu');
+  })();
+  </script>
+</body>
+</html>
