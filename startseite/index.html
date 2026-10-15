@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KEI Langwiligi site</title>
+  <meta name="description" content="Browser-Spiele für 1 gegen 1 – lokal, online oder gegen Bots. Direkt im Browser, ohne Download.">
+  <meta name="theme-color" content="#07060d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M2 2h22l6 6v22H8l-6-6z' fill='%23ffe14d'/%3E%3Cpath d='M9 9h4v6l5-6h5l-6 7 6 7h-5l-5-6v6H9z' fill='%2307060d'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="_start/start.css?v=<!--VERSION-->">
+  <script>
+    // Intro nur beim ersten Besuch am Tag (vor dem ersten Zeichnen entscheiden, sonst blitzt die Seite kurz auf)
+    (function () {
+      var today = new Date().toISOString().slice(0, 10), last = '';
+      try { last = localStorage.getItem('lw-intro') || ''; } catch (e) {}
+      var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (last !== today && !calm) document.documentElement.classList.add('intro-on');
+      try { localStorage.setItem('lw-intro', today); } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div id="intro" aria-hidden="true">
+    <div class="shutter top"></div><div class="shutter bottom"></div>
+    <div class="boot">
+      <p>&gt; verbinde mit langwiligi.site<span class="ok">ok</span></p>
+      <p>&gt; lade <!--ANZAHL--> spiele<span class="ok">ok</span></p>
+      <p>&gt; langeweile wird entfernt<span class="ok">100%</span></p>
+    </div>
+    <div class="logo"><span class="kei">KEI</span><span class="glitch" data-text="LANGWILIGI">LANGWILIGI</span><span class="sub">site</span></div>
+    <div class="sweep"></div>
+    <p class="skip">Klicken zum Überspringen</p>
+  </div>
+
+  <div class="ticker" aria-hidden="true"><div class="ticker-run"><!--TICKER--><!--TICKER--></div></div>
+
+  <main>
+    <header class="top">
+      <div class="hello">
+        <p class="kicker">// langwiligi.site</p>
+        <h1><span class="kei">KEI</span> <span class="glitch" data-text="LANGWILIGI">LANGWILIGI</span> <span class="site">site</span></h1>
+        <p class="lead">Browser-Spiele für <b>1 gegen 1</b>: zu zweit an einem Gerät, online mit Freunden oder gegen Bots. Kein Download, kein Login.</p>
+        <ul class="hud">
+          <li><b><!--ANZAHL--></b><span>Spiele</span></li>
+          <li><b>4</b><span>Modi</span></li>
+          <li><b>0</b><span>Downloads</span></li>
+        </ul>
+      </div>
+
+      <aside class="spot" id="spot" aria-label="Spiel im Spotlight" hidden>
+        <div class="spot-head"><span class="spot-k">Spotlight</span><span class="spot-tag" id="spot-tag"></span></div>
+        <a class="spot-card" id="spot-link" href="./">
+          <div class="spot-img"><img id="spot-img" alt="" decoding="async"></div>
+          <div class="spot-txt">
+            <h2 id="spot-title"></h2>
+            <p id="spot-desc"></p>
+            <span class="spot-cta">Jetzt spielen <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4"/></svg></span>
+          </div>
+        </a>
+        <div class="spot-foot"><div class="spot-dots" id="spot-dots"></div><div class="spot-bar"><i id="spot-bar"></i></div></div>
+      </aside>
+    </header>
+
+    <div class="toolbar">
+      <nav class="seg filters" aria-label="Spiele filtern">
+        <button type="button" data-f="alle" aria-pressed="true">Alle</button>
+        <button type="button" data-f="lokal" aria-pressed="false">Lokal</button>
+        <button type="button" data-f="online" aria-pressed="false">Online</button>
+        <button type="button" data-f="bots" aria-pressed="false">Gegen Bots</button>
+        <button type="button" data-f="solo" aria-pressed="false">Solo</button>
+      </nav>
+      <div class="seg sort" role="group" aria-label="Sortieren">
+        <span class="seg-label">Sortieren</span>
+        <button type="button" data-s="neu" aria-pressed="true">Neu</button>
+        <button type="button" data-s="top" aria-pressed="false">Bewertung</button>
+      </div>
+      <button type="button" class="tip-btn" id="tip-open">Spiel empfehlen</button>
+    </div>
+    <p class="count" id="count" aria-live="polite"></p>
+
+    <div class="grid" id="grid">
+<!--SPIELE-->
+    </div>
+
+    <footer>
+      <span>langwiligi.site</span>
+      <a href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md" target="_blank" rel="noopener">Eigenes Spiel hochladen</a>
+    </footer>
+  </main>
+
+  <dialog id="tip">
+    <form id="tip-form">
+      <p class="kicker">// Empfehlung</p>
+      <h2>Spiel empfehlen</h2>
+      <p class="hint">Welches Spiel fehlt hier noch? Jede Empfehlung wird gelesen.</p>
+      <label>Spiel oder Idee
+        <input name="game" required maxlength="80" placeholder="z.B. Tischtennis 1 gegen 1" autocomplete="off"></label>
+      <label><span>Was macht es lustig? <small>(optional, gern mit Link)</small></span>
+        <textarea name="note" rows="3" maxlength="500" placeholder="Kurz beschreiben oder Link einfügen"></textarea></label>
+      <label><span>Dein Name <small>(optional)</small></span>
+        <input name="player" maxlength="16" autocomplete="off"></label>
+      <p id="tip-msg" role="status"></p>
+      <div class="row">
+        <button type="button" id="tip-close">Schliessen</button>
+        <button type="submit">Absenden</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="_start/start.js?v=<!--VERSION-->"></script>
+</body>
+</html>
