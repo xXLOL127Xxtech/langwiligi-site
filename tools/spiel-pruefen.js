@@ -15,7 +15,7 @@ const GAMES = path.join(ROOT, 'games');
 const MODI = ['Lokal', 'Online', 'Bots', 'Solo'];
 const ALLOWED_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'langwiligi.site'];
 // Dateien, die nur der Besitzer der Webseite ändern sollte
-const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^startseite\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./];
+const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^startseite\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./, /^server-aktualisieren\./];
 // Der Besitzer darf auch die Webseite selbst ändern (LW_BESITZER=1 setzt der Workflow)
 const OWNER = process.env.LW_BESITZER === '1';
 const MB = 1024 * 1024;

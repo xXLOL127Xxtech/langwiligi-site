@@ -65,7 +65,7 @@ Besitzer lädt direkt auf main hoch ──────┤
 - **Von Hand synchronisieren**: [Actions → „Online stellen“ → „Run workflow“](https://github.com/xXLOL127Xxtech/langwiligi-site/actions/workflows/online-stellen.yml)
   (oder lokal `hochladen.cmd`).
 - **Spiel-Server**: Änderungen an `server/game-hub.js` spielt der Server beim Hochladen selbst ein und startet sich neu.
-  Beim allerersten Mal (oder wenn `server/langwiligi-deploy.sh` geändert wurde) einmal `einrichten.cmd` ausführen.
+  Wurde `server/langwiligi-deploy.sh` geändert, einmal `server-aktualisieren.cmd` doppelklicken.
 - **Bewertungen & Empfehlungen**: `https://langwiligi.site/api/empfehlungen#SCHLÜSSEL` (Schlüssel in `/var/lib/game-hub/admin-key.txt`).
   Links die Empfehlungen, rechts die Bewertungen, beide löschbar.
 
@@ -85,6 +85,6 @@ Besitzer lädt direkt auf main hoch ──────┤
 | `games/_shared/` | Gemeinsamer Code für alle Spiele (Zurück-Knopf, Bewertung, Online-Funktionen) |
 | `startseite/` | Vorlage, Stil und Skript der Startseite |
 | `docs/` | Bilder für README und LinkedIn |
-| `server/` | Spiel-Server (Online, Ranglisten, Bewertungen) und Upload-Skript für den Server |
+| `server/`, `server-aktualisieren.cmd` | Spiel-Server (Online, Ranglisten, Bewertungen) und Upload-Skript für den Server |
 | `tools/spiel-pruefen.js` | Automatische Prüfung neuer Spiele |
 | `.github/workflows/` | Prüfung bei Pull Requests, Online-Stellen bei `main` |
