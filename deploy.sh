@@ -43,6 +43,7 @@ meta() { { grep -o -i -m1 "<meta name=\"$1\" content=\"[^\"]*\"" "$2" || true; }
 
 cards=""
 count=0
+n_lokal=0; n_online=0; n_bots=0; n_solo=0
 for dir in "$SRC"/*/; do
   [ -f "$dir/index.html" ] || continue
   slug="$(basename "$dir")"
@@ -52,15 +53,20 @@ for dir in "$SRC"/*/; do
   title="$(printf '%s' "$title" | html_escape)"
   desc="$(meta description "$page")"
   color="$(meta theme-color "$page")"
-  [[ "$color" =~ ^#[0-9a-fA-F]{3,8}$ ]] || color="#ff7a3d"
+  [[ "$color" =~ ^#[0-9a-fA-F]{3,8}$ ]] || color="#e2311d"
   tags="$(meta spiel-tags "$page")"
+  count=$((count + 1))
+  nr="$(printf '%02d' "$count")"
 
+  # Die ersten Bilder sofort laden, den Rest erst beim Hinscrollen
+  lazy=""
+  [ "$count" -gt 6 ] && lazy=' loading="lazy"'
   cover=""
   for ext in webp png jpg jpeg svg; do
     if [ -f "$dir/cover.$ext" ]; then cover="$slug/cover.$ext"; break; fi
   done
   if [ -n "$cover" ]; then
-    img="<img src=\"$cover\" alt=\"\" decoding=\"async\">"
+    img="<img src=\"$cover\" alt=\"\" decoding=\"async\"$lazy>"
   else
     letter="$(printf '%s' "$title" | cut -c1 | tr '[:lower:]' '[:upper:]')"
     img="<span class=\"letter\">$letter</span>"
@@ -75,32 +81,33 @@ for dir in "$SRC"/*/; do
     done
   fi
 
-  # Spielmodi: alle vier immer anzeigen, vorhandene hervorgehoben
+  # Spielmodi: nur die vorhandenen, als Text ("Lokal · Online · Bots")
   modi=",$(meta spiel-modi "$page" | tr -d ' '),"
   modes=""
   filter="alle"
-  for m in "Lokal|lokal|Lokal|2 Spieler an einem Gerät" "Online|online|Online|Online gegen Freunde" \
-           "Bots|bots|Gegen Bots|Gegen Computer-Gegner" "Solo|solo|Solo|Allein spielen"; do
-    IFS='|' read -r name key label hint <<< "$m"
+  for m in "Lokal|lokal|2 Spieler an einem Gerät" "Online|online|Online gegen Kollegen" \
+           "Bots|bots|Gegen Computer-Gegner" "Solo|solo|Allein spielen"; do
+    IFS='|' read -r name key hint <<< "$m"
     if [[ "$modi" == *",$name,"* ]]; then
-      modes+="<li class=\"on\" title=\"$hint\">$label</li>"
+      [ -n "$modes" ] && modes+="<i>·</i>"
+      modes+="<span title=\"$hint\">$name</span>"
       filter+=" $key"
-    else
-      modes+="<li title=\"$hint: nein\">$label</li>"
+      case "$key" in
+        lokal) n_lokal=$((n_lokal + 1)) ;; online) n_online=$((n_online + 1)) ;;
+        bots) n_bots=$((n_bots + 1)) ;; solo) n_solo=$((n_solo + 1)) ;;
+      esac
     fi
   done
 
   cards+="      <a class=\"card\" href=\"$slug/\" style=\"--c: $color\" data-filter=\"$filter\">
         <div class=\"cover\">$img<div class=\"pills\">$pills</div></div>
         <div class=\"info\">
+          <div class=\"meta\"><span class=\"nr\">$nr</span><span class=\"modes\" aria-label=\"Spielmodi\">$modes</span></div>
           <h2>$title</h2>
           <p>$desc</p>
-          <ul class=\"modes\" aria-label=\"Spielmodi\">$modes</ul>
-          <span class=\"play\">Spielen <svg viewBox=\"0 0 20 20\" aria-hidden=\"true\"><path d=\"M4 10h11m-4-4 4 4-4 4\"/></svg></span>
         </div>
       </a>
 "
-  count=$((count + 1))
 done
 
 {
@@ -111,139 +118,198 @@ cat <<'EOF'
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KEI Langwiligi site</title>
-  <meta name="description" content="Online-Spiele mit 1v1 – lokal, online oder gegen Bots.">
-  <meta name="theme-color" content="#0b0b12">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎮%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="Spiele für zwei im Browser: am gleichen Gerät, online gegen Kollegen oder gegen Bots. Nichts zu installieren.">
+  <meta name="theme-color" content="#f0ece2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#12110f" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='6' fill='%23e2311d'/%3E%3Ccircle cx='11' cy='11' r='3.2' fill='%23fff'/%3E%3Ccircle cx='21' cy='21' r='3.2' fill='%23fff'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap">
+  <script>
+    // Intro nur beim ersten Besuch pro Tab zeigen (nicht nach "Alle Spiele" aus einem Spiel zurück)
+    try {
+      if (!sessionStorage.getItem('lw-intro') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('intro');
+        sessionStorage.setItem('lw-intro', '1');
+      }
+    } catch (e) {}
+  </script>
   <style>
     :root {
-      --bg: #0b0b12; --card: #14141f; --line: rgba(255,255,255,.08);
-      --text: #f4f1ea; --muted: #a19cae; --display: "Bricolage Grotesque", system-ui, sans-serif;
+      --paper: #f0ece2; --card: #faf8f3; --ink: #17150f; --muted: #655f54; --line: #17150f; --red: #e2311d;
+      --font: "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --paper: #12110f; --card: #1b1a17; --ink: #eee8da; --muted: #9d968a; --line: #45413a; --red: #ff5541; color-scheme: dark; }
     }
     * { box-sizing: border-box; }
-    html { background: var(--bg); }
-    body { margin: 0; min-height: 100vh; color: var(--text); background: var(--bg); -webkit-font-smoothing: antialiased;
-      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    /* Farbschimmer als eigene, fixierte Ebene: wird einmal gemalt statt bei jedem Scroll-Schritt neu */
-    body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; transform: translateZ(0);
-      background:
-        radial-gradient(900px 500px at 12% -10%, rgba(255,95,162,.18), transparent 60%),
-        radial-gradient(800px 500px at 95% 0%, rgba(79,168,255,.16), transparent 60%),
-        radial-gradient(700px 400px at 50% 110%, rgba(255,183,3,.08), transparent 60%); }
-    main { max-width: 1180px; margin: 0 auto; padding: 0 16px 64px; }
+    html { background: var(--paper); }
+    body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased;
+      font: 400 16px/1.5 var(--font); }
+    /* Leichtes Papierkorn hinter allem */
+    body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: .5;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .45 0 0 0 0 .4 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+    main { max-width: 1200px; margin: 0 auto; padding: 0 16px 48px; }
+    a { color: inherit; }
 
-    header { padding: clamp(48px, 10vw, 96px) 0 clamp(28px, 5vw, 44px); }
-    .brand { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 6px 14px 6px 8px; border: 1px solid var(--line);
-      border-radius: 99px; background: rgba(255,255,255,.04); font-size: 14px; font-weight: 600; color: var(--muted); }
-    .brand i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal;
-      background: linear-gradient(135deg, #ff5fa2, #ffb703); }
-    h1 { margin: 0; font: 800 clamp(40px, 8vw, 76px)/1 var(--display); letter-spacing: -.035em; }
-    h1 span { background: linear-gradient(100deg, #ff5fa2 0%, #ffb703 45%, #5fd38a 75%, #4fa8ff 100%);
-      -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .lead { max-width: 560px; margin: 18px 0 0; font-size: clamp(16px, 2.2vw, 19px); color: var(--muted); }
-    .lead b { color: var(--text); }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; font-size: 14px; font-weight: 600; }
+    .logo { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font-weight: 800; font-size: 16px; }
+    .logo svg { width: 26px; height: 26px; }
+    .top a:not(.logo) { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+    .top a:not(.logo):hover { color: var(--red); }
 
-    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; }
-    .filters button { font: 600 14px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--muted); background: rgba(255,255,255,.04);
-      border: 1px solid var(--line); border-radius: 99px; padding: 10px 16px; cursor: pointer; transition: .15s; }
-    .filters button:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
-    .filters button[aria-pressed="true"] { color: #12111a; background: var(--text); border-color: var(--text); }
+    .hero { padding: clamp(32px, 5vw, 56px) 0 clamp(32px, 5vw, 48px); border-top: 2px solid var(--ink); }
+    h1 { margin: 0; font-weight: 900; font-stretch: 70%; text-transform: uppercase; letter-spacing: -.005em;
+      font-size: clamp(60px, 13vw, 160px); line-height: .84; }
+    .stamp { display: inline-block; position: relative; top: -.08em; margin-right: .1em; padding: .06em .1em .02em; font-size: .5em; line-height: 1;
+      color: var(--red); border: .065em solid currentColor; border-radius: .05em; transform: rotate(-7deg); }
+    @media (prefers-color-scheme: light) { .stamp { mix-blend-mode: multiply; } }
+    .lead { max-width: 34ch; margin: 24px 0 0; font-size: clamp(19px, 2.4vw, 23px); line-height: 1.35; font-weight: 500; }
+    .hero-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 22px; }
-    .card { --glow: color-mix(in srgb, var(--c) 55%, transparent);
-      display: flex; flex-direction: column; overflow: hidden; border-radius: 20px; background: var(--card);
-      border: 1px solid var(--line); color: inherit; text-decoration: none; position: relative;
-      transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s, box-shadow .25s; }
-    .card:hover, .card:focus-visible { transform: translateY(-6px); border-color: var(--glow); outline: none;
-      box-shadow: 0 24px 60px -24px var(--glow), 0 0 0 1px var(--glow); }
+    .btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 18px; border: 2px solid var(--ink); border-radius: 4px; cursor: pointer;
+      font: 700 16px/1 var(--font); color: var(--paper); background: var(--ink); text-decoration: none; transition: transform .1s, box-shadow .1s; }
+    .btn:hover, .btn:focus-visible { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--red); outline: none; }
+    .btn:active { transform: none; box-shadow: none; }
+    .btn.ghost { color: var(--ink); background: transparent; }
+    .btn svg { width: 20px; height: 20px; }
+
+    .bar { position: sticky; top: 0; z-index: 10; display: flex; align-items: stretch; margin: 0 0 28px; background: var(--paper);
+      border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); overflow-x: auto; scrollbar-width: none; }
+    .bar::-webkit-scrollbar { display: none; }
+    .bar button { flex: none; padding: 13px 14px; border: 0; border-radius: 0; cursor: pointer; white-space: nowrap;
+      font: 600 15px/1 var(--font); color: var(--ink); background: none; }
+    .bar button:hover { color: var(--red); }
+    .bar button sup { margin-left: 3px; font-size: 11px; font-weight: 700; color: var(--muted); }
+    .bar button[aria-pressed="true"] { color: var(--paper); background: var(--ink); }
+    .bar button[aria-pressed="true"] sup { color: inherit; opacity: .65; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 28px 22px; }
+    .card { display: flex; flex-direction: column; border: 2px solid var(--line); border-radius: 4px; background: var(--card);
+      color: inherit; text-decoration: none; transition: transform .12s ease-out, box-shadow .12s ease-out; }
+    .card:hover, .card:focus-visible { transform: translate(-4px, -4px); box-shadow: 6px 6px 0 var(--c); outline: none; }
+    .card:active { transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--c); }
     .card[hidden] { display: none; }
 
-    .cover { position: relative; aspect-ratio: 16 / 10; overflow: hidden;
-      background: radial-gradient(circle at 30% 20%, var(--c), color-mix(in srgb, var(--c) 30%, #000)); }
-    .cover img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2,.8,.2,1); }
-    .card:hover .cover img, .card:focus-visible .cover img { transform: scale(1.06); }
-    .cover::after { content: ""; position: absolute; inset: auto 0 0; height: 45%; pointer-events: none;
-      background: linear-gradient(transparent, var(--card)); }
-    .letter { display: grid; place-items: center; height: 100%; font: 800 96px/1 var(--display); color: rgba(255,255,255,.9); }
-    .pills { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px; }
-    .pills span { font-size: 12px; font-weight: 700; letter-spacing: .02em; padding: 4px 10px; border-radius: 99px; color: #fff;
-      background: rgba(10,10,16,.78); border: 1px solid rgba(255,255,255,.14); }
+    .cover { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-bottom: 2px solid var(--line); border-radius: 2px 2px 0 0;
+      background: var(--c); }
+    .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .letter { display: grid; place-items: center; height: 100%; font: 900 96px/1 var(--font); font-stretch: 70%; color: #fff; }
+    .pills { position: absolute; left: 8px; bottom: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .pills span { padding: 4px 6px 3px; border-radius: 2px; font-size: 11px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: .04em;
+      color: #17150f; background: #faf8f3; }
 
-    .info { display: flex; flex-direction: column; flex: 1; padding: 0 20px 20px; margin-top: -14px; position: relative; z-index: 1; }
-    .info h2 { margin: 0 0 6px; font: 800 24px/1.15 var(--display); letter-spacing: -.02em; }
-    .info p { margin: 0 0 16px; color: var(--muted); font-size: 15px; flex: 1; }
-    .modes { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 18px; padding: 0; list-style: none; }
-    .modes li { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px 3px 6px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
-      color: rgba(255,255,255,.3); border: 1px dashed rgba(255,255,255,.14); }
-    .modes li::before { content: "–"; width: 11px; text-align: center; }
-    .modes li.on { color: var(--text); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
-      background: color-mix(in srgb, var(--c) 16%, transparent); }
-    .modes li.on::before { content: "✓"; color: var(--c); font-weight: 800; }
-    .play { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px 10px 18px; border-radius: 99px;
-      font-weight: 700; font-size: 15px; color: #0d0c12; background: var(--c); transition: gap .2s, filter .2s; }
-    .play svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-    .card:hover .play { gap: 10px; filter: brightness(1.08); }
+    .info { display: flex; flex-direction: column; flex: 1; padding: 12px 16px 18px; }
+    .meta { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .nr { display: inline-flex; align-items: center; gap: 6px; }
+    .nr::before { content: ""; width: 9px; height: 9px; background: var(--c); }
+    .modes i { font-style: normal; margin: 0 4px; opacity: .6; }
+    .info h2 { margin: 0 0 6px; font-weight: 800; font-stretch: 85%; font-size: 25px; line-height: 1.05; letter-spacing: -.01em; }
+    .info p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
 
-    .filters .tip-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; color: #12111a; border: 0;
-      background: linear-gradient(100deg, #ffb703, #ff5fa2); }
-    .filters .tip-btn:hover { color: #12111a; filter: brightness(1.08); }
-    .tip-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    @media (max-width: 560px) { .filters .tip-btn { margin-left: 0; } }
+    footer { margin-top: 72px; padding-top: 32px; border-top: 2px solid var(--ink); }
+    .foot { display: grid; grid-template-columns: repeat(2, minmax(0, 440px)); gap: 32px 48px; }
+    @media (max-width: 700px) { .foot { grid-template-columns: 1fr; } }
+    footer h2 { margin: 0 0 6px; font-weight: 900; font-stretch: 75%; font-size: 32px; line-height: 1; text-transform: uppercase; }
+    footer p { margin: 0 0 16px; max-width: 40ch; color: var(--muted); }
+    .sign { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin: 48px 0 0;
+      font-size: 13px; color: var(--muted); }
 
-    dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 1px solid var(--line); border-radius: 20px; color: var(--text);
-      background: var(--card); box-shadow: 0 30px 80px -20px rgba(0,0,0,.7); }
-    dialog::backdrop { background: rgba(5,5,10,.7); }
+    dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 2px solid var(--ink); border-radius: 4px; color: var(--ink);
+      background: var(--card); box-shadow: 8px 8px 0 var(--red); }
+    dialog::backdrop { background: rgba(23, 21, 15, .6); }
     dialog form { display: flex; flex-direction: column; gap: 14px; padding: 24px; }
-    dialog h2 { margin: 0; font: 800 26px/1.1 var(--display); letter-spacing: -.02em; }
-    dialog .hint { margin: -6px 0 0; color: var(--muted); font-size: 15px; }
-    dialog label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+    dialog h2 { margin: 0; font-weight: 900; font-stretch: 75%; font-size: 34px; line-height: 1; text-transform: uppercase; }
+    dialog .hint { margin: -4px 0 0; color: var(--muted); font-size: 15px; }
+    dialog label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 700; }
     dialog label small { color: var(--muted); font-weight: 400; }
-    dialog input, dialog textarea { font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 12px; resize: vertical; }
-    dialog input:focus, dialog textarea:focus { outline: 2px solid #ffb703; outline-offset: 1px; border-color: transparent; }
+    dialog input, dialog textarea { font: 16px/1.4 var(--font); color: var(--ink); background: var(--paper);
+      border: 2px solid var(--line); border-radius: 3px; padding: 10px 12px; resize: vertical; }
+    dialog input:focus, dialog textarea:focus { outline: 2px solid var(--red); outline-offset: 1px; }
     dialog .row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
-    dialog .row button { font: 700 15px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; border-radius: 99px; padding: 12px 18px; cursor: pointer;
-      border: 1px solid var(--line); color: var(--text); background: rgba(255,255,255,.06); }
-    dialog .row button[type="submit"] { border: 0; color: #12111a; background: linear-gradient(100deg, #ffb703, #ff5fa2); }
-    dialog .row button:disabled { opacity: .5; cursor: default; }
+    dialog .btn:disabled { opacity: .5; cursor: default; transform: none; box-shadow: none; }
     #tip-msg { margin: 0; min-height: 1.4em; font-size: 14px; color: var(--muted); }
-    #tip-msg.ok { color: #5fd38a; } #tip-msg.err { color: #ff7a7a; }
+    #tip-msg.ok { color: #2f8a4a; } #tip-msg.err { color: var(--red); }
 
-    footer { margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; text-align: center; }
+    /* Intro: "LANGWILIG" fällt rein, Stempel "KEI" knallt drauf, Vorhang geht hoch (ca. 1.7 s) */
+    #intro { display: none; }
+    .intro #intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; cursor: pointer;
+      color: #f0ece2; background: #17150f; border-bottom: 10px solid #e2311d;
+      animation: intro-out .5s cubic-bezier(.76, 0, .24, 1) 1.2s forwards; }
+    .intro-word { position: relative; display: flex; font-weight: 900; font-stretch: 70%; text-transform: uppercase;
+      font-size: clamp(64px, 19vw, 260px); line-height: .9; animation: thud .22s ease-out .8s; }
+    .intro-word b { display: inline-block; font-weight: inherit; animation: drop .4s cubic-bezier(.2, 1.5, .4, 1) calc(var(--i) * 35ms) both; }
+    .intro-stamp { position: absolute; left: -.3em; top: -.6em; padding: .06em .12em .02em; font-size: .42em; line-height: 1;
+      color: #ff4b36; border: .065em solid currentColor; border-radius: .05em; transform: rotate(-9deg);
+      animation: stamp .18s cubic-bezier(.55, 0, .9, .45) .62s both; }
+    @keyframes drop { from { opacity: 0; transform: translateY(-70%); } }
+    @keyframes stamp { from { opacity: 0; transform: scale(3.2) rotate(-26deg); } }
+    @keyframes thud { 30% { transform: translate(4px, 3px); } 60% { transform: translate(-3px, -1px); } }
+    @keyframes intro-out { to { transform: translateY(-100%); } }
+    .intro .hero .stamp { animation: stamp-page .2s cubic-bezier(.55, 0, .9, .45) 1.5s both; }
+    @keyframes stamp-page { from { opacity: 0; transform: scale(2.6) rotate(-22deg); } }
 
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } .intro #intro { display: none; } }
   </style>
 </head>
 <body>
+  <div id="intro" aria-hidden="true">
+    <div class="intro-word"><span class="intro-stamp">Kei</span><b style="--i:0">L</b><b style="--i:1">a</b><b style="--i:2">n</b><b style="--i:3">g</b><b style="--i:4">w</b><b style="--i:5">i</b><b style="--i:6">l</b><b style="--i:7">i</b><b style="--i:8">g</b></div>
+  </div>
   <main>
-    <header>
-      <div class="brand"><i>🎮</i>langwiligi.site</div>
-      <h1><span>KEI</span> Langwiligi site</h1>
+    <div class="top">
+      <a class="logo" href="./"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="6" fill="#e2311d"/><circle cx="11" cy="11" r="3.2" fill="#fff"/><circle cx="21" cy="21" r="3.2" fill="#fff"/></svg>langwiligi.site</a>
+      <a href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md">Eigenes Spiel hochladen</a>
+    </div>
+    <header class="hero">
+      <h1><span class="stamp">Kei</span>Langwiligi site</h1>
+      <div class="hero-row">
 EOF
-printf '      <p class="lead">Online-Spiele mit <b>1v1</b> – lokal, online oder gegen Bots. <b>%s Spiele</b> direkt im Browser, ohne Download.</p>\n' "$count"
+printf '        <p class="lead">%s Spiele für zwei: am gleichen Gerät, online gegen Kollegen oder gegen Bots, wenn grad niemand Zeit hat. Läuft im Browser.</p>\n' "$count"
 cat <<'EOF'
+        <div class="actions">
+          <button type="button" class="btn" id="random"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.6" fill="currentColor"/></svg>Zufallsspiel</button>
+          <button type="button" class="btn ghost tip-open">Spiel empfehlen</button>
+        </div>
+      </div>
     </header>
-    <nav class="filters" aria-label="Spiele filtern">
-      <button type="button" data-f="alle" aria-pressed="true">Alle</button>
-      <button type="button" data-f="lokal" aria-pressed="false">Lokal</button>
-      <button type="button" data-f="online" aria-pressed="false">Online</button>
-      <button type="button" data-f="bots" aria-pressed="false">Gegen Bots</button>
-      <button type="button" data-f="solo" aria-pressed="false">Solo</button>
-      <button type="button" class="tip-btn" id="tip-open"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5a5.5 5.5 0 0 0-3.2 10c.5.4.7.9.7 1.5h5c0-.6.2-1.1.7-1.5a5.5 5.5 0 0 0-3.2-10ZM8 17h4"/></svg>Spiel empfehlen</button>
+    <nav class="bar" aria-label="Spiele filtern">
+EOF
+printf '      <button type="button" data-f="alle" aria-pressed="true">Alle<sup>%s</sup></button>\n' "$count"
+printf '      <button type="button" data-f="lokal" aria-pressed="false">Am gleichen Gerät<sup>%s</sup></button>\n' "$n_lokal"
+printf '      <button type="button" data-f="online" aria-pressed="false">Online<sup>%s</sup></button>\n' "$n_online"
+printf '      <button type="button" data-f="bots" aria-pressed="false">Gegen Bots<sup>%s</sup></button>\n' "$n_bots"
+printf '      <button type="button" data-f="solo" aria-pressed="false">Allein<sup>%s</sup></button>\n' "$n_solo"
+cat <<'EOF'
     </nav>
     <div class="grid">
 EOF
 printf '%s' "$cards"
 cat <<'EOF'
     </div>
-    <footer>Viel Spass! · langwiligi.site</footer>
+    <footer>
+      <div class="foot">
+      <div>
+        <h2>Selber eins gebaut?</h2>
+        <p>Lad dein Spiel auf GitHub hoch. Nach der Prüfung ist es etwa eine Minute später hier drauf.</p>
+        <a class="btn" href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md">So geht's</a>
+      </div>
+      <div>
+        <h2>Fehlt ein Spiel?</h2>
+        <p>Schreib uns, was du hier gern spielen würdest. Wir lesen alles.</p>
+        <button type="button" class="btn ghost tip-open">Spiel empfehlen</button>
+      </div>
+      </div>
+      <p class="sign"><span>langwiligi.site</span><span>Viel Spass!</span></p>
+    </footer>
   </main>
   <dialog id="tip">
     <form id="tip-form">
       <h2>Spiel empfehlen</h2>
-      <p class="hint">Welches Spiel fehlt hier noch? Wir schauen uns jede Empfehlung an.</p>
+      <p class="hint">Welches Spiel fehlt hier noch?</p>
       <label>Spiel oder Idee
         <input name="game" required maxlength="80" placeholder="z.B. Tischtennis 1 gegen 1" autocomplete="off"></label>
       <label><span>Was macht es lustig? <small>(optional, gern mit Link)</small></span>
@@ -252,13 +318,23 @@ cat <<'EOF'
         <input name="player" maxlength="16" autocomplete="off"></label>
       <p id="tip-msg" role="status"></p>
       <div class="row">
-        <button type="button" id="tip-close">Schliessen</button>
-        <button type="submit">Absenden</button>
+        <button type="button" class="btn ghost" id="tip-close">Schliessen</button>
+        <button type="submit" class="btn">Absenden</button>
       </div>
     </form>
   </dialog>
   <script>
-    var buttons = document.querySelectorAll('.filters button[data-f]');
+    // Intro: nach 1.9 s weg, Klick oder Taste überspringt es
+    (function () {
+      var root = document.documentElement;
+      if (!root.classList.contains('intro')) return;
+      function done() { root.classList.remove('intro'); removeEventListener('keydown', done); }
+      document.getElementById('intro').addEventListener('click', done);
+      addEventListener('keydown', done);
+      setTimeout(done, 1900);
+    })();
+
+    var buttons = document.querySelectorAll('.bar button[data-f]');
     buttons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         var f = btn.dataset.f;
@@ -269,14 +345,22 @@ cat <<'EOF'
       });
     });
 
+    // Zufallsspiel: eines der gerade sichtbaren Spiele öffnen
+    document.getElementById('random').addEventListener('click', function () {
+      var cards = [].filter.call(document.querySelectorAll('.card'), function (c) { return !c.hidden; });
+      if (cards.length) location.href = cards[Math.floor(Math.random() * cards.length)].href;
+    });
+
     // Spiel empfehlen -> game-hub (/api/empfehlung)
     var API = location.protocol === 'https:' && /(^|\.)langwiligi\.site$/.test(location.hostname) ? '/api' : 'https://langwiligi.site/api';
     var tip = document.getElementById('tip'), form = document.getElementById('tip-form'), msg = document.getElementById('tip-msg');
     var send = form.querySelector('[type="submit"]');
     function say(text, cls) { msg.textContent = text; msg.className = cls || ''; }
-    document.getElementById('tip-open').addEventListener('click', function () {
-      try { if (!form.player.value) form.player.value = localStorage.getItem('lw-name') || ''; } catch (e) {}
-      say(''); send.disabled = false; tip.showModal(); form.game.focus();
+    document.querySelectorAll('.tip-open').forEach(function (b) {
+      b.addEventListener('click', function () {
+        try { if (!form.player.value) form.player.value = localStorage.getItem('lw-name') || ''; } catch (e) {}
+        say(''); send.disabled = false; tip.showModal(); form.game.focus();
+      });
     });
     document.getElementById('tip-close').addEventListener('click', function () { tip.close(); });
     tip.addEventListener('click', function (e) { if (e.target === tip) tip.close(); });
@@ -290,7 +374,7 @@ cat <<'EOF'
           if (r.status === 429) throw new Error('fast');
           if (!r.ok) throw new Error('http');
           form.game.value = ''; form.note.value = '';
-          say('Danke! Deine Empfehlung ist angekommen.', 'ok');
+          say('Danke! Ist angekommen.', 'ok');
           send.disabled = false;
         })
         .catch(function (err) {
