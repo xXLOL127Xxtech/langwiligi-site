@@ -249,6 +249,19 @@
   </div>
 </div>
 
+<script>
+// Ton anhalten, solange der Tab im Hintergrund ist (spart Akku, keine hängenden Töne)
+(function () {
+  var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+  var all = [];
+  function P(o) { var c = o === undefined ? new A() : new A(o); all.push(c); return c; }
+  P.prototype = A.prototype;
+  window.AudioContext = P; if (window.webkitAudioContext) window.webkitAudioContext = P;
+  document.addEventListener('visibilitychange', function () {
+    all.forEach(function (c) { try { var r = document.hidden ? c.suspend() : c.resume(); if (r && r.catch) r.catch(function () {}); } catch (e) {} });
+  });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/planck-js/1.4.3/planck.min.js"></script>
 <script>
 // Falls die Bibliothek nicht geladen werden konnte (kein Internet, Blocker): verständliche Meldung statt schwarzem Bildschirm
