@@ -203,14 +203,14 @@ const EVENTS = {
   turbo: ['⚡ Turbo für alle!', 'Gratis-Boost für 10 Sekunden'],
   mega:  ['💎 Riesen-Kugel!', 'Wer holt sie zuerst?'],
   bomb:  ['💣 Bombenalarm!', 'Fallschirm-Bomben – raus aus dem roten Kreis!'],
-  tower: ['🗼 Türme!', 'Sie schießen – jeder Treffer kostet 1 %'],
+  tower: ['🗼 Türme!', 'Sie schiessen – jeder Treffer kostet 1 %'],
 };
 // Gefahren: töten nicht, lassen aber Länge als Futter fallen
 const BLAST = 210, BOMB_FALL = 3.5, BOMB_LOSS = 0.2;
 const TOWER_RANGE = 480, TOWER_LIFE = 22, TOWER_RISE = 1.5, SHOT_SPEED = 520, SHOT_LOSS = 0.01;
 const PW_ICON = { 3: '🧲', 4: '🛡', 5: '💨' };
 
-// Größe hängt von der Punktzahl ab
+// Grösse hängt von der Punktzahl ab
 const sLen = s => Math.min(3300, 55 + s * 4.2);
 const sPts = s => Math.ceil(sLen(s) / SEG);
 const sW = s => Math.min(34, 12 + Math.sqrt(s) * 0.8);
@@ -1340,7 +1340,7 @@ function render(now, dt) {
     circle(a.x + (e.dx - a.x) * p, a.y + (e.dy - a.y) * p, Math.max(0.5, a.r * (1 - p)));
   }
 
-  // Schlangen (große oben, ich ganz oben)
+  // Schlangen (grosse oben, ich ganz oben)
   const order = alive.slice().sort((a, b) => (a.id === myId) - (b.id === myId) || a.s - b.s);
   for (const s of order) {
     const L = sLen(s.s) + 60;

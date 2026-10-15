@@ -153,7 +153,7 @@ const LENGTHS = {
 };
 
 // ---------- Computer-Gegner ----------
-// angErr/pwErr: Zielfehler · wind: wie gut er den Wind einrechnet · save: wie sparsam mit Spezialmunition · vis: schießt Besucher · buy: Kauflust
+// angErr/pwErr: Zielfehler · wind: wie gut er den Wind einrechnet · save: wie sparsam mit Spezialmunition · vis: schiesst Besucher · buy: Kauflust
 const NPCS = {
   off:    {name: '2 Spieler', icon: '👥', desc: 'Zwei Leute an einem Rechner, abwechselnd.'},
   easy:   {name: 'Computer: Leicht', icon: '🙂', desc: 'Zielt ungenau und vergisst den Wind.', angErr: 7, pwErr: .08, wind: 0, save: .3, noise: 40, vis: false, buy: .3},
@@ -165,7 +165,7 @@ function isNpcTurn() { return npcOn() && S.phase === 'battle' && S.turn === 1; }
 
 const AMMO = {
   stone:   {name: 'Stein',  icon: '🪨', count: Infinity, speed: 1,    desc: 'Unbegrenzt. 60 Schaden auf einen Block, etwas Streuschaden.'},
-  bomb:    {name: 'Bombe',  icon: '💣', count: 3,        speed: 0.92, desc: 'Große Explosion. Schwer – fliegt etwas kürzer. Metall hält besser stand. +1 pro eigenem Pulverfass.'},
+  bomb:    {name: 'Bombe',  icon: '💣', count: 3,        speed: 0.92, desc: 'Grosse Explosion. Schwer – fliegt etwas kürzer. Metall hält besser stand. +1 pro eigenem Pulverfass.'},
   fire:    {name: 'Feuer',  icon: '🔥', count: 3,        speed: 1,    desc: 'Wenig Sofortschaden, zündet aber Holz, Menschen, Katapulte & TNT an. Feuer breitet sich aus.'},
   cluster: {name: 'Streu',  icon: '🎆', count: 3,        speed: 1,    desc: 'Teilt sich am höchsten Punkt in 5 Splitter (früher: LEERTASTE / Klick).'},
   drill:   {name: 'Bohrer', icon: '🔩', count: 2,        speed: 1.08, desc: 'Durchschlägt bis zu 4 Blöcke. Stark gegen Metall & Stein.'},
@@ -248,7 +248,7 @@ function saveCfg() { try { localStorage.setItem('katapult-cfg', JSON.stringify(C
 // ---------- Söldner ----------
 const TROOPS = {
   sword:  {name: 'Krieger', icon: '⚔️', cost: 35, hp: 60, speed: 1.8, dmg: 20, cd: 30, life: 4, desc: 'Marschiert zur Burg und hackt sich durch die Mauern. Kämpft gegen feindliche Soldaten.'},
-  archer: {name: 'Schütze', icon: '🎯', cost: 50, hp: 40, speed: 1.5, dmg: 18, cd: 55, range: 9, life: 4, desc: 'Bleibt auf Abstand und schießt Pfeile – am liebsten auf Menschen.'},
+  archer: {name: 'Schütze', icon: '🎯', cost: 50, hp: 40, speed: 1.5, dmg: 18, cd: 55, range: 9, life: 4, desc: 'Bleibt auf Abstand und schiesst Pfeile – am liebsten auf Menschen.'},
   sapper: {name: 'Sprenger', icon: '🧨', cost: 65, hp: 40, speed: 2.5, life: 3, desc: 'Rennt los und sprengt sich an der ersten Mauer in die Luft. Abgeschossen explodiert er sofort!'},
   ram:    {name: 'Rammbock', icon: '🐏', cost: 90, hp: 180, speed: .9, dmg: 55, cd: 50, life: 5, desc: 'Langsam, aber sehr zäh. Zertrümmert Mauern – auch Metall.'},
   rebel:  {name: 'Aufständische', icon: '🔱', hp: 35, speed: 1.8, dmg: 14, cd: 30, life: 3, desc: 'Wütendes Volk mit Mistgabeln und Fackeln. Kommt beim Volksaufstand gratis.'}
@@ -621,14 +621,14 @@ function helpHtml() {
     <li>🛢️ <b>Pulverfässer</b> geben dir je +1 Bombe – aber wenn der Gegner sie trifft, explodieren sie in deinem Schloss.</li>
     <li><b>Schlacht:</b> Abwechselnd ein Schuss. Mit der Maus <b>ziehen und loslassen</b> wie eine Steinschleuder. Achtung Wind!</li>
     <li><b>Verloren</b> hat, wer alle Katapulte <b>oder</b> alle Menschen verliert${CFG.king ? ' – oder seinen König' : ''}.</li>
-    <li>🎲 <b>Ereignisse:</b> Ab Runde 2 kann etwas passieren – es trifft <b>beide Seiten gleich</b>. <b>Besucher</b> (mit Lebensbalken und 🎁-Anzeige) bleiben ein paar Runden: schieß sie ab und kassiere die Belohnung. Das kostet aber deinen Schuss!</li>
+    <li>🎲 <b>Ereignisse:</b> Ab Runde 2 kann etwas passieren – es trifft <b>beide Seiten gleich</b>. <b>Besucher</b> (mit Lebensbalken und 🎁-Anzeige) bleiben ein paar Runden: schiess sie ab und kassiere die Belohnung. Das kostet aber deinen Schuss!</li>
     <li>😡 <b>Wut:</b> Jeder Schaden füllt deine Wut-Leiste. Ab 50 % kann zu Beginn deines Zuges ein <b>Volksaufstand</b> losbrechen – je wütender, desto wahrscheinlicher: 3 Leute stürmen aus deiner Burg zum Gegner.</li>
     <li>💰 <b>Söldner:</b> Jeder zerstörte gegnerische Block, Mensch oder Soldat bringt Credits. Pro Zug darfst du einen Soldaten kaufen (max. ${MAX_TROOPS} gleichzeitig). Soldaten handeln zu Beginn deiner Züge und können abgeschossen werden – auch von dir selbst!</li>
     <li>🔄 <b>Nachladen:</b> Ein Katapult, das geschossen hat, lädt im nächsten Zug nach (⏳). 🎯 <b>Volltreffer:</b> Viel Zerstörung mit einem Schuss = +1 Spezialmunition.</li>
-    <li>Steuerung: <kbd>Linksklick</kbd> bauen / zielen · <kbd>Rechtsklick</kbd> abreißen · <kbd>1</kbd>–<kbd>7</kbd> Auswahl · <kbd>Tab</kbd> Katapult wechseln · <kbd>Leertaste</kbd> Streuschuss teilen · <kbd>Esc</kbd> Zielen abbrechen · <kbd>M</kbd> Ton</li>
+    <li>Steuerung: <kbd>Linksklick</kbd> bauen / zielen · <kbd>Rechtsklick</kbd> abreissen · <kbd>1</kbd>–<kbd>7</kbd> Auswahl · <kbd>Tab</kbd> Katapult wechseln · <kbd>Leertaste</kbd> Streuschuss teilen · <kbd>Esc</kbd> Zielen abbrechen · <kbd>M</kbd> Ton</li>
   </ul></div>
   <h3>Munition</h3>${grid(AMMO_KEYS.map(a => [AMMO[a].icon, `${AMMO[a].name} (${AMMO[a].count === Infinity ? '∞' : AMMO[a].count}×)`, AMMO[a].desc]))}
-  <h3>Besucher – abschießbar, mit Belohnung</h3>${grid(EVENTS.filter(e => e.visitor).map(e => [e.icon, e.name, e.desc]))}
+  <h3>Besucher – abschiessbar, mit Belohnung</h3>${grid(EVENTS.filter(e => e.visitor).map(e => [e.icon, e.name, e.desc]))}
   <h3>Ereignisse</h3>${grid(EVENTS.filter(e => !e.visitor).map(e => [e.icon, e.name + (e.need ? ' (nur Söldner)' : ''), e.desc]))}
   <h3>Truppen</h3>${grid(Object.values(TROOPS).map(T => [T.icon, T.name + (T.cost ? ` – ${T.cost} 💰` : ''), `${T.desc} (${T.hp} LP)`]))}`;
 }
@@ -715,7 +715,7 @@ function cats(p) {
   for (let c = 0; c < COLS; c++) for (let r = 0; r < ROWS; r++) { const k = S.g[r][c]; if (k && k.o === p && k.t === 'catapult') list.push(k); }
   return list;
 }
-// Nachladen: Ein Katapult mit cool > 0 darf nicht schießen – außer alle anderen laden auch
+// Nachladen: Ein Katapult mit cool > 0 darf nicht schiessen – ausser alle anderen laden auch
 function catReady(k) { return !CFG.reload || !(k.cool > 0) || cats(k.o).every(c => c.cool > 0); }
 function selectFirst() {
   let l = cats(S.turn);
@@ -768,7 +768,7 @@ function useBarrel(p) {
 }
 
 // ---------- Zugablauf ----------
-// Schuss fertig -> (Bonus) -> evtl. nochmal schießen -> Gegner -> evtl. neue Runde mit Ereignissen -> beginTurn
+// Schuss fertig -> (Bonus) -> evtl. nochmal schiessen -> Gegner -> evtl. neue Runde mit Ereignissen -> beginTurn
 function endTurn() {
   renderTop();
   if (checkWin()) return;
@@ -970,7 +970,7 @@ function buyTroop(type) {
   renderTop(); renderBattleBar();
 }
 
-// ---------- Besucher (abschießbare Ereignisse) ----------
+// ---------- Besucher (abschiessbare Ereignisse) ----------
 function spawnVisitor(def) {
   const from = RNG() < .5 ? -1 : 1;
   const v = {def, id: ++uid, hp: def.hp, max: def.hp, rounds: def.rounds, t: 0, from, x: from < 0 ? -160 : W + 160, y: 110,
@@ -1156,7 +1156,7 @@ const EVENTS = [
     },
     draw(v) { emo('🐉', v.px, v.py, 72, v.face > 0); }},
 
-  {id: 'pirates', visitor: true, flood: true, icon: '🏴‍☠️', name: 'Sturmflut & Piraten!', desc: 'Das Wasser steigt und ein Piratenschiff bleibt 5 Runden. Es beschießt jede 2. Runde beide Burgen. Versenken!',
+  {id: 'pirates', visitor: true, flood: true, icon: '🏴‍☠️', name: 'Sturmflut & Piraten!', desc: 'Das Wasser steigt und ein Piratenschiff bleibt 5 Runden. Es beschiesst jede 2. Runde beide Burgen. Versenken!',
     hp: 220, r: 60, rounds: 5, loot: {bomb: 2, cow: 1}, bounty: 70, lootName: 'Piratenschatz geborgen',
     ok: () => S.mapId !== 'mountain',
     spawn(v) { S.mod.water = 8; v.x = v.from < 0 ? -220 : W + 220; v.y = waterRow() * CS - 14; v.tx = shipSpot(); sfx('splash'); },
@@ -1185,7 +1185,7 @@ const EVENTS = [
     },
     draw(v) { drawShip(v); }},
 
-  {id: 'balloon', visitor: true, icon: '🎈', name: 'Schatz-Ballon!', desc: 'Ein Heißluftballon mit Schatztruhe treibt langsam über das Feld. Wer ihn trifft, bekommt den Schatz!',
+  {id: 'balloon', visitor: true, icon: '🎈', name: 'Schatz-Ballon!', desc: 'Ein Heissluftballon mit Schatztruhe treibt langsam über das Feld. Wer ihn trifft, bekommt den Schatz!',
     hp: 1, r: 30, rounds: 99, bounty: 60, lootName: 'Schatztruhe geschnappt',
     spawn(v) {
       v.loot = {}; for (let i = 0; i < 3; i++) { const a = pick(SPECIAL); v.loot[a] = (v.loot[a] || 0) + 1; }
@@ -1230,7 +1230,7 @@ const EVENTS = [
       if (S.time % 10 < 5) { ctx.fillStyle = '#e0b0ff'; circ(x + 18 + Math.sin(S.time * .1) * 4, y - 20, 2.2); }
     }},
 
-  {id: 'cloud', visitor: true, icon: '⛈️', name: 'Gewitterwolke!', desc: 'Eine Gewitterwolke hängt 5 Runden fest und schleudert jede 2. Runde Blitze in den höchsten Turm jeder Burg. Abschießen löst sie auf!',
+  {id: 'cloud', visitor: true, icon: '⛈️', name: 'Gewitterwolke!', desc: 'Eine Gewitterwolke hängt 5 Runden fest und schleudert jede 2. Runde Blitze in den höchsten Turm jeder Burg. Abschiessen löst sie auf!',
     hp: 120, r: 50, rounds: 5, loot: {bomb: 1, fire: 1}, bounty: 40, lootName: 'Gewitterwolke aufgelöst',
     spawn(v) { v.y = 72; sfx('thunder'); },
     idle(v) { const gx = W / 2 + Math.sin(v.t * .008) * 140; v.px += (gx - v.px) * .02; v.py = 72 + Math.sin(v.t * .03) * 5; },
@@ -1271,7 +1271,7 @@ const EVENTS = [
       if (Math.random() < .04) { ctx.fillStyle = 'rgba(255,250,200,.55)'; circ(x + vrand(-30, 30), y + vrand(-5, 15), 18); }
     }},
 
-  {id: 'magpie', visitor: true, icon: '🐦', name: 'Diebische Elster!', desc: 'Klaut jede 2. Runde beiden Spielern eine Spezialmunition. Wer sie abschießt, bekommt die GANZE Beute!',
+  {id: 'magpie', visitor: true, icon: '🐦', name: 'Diebische Elster!', desc: 'Klaut jede 2. Runde beiden Spielern eine Spezialmunition. Wer sie abschiesst, bekommt die GANZE Beute!',
     hp: 40, r: 22, rounds: 5, bounty: 30, lootName: 'Diebesgut zurückerobert',
     spawn(v) { v.loot = {}; v.y = 140; sfx('squawk'); },
     idle(v) {
@@ -1415,7 +1415,7 @@ const EVENTS = [
     start() { S.mod.frenzy = true; sfx('horn'); },
     tick(e) { if (e.t > 90) e.finished = true; }},
 
-  {id: 'tornado', icon: '🌪️', name: 'Tornado!', desc: 'Ein Wirbelsturm fegt über das Feld und reißt die obersten Blöcke mit sich.',
+  {id: 'tornado', icon: '🌪️', name: 'Tornado!', desc: 'Ein Wirbelsturm fegt über das Feld und reisst die obersten Blöcke mit sich.',
     start(e) {
       e.dir = RNG() < .5 ? 1 : -1; e.x = e.dir > 0 ? -80 : W + 80;
       e.targets = [0, 1].flatMap(side => shuffle(zoneCols(side)).slice(0, 3)).map(c => ({c, x: c * CS + 12, done: false}));
@@ -1466,7 +1466,7 @@ const EVENTS = [
 
 // Ablauf-Objekte für die Besucher (Ankunft & Aktion)
 function visitorRun(d) {
-  return {icon: d.icon, name: d.name, desc: d.desc + ' 🎯 Abschießen = Belohnung!',
+  return {icon: d.icon, name: d.name, desc: d.desc + ' 🎯 Abschiessen = Belohnung!',
     start(e) { e.v = spawnVisitor(d); },
     tick(e) { if (d.arrive) d.arrive(e.v, e); else if (e.t > 110) e.finished = true; }};
 }
@@ -1919,7 +1919,7 @@ function npcBuy(D) {
   buyTroop(CFG.npc === 'hard' ? opts.sort((a, b) => TROOPS[b].cost - TROOPS[a].cost)[0] : pick(opts));
 }
 
-// Ablauf im Zug des Computers: nachdenken -> Katapult & Munition wählen -> sichtbar zielen -> schießen
+// Ablauf im Zug des Computers: nachdenken -> Katapult & Munition wählen -> sichtbar zielen -> schiessen
 function npcTick() {
   const D = NPCS[CFG.npc];
   if (!S.npc) { S.npc = {t: 0}; renderBattleBar(); }
@@ -1993,7 +1993,7 @@ function renderBuildBar() {
   });
   const req = tools().filter(t => MATS[t].unit).map(t => { const n = countType(S.builder, t), q = need(t); return `${MATS[t].name} <span class="${n === q ? 'ok' : 'bad'}">${n}/${q}</span>`; }).join(' · ');
   h += `</div><div class="info"><b>${MATS[S.tool].icon} ${MATS[S.tool].name}:</b> ${MATS[S.tool].desc}<br>
-    <span class="req">${req} · <span class="muted">Rechtsklick = abreißen</span></span></div>`;
+    <span class="req">${req} · <span class="muted">Rechtsklick = abreissen</span></span></div>`;
   h += `<div class="pts"><b>${P.points}</b> Punkte</div>
     <button class="btn" data-act="random" title="Zufälliges Schloss">🎲 Zufall</button>
     <button class="btn" data-act="clear">🗑️ Leeren</button>
@@ -2026,12 +2026,12 @@ function renderBattleBar() {
   else if (S.bs === 'troops') status = '⚔️ Die Truppen marschieren und greifen an …';
   else if (busy) status = S.after === 'endTurn' ? 'Schuss fliegt …' + (S.proj.some(p => p.type === 'cluster') ? ' (LEERTASTE = teilen)' : '') : 'Einen Moment …';
   else {
-    status = 'Maus ziehen & loslassen = schießen · Klick auf eigenes Katapult / Tab = wechseln';
+    status = 'Maus ziehen & loslassen = schiessen · Klick auf eigenes Katapult / Tab = wechseln';
     const extra = [];
     if (S.shotsLeft > 1) extra.push('⚔️ Kriegsrausch: 2 Schüsse!');
     if (CFG.reload) { const n = cats(S.turn).filter(k => !catReady(k)).length; if (n) extra.push(`⏳ ${n} Katapult${n > 1 ? 'e laden' : ' lädt'} nach`); }
     if (CFG.merc) extra.push(S.bought ? '✅ Soldat angeheuert – marschiert ab deinem nächsten Zug' : full ? `Max. ${MAX_TROOPS} Soldaten im Feld` : '1 Soldat pro Zug kaufbar');
-    if (S.vis.some(v => !v.leaving)) extra.push('🎯 Besucher abschießen = Belohnung!');
+    if (S.vis.some(v => !v.leaving)) extra.push('🎯 Besucher abschiessen = Belohnung!');
     if (extra.length) status += '<br>' + extra.join(' · ');
   }
   h += `<div class="info"><b style="color:${TEAM[S.turn]}">${TEAM_NAME[S.turn]}</b> – <b>${AMMO[P.cur].icon} ${AMMO[P.cur].name}:</b> ${AMMO[P.cur].desc}<br>

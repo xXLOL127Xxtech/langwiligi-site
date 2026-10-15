@@ -12,7 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
 /* ===================================================================
-   [LOCKED ZONE A – CSS]  fertig, nicht lesen / nicht ändern
+   Layout und Oberfläche
    =================================================================== */
 :root{
   --bg:#0d0f13; --panel:rgba(22,26,34,.86); --panel2:rgba(255,255,255,.05);
@@ -358,8 +358,7 @@ label.lab{display:block;font-size:11px;letter-spacing:.08em;text-transform:upper
 
 <script>
 // =====================================================================================
-// === [LOCKED ZONE A: SHELL, UI, LOBBY, GAMEHUB, AUDIO, INPUT] ===
-// === 100 % fertig und getestet. Für Claude tabu: nicht lesen, nicht ändern. ===
+// === Oberfläche, Lobby, GameHub, Ton, Eingabe ===
 // =====================================================================================
 'use strict';
 const GAME_ID = 'sbb-runner';
@@ -1013,7 +1012,7 @@ const Shell = {
 
 <script>
 // =====================================================================================
-// === [GAMEPLAY ZONE B: BALANCE_CONFIG, PHYSICS, BOT_AI, GAME_LOOP] ===
+// === Spielwerte, Physik, Bot, Spielablauf ===
 // =====================================================================================
 'use strict';
 // --- CORE-SIM START --- (ohne DOM/three.js, in Node testbar)
@@ -1680,7 +1679,7 @@ const SimTest = {
 
 <script>
 // =====================================================================================
-// === [ZONE B – RENDER] 3D-Darstellung mit three.js r128 (fertig, nicht ändern) ===
+// === 3D-Darstellung mit three.js r128 ===
 // =====================================================================================
 'use strict';
 const R = {};
@@ -2723,7 +2722,7 @@ const R = {};
 
 <script>
 // =====================================================================================
-// === [ZONE B – GAME_LOOP] Spielablauf, Modi, Online-Sync (fertig) ===
+// === Spielablauf, Modi, Online-Sync ===
 // =====================================================================================
 'use strict';
 const REASONS = {

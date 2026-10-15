@@ -21,7 +21,7 @@ echo "Hole Spiele deiner Freunde ..."
 if ! git pull -q --rebase origin main; then
   git rebase --abort 2>/dev/null || true
   echo "Konflikt: Jemand hat auf GitHub dieselbe Datei geändert wie du. Nichts hochgeladen."
-  echo "Bitte Claude oder 'git status' fragen."
+  echo "Mit 'git status' nachsehen, welche Datei betroffen ist."
   exit 1
 fi
 if [ "$(git rev-list --count origin/main..HEAD)" = "0" ]; then

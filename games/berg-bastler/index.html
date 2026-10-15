@@ -298,7 +298,7 @@ const CHASSIS = {
 };
 const WHEELS = {
   holz: { name: "Holzräder", price: 0, r: 0.42, grip: 0.85, ice: 0.08, mass: 11, desc: 'Rund. Meistens.' },
-  strasse: { name: 'Straßenreifen', price: 600, r: 0.45, grip: 1.05, ice: 0.13, mass: 13, desc: 'Echter Gummi! Solider Grip.' },
+  strasse: { name: 'Strassenreifen', price: 600, r: 0.45, grip: 1.05, ice: 0.13, mass: 13, desc: 'Echter Gummi! Solider Grip.' },
   offroad: { name: 'Offroad-Reifen', price: 2200, r: 0.52, grip: 1.35, ice: 0.28, mass: 17, desc: 'Grobes Profil für Fels und Sand.' },
   spikes: { name: 'Spike-Reifen', price: 5000, r: 0.48, grip: 1.3, ice: 1.0, mass: 16, desc: 'Metallspikes – kleben sogar auf Eis.' },
   monster: { name: 'Riesenreifen', price: 7000, r: 0.66, grip: 1.45, ice: 0.32, mass: 25, desc: 'Fressen jeden Hügel. Schwer.' },
@@ -353,7 +353,7 @@ const LEVELS = [
     hint: 'Steile Hänge – nicht überschlagen!', feats: [{ t: 'climb', x: 100, h: 5, w: 22 }, { t: 'hill', x: 190, h: 6, w: 26 },
       { t: 'bumps', x: 290, n: 6, h: 0.5 }, { t: 'climb', x: 370, h: 7, w: 24 }, { t: 'hill', x: 460, h: 5, w: 20 }, { t: 'bridge', x: 240, w: 8, hold: 0.9 }, { t: 'ramp', x: 330, h: 1.8 }, { t: 'kisten', x: 420, n: 6 }] },
   { name: 'Wüstendünen', theme: 'wueste', surface: 'sand', len: 900, seed: 303, a: [4.5, 1.3, 0.04], trend: 0, fuelGap: 420, coin: 7, g: 10, par: 150, reward: 450,
-    hint: 'Lange Strecke, wenig Sprit – ein größerer Tank hilft.', feats: [{ t: 'hill', x: 150, h: 7, w: 40 }, { t: 'hill', x: 330, h: 8, w: 42 },
+    hint: 'Lange Strecke, wenig Sprit – ein grösserer Tank hilft.', feats: [{ t: 'hill', x: 150, h: 7, w: 40 }, { t: 'hill', x: 330, h: 8, w: 42 },
       { t: 'hill', x: 540, h: 7, w: 36 }, { t: 'hill', x: 720, h: 9, w: 44 }, { t: 'ramp', x: 250, h: 2 }, { t: 'bridge', x: 430, w: 10, hold: 0.8 }, { t: 'kisten', x: 640, n: 6 }, { t: 'ramp', x: 810, h: 2.2 }] },
   { name: 'Gletscher', theme: 'eis', surface: 'eis', patches: [[-99, 25, 'normal'], [300, 328, 'normal']], len: 650, seed: 404, a: [2.6, 0.9, 0.08],
     trend: 0.03, fuelGap: 150, coin: 9, g: 10, par: 120, reward: 600, hint: 'Spiegelglatt! Spike-Reifen oder Offroad-Reifen mit Profil.',
@@ -870,7 +870,7 @@ function step(dt) {
     // Kipp-Tempo begrenzen, damit man noch reagieren kann (Überschlag bleibt möglich, wenn man draufbleibt)
     if (dir * w > WHEELIE_RATE * 1.4) b.applyTorque(-dir * (dir * w - WHEELIE_RATE * 1.4) * 8 * c.Itot, true);
   }
-  // Das rohe Gegen-Drehmoment des Motors würde starke Autos sofort überschlagen – großteils abfangen
+  // Das rohe Gegen-Drehmoment des Motors würde starke Autos sofort überschlagen – grossteils abfangen
   if (live) {
     let react = 0; for (const j of c.joints) react += j.getMotorTorque(1 / dt);
     const cap = c.mass * 10 * ANTI_REACT;
@@ -1093,7 +1093,7 @@ function tipFor(reason) {
   const cfg = car.cfg, def = run.def, p = car.body.getPosition();
   const nearWall = track.walls.find(w => Math.abs(w.x - p.x) < 12);
   const nearGap = track.gaps.find(g => p.x > g.x0 - 20 && p.x < g.x1 + 4);
-  if (reason === 'fuel') return `Tipp: Größerer Tank (jetzt ${Math.round(cfg.fuel)} s) oder ein stärkerer Motor, damit du schneller beim nächsten Kanister bist.`;
+  if (reason === 'fuel') return `Tipp: Grösserer Tank (jetzt ${Math.round(cfg.fuel)} s) oder ein stärkerer Motor, damit du schneller beim nächsten Kanister bist.`;
   if (nearGap && nearGap.bridge) return 'Tipp: Brücken brechen kurz nach dem Drüberfahren weg – nicht anhalten, Tempo halten!';
   if (nearWall && !cfg.jet) return 'Tipp: Diese Wand schaffst du nur fliegend – kauf dir in der Garage den Raketen-Jet!';
   if (nearWall) return 'Tipp: Vor der Wand Jet zünden und mit Gas die Nase hochziehen. Mehr Jet-Schub/-Tank hilft.';

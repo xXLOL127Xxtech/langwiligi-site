@@ -33,8 +33,8 @@ panzer-pong/          ← Ordnername = Link: langwiligi.site/panzer-pong/
 
 Alle Regeln (Online-Modus, Ranglisten, Stil) stehen in **[SPIEL-VORGABEN.md](SPIEL-VORGABEN.md)**.
 
-> 💡 **Tipp:** Baust du dein Spiel mit einer KI (Claude, ChatGPT …)? Gib ihr die Datei
-> [SPIEL-VORGABEN.md](SPIEL-VORGABEN.md) mit und sag: „Bau mein Spiel nach diesen Vorgaben.“
+> 💡 **Tipp:** Hilft dir jemand beim Bauen? Gib die Datei [SPIEL-VORGABEN.md](SPIEL-VORGABEN.md) mit,
+> dann passt das Spiel von Anfang an.
 
 ---
 

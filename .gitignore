@@ -2,7 +2,9 @@
 LIESMICH.txt
 alt/
 vorschau/
-.claude/
+# Versteckte Werkzeug-Ordner (Editor, Assistenten usw.)
+.*/
+!.github/
 # Versteckte Arbeitsdateien in Spielordnern (werden auch nicht auf die Webseite geladen)
 games/**/.*
 
