@@ -2519,6 +2519,8 @@ function armyPanel(a) {
 
 let panelHtml = '';
 function renderPanel(force) {
+  // Panel kann vor dem ersten Zeichnen laufen (z.B. direkt nach Spielstart)
+  if (!VIS && G && MAP) { VIS = computeVis(); visT = performance.now(); }
   let h = '';
   if (sel && sel.k === 'cell') h = cellPanel(sel.i);
   else if (sel && sel.k === 'army') {

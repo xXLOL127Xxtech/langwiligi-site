@@ -972,7 +972,7 @@ async function hostGame() {
     history.replaceState(null, '', '#' + hub.code);
     showBanner('Raum ' + hub.code, 'Link kopieren und Freunden schicken');
     st.textContent = '';
-  } catch (e) { st.className = 'status err'; st.textContent = GameHub.errorText(e); hub.close(); hub = null; }
+  } catch (e) { st.className = 'status err'; st.textContent = GameHub.errorText(e); if (hub) hub.close(); hub = null; }
 }
 async function joinGame(code) {
   if (!HUB) return;
@@ -990,7 +990,7 @@ async function joinGame(code) {
     st.textContent = '';
   } catch (e) {
     mode = 'demo'; st.className = 'status err'; st.textContent = GameHub.errorText(e);
-    hub.close(); hub = null;
+    if (hub) hub.close(); hub = null;
   }
 }
 function leaveOnline(msg) {
@@ -1433,7 +1433,7 @@ $('rb-copy').onclick = () => {
   const link = inviteLink(hub ? hub.code : '');
   (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(
     () => { $('rb-copy').textContent = 'Kopiert ✓'; setTimeout(() => $('rb-copy').textContent = 'Link kopieren', 1500); },
-    () => prompt('Link für deine Freunde:', link));
+    () => { $('rb-copy').textContent = link; });
 };
 
 // ---------- Start ----------

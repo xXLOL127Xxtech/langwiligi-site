@@ -193,6 +193,7 @@
       </div>
       <div class="lbl">Online-Rangliste</div>
       <div id="menu-board"></div>
+      <div class="status" id="menu-status" style="justify-content:center;color:#ff8a8a"></div>
     </div>
   </div>
 </div>
@@ -249,6 +250,16 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/planck-js/1.4.3/planck.min.js"></script>
+<script>
+// Falls die Bibliothek nicht geladen werden konnte (kein Internet, Blocker): verständliche Meldung statt schwarzem Bildschirm
+if (!window.planck) window.addEventListener('DOMContentLoaded', () => {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0b1020;color:#fff;font:600 17px system-ui,sans-serif;text-align:center;padding:24px';
+  d.innerHTML = '<div style="font-size:44px">📡</div><div>Das Spiel konnte nicht vollständig geladen werden.<br><span style="font-weight:400;opacity:.75;font-size:14px">Bitte Internetverbindung prüfen und neu laden.</span></div><button style="font:inherit;padding:10px 22px;border:0;border-radius:10px;background:#4f7cff;color:#fff;cursor:pointer">Neu laden</button>';
+  d.querySelector('button').onclick = () => location.reload();
+  document.body.appendChild(d);
+});
+</script>
 <script src="../_shared/hub.js"></script>
 <script>
 'use strict';
@@ -1185,7 +1196,8 @@ function onDisconnect(text) {
   net.on = false;
   if (hub) { try { hub.close(); } catch (e) {} hub = null; }
   setPhase('menu'); show('menu'); openMenu();
-  setTimeout(() => alert(text), 50);
+  $('menu-status').textContent = '⚠️ ' + text;
+  setTimeout(() => { $('menu-status').textContent = ''; }, 6000);
 }
 function handleMsg(m) {
   if (!m || !m.t) return;
@@ -1404,7 +1416,12 @@ function renderShop() {
       const it = SHOP[+b.dataset.i];
       if (buy(p, it)) { sfx.pick(); renderShop(); } else sfx.empty();
     });
-    const qb = side.querySelector('[data-quit]'); if (qb) qb.onclick = () => { if (round === 0 || confirm('Match wirklich beenden?')) quitToMenu(); };
+    const qb = side.querySelector('[data-quit]'); if (qb) qb.onclick = () => {
+      // Zweimal klicken statt Browser-Popup
+      if (round === 0 || qb.dataset.armed) { quitToMenu(); return; }
+      qb.dataset.armed = '1'; const old = qb.textContent; qb.textContent = 'Wirklich? Nochmal klicken';
+      setTimeout(() => { if (qb.isConnected) { delete qb.dataset.armed; qb.textContent = old; } }, 2500);
+    };
     side.querySelector('[data-ready]').onclick = () => {
       if (p.ready) return;
       p.ready = true; sfx.click(); ac();
@@ -1718,7 +1735,7 @@ $('host-back').onclick = () => { if (hub) { try { hub.close(); } catch (e) {} hu
 $('join-back').onclick = () => { if (hub) { try { hub.close(); } catch (e) {} hub = null; } openMenu(); };
 $('btn-copy').onclick = () => {
   const link = location.href.split('#')[0] + '#' + $('host-code').textContent;
-  (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => setStatus('host-status', 'Link kopiert! Warte auf Gegner …', true), () => prompt('Link kopieren:', link));
+  (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => setStatus('host-status', 'Link kopiert! Warte auf Gegner …', true), () => setStatus('host-status', 'Link: ' + link, true));
 };
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { winsNeeded = +b.dataset.w; document.querySelectorAll('[data-w]').forEach(x => x.classList.toggle('sel', x === b)); sfx.click(); });
 $('btn-sound').onclick = () => { soundOn = !soundOn; try { localStorage.setItem('blech-sound', soundOn ? '1' : '0'); } catch (e) {} $('btn-sound').textContent = soundOn ? '🔊' : '🔇'; };
