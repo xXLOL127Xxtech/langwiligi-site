@@ -17,56 +17,49 @@ game.BirdEntity = me.Entity.extend({
         this.body.removeShapeAt(0);
         this.body.addShape(new me.Ellipse(5, 5, 71, 51));
 
-        // a tween object for the flying physic effect
-        this.flyTween = new me.Tween(this.pos);
-        this.flyTween.easing(me.Tween.Easing.Exponential.InOut);
-
+        // Flugphysik: Geschwindigkeit statt Sprung-Tween, damit der Vogel weich nach oben schwingt
+        this.velY = 0;
+        this.GRAVITY = 0.5;       // Zunahme der Fallgeschwindigkeit pro Bild
+        this.FLAP = -8.6;         // Geschwindigkeit nach einem Flügelschlag (nach oben)
+        this.MAX_FALL = 11;
         this.currentAngle = 0;
-        this.angleTween = new me.Tween(this);
-        this.angleTween.easing(me.Tween.Easing.Exponential.InOut);
+        this.baseY = y;
+        this.zeit = 0;
 
         // end animation tween
         this.endTween = null;
 
         // collision shape
         this.collided = false;
-
-        this.gravityForce = 0.2;
     },
 
     update: function(dt) {
-        var that = this;
         this.pos.x = BIRD_X;
         if (!game.data.start) {
+            // vor dem Start leicht auf und ab schweben (nicht während der Absturz-Animation)
+            if (!this.endTween) {
+                this.zeit += dt;
+                this.pos.y = this.baseY + Math.sin(this.zeit / 260) * 8;
+            }
             return this._super(me.Entity, 'update', [dt]);
         }
-        this.renderable.currentTransform.identity();
+        var tick = Math.min(me.timer.tick, 3);
         if (me.input.isKeyPressed('fly')) {
             me.audio.play('wing');
-            this.gravityForce = 0.2;
-            var currentPos = this.pos.y;
-
-            this.angleTween.stop();
-            this.flyTween.stop();
-
-
-            this.flyTween.to({y: currentPos - 72}, 50);
-            this.flyTween.start();
-
-            this.angleTween.to({currentAngle: that.maxAngleRotation}, 50).onComplete(function(angle) {
-                that.renderable.currentTransform.rotate(that.maxAngleRotation);
-            })
-            this.angleTween.start();
-
+            this.velY = this.FLAP;
+            this.renderable.setAnimationFrame(0);
         } else {
-            this.gravityForce += 0.2;
-            this.pos.y += me.timer.tick * this.gravityForce;
-            this.currentAngle += Number.prototype.degToRad(3);
-            if (this.currentAngle >= this.maxAngleRotationDown) {
-                this.renderable.currentTransform.identity();
-                this.currentAngle = this.maxAngleRotationDown;
-            }
+            this.velY = Math.min(this.MAX_FALL, this.velY + this.GRAVITY * tick);
         }
+        this.pos.y += this.velY * tick;
+
+        // Neigung folgt der Geschwindigkeit: steigend nach oben, beim Fallen langsam nach unten kippen
+        var ziel = this.velY < 1 ?
+            this.maxAngleRotation :
+            Math.min(this.maxAngleRotationDown, (this.velY - 1) / 6 * this.maxAngleRotationDown);
+        var rate = ziel < this.currentAngle ? 0.35 : 0.08;
+        this.currentAngle += (ziel - this.currentAngle) * Math.min(1, rate * tick);
+        this.renderable.currentTransform.identity();
         this.renderable.currentTransform.rotate(this.currentAngle);
         me.Rect.prototype.updateBounds.apply(this);
 
@@ -101,7 +94,6 @@ game.BirdEntity = me.Entity.extend({
         this.endTween = new me.Tween(this.pos);
         this.endTween.easing(me.Tween.Easing.Exponential.InOut);
 
-        this.flyTween.stop();
         this.renderable.currentTransform.identity();
         this.renderable.currentTransform.rotate(Number.prototype.degToRad(90));
         var finalPos = me.game.viewport.height - this.renderable.width/2 - 96;

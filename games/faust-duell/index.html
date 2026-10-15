@@ -311,12 +311,16 @@
       }
     }
     // Lebensbalken laufend nachführen (auch bei Online-Updates)
+    // (nur anfassen, wenn sich etwas geändert hat, sonst muss der Browser jedes Bild neu berechnen)
+    var hudLeben = [-1, -1], hudEl = [[$('leben0'), $('spur0')], [$('leben1'), $('spur1')]];
     (function hudLoop() {
       if (mk.game && mk.game.fighters) {
         for (var p = 0; p < 2; p++) {
           var l = mk.game.fighters[p].getLife();
-          $('leben' + p).style.width = l + '%';
-          $('spur' + p).style.width = l + '%';
+          if (l === hudLeben[p]) continue;
+          hudLeben[p] = l;
+          hudEl[p][0].style.width = l + '%';
+          hudEl[p][1].style.width = l + '%';
         }
       }
       requestAnimationFrame(hudLoop);
@@ -331,6 +335,7 @@
       f._position.x = mk.config.START_X[i];
       f.setY(mk.config.PLAYER_TOP);
       f._currentMove = null;
+      f._view = null;
       f.setMove(mk.moves.types.STAND);
     }
 

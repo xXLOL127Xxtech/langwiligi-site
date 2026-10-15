@@ -17,7 +17,10 @@
     BLOCK_DAMAGE : 0.2,
     REACH        : 95,                        // Reichweite für Treffer (Abstand der Körpermitten)
     BODY         : 46,                        // Körperbreite (so nah kommen sich die Kämpfer)
-    START_X      : [115, 335]                 // Startposition (linke Bildkante) der beiden Kämpfer
+    START_X      : [115, 335],                // Startposition (linke Bildkante) der beiden Kämpfer
+    JUMP_HEIGHT  : 125,                       // Sprunghöhe (Vorwärts-/Rückwärtssprung)
+    JUMP_DX      : 27,                        // Weite pro Sprungschritt (8 Schritte)
+    AIR_LIFT     : 25                         // ab dieser Höhe fliegt man über den Gegner hinweg
   };
 
   mk.controllers = {};
@@ -289,21 +292,8 @@
     }
     if (pressed[k.BLOCK]) {
       return m.BLOCK;
-    } else if (pressed[k.LEFT]) {
-      if (pressed[k.UP]) {
-        return m.BACKWARD_JUMP;
-      } else if (pressed[k.HK] && orient === leftOrient) {
-        return m.SPIN_KICK;
-      }
-      return m.WALK_BACKWARD;
-    } else if (pressed[k.RIGHT]) {
-      if (pressed[k.UP]) {
-        return m.FORWARD_JUMP;
-      } else if (pressed[k.HK] && orient === rightOrient) {
-        return m.SPIN_KICK;
-      }
-      return m.WALK;
-    } else if (pressed[k.DOWN]) {
+    }
+    if (pressed[k.DOWN]) {
       if (pressed[k.HP]) {
         return m.UPPERCUT;
       } else if (pressed[k.LK]) {
@@ -314,37 +304,33 @@
         return m.SQUAT_LOW_PUNCH;
       }
       return m.SQUAT;
-    } else if (pressed[k.HK]) {
-      if (f.getMove().type === m.FORWARD_JUMP) {
-        return m.FORWARD_JUMP_KICK;
-      } else if (f.getMove().type === m.BACKWARD_JUMP) {
-        return m.BACKWARD_JUMP_KICK;
-      }
-      return m.HIGH_KICK;
-    } else if (pressed[k.UP]) {
-      return m.JUMP;
-    } else if (pressed[k.LK]) {
-      if (f.getMove().type === m.FORWARD_JUMP) {
-        return m.FORWARD_JUMP_KICK;
-      } else if (f.getMove().type === m.BACKWARD_JUMP) {
-        return m.BACKWARD_JUMP_KICK;
-      }
-      return m.LOW_KICK;
-    } else if (pressed[k.LP]) {
-      if (f.getMove().type === m.FORWARD_JUMP) {
-        return m.FORWARD_JUMP_PUNCH;
-      } else if (f.getMove().type === m.BACKWARD_JUMP) {
-        return m.BACKWARD_JUMP_PUNCH;
-      }
-      return m.LOW_PUNCH;
-    } else if (pressed[k.HP]) {
-      if (f.getMove().type === m.FORWARD_JUMP) {
-        return m.FORWARD_JUMP_PUNCH;
-      } else if (f.getMove().type === m.BACKWARD_JUMP) {
-        return m.BACKWARD_JUMP_PUNCH;
-      }
-      return m.HIGH_PUNCH;
     }
+    // Angriffe haben Vorrang vor Laufen und Springen (man kann also aus dem Lauf heraus schlagen und treten)
+    var jump = f.getMove() && f.getMove().type,
+      inJump = jump === m.FORWARD_JUMP || jump === m.BACKWARD_JUMP,
+      fwdJump = jump === m.FORWARD_JUMP,
+      back = (pressed[k.LEFT] && orient === leftOrient) || (pressed[k.RIGHT] && orient === rightOrient);
+    if (pressed[k.HK] || pressed[k.LK]) {
+      if (inJump) return fwdJump ? m.FORWARD_JUMP_KICK : m.BACKWARD_JUMP_KICK;
+      if (pressed[k.HK]) return back ? m.SPIN_KICK : m.HIGH_KICK;
+      return m.LOW_KICK;
+    }
+    if (pressed[k.HP] || pressed[k.LP]) {
+      if (inJump) return fwdJump ? m.FORWARD_JUMP_PUNCH : m.BACKWARD_JUMP_PUNCH;
+      return pressed[k.HP] ? m.HIGH_PUNCH : m.LOW_PUNCH;
+    }
+    if (pressed[k.UP]) {
+      if (pressed[k.LEFT] && !pressed[k.RIGHT]) return m.BACKWARD_JUMP;
+      if (pressed[k.RIGHT] && !pressed[k.LEFT]) return m.FORWARD_JUMP;
+      return m.JUMP;
+    }
+    if (pressed[k.LEFT] && !pressed[k.RIGHT]) {
+      return m.WALK_BACKWARD;
+    }
+    if (pressed[k.RIGHT] && !pressed[k.LEFT]) {
+      return m.WALK;
+    }
+    return m.STAND;
   };
 
   mk.controllers.Multiplayer = function (options) {
@@ -591,6 +577,25 @@
 
   mk.arenas.Arena.prototype.refresh = function () {};
 
+  // Die Bewegungen laufen in Schritten (alle 40–80 ms). Damit es nicht ruckelt, gleitet die Anzeige
+  // linear von der alten zur neuen Position, über die Dauer eines Schritts.
+  mk.arenas.Arena.prototype._smooth = function (f, now) {
+    var x = f.getX(), y = f.getY(), v = f._view;
+    if (!v) v = f._view = { fx: x, fy: y, tx: x, ty: y, t0: now, dur: 1 };
+    if (x !== v.tx || y !== v.ty) {
+      var k = Math.min(1, (now - v.t0) / v.dur);
+      v.fx = v.fx + (v.tx - v.fx) * k; v.fy = v.fy + (v.ty - v.fy) * k;
+      v.tx = x; v.ty = y; v.t0 = now;
+      var mv = f.getMove();
+      v.dur = Math.max(30, Math.min(100, (mv && mv._stepDuration) || 80));
+      if (f._remote) v.dur = Math.max(v.dur, 120);
+      if (Math.abs(x - v.fx) > 160 || Math.abs(y - v.fy) > 220) { v.fx = x; v.fy = y; }
+    }
+    var t = Math.min(1, (now - v.t0) / v.dur);
+    v.x = v.fx + (v.tx - v.fx) * t; v.y = v.fy + (v.ty - v.fy) * t;
+    return v;
+  };
+
   mk.arenas.Arena.prototype._draw = function (dt) {
     var ctx = this._context, s = this.scale, f, st, i;
     ctx.setTransform(s, 0, 0, s, 0, 0);
@@ -601,20 +606,22 @@
     }
     ctx.drawImage(this.texture, 0, 0, this.width, this.height);
     ctx.translate(sx, sy);
+    var now = performance.now(), view = [];
+    for (i = 0; i < this.fighters.length; i += 1) view[i] = this._smooth(this.fighters[i], now);
     for (i = 0; i < this.fighters.length; i += 1) {
       f = this.fighters[i];
       st = f.getState();
       if (!st) continue;
       // Schatten am Boden
-      var lift = Math.max(0, mk.config.PLAYER_TOP - f.getY());
+      var lift = Math.max(0, mk.config.PLAYER_TOP - view[i].y);
       var r = Math.max(14, 30 - lift * 0.12);
       ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0.12, 0.35 - lift * 0.002) + ')';
-      ctx.beginPath(); ctx.ellipse(f.getX() + Figuren.AX, mk.config.FLOOR - 2, r, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(view[i].x + Figuren.AX, mk.config.FLOOR - 2, r, 5, 0, 0, Math.PI * 2); ctx.fill();
     }
     for (i = 0; i < this.fighters.length; i += 1) {
       f = this.fighters[i];
       st = f.getState();
-      if (st) ctx.drawImage(st.img, f.getX(), f.getY(), st.width, st.height);
+      if (st) ctx.drawImage(st.img, view[i].x, view[i].y, st.width, st.height);
     }
     // Funken
     var keep = [];
@@ -641,7 +648,7 @@
   mk.arenas.Arena.prototype.moveFighter = function (fighter, pos) {
     var opponent = this._game.getOpponent(fighter),
       op = { x: opponent.getX(), y: opponent.getY() },
-      isOver = pos.y + fighter.getVisibleHeight() <= op.y;
+      isOver = this._inAir(fighter, pos.y) || this._inAir(opponent, op.y);
 
     var pad = Figuren.AX - 26;
     if (pos.x <= -pad) {
@@ -665,6 +672,33 @@
 
     this._setFightersOrientation(fighter, opponent);
     return pos;
+  };
+
+  // Hoch genug in der Luft, um über den Gegner zu springen (bzw. unter einem Springer durchzulaufen)
+  mk.arenas.Arena.prototype._inAir = function (f, y) {
+    return f.isJumping() && mk.config.PLAYER_TOP - y >= mk.config.AIR_LIFT;
+  };
+
+  // Nach der Landung: Kämpfer, die ineinander stehen, auseinanderschieben (der Gelandete weicht aus)
+  mk.arenas.Arena.prototype.separate = function (fighter) {
+    if (!this._game || !this._game.getOpponent || fighter._remote) return;
+    var opponent = this._game.getOpponent(fighter);
+    if (!opponent || opponent.isJumping()) return;
+    var body = mk.config.BODY, pad = Figuren.AX - 26,
+      min = -pad, max = this.width - Figuren.W + pad,
+      d = fighter.getX() - opponent.getX();
+    if (Math.abs(d) >= body) return;
+    var side = d > 0 ? 1 : d < 0 ? -1 : (fighter._jumpDir || 1);
+    var x = Math.max(min, Math.min(max, opponent.getX() + side * body));
+    fighter._position.x = x;
+    if (Math.abs(x - opponent.getX()) < body && !opponent._remote) {
+      opponent._position.x = Math.max(min, Math.min(max, x - side * body));
+    }
+    if (Math.abs(fighter.getX() - opponent.getX()) < body) {
+      // an der Wand eingeklemmt: dann landet man auf der anderen Seite
+      fighter._position.x = Math.max(min, Math.min(max, opponent.getX() - side * body));
+    }
+    this._setFightersOrientation(fighter, opponent);
   };
 
   mk.arenas.Arena.prototype._synchronizeFighters = function (pos, fighter, opponent) {
@@ -844,20 +878,22 @@
 
   mk.moves.Stand.prototype._beforeGo = function () {
     this.owner.setY(mk.config.PLAYER_TOP);
+    if (this.owner._arena && this.owner._arena.separate) this.owner._arena.separate(this.owner);
   };
 
   mk.moves.Walk = function (owner) {
     mk.moves.CycleMove.call(this, {
       owner: owner,
       type: mk.moves.types.WALK,
-      steps: 9
+      steps: 9,
+      duration: 60
     });
   };
 
   mk.moves.Walk.prototype = new mk.moves.CycleMove();
 
   mk.moves.Walk.prototype._action = function () {
-    this.owner.setX(this.owner.getX() + 10);
+    this.owner.setX(this.owner.getX() + 9);
     this.owner.setY(mk.config.PLAYER_TOP);
   };
 
@@ -865,14 +901,15 @@
     mk.moves.CycleMove.call(this, {
       owner: owner,
       type: mk.moves.types.WALK_BACKWARD,
-      steps: 9
+      steps: 9,
+      duration: 60
     });
   };
 
   mk.moves.WalkBack.prototype = new mk.moves.CycleMove();
 
   mk.moves.WalkBack.prototype._action = function () {
-    this.owner.setX(this.owner.getX() - 10);
+    this.owner.setX(this.owner.getX() - 9);
     this.owner.setY(mk.config.PLAYER_TOP);
   };
 
@@ -1153,25 +1190,37 @@
     this.owner.lock();
   };
 
-  mk.moves.ForwardJump = function (owner) {
-    mk.moves.Move.call(this, owner, mk.moves.types.FORWARD_JUMP, 80);
-    this._totalSteps = 8;
-    this._ownerHeight = owner.getVisibleHeight();
+  // Sprungbogen: Schritt k von total (Parabel), dx = seitliche Bewegung pro Schritt.
+  // Die seitliche Bewegung passiert immer in der Luft (beim Absprung nach dem Abheben, bei der Landung davor).
+  mk.moves.jumpArc = function (owner, k, total, dx) {
+    var t = Math.min(1, (k + 1) / total),
+      y = mk.config.PLAYER_TOP - mk.config.JUMP_HEIGHT * 4 * t * (1 - t);
+    if (t < 1) owner.setY(y);
+    if (dx) owner.setX(owner.getX() + dx);
+    owner.setY(y);
   };
 
-  mk.moves.ForwardJump.prototype = new mk.moves.Move();
+  mk.moves.DirJump = function (owner, type, dir) {
+    mk.moves.Move.call(this, owner, type, 80);
+    this._totalSteps = 8;
+    this._dir = dir;
+    this._ownerHeight = owner ? owner.getVisibleHeight() : 60;
+  };
 
-  mk.moves.ForwardJump.prototype._beforeStop = function () {
+  mk.moves.DirJump.prototype = new mk.moves.Move();
+
+  mk.moves.DirJump.prototype._beforeStop = function () {
     this.owner.unlock();
     this.owner.setHeight(this._ownerHeight);
   };
 
-  mk.moves.ForwardJump.prototype._beforeGo = function () {
+  mk.moves.DirJump.prototype._beforeGo = function () {
     this.owner.lock();
+    this.owner._jumpDir = this._dir;
     this.owner.setHeight(this._ownerHeight / 2);
   };
 
-  mk.moves.ForwardJump.prototype._moveNextStep = function () {
+  mk.moves.DirJump.prototype._moveNextStep = function () {
     this._currentStep += 1;
     if (this._currentStep >= this._totalSteps) {
       this.stop();
@@ -1179,51 +1228,21 @@
     }
   };
 
-  mk.moves.ForwardJump.prototype._action = function () {
-    if (this._currentStep > (this._totalSteps - 1) / 2) { //Move down
-      this.owner.setY(this.owner.getY() + 26);
-      this.owner.setX(this.owner.getX() + 23);
-    } else { //Move up
-      this.owner.setY(this.owner.getY() - 26);
-      this.owner.setX(this.owner.getX() + 23);
-    }
+  mk.moves.DirJump.prototype._action = function () {
+    mk.moves.jumpArc(this.owner, this._currentStep, this._totalSteps, this._dir * mk.config.JUMP_DX);
   };
+
+  mk.moves.ForwardJump = function (owner) {
+    mk.moves.DirJump.call(this, owner, mk.moves.types.FORWARD_JUMP, 1);
+  };
+
+  mk.moves.ForwardJump.prototype = mk.moves.DirJump.prototype;
 
   mk.moves.BackwardJump = function (owner) {
-    mk.moves.Move.call(this, owner, mk.moves.types.BACKWARD_JUMP, 80);
-    this._totalSteps = 8;
-    this._ownerHeight = owner.getVisibleHeight();
+    mk.moves.DirJump.call(this, owner, mk.moves.types.BACKWARD_JUMP, -1);
   };
 
-  mk.moves.BackwardJump.prototype = new mk.moves.Move();
-
-  mk.moves.BackwardJump.prototype._beforeStop = function () {
-    this.owner.unlock();
-    this.owner.setHeight(this._ownerHeight);
-  };
-
-  mk.moves.BackwardJump.prototype._beforeGo = function () {
-    this.owner.lock();
-    this.owner.setHeight(this._ownerHeight / 2);
-  };
-
-  mk.moves.BackwardJump.prototype._moveNextStep = function () {
-    this._currentStep += 1;
-    if (this._currentStep >= this._totalSteps) {
-      this.stop();
-      this.owner.setMove(mk.moves.types.STAND);
-    }
-  };
-
-  mk.moves.BackwardJump.prototype._action = function () {
-    if (this._currentStep > (this._totalSteps - 1) / 2) { //Move down
-      this.owner.setY(this.owner.getY() + 26);
-      this.owner.setX(this.owner.getX() - 23);
-    } else { //Move up
-      this.owner.setY(this.owner.getY() - 26);
-      this.owner.setX(this.owner.getX() - 23);
-    }
-  };
+  mk.moves.BackwardJump.prototype = mk.moves.DirJump.prototype;
 
 /* * * * * * * * * * * * * * Standard attacks * * * * * * * * * * * * * * * */
 
@@ -1432,55 +1451,44 @@
     mk.moves.Attack.call(this, {
       owner: owner,
       type: type,
-      steps: 3,   //to be overriden by the fighter
+      steps: 3,
       damage: damage,
       duration: 80
     });
-    this._offset = {
-      x: -23,
-      y: 26
-    };
-    if (isForward) {
-      this._offset = {
-        x: 23,
-        y: 26
-      };
-    }
+    this._dir = isForward ? 1 : -1;
     this._totalPics = 2;
-    this._counter = 0;
+    this._jumpStep = 4;      // wird beim Wechsel aus dem Sprung übernommen
+    this._jumpTotal = 8;
   };
 
   mk.moves.JumpAttack.prototype = new mk.moves.Attack();
 
   mk.moves.JumpAttack.prototype._moveNextStep = function () {
-    this._currentStep += 1;
-    this._counter += 1;
-    if (this._totalPics <= this._currentStep) {
-      this._currentStep = this._totalPics;
-    }
-    if (this._counter >= this._totalSteps) {
+    this._currentStep = Math.min(this._totalPics, this._currentStep + 1);
+    this._jumpStep += 1;
+    if (this._jumpStep >= this._jumpTotal) {
       if (this.owner.getMove().type !== mk.moves.types.WIN) {
         this.stop();
-        this.owner.setMove(mk.moves.types.STAND);
         this.owner.setY(mk.config.PLAYER_TOP);
+        this.owner.setMove(mk.moves.types.STAND);
       }
     }
   };
 
   mk.moves.JumpAttack.prototype._action = function () {
+    // Treffer beim ausgestreckten Bild, spätestens kurz vor der Landung
     if (!this._hitPassed &&
-      this._currentStep === this._totalPics) {
+      (this._currentStep === this._totalPics || this._jumpStep >= this._jumpTotal - 1)) {
       this.owner.attack(this.getDamage());
       this._hitPassed = true;
     }
-    this.owner.setY(this.owner.getY() + this._offset.y);
-    this.owner.setX(this.owner.getX() + this._offset.x);
+    mk.moves.jumpArc(this.owner, this._jumpStep, this._jumpTotal, this._dir * mk.config.JUMP_DX);
   };
 
   mk.moves.JumpAttack.prototype._beforeGo = function () {
     this._hitPassed = false;
-    this._counter = 0;
     this.owner.lock();
+    this.owner._jumpDir = this._dir;
   };
 
   mk.moves.JumpKick = function (owner, isForward) {
@@ -1750,12 +1758,34 @@
 
     if (move === m.FORWARD_JUMP_KICK || move === m.BACKWARD_JUMP_KICK ||
       move === m.FORWARD_JUMP_PUNCH || move === m.BACKWARD_JUMP_PUNCH) {
-      if (currentMove._currentStep >= currentMove._totalSteps / 2) {
-        this._currentMove.stop();
-        this.unlock();
-        this._currentMove = this.moves[move];
-        this._currentMove._totalSteps = currentMove._totalSteps - currentMove._currentStep;
+      // Nur aus dem passenden Sprung heraus, und nicht mehr ganz kurz vor der Landung
+      var fromType = (move === m.FORWARD_JUMP_KICK || move === m.FORWARD_JUMP_PUNCH) ? m.FORWARD_JUMP : m.BACKWARD_JUMP;
+      var attack = this.moves[move];
+      if (currentMove && currentMove.type === fromType &&
+        currentMove._currentStep >= 1 && currentMove._currentStep < currentMove._totalSteps - 1) {
+        attack._jumpStep = currentMove._currentStep;
+        attack._jumpTotal = currentMove._totalSteps;
+      } else if (this._remote) {
+        // Online-Gegner: lokal etwas anders getaktet, Angriff trotzdem zeigen
+        attack._jumpStep = 4;
+        attack._jumpTotal = 8;
+        if (this.getY() >= mk.config.PLAYER_TOP) this.setY(mk.config.PLAYER_TOP - mk.config.JUMP_HEIGHT * 0.9);
+      } else {
+        return;
       }
+      if (currentMove) currentMove.stop();
+      this._locked = false;
+      this._currentMove = attack;
+      attack.go(0);
+      return;
+    }
+
+    // Erst hoch, gleich danach Richtung gedrückt: aus dem Hochsprung wird noch ein Sprung nach vorne/hinten
+    if ((move === m.FORWARD_JUMP || move === m.BACKWARD_JUMP) && currentMove &&
+      currentMove.type === m.JUMP && !currentMove._moveBack && currentMove._currentStep <= 2) {
+      currentMove.stop();
+      this._locked = false;
+      this.setY(mk.config.PLAYER_TOP);
     }
 
     if (this._locked && move !== m.WIN)
