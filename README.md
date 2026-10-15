@@ -27,6 +27,7 @@
 | [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
 | [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
+| [Formenfabrik](https://langwiligi.site/formenfabrik/) | Solo | Formen schneiden, drehen, färben und eine riesige Fabrik automatisieren. Original: shapez von tobspr Games (GPL-3.0). |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |
 | [Hextris](https://langwiligi.site/hextris/) | Solo | Sechseck drehen, Farben abräumen. Original: Hextris-Team (GPL-3.0). |
@@ -92,4 +93,5 @@ Besitzer lädt direkt auf main hoch ──────┤
 | `docs/` | Bilder für README und LinkedIn |
 | `server/`, `server-aktualisieren.cmd` | Spiel-Server (Online, Ranglisten, Bewertungen) und Upload-Skript für den Server |
 | `tools/spiel-pruefen.js` | Automatische Prüfung neuer Spiele |
+| `tools/formenfabrik/` | Bauskript für die Formenfabrik (aus shapez, GPL-3.0) |
 | `.github/workflows/` | Prüfung bei Pull Requests, Online-Stellen bei `main` |
