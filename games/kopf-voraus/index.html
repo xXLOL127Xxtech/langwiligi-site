@@ -643,9 +643,27 @@ function setupSeesaw(sim, w, g) {
   sim.addDyn('plank', b);
 }
 function setupLift(sim, w) {
-  const b = w.createBody({ type: 'kinematic', position: V2(16, 1.85) });
+  const om = Math.PI * 2 / 9, liftY = ph => 1.85 + 2.5 * (1 - Math.cos(ph * om));
+  const b = w.createBody({ type: 'kinematic', position: V2(16, liftY(0)) });
   b.createFixture(new P.Box(2.5, 0.25), { friction: 0.95, userData: { k: 'ground' } });
-  sim.addDyn('lift', b, (d, t) => { const om = Math.PI * 2 / 9; d.b.setLinearVelocity(V2(0, 2.5 * om * Math.sin(t * om))); });
+  // Sicherheitsstopp: Die kinematische Plattform würde alles unter sich durch den Boden drücken
+  const blocked = () => {
+    const p = b.getPosition(), x0 = p.x - 2.5, x1 = p.x + 2.5, bot = p.y - 0.25; let hit = false;
+    w.queryAABB(new P.AABB(V2(x0, bot - 1), V2(x1, bot)), fx => {
+      if (!fx.getBody().isDynamic()) return true;
+      const a = fx.getAABB(0);
+      if (a.upperBound.x > x0 && a.lowerBound.x < x1 && a.lowerBound.y < bot && a.upperBound.y > bot - 0.15) hit = true;
+      return !hit;
+    });
+    return hit;
+  };
+  const d = sim.addDyn('lift', b, (d, t) => {
+    const dt = t - d.lt; d.lt = t; if (dt <= 0) return;
+    let ph = d.ph + dt;
+    if (liftY(ph) < b.getPosition().y && blocked()) ph = d.ph;
+    d.ph = ph; b.setLinearVelocity(V2(0, (liftY(ph) - b.getPosition().y) / dt));
+  });
+  d.ph = 0; d.lt = sim.wt;
 }
 const ARENAS = [
   { id: 'wueste', name: 'Wüstenarena', theme: 'desert', f: x => 2 + qp(x, 4) },
@@ -898,8 +916,10 @@ class Sim {
   makeCar(i, old) {
     const def = CAR_BY_ID[this.cfg.cars[i]]; const f = i === 0 ? 1 : -1;
     const sx = (this.A.spawn || [6, W - 6])[i];
-    let low = 0; for (const wh of def.wheels) low = Math.max(low, (wh[1] + wh[2]) * S);
-    const by = this.A.f(sx) + low + 0.06 + (old ? 1.2 : 0);
+    // Höhe so, dass jedes Rad über dem Boden darunter steht (auch am Hang, sonst steckt es unter der Oberfläche)
+    let by = -Infinity;
+    for (const [wx, wy, wr] of def.wheels) { const x = sx + wx * S * f, r = wr * S; by = Math.max(by, Math.max(this.A.f(x - r), this.A.f(x), this.A.f(x + r)) + (wy + wr) * S); }
+    by += 0.06 + (old ? 1.2 : 0);
     const w = this.world, grp = -(i + 1);
     const body = w.createBody({ type: 'dynamic', position: V2(sx, by), angularDamping: 0.35, linearDamping: 0.02 });
     for (const pt of def.parts) body.createFixture(new P.Polygon(pt.p.map(([x, y]) => V2(x * S * f, -y * S))), { density: def.st.dens * (pt.d || 1), friction: 0.55, restitution: 0.22, filterGroupIndex: grp, userData: { k: 'car', i } });
@@ -1055,6 +1075,8 @@ class Sim {
     if (this.ph === 'ko' && this.pt >= 2.6) { this.endKo(); return; }
     for (const c of this.cars) this.drive(c);
     for (const d of this.dyn) if (d.upd) d.upd(d, this.wt);
+    // Stacheldecke unten und nach Rundenende anhalten, sonst drückt sie die Autos durch den Boden
+    if (this.saw && (this.ph !== 'play' || this.saw.getPosition().y < this.A.minF + 1.0 + 0.6)) this.saw.setLinearVelocity(V2(0, 0));
     for (let s = 0; s < SUBS; s++) { this.world.step(dts / SUBS, 8, 3); this.processHits(); }
     // Zustand der Autos
     for (const c of this.cars) {
@@ -1062,6 +1084,8 @@ class Sim {
       for (const w of c.wheels) { for (let ce = w.b.getContactList(); ce; ce = ce.next) if (ce.contact.isTouching()) { c.gr = true; break; } if (c.gr) break; }
       if (c.turbo > 0) c.turbo -= dts; if (c.shield > 0) c.shield -= dts; if (c.inv > 0) c.inv -= dts;
       if (c.big > 0) { c.big -= dts; if (c.big <= 0) this.setBig(c, false); }
+      // Notfall: Auto hat das Spielfeld verlassen (durch Wand, Boden oder Decke) → zurücksetzen
+      if (this.ph === 'play' && !c.dead && [c.body, ...c.wheels.map(w => w.b)].some(b => { const p = b.getPosition(); return p.x < -0.5 || p.x > W + 0.5 || p.y > CEIL + 0.5 || p.y < this.A.f(clamp(p.x, 0, W)) - 1; })) this.respawn(c.i);
     }
     for (let k = this.timers.length - 1; k >= 0; k--) { const t = this.timers[k]; t.t -= dts; if (t.t <= 0) { this.timers.splice(k, 1); t.fn(); } }
     for (let k = this.dyn.length - 1; k >= 0; k--) { const d = this.dyn[k]; d.life -= dts; if (d.life <= 0) { this.world.destroyBody(d.b); this.dyn.splice(k, 1); } }
@@ -1078,7 +1102,6 @@ class Sim {
         b.createFixture(new P.Box(W / 2, 0.6), { userData: { k: 'spike' } });
         b.setLinearVelocity(V2(0, -0.85)); this.saw = b; this.emit({ e: 'sd' });
       }
-      if (this.saw && this.saw.getPosition().y < this.A.minF + 1.0 + 0.6) this.saw.setLinearVelocity(V2(0, 0));
       if (this.time > SD_TIME + 40) { this.startKo(-1); return; }
     }
     // Extras
