@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Hextris</title>
+<meta name="description" content="Dreh das Sechseck und räume fallende Blöcke in Dreierfarben ab – schnelles Puzzle à la Tetris.">
+<meta name="theme-color" content="#3498db">
+<meta name="spiel-modi" content="Solo">
+<meta name="spiel-tags" content="Puzzle,Rangliste">
+<link rel="stylesheet" href="style/fa/css/font-awesome.min.css">
+<link rel="stylesheet" href="style/style.css">
+<style>
+  /* Rangliste im Game-over-Bildschirm */
+  #rangliste {
+    display: none; position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%);
+    width: min(320px, calc(100vw - 32px)); max-height: calc(100vh - 380px); min-height: 120px; overflow: auto;
+    padding: 12px 14px; border-radius: 14px; background: rgba(44, 62, 80, 0.94);
+    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.45); z-index: 5;
+    -webkit-user-select: text; user-select: text; --rl-akzent: #3498db;
+  }
+  #rangliste .rl-zeile button { color: #fff; }
+  #rangliste input { -webkit-user-select: text; user-select: text; }
+  #restart { bottom: 18px; left: 50%; }
+  /* Die Kopfzeile bekommt die Rekord-Anzeige */
+  #HIGHSCORE { display: none; }
+  @media (max-height: 640px) {
+    #rangliste { max-height: 150px; }
+  }
+</style>
+<script src="vendor/hammer.min.js"></script>
+<script src="vendor/jsonfn.min.js"></script>
+<script src="vendor/keypress.min.js"></script>
+<script src="vendor/jquery.js"></script>
+<script src="js/save-state.js"></script>
+<script src="js/view.js"></script>
+<script src="js/wavegen.js"></script>
+<script src="js/math.js"></script>
+<script src="js/Block.js"></script>
+<script src="js/Hex.js"></script>
+<script src="js/Text.js"></script>
+<script src="js/comboTimer.js"></script>
+<script src="js/checking.js"></script>
+<script src="js/update.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+<script src="js/initialization.js"></script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="overlay" class="faded overlay"></div>
+  <div id="startBtn"></div>
+  <div id="helpScreen" class="unselectable">
+    <div id="inst_main_body"></div>
+  </div>
+  <img id="openSideBar" class="helpText" src="./images/btn_help.svg" alt="Hilfe">
+  <div class="faded overlay"></div>
+  <img id="pauseBtn" src="./images/btn_pause.svg" alt="Pause">
+  <img id="restartBtn" src="./images/btn_restart.svg" alt="Neu starten">
+  <div id="HIGHSCORE">REKORD</div>
+  <div id="highScoreInGameText">
+    <div id="highScoreInGameTextHeader">REKORD</div><div id="currentHighScore">0</div>
+  </div>
+  <div id="gameoverscreen">
+    <div id="container">
+      <div id="gameOverBox" class="GOTitle">GAME OVER</div>
+      <div id="cScore">0</div>
+      <div id="highScoresTitle" class="GOTitle">DEINE BESTEN</div>
+      <div class="score"><span class="scoreNum">1.</span> <div id="1place" style="display:inline;">0</div></div>
+      <div class="score"><span class="scoreNum">2.</span> <div id="2place" style="display:inline;">0</div></div>
+      <div class="score"><span class="scoreNum">3.</span> <div id="3place" style="display:inline;">0</div></div>
+    </div>
+    <div id="rangliste"></div>
+    <div id="bottomContainer">
+      <img id="restart" src="./images/btn_restart.svg" height="57" alt="Nochmal">
+      <div id="buttonCont"></div>
+    </div>
+  </div>
+
+  <script src="../_shared/hub.js"></script>
+  <script src="rangliste.js"></script>
+  <script>
+    // GAME_ID muss exakt dem Ordnernamen entsprechen
+    var GAME_ID = 'hextris';
+    Rangliste.init({ game: GAME_ID, el: document.getElementById('rangliste'), einheit: 'Punkte' });
+  </script>
+</body>
+</html>
