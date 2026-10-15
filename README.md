@@ -10,6 +10,7 @@
 
 | Spiel | Modi | Worum geht's? |
 |---|---|---|
+| [2048](https://langwiligi.site/2048/) | Solo | Zahlen zusammenschieben bis zur 2048-Kachel. Original: Gabriele Cirulli (MIT). |
 | [3D Bowfight](https://langwiligi.site/bogen-duell/) | Online · Bots | 1 gegen 1 mit Pfeil und Bogen in 3D. |
 | [Backgammon](https://langwiligi.site/backgammon/) | Lokal · Online · Bots | Würfeln, ziehen, abtragen – der Brettspiel-Klassiker. |
 | [Billard](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
@@ -18,14 +19,17 @@
 | [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Bots | Team gegen Bots: Gegner in Blasen fangen, 8 Level. |
 | [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
 | [Catapult](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
+| [Clumsy Bird](https://langwiligi.site/clumsy-bird/) | Solo | Flatter durch die Röhren. Original: Ellison Leão (GPL-3.0). |
 | [Dame](https://langwiligi.site/dame/) | Lokal · Online · Bots | Springen, schlagen, zur Dame werden. |
 | [Dead Maze](https://langwiligi.site/dead-maze/) | Solo | Tower-Defense gegen Zombie-Horden. |
 | [Dots and Boxes](https://langwiligi.site/kaesekaestchen/) | Lokal · Online · Bots | Linien ziehen, Kästchen schliessen, Extrazüge holen. |
 | [Dreh & Gewinn](https://langwiligi.site/dreh-duell/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
 | [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
+| [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |
+| [Hextris](https://langwiligi.site/hextris/) | Solo | Sechseck drehen, Farben abräumen. Original: Hextris-Team (GPL-3.0). |
 | [Hillclimber](https://langwiligi.site/berg-bastler/) | Solo | Bau dein eigenes Auto und bezwinge den Berg. |
 | [Kopf voraus!](https://langwiligi.site/kopf-voraus/) | Lokal · Online · Bots · Solo | Pixel-Autoduell mit verrückter Physik. |
 | [Kronenwacht](https://langwiligi.site/kronenwacht/) | Solo · Online | Tower Defense mit Helden, solo oder im Online-Koop. |

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Clumsy Bird</title>
+<meta name="description" content="Flatter mit dem tollpatschigen Vogel durch die Röhren – ein Tipp zu viel und es ist vorbei.">
+<meta name="theme-color" content="#7cc242">
+<meta name="spiel-modi" content="Solo">
+<meta name="spiel-tags" content="Geschick,Rangliste">
+<style>
+  @font-face {
+    font-family: 'gamefont';
+    src: url('data/css/gamefont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: #0099cc; color: #fff; overflow: hidden;
+    -webkit-user-select: none; user-select: none; touch-action: none;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #screen { height: 100%; display: flex; align-items: center; justify-content: center; }
+  #quer {
+    display: none; position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5;
+    padding: 8px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.3); font-size: 14px; white-space: nowrap;
+  }
+  @media (orientation: portrait) and (max-width: 700px) { #quer { display: block; } }
+  #screen canvas {
+    margin: auto; display: block;
+    image-rendering: optimizeSpeed; image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-optimize-contrast; image-rendering: pixelated;
+  }
+  /* Ton an/aus */
+  #ton {
+    position: fixed; top: 10px; right: 10px; z-index: 10; width: 44px; height: 44px;
+    border: 0; border-radius: 12px; background: rgba(0, 0, 0, 0.35); color: #fff;
+    font-size: 22px; line-height: 44px; cursor: pointer; padding: 0;
+  }
+  /* Online-Rangliste nach jeder Runde */
+  #rangliste {
+    display: none; position: fixed; z-index: 10; width: min(280px, calc(100vw - 32px));
+    max-height: calc(100vh - 24px); overflow: auto; box-sizing: border-box;
+    padding: 12px 14px; border-radius: 14px; background: rgba(20, 30, 40, 0.88);
+    box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.5); --rl-akzent: #7cc242;
+    -webkit-user-select: text; user-select: text; touch-action: auto;
+    right: 12px; top: 50%; transform: translateY(-50%);
+  }
+  #rangliste.an { display: block; }
+  #rangliste .rl-hinweis { margin-top: 8px; font-size: 12px; opacity: 0.7; }
+  /* Hochformat (Handy): unter das Spielfeld */
+  @media (max-aspect-ratio: 4/3) {
+    #rangliste { right: auto; left: 50%; top: auto; bottom: 12px; transform: translateX(-50%); max-height: 45vh; }
+  }
+</style>
+</head>
+<body>
+  <div id="screen"></div>
+  <button id="ton" type="button" title="Ton an/aus (M)" aria-label="Ton an/aus">🔊</button>
+  <div id="rangliste"></div>
+  <div id="quer">📱 Tipp: Handy quer halten</div>
+
+  <!-- melonJS (MIT) und Clumsy Bird -->
+  <script src="js/melonJS-min.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/entities/entities.js"></script>
+  <script src="js/entities/HUD.js"></script>
+  <script src="js/screens/title.js"></script>
+  <script src="js/screens/play.js"></script>
+  <script src="js/screens/gameover.js"></script>
+  <script src="../_shared/hub.js"></script>
+  <script src="rangliste.js"></script>
+  <script>
+    // GAME_ID muss exakt dem Ordnernamen entsprechen
+    var GAME_ID = 'clumsy-bird';
+    var panel = document.getElementById('rangliste');
+    Rangliste.init({ game: GAME_ID, el: panel, einheit: 'Punkte' });
+    var hinweis = document.createElement('div');
+    hinweis.className = 'rl-hinweis';
+    hinweis.textContent = 'Tippe aufs Spiel (oder Leertaste) für eine neue Runde.';
+    panel.appendChild(hinweis);
+
+    var ton = document.getElementById('ton');
+    ton.textContent = game.data.muted ? '🔇' : '🔊';
+    ['mousedown', 'pointerdown', 'touchstart'].forEach(function (ev) {
+      ton.addEventListener(ev, function (e) { e.stopPropagation(); });
+    });
+    ton.addEventListener('click', function (e) { e.preventDefault(); game.toggleMute(); ton.blur(); });
+
+    window.onReady(function onReady() {
+      game.onload();
+    });
+  </script>
+  <!-- Original: https://github.com/ellisonleao/clumsy-bird von Ellison Leão, Lizenz GNU GPL v3 (siehe LIZENZ.md) -->
+</body>
+</html>

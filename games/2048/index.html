@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>2048</title>
+<meta name="description" content="Schieb die Zahlen zusammen, bis die 2048-Kachel entsteht – der Puzzle-Klassiker mit Rangliste.">
+<meta name="theme-color" content="#edc22e">
+<meta name="spiel-modi" content="Solo">
+<meta name="spiel-tags" content="Puzzle,Rangliste">
+<link rel="stylesheet" href="style/main.css">
+<style>
+  /* Dunkles Design passend zu langwiligi.site, Spielfeld im Original-Look */
+  html, body { background: #0d0f13; color: #d9d3c7; }
+  body { margin: 40px 0; }
+  h1.title { color: #edc22e; }
+  a, .game-intro strong { color: #f2d77a; }
+  .game-intro { color: #b8b1a5; }
+  .game-explanation { color: #b8b1a5; margin-top: 28px; }
+  .game-explanation strong { color: #ecebf5; }
+  .restart-button { cursor: pointer; }
+  .panel {
+    margin-top: 22px; padding: 16px 18px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.09);
+  }
+  .credits { margin-top: 18px; font-size: 13px; color: #8a8478; line-height: 1.6; }
+  .credits a { color: #b8b1a5; font-weight: normal; }
+  .game-container { touch-action: none; }
+  @media screen and (max-width: 520px) {
+    body { margin: 16px 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="heading">
+      <h1 class="title">2048</h1>
+      <div class="scores-container">
+        <div class="score-container">0</div>
+        <div class="best-container">0</div>
+      </div>
+    </div>
+
+    <div class="above-game">
+      <p class="game-intro">Kombiniere die Zahlen bis zur <strong>2048-Kachel!</strong></p>
+      <a class="restart-button">Neues Spiel</a>
+    </div>
+
+    <div class="game-container">
+      <div class="game-message">
+        <p></p>
+        <div class="lower">
+          <a class="keep-playing-button">Weiterspielen</a>
+          <a class="retry-button">Nochmal</a>
+        </div>
+      </div>
+
+      <div class="grid-container">
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+        <div class="grid-row">
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+          <div class="grid-cell"></div>
+        </div>
+      </div>
+
+      <div class="tile-container">
+
+      </div>
+    </div>
+
+    <p class="game-explanation">
+      <strong class="important">So geht's:</strong> Schiebe alle Kacheln mit den <strong>Pfeiltasten</strong> (oder WASD),
+      auf dem Handy mit einem <strong>Wisch</strong> übers Spielfeld. Treffen zwei gleiche Zahlen aufeinander,
+      <strong>verschmelzen sie zu einer!</strong> Taste R startet neu.
+    </p>
+
+    <div class="panel" id="rangliste"></div>
+
+    <p class="credits">
+      Original von <a href="https://github.com/gabrielecirulli/2048" target="_blank" rel="noopener">Gabriele Cirulli</a> (MIT-Lizenz, siehe <a href="LIZENZ.txt" target="_blank">LIZENZ.txt</a>),
+      basierend auf 1024 von Veewo Studio und angelehnt an Threes von Asher Vollmer.
+    </p>
+  </div>
+
+  <script src="js/bind_polyfill.js"></script>
+  <script src="js/classlist_polyfill.js"></script>
+  <script src="js/animframe_polyfill.js"></script>
+  <script src="js/keyboard_input_manager.js"></script>
+  <script src="js/html_actuator.js"></script>
+  <script src="js/grid.js"></script>
+  <script src="js/tile.js"></script>
+  <script src="js/local_storage_manager.js"></script>
+  <script src="js/game_manager.js"></script>
+  <script src="../_shared/hub.js"></script>
+  <script src="rangliste.js"></script>
+  <script>
+    // GAME_ID muss exakt dem Ordnernamen entsprechen
+    var GAME_ID = '2048';
+    Rangliste.init({ game: GAME_ID, el: document.getElementById('rangliste'), einheit: 'Punkte' });
+  </script>
+  <script src="js/application.js"></script>
+</body>
+</html>
