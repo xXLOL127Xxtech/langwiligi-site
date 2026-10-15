@@ -325,6 +325,7 @@ table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
     <div id="resbar"></div>
     <div id="speedBox">
       <button class="sp" data-speed="0" title="Pause (Leertaste)"><i data-ic="pause"></i></button>
+      <button class="sp" data-speed="0.5" title="Halbes Tempo">½×</button>
       <button class="sp" data-speed="1" title="Normales Tempo">1×</button>
       <button class="sp" data-speed="2" title="Doppeltes Tempo">2×</button>
       <button class="sp" data-speed="4" title="Vierfaches Tempo">4×</button>
@@ -391,9 +392,11 @@ table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
         <li><b>Karte:</b> Ziehen zum Verschieben, Mausrad oder zwei Finger zum Zoomen. Tippe auf eine Provinz für Infos, Gebäude und Truppenbau.</li>
         <li><b>Armeen:</b> Armee antippen, dann auf das Ziel tippen (am PC auch Rechtsklick). Leere Feindprovinzen werden beim Betreten erobert.</li>
         <li><b>Wirtschaft:</b> Provinzen liefern Geld, Nahrung, Stahl, Öl und Arbeitskraft. Industrie erhöht die Produktion, besetzte Gebiete liefern weniger.</li>
-        <li><b>Gebäude:</b> Kaserne für Infanterie, Artillerie und Flak, Fabrik für Panzer, Flugplatz für Flugzeuge, Hafen für Schiffe.</li>
+        <li><b>Truppen:</b> Infanterie kommt als Trupp mit 5 Soldaten, Panzer, Artillerie, Flugzeuge und Schiffe einzeln. Panzer sind teuer, aber sehr stark.</li>
+        <li><b>Gebäude:</b> Kaserne für Infanterie, Artillerie und Flak, Fabrik für Panzer, Flugplatz für Flugzeuge, Hafen für Schiffe. Auch ganz herausgezoomt zeigen kleine Symbole unter jeder Provinz, was dort steht und was gerade gebaut wird.</li>
         <li><b>Kampf:</b> Verteidiger kämpfen besser, Festungen schützen. Artillerie und Schlachtschiffe beschiessen Nachbarprovinzen, wenn sie stehen.</li>
         <li><b>Meer:</b> Landtruppen schiffen an der Küste automatisch ein, sind auf See aber verwundbar. Flugzeuge müssen nach einigen Stunden heim.</li>
+        <li><b>Tempo:</b> Pausiere jederzeit und plane in Ruhe, auch während der Pause kannst du Befehle geben. Erklärt dir jemand den Krieg, hält das Spiel automatisch an.</li>
         <li><b>Tasten:</b> Leertaste = Pause, Esc = Auswahl aufheben, WASD/Pfeile = Karte verschieben.</li>
       </ul>
     </details>
@@ -419,7 +422,7 @@ table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
       </div>
       <label class="lbl">Tempo</label>
       <div class="seg" id="segSpeedO">
-        <button data-v="1">1×</button><button data-v="2" class="on">2×</button><button data-v="4">4×</button>
+        <button data-v="0.5">½×</button><button data-v="1" class="on">1×</button><button data-v="2">2×</button><button data-v="4">4×</button>
       </div>
     </div>
     <p class="sub" id="lobInfo">Warte auf Mitspieler …</p>
@@ -472,7 +475,10 @@ function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h
 // ---------------------------------------------------------------------------
 // Spieldaten
 // ---------------------------------------------------------------------------
-const HOUR_MS = 2000;                 // eine Spielstunde bei 1× Tempo
+const HOUR_MS = 5000;                 // eine Spielstunde bei 1× Tempo
+const SEA_SPD = 22;                   // Tempo eingeschiffter Landtruppen
+const ECON = { geld: 0.6, nahrung: 0.55, stahl: 0.62, oel: 0.45, ak: 0.45 }; // Faktor auf die Produktion aller Provinzen
+const SAVE_V = 2;                     // Spielstände mit anderen Werten werden verworfen
 const COMBAT = 0.6;                   // Schadensfaktor pro Kampfstunde
 const RES = ['geld', 'nahrung', 'stahl', 'oel', 'ak'];
 const RES_INFO = {
@@ -482,27 +488,29 @@ const RES_INFO = {
 const CLS_N = ['Infanterie-Ziele', 'Panzer-Ziele', 'Luft-Ziele', 'See-Ziele'];
 
 // Werte gegen [weich, gepanzert, Luft, See]
+// grp = so viele Einheiten kommen pro Auftrag (Infanterie als Trupp zu 5, alles andere einzeln)
 const UNITS = {
-  inf: { n: 'Infanterie', dom: 'land', cls: 0, hp: 20, atk: [3, 1.2, 0.4, 0.4], def: [4, 2, 0.6, 0.4], spd: 30,
-    cost: { geld: 40, nahrung: 20, stahl: 8, ak: 20 }, t: 7, bld: 'kas', up: { nahrung: 0.4 }, d: 'Günstig und zäh in der Verteidigung.' },
-  art: { n: 'Artillerie', dom: 'land', cls: 0, hp: 14, atk: [1.2, 0.8, 0, 0.3], def: [1.6, 1, 0, 0.3], rng: [6, 3.5, 0, 2.5], spd: 26,
-    cost: { geld: 60, nahrung: 15, stahl: 30, ak: 15 }, t: 9, bld: 'kas', up: { nahrung: 0.3 }, d: 'Beschiesst Feinde in Nachbarprovinzen, wenn sie steht.' },
-  flak: { n: 'Flak', dom: 'land', cls: 0, hp: 16, atk: [1, 0.5, 5, 0], def: [1.5, 0.7, 7, 0], spd: 30,
-    cost: { geld: 55, nahrung: 15, stahl: 25, oel: 15, ak: 15 }, t: 9, bld: 'kas', up: { nahrung: 0.3 }, d: 'Holt Flugzeuge vom Himmel.' },
-  pz: { n: 'Panzer', dom: 'land', cls: 1, hp: 26, atk: [5.5, 4, 0.3, 0.4], def: [3.5, 3, 0.3, 0.4], spd: 44,
-    cost: { geld: 100, nahrung: 15, stahl: 55, oel: 45, ak: 20 }, t: 12, bld: 'fab', up: { oel: 0.5 }, d: 'Schnell und stark im Angriff.' },
-  jag: { n: 'Jäger', dom: 'air', cls: 2, hp: 18, atk: [1.2, 0.6, 6, 0.8], def: [1.2, 0.6, 6, 0.8], spd: 130, fuel: 9,
-    cost: { geld: 90, stahl: 35, oel: 55, ak: 15 }, t: 11, bld: 'flu', up: { oel: 0.6 }, d: 'Luftüberlegenheit. Reichweite 9 Stunden.' },
-  bom: { n: 'Bomber', dom: 'air', cls: 2, hp: 20, atk: [6, 4.5, 0.8, 4], def: [0.5, 0.5, 1.5, 0.5], spd: 100, fuel: 12, lock: true,
-    cost: { geld: 130, stahl: 50, oel: 75, ak: 20 }, t: 15, bld: 'flu', up: { oel: 0.8 }, d: 'Zerstört Bodentruppen und Schiffe. Reichweite 12 Stunden.' },
-  zer: { n: 'Zerstörer', dom: 'sea', cls: 3, hp: 26, atk: [1.5, 1, 2.5, 4.5], def: [1.5, 1, 3, 4.5], spd: 65,
-    cost: { geld: 100, stahl: 60, oel: 50, ak: 25 }, t: 13, bld: 'haf', up: { oel: 0.6 }, d: 'Schnelles Kriegsschiff, gut gegen Schiffe und Flugzeuge.' },
-  ubo: { n: 'U-Boot', dom: 'sea', cls: 3, hp: 20, atk: [0, 0, 0, 8], def: [0, 0, 0, 3], spd: 45, lock: true,
-    cost: { geld: 110, stahl: 55, oel: 50, ak: 20 }, t: 13, bld: 'haf', up: { oel: 0.5 }, d: 'Versenkt Schiffe und Truppentransporte.' },
-  sch: { n: 'Schlachtschiff', dom: 'sea', cls: 3, hp: 60, atk: [4, 3, 2, 6], def: [4, 3, 3, 6], rng: [7, 5, 0, 6], spd: 40, lock: true,
-    cost: { geld: 220, nahrung: 20, stahl: 120, oel: 100, ak: 45 }, t: 22, bld: 'haf', up: { oel: 1.2 }, d: 'Schwer gepanzert, beschiesst Küsten und Schiffe.' },
-  mil: { n: 'Miliz', dom: 'land', cls: 0, hp: 15, atk: [2, 0.8, 0.3, 0.3], def: [3, 1.5, 0.5, 0.3], spd: 20, cost: {}, t: 0, bld: null, up: {} },
+  inf: { n: 'Infanterie', grp: 5, dom: 'land', cls: 0, hp: 12, atk: [1.8, 0.7, 0.25, 0.25], def: [2.4, 1.2, 0.35, 0.25], spd: 18,
+    cost: { geld: 100, nahrung: 80, stahl: 30, ak: 75 }, t: 12, bld: 'kas', up: { nahrung: 0.12 }, d: 'Kommt als Trupp mit 5 Soldaten. Günstig pro Kopf und zäh in der Verteidigung.' },
+  art: { n: 'Artillerie', dom: 'land', cls: 0, hp: 14, atk: [1.2, 0.8, 0, 0.3], def: [1.6, 1, 0, 0.3], rng: [6, 3.5, 0, 2.5], spd: 15,
+    cost: { geld: 80, nahrung: 25, stahl: 50, ak: 25 }, t: 12, bld: 'kas', up: { nahrung: 0.2 }, d: 'Beschiesst Feinde in Nachbarprovinzen, wenn sie steht.' },
+  flak: { n: 'Flak', dom: 'land', cls: 0, hp: 16, atk: [1, 0.5, 5, 0], def: [1.5, 0.7, 7, 0], spd: 18,
+    cost: { geld: 75, nahrung: 25, stahl: 40, oel: 25, ak: 25 }, t: 12, bld: 'kas', up: { nahrung: 0.2 }, d: 'Holt Flugzeuge vom Himmel.' },
+  pz: { n: 'Panzer', dom: 'land', cls: 1, hp: 42, atk: [9, 7, 0.4, 0.5], def: [5.5, 5, 0.4, 0.5], spd: 26,
+    cost: { geld: 160, nahrung: 20, stahl: 110, oel: 90, ak: 30 }, t: 18, bld: 'fab', up: { oel: 0.6 }, d: 'Teuer, aber schnell und sehr stark im Angriff.' },
+  jag: { n: 'Jäger', dom: 'air', cls: 2, hp: 18, atk: [1.2, 0.6, 6, 0.8], def: [1.2, 0.6, 6, 0.8], spd: 95, fuel: 12,
+    cost: { geld: 120, stahl: 65, oel: 100, ak: 25 }, t: 16, bld: 'flu', up: { oel: 0.4 }, d: 'Luftüberlegenheit. Reichweite 12 Stunden.' },
+  bom: { n: 'Bomber', dom: 'air', cls: 2, hp: 20, atk: [6, 4.5, 0.8, 4], def: [0.5, 0.5, 1.5, 0.5], spd: 75, fuel: 16, lock: true,
+    cost: { geld: 170, stahl: 90, oel: 140, ak: 30 }, t: 20, bld: 'flu', up: { oel: 0.5 }, d: 'Zerstört Bodentruppen und Schiffe. Reichweite 16 Stunden.' },
+  zer: { n: 'Zerstörer', dom: 'sea', cls: 3, hp: 26, atk: [1.5, 1, 2.5, 4.5], def: [1.5, 1, 3, 4.5], spd: 40,
+    cost: { geld: 130, stahl: 100, oel: 90, ak: 40 }, t: 18, bld: 'haf', up: { oel: 0.4 }, d: 'Schnelles Kriegsschiff, gut gegen Schiffe und Flugzeuge.' },
+  ubo: { n: 'U-Boot', dom: 'sea', cls: 3, hp: 20, atk: [0, 0, 0, 8], def: [0, 0, 0, 3], spd: 28, lock: true,
+    cost: { geld: 140, stahl: 95, oel: 90, ak: 35 }, t: 18, bld: 'haf', up: { oel: 0.35 }, d: 'Versenkt Schiffe und Truppentransporte.' },
+  sch: { n: 'Schlachtschiff', dom: 'sea', cls: 3, hp: 60, atk: [4, 3, 2, 6], def: [4, 3, 3, 6], rng: [7, 5, 0, 6], spd: 25, lock: true,
+    cost: { geld: 280, nahrung: 30, stahl: 210, oel: 180, ak: 70 }, t: 30, bld: 'haf', up: { oel: 0.8 }, d: 'Schwer gepanzert, beschiesst Küsten und Schiffe.' },
+  mil: { n: 'Miliz', dom: 'land', cls: 0, hp: 15, atk: [2, 0.8, 0.3, 0.3], def: [3, 1.5, 0.5, 0.3], spd: 12, cost: {}, t: 0, bld: null, up: {} },
 };
+const grpOf = t => UNITS[t].grp || 1;
 const UNIT_ORDER = ['inf', 'art', 'flak', 'pz', 'jag', 'bom', 'zer', 'ubo', 'sch'];
 
 const BLD = {
@@ -882,13 +890,13 @@ const dayStr = h => `Tag ${Math.floor(h / 24) + 1}, ${String(Math.floor(h % 24))
 function newState(o) {
   const nN = MAPS[o.map].nations;
   MAP = generateMap(o.seed, o.map, nN);
-  const st = { v: 1, seed: o.seed, map: o.map, diff: o.diff, goal: o.goal, speed: o.speed || 1, hour: 0, nid: 1, over: null,
+  const st = { v: SAVE_V, seed: o.seed, map: o.map, diff: o.diff, goal: o.goal, speed: o.speed || 1, hour: 0, nid: 1, over: null,
     online: !!o.online, nations: [], cells: [], armies: [], offers: [] };
   G = st;
   for (let k = 0; k < nN; k++) {
     const h = o.humans[k];
     st.nations.push({ id: k, name: NATION_DEFS[k].n, color: NATION_DEFS[k].c, ctrl: h ? 'human' : 'bot', player: h ? h.name : '',
-      diff: o.diff, res: { geld: 450, nahrung: 320, stahl: 320, oel: 220, ak: 220 },
+      diff: o.diff, res: { geld: 320, nahrung: 200, stahl: 180, oel: 130, ak: 160 },
       tech: { inf: 1, art: 1, flak: 1, pz: 1, jag: 1, bom: 0, zer: 1, ubo: 0, sch: 0, eco: 0, log: 0 },
       rs: [], rel: new Array(nN).fill('frieden'), relT: new Array(nN).fill(0), alive: true, cap: MAP.caps[k],
       ai: { next: k % 3, target: -1, lastOffer: -99 }, lost: 0, starve: {}, starveMsg: -99 });
@@ -901,12 +909,12 @@ function newState(o) {
   for (const n of st.nations) {
     const cap = st.cells[n.cap];
     cap.b.kas = 1; cap.b.fab = 1; cap.b.ind = 1; cap.b.fes = 1;
-    addArmy(n.id, n.cap, ['inf', 'inf', 'inf', 'inf', 'art', 'art', 'pz', 'pz']);
+    addArmy(n.id, n.cap, [...Array(10).fill('inf'), 'art', 'art', 'pz']);
     let port = false;
     const cities = MAP.cells.filter(c => c.city === 1 && c.owner === n.id);
     for (const c of cities) {
       st.cells[c.id].b.kas = 1;
-      addArmy(n.id, c.id, ['inf', 'inf', 'inf']);
+      addArmy(n.id, c.id, Array(5).fill('inf'));
       if (!port && c.coast) { port = true; st.cells[c.id].b.haf = 1; addArmy(n.id, c.id, ['zer']); }
     }
     if (!port && MAP.cells[n.cap].coast) { cap.b.haf = 1; addArmy(n.id, n.cap, ['zer']); }
@@ -937,7 +945,7 @@ function armySpeed(a) {
   for (const u of a.u) s = Math.min(s, UNITS[u.t].spd);
   if (a.dom === 'land') {
     s *= 1 + 0.15 * (nat(a.o) ? nat(a.o).tech.log : 0);
-    if (!MAP.cells[a.c].land || (a.p.length && !MAP.cells[a.p[0]].land)) s = 36;
+    if (!MAP.cells[a.c].land || (a.p.length && !MAP.cells[a.p[0]].land)) s = SEA_SPD;
   }
   return s;
 }
@@ -959,7 +967,7 @@ function findPath(o, dom, from, to, spd) {
   if (from === to) return [from];
   if (!canEnter(o, dom, to)) return null;
   const N = MAP.cells.length, g = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
-  const T = MAP.cells[to], h = i => Math.hypot(MAP.cells[i].x - T.x, MAP.cells[i].y - T.y) / Math.max(spd, 36);
+  const T = MAP.cells[to], h = i => Math.hypot(MAP.cells[i].x - T.x, MAP.cells[i].y - T.y) / Math.max(spd, SEA_SPD);
   const heap = [[h(from), from]];
   g[from] = 0;
   const push = (f, i) => { heap.push([f, i]); let k = heap.length - 1; while (k) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
@@ -977,7 +985,7 @@ function findPath(o, dom, from, to, spd) {
       const j = c.nb[k];
       if (!canEnter(o, dom, j)) continue;
       let cost = c.nbd[k];
-      if (dom === 'land') cost = MAP.cells[j].land ? cost / spd : cost / 36 * 1.5 + (c.land ? 3 : 0);
+      if (dom === 'land') cost = MAP.cells[j].land ? cost / spd : cost / SEA_SPD * 1.5 + (c.land ? 3 : 0);
       else cost /= spd;
       const ng = g[i] + cost;
       if (ng < g[j]) { g[j] = ng; prev[j] = i; push(ng + h(j), j); }
@@ -1043,7 +1051,7 @@ function cellProd(ci) {
     if (G.cells[n.cap].o !== n.id) m *= 0.8;
     if (n.ctrl === 'bot') m *= [0.75, 1, 1.3][n.diff];
   }
-  for (const r of RES) out[r] *= m;
+  for (const r of RES) out[r] *= m * ECON[r];
   return out;
 }
 function nationIncome(n) {
@@ -1067,7 +1075,7 @@ function economyTick() {
       if (n.res[r] < 0) { n.res[r] = 0; n.starve[r] = true; }
     }
     if (Object.keys(n.starve).length) {
-      for (const a of G.armies) if (a.o === n.id) for (const u of a.u) for (const r in UNITS[u.t].up) if (n.starve[r]) u.hp -= 1;
+      for (const a of G.armies) if (a.o === n.id) for (const u of a.u) for (const r in UNITS[u.t].up) if (n.starve[r]) u.hp -= UNITS[u.t].hp * 0.05;
       if (G.hour - n.starveMsg > 12) { n.starveMsg = G.hour; notify(n.id, `Nachschub fehlt (${Object.keys(n.starve).map(r => RES_INFO[r].n).join(', ')})! Deine Truppen leiden.`, 'bad'); }
     }
     // Forschung
@@ -1096,11 +1104,11 @@ function economyTick() {
   });
 }
 function spawnUnit(ci, o, t) {
-  const dom = UNITS[t].dom;
+  const dom = UNITS[t].dom, k = grpOf(t);
   const a = G.armies.find(x => x.o === o && x.dom === dom && x.c === ci && !x.p.length);
-  if (a) { a.u.push({ t, hp: UNITS[t].hp }); if (dom === 'air') a.f = Math.min(a.f, maxFuel(a)); }
-  else addArmy(o, ci, [t]);
-  if (nat(o) && nat(o).ctrl !== 'bot') notify(o, `${UNITS[t].n} in ${MAP.cells[ci].name} bereit.`, '', ci);
+  if (a) { for (let i = 0; i < k; i++) a.u.push({ t, hp: UNITS[t].hp }); if (dom === 'air') a.f = Math.min(a.f, maxFuel(a)); }
+  else addArmy(o, ci, Array(k).fill(t));
+  if (nat(o) && nat(o).ctrl !== 'bot') notify(o, `${k > 1 ? k + '× ' : ''}${UNITS[t].n} in ${MAP.cells[ci].name} bereit.`, '', ci);
 }
 
 function unitCls(a, u, ci) { return embarked(a, ci) ? 3 : UNITS[u.t].cls; }
@@ -1393,6 +1401,7 @@ function applyCmd(n, c) {
       if (!m || !m.alive || c.to === n || N.rel[c.to] === 'krieg') return false;
       N.rel[c.to] = m.rel[n] = 'krieg'; N.relT[c.to] = m.relT[n] = G.hour;
       notifyAll(`⚔️ ${N.name} erklärt ${m.name} den Krieg!`, 'bad');
+      if (!NET && m.ctrl !== 'bot' && n !== ME) autoPause = `${N.name} hat dir den Krieg erklärt.`;
       return true;
     }
     case 'peace': {
@@ -1583,7 +1592,7 @@ function botThink(N) {
 
   // ---- Truppen bauen ----
   const count = {};
-  for (const a of myArmies) for (const u of a.u) count[u.t] = (count[u.t] || 0) + 1;
+  for (const a of myArmies) for (const u of a.u) count[u.t] = (count[u.t] || 0) + 1 / grpOf(u.t);
   const total = Object.values(count).reduce((s, v) => s + v, 0) || 1;
   const want = diff === 0 ? { inf: 0.6, art: 0.15, pz: 0.25, jag: 0.05 }
     : { inf: 0.4, art: 0.15, pz: 0.28, flak: 0.06, jag: 0.06, bom: 0.07 };
@@ -1902,6 +1911,32 @@ function drawBadge(x, y, r, n, ring, prog, progCol, lvl) {
     for (let l = 0; l < lvl; l++) { ctx.beginPath(); ctx.arc(x + (l - (lvl - 1) / 2) * 4.6, y + r + 4.2, 1.8, 0, Math.PI * 2); ctx.fill(); }
   }
 }
+// Herausgezoomt: kleine Symbole für Kaserne, Fabrik, Flugplatz, Hafen und Festung, dazu Bau und Ausbildung,
+// damit man auch auf der ganzen Karte sieht, wo was steht.
+const COMPACT_BLD = ['kas', 'fab', 'flu', 'haf', 'fes'];
+const COMPACT_COL = { kas: '#c5e1a5', fab: '#ffcc80', flu: '#90caf9', haf: '#80deea', fes: '#d7dde3' };
+function drawCompactBuildings(x, y, cs, cellPx, s) {
+  const items = [];
+  for (const k of COMPACT_BLD) if (cs.b[k] && !(cs.bq && cs.bq.k === k)) items.push([k, COMPACT_COL[k]]);
+  if (cs.bq) items.push([cs.bq.k, '#ffb74d', 1 - (cs.bq.t - (G.frac || 0)) / cs.bq.tot]);
+  if (cs.uq.length) { const q = cs.uq[0]; items.push([q.u, '#a5e5a7', 1 - (q.t - (G.frac || 0)) / q.tot]); }
+  if (!items.length) return;
+  const q = clamp(cellPx * 0.24, 10, 16), gap = q + 3, per = Math.min(items.length, 3), rows = Math.ceil(items.length / per);
+  const w = per * gap + 3, h = rows * gap + 3;
+  // unterhalb des Armee-Kästchens, das in der Mitte der Provinz steht
+  const x0 = x - w / 2, y0 = y + Math.min(13 * s + 8, cellPx * 0.3); // s = Grösse der Armee-Kästchen
+  ctx.fillStyle = 'rgba(12,15,20,0.82)';
+  roundRect(x0, y0, w, h, Math.min(6, q * 0.5)); ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = cs.o >= 0 ? natColor(cs.o) : 'rgba(255,255,255,0.35)'; ctx.stroke();
+  items.forEach((it, k) => {
+    const cx = x0 + 1.5 + (k % per) * gap + gap / 2, cy = y0 + 1.5 + Math.floor(k / per) * gap + gap / 2;
+    drawIcon(it[0], cx, cy, q, it[1]);
+    if (it[2] !== undefined) {
+      ctx.beginPath(); ctx.arc(cx, cy, gap / 2 - 0.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(it[2], 0, 1));
+      ctx.strokeStyle = it[1]; ctx.lineWidth = 1.6; ctx.stroke();
+    }
+  });
+}
 function drawEmblem(x, y, s, cap, col) {
   const r = (cap ? 13 : 11) * s;
   ctx.save();
@@ -1969,6 +2004,9 @@ function draw(now) {
   // ---- Bildschirm-Ebene ----
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const s = clamp(0.7 + z * 0.4, 0.75, 1.35);
+  const cellPx = MAP.spacing * z;               // Abstand zweier Provinzen auf dem Bildschirm
+  const embOff = Math.min(27 * s, cellPx * 0.36); // Stadt-Symbol rückt herausgezoomt näher an die Mitte
+  const sa = s * clamp(cellPx / 48, 0.62, 1);     // ganz herausgezoomt kleinere Armee-Kästchen
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   // Ziele der eigenen Armeen
   for (const a of G.armies) {
@@ -1989,7 +2027,7 @@ function draw(now) {
       ctx.beginPath(); ctx.arc(x, y, 25 * s, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 5; ctx.stroke();
       ctx.beginPath(); ctx.arc(x, y, 25 * s, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p); ctx.strokeStyle = natColor(cs.cpBy); ctx.lineWidth = 4; ctx.stroke();
     }
-    if (c.city) drawEmblem(x, y - 27 * s, s, c.city === 2, natColor(cs.o));
+    if (c.city) drawEmblem(x, y - embOff, s * Math.min(1, embOff / (27 * s) + 0.25), c.city === 2, natColor(cs.o));
     // Name
     if ((c.city && z > 0.42) || z > 1.15) {
       const fs = Math.round((c.city ? 12.5 : 10.5) * Math.min(s, 1.15));
@@ -2009,7 +2047,8 @@ function draw(now) {
       }
     }
     // Gebäude, Bau und Ausbildung
-    if (vis && (c.city ? z > 0.5 : z > 0.8)) {
+    if (vis && !(c.city ? z > 0.5 : z > 0.8)) drawCompactBuildings(x, y, cs, cellPx, sa);
+    else if (vis) {
       const items = [];
       for (const k of BLD_ORDER) if (cs.b[k] && !(cs.bq && cs.bq.k === k)) items.push([k, undefined, '', cs.b[k]]);
       if (cs.bq) items.push([cs.bq.k, 1 - (cs.bq.t - (G.frac || 0)) / cs.bq.tot, '#ffb74d', cs.b[cs.bq.k]]);
@@ -2059,31 +2098,31 @@ function draw(now) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(a);
   }
-  const W = 46 * s, H = 26 * s;
+  const W = 46 * sa, H = 26 * sa;
   for (const list of groups.values()) {
     list.sort((a, b) => (a.o === ME) - (b.o === ME));
     list.forEach((a, k) => {
       const p = apos(a);
       let [x, y] = toScreen(p.x, p.y);
       x += (k - (list.length - 1) / 2) * (W + 4);
-      if (a.dom === 'air') y -= 20 * s;
+      if (a.dom === 'air') y -= 20 * sa;
       if (x < -60 || y < -60 || x > VW + 60 || y > VH + 60) return;
       const isSel = selA === a, col = natColor(a.o);
       const x0 = x - W / 2, y0 = y - H / 2;
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      roundRect(x0 + 1.5, y0 + 2.5, W, H, 7 * s); ctx.fill();
+      roundRect(x0 + 1.5, y0 + 2.5, W, H, 7 * sa); ctx.fill();
       const gr = ctx.createLinearGradient(0, y0, 0, y0 + H);
       gr.addColorStop(0, lighter(col)); gr.addColorStop(1, col);
-      roundRect(x0, y0, W, H, 7 * s); ctx.fillStyle = gr; ctx.fill();
+      roundRect(x0, y0, W, H, 7 * sa); ctx.fillStyle = gr; ctx.fill();
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
-      roundRect(x0 + 2, y0 + 2, H - 4, H - 4, 5 * s); ctx.fill();
+      roundRect(x0 + 2, y0 + 2, H - 4, H - 4, 5 * sa); ctx.fill();
       const icn = embarked(a) ? 'zer' : mainUnit(a);
       drawIcon(icn, x0 + H / 2, y, H * 0.74, '#fff');
-      ctx.font = `800 ${Math.round(13 * s)}px system-ui, sans-serif`;
+      ctx.font = `800 ${Math.round(13 * sa)}px system-ui, sans-serif`;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.35)';
       ctx.strokeText(String(a.u.length), x + H / 2, y + 0.5);
       ctx.fillStyle = '#fff'; ctx.fillText(String(a.u.length), x + H / 2, y + 0.5);
-      roundRect(x0, y0, W, H, 7 * s);
+      roundRect(x0, y0, W, H, 7 * sa);
       if (isSel) { ctx.save(); ctx.shadowColor = '#ffe68c'; ctx.shadowBlur = 12; ctx.lineWidth = 2.8; ctx.strokeStyle = '#ffe68c'; ctx.stroke(); ctx.restore(); }
       else { ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke(); }
       const hp = armyHp(a) / armyMaxHp(a);
@@ -2091,14 +2130,14 @@ function draw(now) {
       ctx.fillStyle = hp > 0.6 ? '#66bb6a' : hp > 0.3 ? '#ffca28' : '#ef5350';
       roundRect(x0, y0 + H + 2.5, Math.max(4, W * hp), 4, 2); ctx.fill();
       if (a.fight) {
-        const sc = 1 + 0.12 * Math.sin(now / 110), cy = y0 - 12 * s;
-        ctx.beginPath(); ctx.arc(x, cy, 11 * s * sc, 0, Math.PI * 2); ctx.fillStyle = 'rgba(60,12,8,0.85)'; ctx.fill();
+        const sc = 1 + 0.12 * Math.sin(now / 110), cy = y0 - 12 * sa;
+        ctx.beginPath(); ctx.arc(x, cy, 11 * sa * sc, 0, Math.PI * 2); ctx.fillStyle = 'rgba(60,12,8,0.85)'; ctx.fill();
         ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff6e40'; ctx.stroke();
-        drawIcon('swords', x, cy, 15 * s * sc, '#ffab91');
+        drawIcon('swords', x, cy, 15 * sa * sc, '#ffab91');
       } else if (a.dom === 'air' && a.o === ME && a.f < maxFuel(a)) {
-        ctx.font = `700 ${Math.round(9.5 * s)}px system-ui, sans-serif`;
+        ctx.font = `700 ${Math.round(9.5 * sa)}px system-ui, sans-serif`;
         ctx.fillStyle = a.f <= 2 ? '#ff8a80' : '#ffe68c';
-        ctx.fillText(Math.ceil(a.f) + ' h Treibstoff', x, y0 - 8 * s);
+        ctx.fillText(Math.ceil(a.f) + ' h Treibstoff', x, y0 - 8 * sa);
       }
       armyRects.push({ a, x0, y0, x1: x0 + W, y1: y0 + H });
     });
@@ -2248,7 +2287,7 @@ function pathHours(a, p) {
   const spd = UNITS[mainUnit(a)] ? armySpeed(a) : 30;
   for (let k = 1; k < p.length; k++) {
     const A = MAP.cells[p[k - 1]], B = MAP.cells[p[k]];
-    const sp = a.dom === 'land' && (!A.land || !B.land) ? 36 : spd;
+    const sp = a.dom === 'land' && (!A.land || !B.land) ? SEA_SPD : spd;
     h += Math.hypot(B.x - A.x, B.y - A.y) / sp;
   }
   return h;
@@ -2300,7 +2339,7 @@ function tap(sx, sy, right) {
 // ---------------------------------------------------------------------------
 // Oberfläche
 // ---------------------------------------------------------------------------
-let paused = false, lastSpeed = 1, running = false;
+let paused = false, lastSpeed = 1, running = false, autoPause = null;
 let LOG = [], unread = 0, splitDraft = null;
 const panel = $('panel');
 
@@ -2450,7 +2489,7 @@ function cellUnits(i) {
   let h = '';
   if (cs.uq.length) {
     h += `<div class="sect-t">${ic('time')} In Ausbildung (${cs.uq.length}/5)</div><div class="queue">` + cs.uq.map((q, k) =>
-      `<div class="qi" title="${UNITS[q.u].n}${k ? ' (wartet)' : ' · noch ' + Math.ceil(q.t) + ' h'}">${ic(q.u)}` +
+      `<div class="qi" title="${grpOf(q.u) > 1 ? grpOf(q.u) + '× ' : ''}${UNITS[q.u].n}${k ? ' (wartet)' : ' · noch ' + Math.ceil(q.t) + ' h'}">${ic(q.u)}` +
       `${k ? '' : `<small>${Math.ceil(q.t)} h</small>${bar('uq:' + i + ':0', 'hp')}`}<button class="qx" data-act="cancelUnit" data-i="${k}" title="Abbrechen">${ic('close')}</button></div>`).join('') + `</div>`;
   }
   h += `<div class="sect-t">${ic('plus')} Ausbilden</div>`;
@@ -2459,13 +2498,27 @@ function cellUnits(i) {
     if (U.bld === 'haf' && !MAP.cells[i].coast) continue;
     const hasB = cs.b[U.bld] > 0, unl = me.tech[t] > 0;
     const ok = hasB && unl && cs.uq.length < 5 && canPay(me, U.cost);
-    const why = !unl ? `${ic('lock')} Muss erforscht werden` : !hasB ? `${ic('lock')} Braucht ${BLD[U.bld].n}` : '';
-    h += `<div class="ucard${hasB && unl ? '' : ' off'}" title="${esc(U.d || '')}">${unitBox(t, col)}<div class="mid"><div class="nm">${U.n}${unl ? `<span class="lvl">Stufe ${me.tech[t]}</span>` : ''}</div>` +
+    const near = !hasB && unl ? nearestWithBld(i, U.bld) : -1;
+    const why = !unl ? `${ic('lock')} Muss erforscht werden` : !hasB ? `${ic('lock')} Braucht ${BLD[U.bld].n}` +
+      (near >= 0 ? ` <button class="btn small" data-act="goBld" data-c="${near}" title="Zur nächsten eigenen Provinz mit ${BLD[U.bld].n}">${ic('move')} ${esc(MAP.cells[near].name)}</button>` : '') : '';
+    h += `<div class="ucard${hasB && unl ? '' : ' off'}" title="${esc(U.d || '')}">${unitBox(t, col)}<div class="mid"><div class="nm">${grpOf(t) > 1 ? grpOf(t) + '× ' : ''}${U.n}${unl ? `<span class="lvl">Stufe ${me.tech[t]}</span>` : ''}</div>` +
       unitStats(t, me.tech[t] || 1) +
       (why ? `<div class="meta" style="margin:0">${why}</div>` : `<div class="crow">${costChips(U.cost, me)}<span class="meta" style="margin:0;white-space:nowrap">${ic('time')} ${U.t} h</span></div>`) +
-      `</div><button class="ubtn" data-act="unit" data-u="${t}" ${ok ? '' : 'disabled'} title="${U.n} ausbilden">${ic('plus')}</button></div>`;
+      `</div><button class="ubtn" data-act="unit" data-u="${t}" ${ok ? '' : 'disabled'} title="${grpOf(t) > 1 ? grpOf(t) + '× ' : ''}${U.n} ausbilden">${ic('plus')}</button></div>`;
   }
   return h;
+}
+
+// Nächste eigene Provinz mit diesem Gebäude (für „Braucht Kaserne“ usw.)
+function nearestWithBld(from, k) {
+  let best = -1, bd = Infinity;
+  const A = MAP.cells[from];
+  G.cells.forEach((c, j) => {
+    if (!c || c.o !== ME || !c.b[k]) return;
+    const d = Math.hypot(MAP.cells[j].x - A.x, MAP.cells[j].y - A.y);
+    if (d < bd) { bd = d; best = j; }
+  });
+  return best;
 }
 
 // ---------- Armee ----------
@@ -2543,6 +2596,7 @@ panel.addEventListener('click', e => {
     case 'close': select(null); break;
     case 'tab': ptab = b.dataset.t; store.set('tab', ptab); panel.scrollTop = 0; break;
     case 'selArmy': select({ k: 'army', id: +b.dataset.id }); break;
+    case 'goBld': { const j = +b.dataset.c; centerOn(j); select({ k: 'cell', i: j }); break; }
     case 'build': sendCmd({ k: 'build', cell: ci, b: b.dataset.b }); sound('build'); break;
     case 'cancelBuild': sendCmd({ k: 'cancelBuild', cell: ci }); break;
     case 'unit': sendCmd({ k: 'unit', cell: ci, u: b.dataset.u }); sound('build'); break;
@@ -2801,6 +2855,7 @@ function saveGame() {
 function loadGame() {
   const s = store.get('save', null);
   if (!s || !s.G) return false;
+  if (s.G.v !== SAVE_V) { store.del('save'); return false; }
   try {
     NET = null;
     G = s.G;
@@ -2890,6 +2945,14 @@ function frame(now) {
         while (G.frac >= 1) { G.frac -= 1; hourTick(); refreshUI(); }
       } else G.frac = Math.min(G.frac, 0.999);
     }
+    if (autoPause) {
+      // Solo: bei einer Kriegserklärung anhalten, damit man in Ruhe reagieren kann
+      if (!NET && !paused && !G.over) {
+        setSpeed(0);
+        toast(`${autoPause} Das Spiel ist pausiert, plane in Ruhe. Weiter mit einem Tempo-Knopf oder der Leertaste.`, 'bad', undefined, '', 8000);
+      }
+      autoPause = null;
+    }
     if (NET && NET.host && now - netT > 450) { netT = now; hostBroadcast(); }
     if (now - uiT > 400) { uiT = now; refreshUI(); }
     else { updateBars(panel); if (modalKind) updateBars($('modalCard')); }
@@ -2907,7 +2970,7 @@ window.addEventListener('pagehide', () => saveGame());
 // ---------------------------------------------------------------------------
 // Online (Host rechnet, Gäste schicken Befehle)
 // ---------------------------------------------------------------------------
-const lobby = { map: 1, diff: 1, speed: 2 };
+const lobby = { map: 1, diff: 1, speed: 1 };
 segSetup('segMapO', 'map', lobby);
 segSetup('segDiffO', 'diff', lobby);
 segSetup('segSpeedO', 'speed', lobby);
@@ -3060,6 +3123,8 @@ $('bCopy').onclick = async () => {
 // Start
 // ---------------------------------------------------------------------------
 function initMenu() {
+  const sv = store.get('save', null);
+  if (sv && (!sv.G || sv.G.v !== SAVE_V)) store.del('save');
   $('bContinue').classList.toggle('hidden', !store.get('save', null));
   if (HUB) {
     $('onlineBox').classList.remove('hidden');
