@@ -138,8 +138,25 @@ ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile
 # Startseite aus der Vorlage zusammensetzen
 mkdir -p "$BUILD/_start"
 cp "$START/start.css" "$START/start.js" "$BUILD/_start/"
+# Logo im Browser-Tab (favicon.ico gilt auch für alle Spiele, die kein eigenes Symbol haben).
+# Eigenes Bild: startseite/logo.png (quadratisch, z.B. 512 × 512) hochladen, dann wird es statt favicon.svg verwendet.
+if [ -f "$START/logo.png" ]; then
+  cp "$START/logo.png" "$BUILD/favicon.png"
+  cp "$START/logo.png" "$BUILD/apple-touch-icon.png"
+  icon_v="$(version "$START/logo.png")"
+  icons="<link rel=\"icon\" href=\"favicon.png?v=$icon_v\" type=\"image/png\"><link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=$icon_v\">"
+  if command -v convert >/dev/null 2>&1; then
+    convert "$START/logo.png" -define icon:auto-resize=48,32,16 "$BUILD/favicon.ico" 2>/dev/null || cp "$START/favicon.ico" "$BUILD/"
+  else
+    cp "$START/favicon.ico" "$BUILD/"
+  fi
+else
+  cp "$START/favicon.svg" "$START/favicon.ico" "$START/apple-touch-icon.png" "$BUILD/"
+  icon_v="$(version "$START/favicon.svg")"
+  icons="<link rel=\"icon\" href=\"favicon.svg?v=$icon_v\" type=\"image/svg+xml\"><link rel=\"alternate icon\" href=\"favicon.ico\" sizes=\"48x48\"><link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=$icon_v\">"
+fi
 ver="$(cat "$START/start.css" "$START/start.js" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" awk '
+CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -147,7 +164,7 @@ CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" awk '
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat

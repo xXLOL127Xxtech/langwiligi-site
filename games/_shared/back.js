@@ -140,37 +140,42 @@
   }
   var END_BTN = /^\W*(nochmal|revanche|nochmals)\b/i;
   var END_TXT = /(gewinnt|gewonnen|verloren|unentschieden|game over|schachmatt|sieger)/i;
+  // Nur sichtbare Knöpfe/Meldungen zählen. checkVisibility prüft auch Eltern mit opacity 0.
   function visible(el) {
+    if (el.checkVisibility) return el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
     if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden') return false;
     for (var p = el; p && p !== document.body; p = p.parentElement) if (getComputedStyle(p).opacity === '0') return false;
     return true;
   }
   function scan() {
     var found = [];
-    document.querySelectorAll('button, h1, h2, h3, [role="status"]').forEach(function (el) {
-      if (el.closest('#lw-rate')) return;
-      var t = (el.textContent || '').trim().slice(0, 60);
-      if ((el.tagName === 'BUTTON' ? END_BTN : END_TXT).test(t) && visible(el)) found.push(el.tagName + t);
-    });
+    var els = document.querySelectorAll('button, h1, h2, h3, [role="status"]');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i], t = (el.textContent || '').trim().slice(0, 60);
+      // zuerst nur Text prüfen (billig), Sichtbarkeit nur bei Treffern
+      if ((el.tagName === 'BUTTON' ? END_BTN : END_TXT).test(t) && !el.closest('#lw-rate') && visible(el)) found.push(el.tagName + t);
+    }
     return found;
   }
-  var baseline = null, scanTimer = null, played = 0, lastTick = Date.now();
+  // Läuft nur, wenn der Browser zwischen zwei Bildern nichts zu tun hat. So stört das Nachschauen das Spiel nicht
+  // (früher: bei jeder DOM-Änderung, das erzwang mitten im Spiel Layout-Berechnungen und liess das Bild zucken).
+  var idle = window.requestIdleCallback ? function (f) { requestIdleCallback(f, { timeout: 2000 }); } : function (f) { setTimeout(f, 0); };
+  var baseline = null, poll = null, busyScan = false, played = 0, lastTick = Date.now();
   function check() {
-    scanTimer = null;
-    if (asked || rated[GAME]) return;
+    busyScan = false;
+    if (asked || pending || rated[GAME]) { clearInterval(poll); return; }
     var now = scan();
     if (now.some(function (k) { return baseline.indexOf(k) < 0; })) roundDone();
   }
   function startWatching() {
     baseline = scan();
-    new MutationObserver(function () { if (!scanTimer && !asked) scanTimer = setTimeout(check, 700); })
-      .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'], characterData: true });
-    setInterval(function () {
+    poll = setInterval(function () {
       var t = Date.now();
       if (!document.hidden) played += t - lastTick;
       lastTick = t;
       if (played > 4 * 60000) roundDone();
-    }, 5000);
+      if (!document.hidden && !busyScan) { busyScan = true; idle(check); }
+    }, 2000);
   }
 
   function add() {

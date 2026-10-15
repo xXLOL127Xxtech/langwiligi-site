@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".5" r=".55"><stop offset="0" stop-color="#1c0f3a"/><stop offset="1" stop-color="#07050f"/></radialGradient>
+    <linearGradient id="vs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd2ff"/><stop offset=".55" stop-color="#d77bff"/><stop offset="1" stop-color="#8f5bff"/></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Person im Profil, schaut nach rechts -->
+    <g id="p" fill="none" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M318 452C276 412 278 322 330 290C388 254 452 292 452 352L466 404L446 412V434C446 449 434 456 418 453L392 449"/>
+      <path d="M392 449V492"/>
+      <path d="M328 470C282 494 258 540 258 600V722"/>
+      <path d="M392 492C426 516 442 556 442 606V722"/>
+      <path d="M290 556V722"/>
+      <path d="M354 556V722"/>
+    </g>
+  </defs>
+  <rect width="1024" height="1024" rx="230" fill="url(#bg)"/>
+  <g filter="url(#glow)">
+    <circle cx="512" cy="512" r="420" fill="none" stroke="#a24dff" stroke-width="26"/>
+    <use href="#p" stroke="#e98cff" transform="translate(-28 0)"/>
+    <use href="#p" stroke="#86ecff" transform="translate(1052 0) scale(-1 1)"/>
+    <path d="M552 428 478 598" stroke="#f3e6ff" stroke-width="11" stroke-linecap="round"/>
+    <text x="512" y="560" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-style="italic" font-size="138" fill="url(#vs)">VS</text>
+  </g>
+</svg>
