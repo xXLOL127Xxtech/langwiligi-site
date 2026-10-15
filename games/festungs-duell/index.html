@@ -6,7 +6,7 @@
 <title>Festungs-Duell</title>
 <meta name="description" content="Schick 11 Truppenarten über drei Bahnen, bau Türme und reiss die gegnerische Festung ein – in Echtzeit.">
 <meta name="theme-color" content="#ffb74d">
-<meta name="spiel-modi" content="Lokal,Online">
+<meta name="spiel-modi" content="Online">
 <meta name="spiel-tags" content="Echtzeit,Türme">
 <!--
   Festungs-Duell – angepasst für langwiligi.site.
@@ -2815,6 +2815,8 @@ window.Sound = (function () {
     emoji: "🏰",
     description: "Verteidige deine Festung mit Türmen und schick 11 Truppenarten gegen den Gegner.",
     onlineReady: true,
+    // Echtzeit mit Klicks für beide Seiten: an einem Gerät mit einer Maus nicht sinnvoll spielbar
+    localReady: false,
     options: [
       {
         id: "hp",
@@ -2865,7 +2867,7 @@ window.Sound = (function () {
       "Upgrades: 💰 Wirtschaft (+Gold/Sek.), ⚒️ Schmiede (+Schaden), 🛡️ Rüstung (+Truppen-Leben), 👟 Marsch (+Tempo), 📡 Arsenal (+Turm-Reichweite & Schaden).",
       "Mit „Festung reparieren“ 🔧 heilst du deine Festung gegen Gold.",
       "Die Truppen werden mit der Zeit stärker. Es geht schnell – schick ständig Truppen und verbessere.",
-      "Zu zweit an einem Gerät: Tippe auf eine Spielfeldhälfte oder auf P1/P2, um die Seite zu wechseln. Online steuert jeder seine eigene Seite.",
+      "Online steuert jeder seine eigene Seite.",
     ],
     create,
   });
