@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Käsekästchen</title>
+<title>Dots and Boxes</title>
 <meta name="description" content="Zieh Linien, schliesse Kästchen und hol dir Extrazüge. Der Pausenhof-Klassiker als Duell.">
 <meta name="theme-color" content="#c56cf0">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Taktik">
 <!--
-  Käsekästchen – angepasst für langwiligi.site.
+  Dots and Boxes (früher Käsekästchen) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -252,7 +252,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>✏️ Käsekästchen</h1>
+      <h1>✏️ Dots and Boxes</h1>
       <p>Abwechselnd wird eine Linie gezogen. Wer ein Kästchen schliesst, bekommt einen Punkt und darf nochmal.</p>
     </div>
 
@@ -307,7 +307,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Käsekästchen</h1>
+      <h1 id="gameTitle">Dots and Boxes</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -794,7 +794,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "dotsandboxes",
-    name: "Käsekästchen",
+    name: "Dots and Boxes",
     emoji: "🔲",
     description: "Zieh Linien zwischen Punkten, schliesse Kästchen und sammle Punkte.",
     onlineReady: true,

@@ -44,7 +44,7 @@ h1 { margin: 0; font: 700 clamp(44px, 8.4vw, 104px)/.92 var(--display); letter-s
 h1 > span { display: inline-block; }
 .kei { padding: .04em .16em 0; margin-right: .08em; color: var(--bg); background: var(--yellow); transform: skewX(-8deg);
   box-shadow: 6px 6px 0 var(--pink); }
-h1 .site { display: block; margin-top: .5em; font: 15px/1 var(--mono); letter-spacing: .5em; color: var(--muted); text-transform: uppercase; }
+h1 .site { display: block; margin-top: .16em; color: var(--cyan); text-shadow: 5px 5px 0 rgba(255, 46, 136, .55); }
 .lead { max-width: 560px; margin: 22px 0 0; font-size: clamp(16px, 2.1vw, 19px); color: var(--muted); }
 .lead b { color: var(--text); font-weight: 600; }
 .hud { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 0; padding: 0; list-style: none; }
@@ -126,7 +126,7 @@ h1 .site { display: block; margin-top: .5em; font: 15px/1 var(--mono); letter-sp
   border: 0; padding: 11px 16px 10px; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   transition: filter .15s; }
 .tip-btn:hover { filter: brightness(1.08); }
-.tip-btn::before { content: "+ "; }
+.tip-btn::after { content: " →"; }
 .count { margin: 14px 0 18px; font: 14px/1 var(--mono); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 
 /* ---------- Spielkarten ---------- */
@@ -228,11 +228,11 @@ dialog .row button:disabled { opacity: .5; cursor: default; }
 #intro .boot p:nth-child(2) .ok { animation-delay: .75s; }
 #intro .boot p:nth-child(3) .ok { animation-delay: 1.15s; color: var(--yellow); }
 #intro .logo { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .2em; padding: 0 16px;
-  font: 700 clamp(44px, 11vw, 150px)/1 var(--display); text-transform: uppercase; opacity: 0;
+  font: 700 clamp(40px, 8.6vw, 140px)/1 var(--display); text-transform: uppercase; opacity: 0;
   animation: logo-in .7s steps(1) 1.0s forwards, logo-out .45s var(--ease) 2.3s forwards; }
 #intro .logo .kei { font-size: .7em; }
 #intro .logo .glitch::before, #intro .logo .glitch::after { animation-duration: 1.2s; animation-delay: 1s; animation-iteration-count: 2; }
-#intro .logo .sub { width: 100%; text-align: center; font: 16px/1 var(--mono); letter-spacing: 1em; color: var(--muted); margin-top: .3em; }
+#intro .logo .sub { color: var(--cyan); text-shadow: 5px 5px 0 rgba(255, 46, 136, .55); }
 #intro .sweep { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: linear-gradient(90deg, transparent, var(--pink), var(--cyan), transparent);
   box-shadow: 0 0 18px var(--cyan); transform: scaleX(0); animation: sweep .9s var(--ease) 1.05s forwards, fade-out .3s ease 2.3s forwards; }
 #intro .skip { position: absolute; bottom: 22px; left: 0; right: 0; margin: 0; text-align: center; font: 13px/1 var(--mono); letter-spacing: .2em;

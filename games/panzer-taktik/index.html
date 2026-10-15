@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Panzerzug</title>
+<title>Panzer-Duell</title>
 <meta name="description" content="Rundenbasiertes Panzer-Duell: fahren, schiessen, Minen legen und Raketen zünden – mit Aktionspunkten.">
 <meta name="theme-color" content="#9ccc65">
 <meta name="spiel-modi" content="Lokal,Online">
 <meta name="spiel-tags" content="Rundenbasiert,Taktik">
 <!--
-  Panzerzug (früher Panzer-Taktik) – angepasst für langwiligi.site.
+  Panzer-Duell (früher Panzer-Taktik) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
   MIT License – Copyright (c) 2026 tridpt
 
@@ -831,7 +831,7 @@ button, input, select { font-family: inherit; }
   <!-- ======================== Menü ======================== -->
   <section id="menuView" class="menu">
     <div class="menu-head">
-      <h1>💥 Panzerzug</h1>
+      <h1>💥 Panzer-Duell</h1>
       <p>Mit deinen Aktionspunkten fährst du, schiesst, legst Minen oder feuerst Raketen. Wer den anderen Panzer zuerst knackt, gewinnt.</p>
     </div>
 
@@ -886,7 +886,7 @@ button, input, select { font-family: inherit; }
   <section id="gameView" class="hidden">
     <div class="topbar">
       <button class="btn small" id="menuBtn">☰ Menü</button>
-      <h1 id="gameTitle">Panzerzug</h1>
+      <h1 id="gameTitle">Panzer-Duell</h1>
       <button class="btn icon-btn" id="helpBtn" title="Anleitung">?</button>
       <button class="btn icon-btn" id="muteBtn" title="Ton an/aus">🔊</button>
     </div>
@@ -1845,7 +1845,7 @@ window.Sound = (function () {
 
   window.GameRegistry.register({
     id: "tankarena",
-    name: "Panzerzug",
+    name: "Panzer-Duell",
     emoji: "🪖",
     description: "Rundenbasiertes Panzer-Duell mit Mauern, Kisten, Minen und Raketen.",
     onlineReady: true,

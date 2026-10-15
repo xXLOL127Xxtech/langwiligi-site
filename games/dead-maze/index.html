@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Zombie-Labyrinth</title>
+<title>Dead Maze</title>
 <meta name="description" content="Tower-Defense gegen Zombie-Horden: Bau Türme ins Labyrinth und halte deine Basis Welle um Welle.">
 <meta name="theme-color" content="#8ad845">
 <meta name="spiel-modi" content="Solo">
@@ -148,7 +148,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 <body>
 <div class="app">
   <header class="hud">
-    <div class="brand">ZOMBIE<span>LABYRINTH</span></div>
+    <div class="brand">DEAD<span>MAZE</span></div>
     <div class="chips">
       <div class="chip"><span class="lbl">Base</span><span class="val" id="hLives">20</span><span class="lifebar" id="hLifeWrap"><i id="hLifeBar"></i></span></div>
       <div class="chip"><span class="lbl">Points</span><span class="val amber" id="hPoints">200</span></div>
@@ -1832,7 +1832,7 @@ function showModal(kind){
   if (kind === 'start' || kind === 'menu') {
     const inGame = kind === 'menu';
     card.innerHTML = `<div class="tape"></div><div class="card-body">
-      <h1 class="title">ZOMBIE <span>LABYRINTH</span></h1>
+      <h1 class="title">DEAD <span>MAZE</span></h1>
       <p class="lede">The horde is coming through the maze. Build turrets on the rubble, block corridors to force a longer route, and spend every kill on a stronger defense.</p>
       ${inGame ? `<button class="btn btn-go big" id="mResume" type="button">Resume wave ${S.wave}</button>` : ''}
       <div class="diffs" role="group" aria-label="Difficulty">

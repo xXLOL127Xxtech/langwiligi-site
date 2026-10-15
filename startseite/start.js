@@ -222,7 +222,7 @@
         if (r.status === 429) throw new Error('fast');
         if (!r.ok) throw new Error('http');
         form.game.value = ''; form.note.value = '';
-        say('Danke! Deine Empfehlung ist angekommen.', 'ok');
+        say('Danke! Dein Wunsch ist angekommen.', 'ok');
         send.disabled = false;
       })
       .catch(function (err) {

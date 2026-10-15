@@ -77,7 +77,7 @@
         <button type="button" data-s="neu" aria-pressed="true">Neu</button>
         <button type="button" data-s="top" aria-pressed="false">Bewertung</button>
       </div>
-      <button type="button" class="tip-btn" id="tip-open">Spiel empfehlen</button>
+      <button type="button" class="tip-btn" id="tip-open">Du willst ein Spiel hier sehen? Klick hier</button>
     </div>
     <p class="count" id="count" aria-live="polite"></p>
 
@@ -93,9 +93,9 @@
 
   <dialog id="tip">
     <form id="tip-form">
-      <p class="kicker">// Empfehlung</p>
-      <h2>Spiel empfehlen</h2>
-      <p class="hint">Welches Spiel fehlt hier noch? Jede Empfehlung wird gelesen.</p>
+      <p class="kicker">// Wunschspiel</p>
+      <h2>Welches Spiel willst du hier sehen?</h2>
+      <p class="hint">Schreib uns dein Wunschspiel. Jeder Vorschlag wird gelesen.</p>
       <label>Spiel oder Idee
         <input name="game" required maxlength="80" placeholder="z.B. Tischtennis 1 gegen 1" autocomplete="off"></label>
       <label><span>Was macht es lustig? <small>(optional, gern mit Link)</small></span>
@@ -105,7 +105,7 @@
       <p id="tip-msg" role="status"></p>
       <div class="row">
         <button type="button" id="tip-close">Schliessen</button>
-        <button type="submit">Absenden</button>
+        <button type="submit">Wunsch abschicken</button>
       </div>
     </form>
   </dialog>
