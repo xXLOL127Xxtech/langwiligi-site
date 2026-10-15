@@ -62,7 +62,8 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
 - Diese Namen sind von der Webseite belegt:
   - ID `lw-back`
   - CSS-Klassen, die mit `lw-` beginnen
-  - die globale Variable `window.GameHub`
+  - die globalen Variablen `window.GameHub` und `window.LW`
+- **Unten rechts** blendet die Webseite nach der ersten Runde einmal eine kleine Bewertung (1–5 Sterne) ein.
 - **localStorage**: Eigene Schlüssel beginnen immer mit der Spiel-ID, z.B. `panzer-pong-settings`. Der Schlüssel `lw-name` gehört allen Spielen gemeinsam. Lies und schreib ihn nur über `GameHub.getName()` und `GameHub.setName()`.
 - Das Spiel darf nicht die ganze Seite neu laden oder auf andere Domains umleiten.
 
@@ -149,6 +150,15 @@ Regeln des Servers, sonst wird das Ergebnis abgelehnt:
 - **Pause**: Wird der Tab verlassen (`visibilitychange`), pausiert das Spiel, ausser online.
 - **Bots** (falls vorhanden): mehrere Stufen (Leicht/Mittel/Schwer), die sich spürbar unterscheiden.
 - **Grösse**: Der ganze Ordner bleibt möglichst unter 5 MB.
+
+### Rundenende melden (empfohlen)
+
+Die Webseite fragt nach der ersten Runde nach einer Bewertung. Sie erkennt das Rundenende meist selbst
+(„Nochmal“-Knopf, Sieg-Meldung, Rangliste). Sicherer ist es, wenn das Spiel es meldet:
+
+```js
+if (window.LW) LW.rundeFertig();   // am Ende jeder Runde aufrufen, egal ob gewonnen oder verloren
+```
 
 ## 9. Abgabe
 

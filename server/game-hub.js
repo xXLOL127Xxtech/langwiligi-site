@@ -78,7 +78,8 @@ function recordScore(game, name, score, jumps) {
 const lastScorePost = new Map();
 
 // ---------- Spiel-Empfehlungen (Knopf "Spiel empfehlen" auf der Startseite) ----------
-// Ansehen nur mit Schlüssel: https://langwiligi.site/api/empfehlungen#SCHLUESSEL (steht in admin-key.txt)
+// Ansehen nur mit Schlüssel: https://langwiligi.site/api/empfehlungen#SCHLUESSEL (steht in admin-key.txt).
+// Dieselbe Seite zeigt auch die Bewertungen.
 const TIPS_FILE = path.join(DATA_DIR, 'empfehlungen.json');
 const MAX_TIPS = 500;
 let tips = [];
@@ -113,33 +114,129 @@ function readBody(req, max, cb) {
   req.on('data', c => { body += c; if (body.length > max) req.destroy(); });
   req.on('end', () => { let m = null; try { m = JSON.parse(body); } catch (e) {} cb(m && typeof m === 'object' ? m : null); });
 }
+// ---------- Bewertungen (1–5 Sterne, pro Gerät und Spiel einmal) ----------
+// Das Gerät schickt eine zufällige ID mit (localStorage). Gespeichert wird nur ein Hash davon.
+const RATINGS_FILE = path.join(DATA_DIR, 'bewertungen.json');
+const MAX_RATINGS = 20000;
+const RATINGS_PER_IP_HOUR = 40;   // ganze Schulklasse hinter einer IP soll noch gehen
+let ratings = [];
+try { ratings = JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf8')); } catch (e) { ratings = []; }
+let ratingsTimer = null;
+function saveRatings() {
+  clearTimeout(ratingsTimer);
+  ratingsTimer = setTimeout(() => {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(RATINGS_FILE + '.tmp', JSON.stringify(ratings));
+    fs.renameSync(RATINGS_FILE + '.tmp', RATINGS_FILE);
+  }, 200);
+}
+function hashId(s) { return crypto.createHash('sha256').update('lw|' + s).digest('hex').slice(0, 20); }
+const ratingPosts = new Map();   // ip -> Zeitpunkte der letzten Stunde
+function ratingAllowed(ip, now) {
+  const list = (ratingPosts.get(ip) || []).filter(t => now - t < 3600000);
+  if (list.length >= RATINGS_PER_IP_HOUR) return false;
+  list.push(now); ratingPosts.set(ip, list);
+  if (ratingPosts.size > 5000) ratingPosts.clear();
+  return true;
+}
+
+// ---------- Aufrufe (für "Trendet" auf der Startseite) ----------
+// plays[spiel][JJJJ-MM-TT] = Anzahl. Ein Gerät zählt pro Spiel höchstens alle 30 Minuten einmal.
+const PLAYS_FILE = path.join(DATA_DIR, 'aufrufe.json');
+const PLAY_DAYS = 60;
+let plays = {};
+try { plays = JSON.parse(fs.readFileSync(PLAYS_FILE, 'utf8')); } catch (e) { plays = {}; }
+let playsTimer = null;
+function savePlays() {
+  clearTimeout(playsTimer);
+  playsTimer = setTimeout(() => {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(PLAYS_FILE + '.tmp', JSON.stringify(plays));
+    fs.renameSync(PLAYS_FILE + '.tmp', PLAYS_FILE);
+  }, 1000);
+}
+function day(t) { return new Date(t).toISOString().slice(0, 10); }
+const lastPlay = new Map();
+function countPlay(game, ip, now) {
+  const key = ip + '|' + game;
+  if (now - (lastPlay.get(key) || 0) < 30 * 60000) return;
+  lastPlay.set(key, now);
+  if (lastPlay.size > 20000) lastPlay.clear();
+  const g = plays[game] || (plays[game] = {});
+  const d = day(now);
+  g[d] = (g[d] || 0) + 1;
+  const oldest = day(now - PLAY_DAYS * 86400000);
+  Object.keys(g).forEach(k => { if (k < oldest) delete g[k]; });
+  savePlays();
+}
+
+// Öffentliche Zahlen pro Spiel: Durchschnitt, Anzahl Bewertungen, Aufrufe der letzten 7 Tage
+function gameStats() {
+  const out = {};
+  const get = g => out[g] || (out[g] = { avg: 0, count: 0, sum: 0, week: 0 });
+  ratings.forEach(r => { const e = get(r.game); e.count++; e.sum += r.stars; });
+  const since = day(Date.now() - 6 * 86400000);
+  Object.keys(plays).forEach(g => {
+    const e = get(g);
+    Object.keys(plays[g]).forEach(d => { if (d >= since) e.week += plays[g][d]; });
+  });
+  Object.values(out).forEach(e => { e.avg = e.count ? Math.round(e.sum / e.count * 100) / 100 : 0; delete e.sum; });
+  return out;
+}
+
 // Übersicht für den Betreiber. Der Schlüssel steht nach dem # und wird darum nie an den Server/ins Log geschickt.
-const TIPS_PAGE = `<!doctype html><html lang="de"><head><meta charset="utf-8">
+const ADMIN_PAGE = `<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
-<title>Empfehlungen</title><style>
-:root{color-scheme:dark}body{margin:0;background:#0b0b12;color:#f4f1ea;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:820px;margin:0 auto;padding:32px 16px 64px}h1{margin:0 0 4px;font-size:30px}.sub{color:#a19cae;margin:0 0 24px}
-.tip{background:#14141f;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin:0 0 12px;display:flex;gap:12px}
-.tip.done{opacity:.45}.tip>div{flex:1;min-width:0}.tip h2{margin:0;font-size:18px;overflow-wrap:anywhere}
-.tip p{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.meta{color:#a19cae;font-size:13px;margin-top:6px}
-.tip nav{display:flex;flex-direction:column;gap:6px}button{font:600 13px system-ui,sans-serif;color:#f4f1ea;background:rgba(255,255,255,.06);
-border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:7px 10px;cursor:pointer;white-space:nowrap}button:hover{background:rgba(255,255,255,.14)}
-a{color:#ffb703}.msg{color:#a19cae}</style></head><body><main><h1>Spiel-Empfehlungen</h1><p class="sub" id="sub">Lade …</p><div id="list"></div></main>
+<title>Empfehlungen und Bewertungen</title><style>
+:root{color-scheme:dark;--bg:#07060d;--panel:#100e1c;--line:#2a2540;--text:#ecebf5;--muted:#8e89a8;--pink:#ff2e88;--cyan:#22e4ff;--yellow:#ffe14d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:32px 16px 64px}h1{margin:0 0 20px;font-size:28px;letter-spacing:.02em}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}@media (max-width:820px){.cols{grid-template-columns:1fr}}
+section{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px}
+section h2{margin:0 0 2px;font-size:18px;text-transform:uppercase;letter-spacing:.12em}
+#tips-col h2{color:var(--pink)}#rates-col h2{color:var(--cyan)}.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
+.item{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px}.item.done{opacity:.45}.item>div{flex:1;min-width:0}
+.item h3{margin:0;font-size:16px;overflow-wrap:anywhere}.item p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:13px;margin-top:4px}.stars{color:var(--yellow);letter-spacing:2px}
+.item nav{display:flex;flex-direction:column;gap:6px}
+button{font:600 13px system-ui,sans-serif;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:3px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--cyan)}button.del:hover{border-color:var(--pink);color:var(--pink)}
+.sum{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;margin:0 0 14px;font-size:14px}.sum b{font-weight:600}
+.sum span{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+select{font:14px system-ui,sans-serif;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:6px 8px;margin:0 0 6px}
+a{color:var(--yellow)}.msg{color:var(--muted)}</style></head><body><main><h1>Empfehlungen &amp; Bewertungen</h1><p class="msg" id="err"></p>
+<div class="cols"><section id="tips-col"><h2>Empfehlungen</h2><p class="sub" id="tips-sub">Lade …</p><div id="tips"></div></section>
+<section id="rates-col"><h2>Bewertungen</h2><p class="sub" id="rates-sub">Lade …</p><div class="sum" id="sum"></div>
+<select id="filter"><option value="">Alle Spiele</option></select><div id="rates"></div></section></div></main>
 <script>
-var key=decodeURIComponent(location.hash.slice(1));
+var key=decodeURIComponent(location.hash.slice(1)),allRates=[];
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function link(s){return esc(s).replace(/https?:\\/\\/[^\\s<"]+/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>'})}
-function call(m,body){return fetch('empfehlungen.json',{method:m,headers:{'X-Key':key,'Content-Type':'text/plain'},body:body&&JSON.stringify(body),cache:'no-store'})
+function when(t){return new Date(t).toLocaleString('de-CH')}
+function stars(n){return '★★★★★'.slice(0,n)+'<span style="opacity:.25">'+'★★★★★'.slice(n)+'</span>'}
+function call(file,m,body){return fetch(file,{method:m,headers:{'X-Key':key,'Content-Type':'text/plain'},body:body&&JSON.stringify(body),cache:'no-store'})
 .then(function(r){if(r.status===403)throw new Error('key');if(!r.ok)throw new Error('http');return r.json()})}
-function show(rows){var open=rows.filter(function(t){return !t.done}).length;
-document.getElementById('sub').textContent=rows.length?rows.length+' Empfehlungen, davon '+open+' offen':'Noch keine Empfehlungen.';
-document.getElementById('list').innerHTML=rows.slice().reverse().map(function(t){return '<div class="tip'+(t.done?' done':'')+'"><div><h2>'+esc(t.game)+'</h2>'+
-(t.note?'<p>'+link(t.note)+'</p>':'')+'<div class="meta">'+esc(t.name||'Anonym')+' · '+new Date(t.at).toLocaleString('de-CH')+'</div></div>'+
-'<nav><button data-a="done" data-id="'+t.id+'">'+(t.done?'Wieder offen':'Erledigt')+'</button><button data-a="delete" data-id="'+t.id+'">Löschen</button></nav></div>'}).join('')}
-function err(e){document.getElementById('sub').innerHTML='<span class="msg">'+(e.message==='key'?'Falscher oder fehlender Schlüssel. Link: …/api/empfehlungen#SCHLUESSEL':'Server nicht erreichbar.')+'</span>'}
-document.getElementById('list').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
-call('POST',{action:b.dataset.a,id:b.dataset.id}).then(show,err)});
-call('GET').then(show,err);
+function showTips(rows){var open=rows.filter(function(t){return !t.done}).length;
+document.getElementById('tips-sub').textContent=rows.length?rows.length+' Empfehlungen, davon '+open+' offen':'Noch keine Empfehlungen.';
+document.getElementById('tips').innerHTML=rows.slice().reverse().map(function(t){return '<div class="item'+(t.done?' done':'')+'"><div><h3>'+esc(t.game)+'</h3>'+
+(t.note?'<p>'+link(t.note)+'</p>':'')+'<div class="meta">'+esc(t.name||'Anonym')+' · '+when(t.at)+'</div></div>'+
+'<nav><button data-t="tip" data-a="done" data-id="'+t.id+'">'+(t.done?'Wieder offen':'Erledigt')+'</button><button class="del" data-t="tip" data-a="delete" data-id="'+t.id+'">Löschen</button></nav></div>'}).join('')}
+function showRates(rows){allRates=rows;var by={};rows.forEach(function(r){var g=by[r.game]||(by[r.game]={n:0,s:0});g.n++;g.s+=r.stars});
+var games=Object.keys(by).sort(function(a,b){return by[b].s/by[b].n-by[a].s/by[a].n||by[b].n-by[a].n});
+document.getElementById('rates-sub').textContent=rows.length?rows.length+' Bewertungen für '+games.length+' Spiele':'Noch keine Bewertungen.';
+document.getElementById('sum').innerHTML=games.map(function(g){return '<b>'+esc(g)+'</b><span>'+(by[g].s/by[g].n).toFixed(1)+' ★</span><span>'+by[g].n+'×</span>'}).join('');
+var f=document.getElementById('filter'),cur=f.value;f.innerHTML='<option value="">Alle Spiele</option>'+games.map(function(g){return '<option'+(g===cur?' selected':'')+'>'+esc(g)+'</option>'}).join('');
+listRates()}
+function listRates(){var g=document.getElementById('filter').value;
+document.getElementById('rates').innerHTML=allRates.filter(function(r){return !g||r.game===g}).slice().reverse().slice(0,300).map(function(r){
+return '<div class="item"><div><h3>'+esc(r.game)+' <span class="stars">'+stars(r.stars)+'</span></h3><div class="meta">'+when(r.at)+'</div></div>'+
+'<nav><button class="del" data-t="rate" data-a="delete" data-id="'+r.id+'">Löschen</button></nav></div>'}).join('')}
+function err(e){document.getElementById('err').textContent=e.message==='key'?'Falscher oder fehlender Schlüssel. Link: …/api/empfehlungen#SCHLUESSEL':'Server nicht erreichbar.'}
+document.getElementById('filter').addEventListener('change',listRates);
+document.body.addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;
+if(b.dataset.t==='tip')call('empfehlungen.json','POST',{action:b.dataset.a,id:b.dataset.id}).then(showTips,err);
+else call('bewertungen.json','POST',{action:'delete',id:b.dataset.id}).then(showRates,err)});
+call('empfehlungen.json','GET').then(showTips,err);call('bewertungen.json','GET').then(showRates,err);
 </script></body></html>`;
 
 function cleanName(n) {
@@ -297,7 +394,44 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === '/api/empfehlungen') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
-    return res.end(TIPS_PAGE);
+    return res.end(ADMIN_PAGE);
+  }
+  if (url.pathname === '/api/bewertung' && req.method === 'POST') {
+    return readBody(req, 1024, m => {
+      if (!m) return json(res, 400, { error: 'bad-json' });
+      const game = cleanGame(m.game), stars = Number(m.stars), cid = String(m.cid || '');
+      if (!game || !Number.isInteger(stars) || stars < 1 || stars > 5 || !/^[a-z0-9]{8,64}$/i.test(cid)) return json(res, 400, { error: 'invalid' });
+      if (!isKnownGame(game)) return json(res, 400, { error: 'unknown-game' });
+      const who = hashId(cid), now = Date.now();
+      if (ratings.some(r => r.game === game && r.who === who)) return json(res, 409, { error: 'schon-bewertet' });
+      if (!ratingAllowed(clientIp(req), now)) return json(res, 429, { error: 'too-fast' });
+      ratings.push({ id: crypto.randomBytes(6).toString('hex'), at: now, game, stars, who });
+      if (ratings.length > MAX_RATINGS) ratings.splice(0, ratings.length - MAX_RATINGS);
+      saveRatings();
+      json(res, 200, { ok: true, stats: gameStats()[game] });
+    });
+  }
+  if (url.pathname === '/api/aufruf' && req.method === 'POST') {
+    return readBody(req, 512, m => {
+      const game = cleanGame(m && m.game);
+      if (game && isKnownGame(game)) countPlay(game, clientIp(req), Date.now());
+      json(res, 200, { ok: true });
+    });
+  }
+  if (url.pathname === '/api/spiele') {
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, CORS));
+    return res.end(JSON.stringify(gameStats()));
+  }
+  if (url.pathname === '/api/bewertungen.json') {
+    if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
+    const list = () => ratings.map(r => ({ id: r.id, at: r.at, game: r.game, stars: r.stars }));
+    if (req.method !== 'POST') return json(res, 200, list());
+    return readBody(req, 1024, m => {
+      const i = ratings.findIndex(r => m && r.id === m.id);
+      if (i >= 0 && m.action === 'delete') { ratings.splice(i, 1); saveRatings(); }
+      json(res, 200, list());
+    });
   }
   if (url.pathname === '/api/empfehlungen.json') {
     if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
