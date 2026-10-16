@@ -121,7 +121,7 @@ class Vorschau {
     const hg = new THREE.BufferGeometry();
     hg.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, -0.32, 0.17, 0, 0.12, 0, 0, 0.02, -0.17, 0, 0.12], 3));
     hg.setIndex([0, 1, 2, 0, 2, 3]);
-    this.hangMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.7, depthWrite: false, side: THREE.DoubleSide });
+    this.hangMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide });
     this.hang = new THREE.InstancedMesh(hg, this.hangMat, 400);
     this.hang.count = 0; this.hang.frustumCulled = false; this.hang.layers.set(layer);
     this.hang.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(400 * 3), 3);
@@ -160,7 +160,7 @@ class Vorschau {
       const ofs = (ph - 0.5) * 0.5;
       d.position.set(p.x + Math.sin(p.a) * ofs, p.y + 0.02, p.z + Math.cos(p.a) * ofs);
       d.rotation.set(0, p.a + Math.PI, 0);
-      const s = 0.6 + clamp(p.st * 18, 0, 1) * 0.6;
+      const s = 0.35 + clamp(p.st * 18, 0, 1) * 0.35;
       d.scale.set(s, 1, s);
       d.updateMatrix();
       this.hang.setMatrixAt(i, d.matrix);
@@ -501,9 +501,9 @@ class Kamera {
         zb = new THREE.Vector3(b.x + fx * 3, b.y, b.z + fz * 3);
         k = 7;
       } else {
-        const D = 5.2 * this.zoom;
-        zp = new THREE.Vector3(b.x - fx * D, b.y + 1.9 * this.zoom, b.z - fz * D);
-        zb = new THREE.Vector3(b.x + fx * 28, b.y + 3, b.z + fz * 28);
+        const D = 4.2 * this.zoom;
+        zp = new THREE.Vector3(b.x - fx * D, b.y + 1.45 * this.zoom, b.z - fz * D);
+        zb = new THREE.Vector3(b.x + fx * 28, b.y + 2.6, b.z + fz * 28);
         k = 7;
       }
     }

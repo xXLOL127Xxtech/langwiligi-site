@@ -7,7 +7,7 @@ const Menue = {
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
     this.aktuell = id;
     Eingabe.aktiv = !id && App.zustand === 'spiel';
-    $('hudBox').classList.toggle('hidden', !App.ansichten.length || id === 'sTitel' || id === 'sOnline' || id === 'sLobby');
+    $('hudBox').classList.toggle('hidden', !App.ansichten.length || ['sTitel', 'sOnline', 'sLobby', 'sEnde', 'sNamen'].includes(id));
     if (id) setTimeout(() => { const b = $(id).querySelector('.btn.haupt:not(.hidden), .btn:not(.hidden)'); if (b && document.activeElement.tagName !== 'INPUT') b.focus(); }, 30);
   },
   init() {
@@ -122,7 +122,8 @@ const Menue = {
     } else if (sortiert.length > 1 && sortiert[0].gesamt() === sortiert[1].gesamt()) titel = 'Unentschieden!';
     else titel = `🏆 ${sortiert[0] ? sortiert[0].name : ''} gewinnt!`;
     $('eTitel').textContent = titel;
-    $('ePodest').innerHTML = sortiert.map((s, i) => `<div class="pPlatz"><span>${['🥇', '🥈', '🥉'][i] || (i + 1) + '.'}</span><i style="background:${s.farbe}"></i><b>${esc(s.name)}</b><em>${s.gesamt()} (${plusMinus(s.gesamt() - par)})</em></div>`).join('');
+    const rang = sortiert.map(s => sortiert.findIndex(q => q.gesamt() === s.gesamt()));
+    $('ePodest').innerHTML = sortiert.map((s, i) => `<div class="pPlatz"><span>${['🥇', '🥈', '🥉'][rang[i]] || (rang[i] + 1) + '.'}</span><i style="background:${s.farbe}"></i><b>${esc(s.name)}</b><em>${s.gesamt()} (${plusMinus(s.gesamt() - par)})</em></div>`).join('');
     $('eKarte').innerHTML = scoreTabelle(App.plan, sortiert, -1);
     $('eNochmal').classList.toggle('hidden', App.online && !Netz.istHost());
     $('eInfo').textContent = App.online && !Netz.istHost() ? 'Der Gastgeber kann eine neue Runde starten.' : '';
