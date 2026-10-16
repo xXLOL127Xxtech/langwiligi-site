@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Gitterkrieg</title>
+<meta name="description" content="Neon-Arena-Shooter: Schiess Gegnerschwärme ab, sammle Geoms für den Multiplikator und lass das Gitter beben.">
+<meta name="theme-color" content="#3ae0ff">
+<meta name="spiel-modi" content="Solo,Bots,Online">
+<meta name="spiel-tags" content="Twin-Stick,Koop,Rangliste">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: rgba(6, 8, 16, 0.72);
+    --panel: rgba(12, 14, 24, 0.9);
+    --line: rgba(120, 200, 255, 0.18);
+    --text: #eef6ff;
+    --muted: #93a3b8;
+    --accent: #3ae0ff;
+    --accent2: #ff4fd8;
+    --gold: #ffd84a;
+    --p1: #4f8ff7;
+    --p2: #ef5350;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #020208; color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+  #gl { cursor: crosshair; }
+  #ov { pointer-events: none; }
+  body.menu #gl { cursor: default; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #hud.on { display: block; }
+  .box { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+  #players { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 6px; max-width: 34vw; }
+  .pc { padding: 6px 10px 6px 12px; border-left: 3px solid var(--c); min-width: 190px; font-size: 13px; }
+  .pc .n { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; }
+  .pc .n b { color: var(--c); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  .pc .s { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .pc .x { color: var(--gold); font-weight: 800; font-size: 14px; margin-left: 6px; }
+  .pc .lv { font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  .pc.dead { opacity: .55; }
+  .pc.me { box-shadow: 0 0 0 1px var(--c) inset; }
+  #center { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); text-align: center; }
+  #bigscore { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; letter-spacing: .04em;
+    text-shadow: 0 0 12px rgba(58,224,255,.7), 0 0 2px #fff; }
+  #bigmult { font-size: 16px; font-weight: 800; color: var(--gold); text-shadow: 0 0 10px rgba(255,216,74,.7); }
+  #timer { font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums; padding: 2px 16px; text-shadow: 0 0 10px rgba(255,79,216,.7); }
+  #topright { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; pointer-events: auto; }
+  #topright button { padding: 7px 11px; font-size: 14px; }
+  #solostats { position: absolute; top: 10px; left: 10px; padding: 8px 14px; display: flex; gap: 18px; font-size: 13px; color: var(--muted); align-items: center; }
+  #solostats b { color: var(--text); font-size: 17px; margin-left: 4px; letter-spacing: 2px; }
+  #notice { position: absolute; left: 50%; top: 28%; transform: translate(-50%, -50%) scale(.9); text-align: center; opacity: 0;
+    transition: opacity .25s, transform .25s; white-space: nowrap; }
+  #notice.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #notice .t { font-size: clamp(26px, 4.5vw, 46px); font-weight: 900; letter-spacing: .06em; color: #fff;
+    text-shadow: 0 0 18px var(--nc, #3ae0ff), 0 0 4px var(--nc, #3ae0ff); }
+  #notice .s { font-size: 15px; color: #dfe9f5; margin-top: 4px; text-shadow: 0 2px 8px #000; }
+  #respawn { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); font-size: 16px; font-weight: 700; color: #fff;
+    text-shadow: 0 2px 8px #000; display: none; }
+  #roombox { position: absolute; right: 10px; bottom: 10px; padding: 6px 10px; font-size: 12px; color: var(--muted); display: none; }
+  #roombox b { color: var(--gold); font: 800 14px ui-monospace, monospace; letter-spacing: .12em; }
+  #fps { position: absolute; right: 10px; bottom: 10px; font: 11px ui-monospace, monospace; color: var(--muted); display: none; }
+
+  /* ---------- Overlay / Menüs ---------- */
+  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: radial-gradient(ellipse at center, rgba(2,2,8,.15), rgba(2,2,8,.7)); }
+  #overlay.hidden { display: none; }
+  .panel { width: min(540px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 18px; padding: 22px 24px 20px; box-shadow: 0 0 40px rgba(58,224,255,.12), 0 20px 60px rgba(0,0,0,.6); display: none;
+    backdrop-filter: blur(6px); }
+  .panel.on { display: block; }
+  .panel.wide { width: min(620px, 100%); }
+  h1 { margin: 0 0 2px; font-size: 40px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+    color: #fff; text-shadow: 0 0 6px var(--accent), 0 0 22px var(--accent), 0 0 44px rgba(58,224,255,.5); }
+  h1 span { color: #fff; text-shadow: 0 0 6px var(--accent2), 0 0 22px var(--accent2), 0 0 44px rgba(255,79,216,.5); }
+  h2 { margin: 0 0 8px; font-size: 26px; text-shadow: 0 0 14px rgba(58,224,255,.45); }
+  .sub { color: var(--muted); margin: 0 0 12px; font-size: 14px; line-height: 1.5; }
+  .sub b { color: var(--text); }
+  label.f { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
+  input[type=text] { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #070912; color: var(--text); font-size: 15px; outline: none; font-family: inherit; }
+  input[type=text]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(58,224,255,.2); }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  button { cursor: pointer; border: 0; border-radius: 10px; padding: 11px 16px; font-size: 15px; font-weight: 700; color: #021018;
+    background: var(--accent); transition: transform .06s, filter .15s, box-shadow .15s; font-family: inherit; }
+  button:hover, button:focus-visible { filter: brightness(1.1); box-shadow: 0 0 16px rgba(58,224,255,.55); outline: none; }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: .45; cursor: default; filter: none; box-shadow: none; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+  button.ghost:hover, button.ghost:focus-visible { border-color: var(--accent); }
+  button.pink { background: var(--accent2); color: #1a0216; }
+  button.pink:hover, button.pink:focus-visible { box-shadow: 0 0 16px rgba(255,79,216,.6); }
+  button.big { width: 100%; padding: 13px; font-size: 16px; margin-top: 8px; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .modes button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 12px 8px; }
+  .modes button i { font-style: normal; font-size: 11px; font-weight: 600; opacity: .75; }
+  .seg { display: flex; gap: 6px; }
+  .seg button { flex: 1; padding: 8px 6px; font-size: 14px; background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+  .seg button.sel { background: var(--accent); color: #021018; border-color: var(--accent); font-weight: 800; }
+  .seg button:disabled.sel { opacity: .8; }
+  .sep { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: .08em; }
+  .sep::before, .sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .status { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 18px; }
+  .err { color: #ff8a80; }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 13px; color: var(--muted); margin-top: 14px;
+    padding-top: 12px; border-top: 1px solid var(--line); align-items: center; }
+  .controls span { color: var(--text); }
+  kbd { display: inline-block; min-width: 20px; padding: 1px 6px; border-radius: 5px; border: 1px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.08); font: 600 11px/1.5 ui-monospace, monospace; text-align: center; color: var(--text); }
+  .enemies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .enemies b { font-weight: 700; }
+  .rank { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  .rank td, .rank th { padding: 5px 6px; border-top: 1px solid rgba(255,255,255,.07); text-align: left; }
+  .rank th { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; border: 0; }
+  .rank td.r, .rank th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .rank tr.me td { color: var(--gold); font-weight: 800; }
+  .tag { font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; margin-left: 4px; font-weight: 600; }
+  .bigval { text-align: center; font-size: 44px; font-weight: 900; letter-spacing: .04em; margin: 4px 0 2px;
+    text-shadow: 0 0 14px rgba(58,224,255,.7), 0 0 2px #fff; font-variant-numeric: tabular-nums; }
+  .stat3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+  .stat3 div { background: #070912; border: 1px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; font-size: 12px; color: var(--muted); }
+  .stat3 b { display: block; font-size: 20px; color: var(--text); }
+  .code { font: 900 34px ui-monospace, monospace; letter-spacing: .25em; color: var(--gold); text-align: center; text-shadow: 0 0 14px rgba(255,216,74,.55); }
+  .plist { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+  .plist div { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: #070912; border: 1px solid var(--line); font-size: 14px; }
+  .plist i { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; background: currentColor; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  #menu-board, #end-board, #online-board { margin-top: 4px; }
+</style>
+</head>
+<body class="menu">
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
+
+<div id="hud">
+  <div id="players"></div>
+  <div id="solostats" class="box" style="display:none"></div>
+  <div id="center">
+    <div id="timer" class="box" style="display:none">3:00</div>
+    <div id="bigscore">0</div>
+    <div id="bigmult">x1</div>
+  </div>
+  <div id="topright">
+    <button class="ghost" id="btn-mute" title="Ton an/aus (M)">🔊</button>
+    <button class="ghost" id="btn-pause" title="Pause / Menü (Esc)">☰</button>
+  </div>
+  <div id="notice"><div class="t"></div><div class="s"></div></div>
+  <div id="respawn"></div>
+  <div id="roombox" class="box">Raum <b id="rb-code">----</b></div>
+  <div id="fps"></div>
+</div>
+
+<div id="overlay">
+  <!-- Hauptmenü -->
+  <div class="panel wide on" id="p-menu">
+    <h1>Gitter<span>krieg</span></h1>
+    <p class="sub">Neon-Arena-Shooter: Weiche den Schwärmen aus, schiess in alle Richtungen und sammle die grünen <b>Geoms</b>,
+      sie erhöhen deinen <b>Multiplikator</b> und machen deine Waffe stärker. Wird es eng, zündest du eine <b>Smart-Bombe</b>.</p>
+    <label class="f" for="name">Dein Name</label>
+    <input type="text" id="name" maxlength="16" placeholder="Spieler" autocomplete="off">
+    <div class="modes">
+      <button id="btn-solo">Einzelspieler<i>Highscore-Jagd</i></button>
+      <button id="btn-bots" class="pink">Mit Bots<i>Koop oder Versus</i></button>
+      <button id="btn-online" class="ghost">Online<i>mit Freunden</i></button>
+    </div>
+    <div class="controls">
+      <kbd>W A S D</kbd><span>Fliegen</span>
+      <div><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd></div><span>Zielen und schiessen (auch schräg)</span>
+      <div>Touchpad</div><span>Zeiger bewegen = dorthin zielen, das Schiff schiesst dann von selbst</span>
+      <div><kbd>Leertaste</kbd> / <kbd>Shift</kbd></div><span>Smart-Bombe (räumt den Bildschirm)</span>
+      <div><kbd>Esc</kbd> <kbd>P</kbd> &nbsp;<kbd>M</kbd></div><span>Pause &nbsp;·&nbsp; Ton an/aus</span>
+      <div>Gamepad</div><span>Linker Stick fliegen, rechter Stick schiessen, Schultertaste Bombe</span>
+    </div>
+    <div class="sep">Gegner</div>
+    <div class="enemies">
+      <div><b style="color:#b863ff">◈ Wirbler</b> treibt umher</div>
+      <div><b style="color:#40c0ff">◆ Jäger</b> verfolgt dich</div>
+      <div><b style="color:#5aff66">⊠ Weber</b> weicht Schüssen aus</div>
+      <div><b style="color:#ff4fd0">▣ Spalter</b> zerfällt in drei</div>
+      <div><b style="color:#ffe640">➤ Schlange</b> Schwanz ist unzerstörbar</div>
+      <div><b style="color:#ff8a26">▶ Rakete</b> prallt an Wänden ab</div>
+      <div><b style="color:#ff3a3a">◎ Schwarzes Loch</b> saugt alles an</div>
+      <div><b style="color:#8cd8ff">● Proton</b> entsteht, wenn ein Loch platzt</div>
+      <div><b style="color:#ccff40">◇ Geom</b> Multiplikator +1</div>
+    </div>
+    <div class="sep">Highscores Einzelspieler</div>
+    <div id="menu-board"><div class="hint">Highscores gibt es nur auf langwiligi.site.</div></div>
+  </div>
+
+  <!-- Bots -->
+  <div class="panel" id="p-bots">
+    <h2>Mit Bots spielen</h2>
+    <p class="sub"><b>Koop:</b> Ihr kämpft gemeinsam gegen die Schwärme, jeder hat 3 Leben.<br>
+      <b>Versus:</b> Alle gegen alle. Eure Schüsse treffen auch die anderen Schiffe. Wer nach Ablauf der Zeit die meisten Punkte hat, gewinnt.</p>
+    <label class="f">Modus</label>
+    <div class="seg" id="bt-mode"><button data-v="coop" class="sel">Koop</button><button data-v="versus">Versus</button></div>
+    <label class="f">Anzahl Bots</label>
+    <div class="seg" id="bt-n"><button data-v="1">1</button><button data-v="2" class="sel">2</button><button data-v="3">3</button></div>
+    <label class="f">Schwierigkeit</label>
+    <div class="seg" id="bt-diff"><button data-v="0">Leicht</button><button data-v="1" class="sel">Mittel</button><button data-v="2">Schwer</button></div>
+    <div id="bt-timewrap"><label class="f">Spielzeit (Versus)</label>
+    <div class="seg" id="bt-time"><button data-v="120">2 Min</button><button data-v="180" class="sel">3 Min</button><button data-v="300">5 Min</button></div></div>
+    <button class="big pink" id="btn-bots-go">Los geht's</button>
+    <button class="big ghost" id="btn-bots-back">Zurück</button>
+  </div>
+
+  <!-- Online -->
+  <div class="panel" id="p-online">
+    <h2>Online spielen</h2>
+    <p class="sub">Erstelle einen Raum und schick den Link an bis zu drei Freunde. Im Raum wählt der Host Koop oder Versus und kann Bots dazunehmen.</p>
+    <button class="big" id="btn-host">Raum erstellen</button>
+    <div class="sep">oder beitreten</div>
+    <div class="row"><input type="text" id="join-code" maxlength="40" placeholder="Code, z.B. K7QD" autocomplete="off"><button id="btn-join" style="flex:0 0 auto">Beitreten</button></div>
+    <div class="status" id="online-status"></div>
+    <div class="sep">Rangliste Versus-Siege</div>
+    <div id="online-board"></div>
+    <button class="big ghost" id="btn-online-back">Zurück</button>
+  </div>
+
+  <!-- Lobby -->
+  <div class="panel" id="p-lobby">
+    <h2>Raum</h2>
+    <div class="code" id="lb-code">----</div>
+    <div class="row" style="margin-top:8px"><button class="ghost" id="btn-copy">Link kopieren</button></div>
+    <label class="f">Spieler</label>
+    <div class="plist" id="lb-players"></div>
+    <label class="f">Modus</label>
+    <div class="seg" id="lb-mode"><button data-v="coop" class="sel">Koop</button><button data-v="versus">Versus</button></div>
+    <label class="f">Bots dazu</label>
+    <div class="seg" id="lb-n"><button data-v="0" class="sel">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div>
+    <label class="f">Schwierigkeit der Bots</label>
+    <div class="seg" id="lb-diff"><button data-v="0">Leicht</button><button data-v="1" class="sel">Mittel</button><button data-v="2">Schwer</button></div>
+    <div id="lb-timewrap"><label class="f">Spielzeit (Versus)</label>
+    <div class="seg" id="lb-time"><button data-v="120">2 Min</button><button data-v="180" class="sel">3 Min</button><button data-v="300">5 Min</button></div></div>
+    <button class="big" id="btn-lobby-go">Spiel starten</button>
+    <div class="status" id="lobby-status"></div>
+    <button class="big ghost" id="btn-lobby-leave">Raum verlassen</button>
+  </div>
+
+  <!-- Pause -->
+  <div class="panel" id="p-pause">
+    <h2>Pause</h2>
+    <p class="sub" id="pause-sub">Das Spiel ist angehalten.</p>
+    <button class="big" id="btn-resume">Weiter</button>
+    <button class="big ghost" id="btn-pause-menu">Zum Menü</button>
+  </div>
+
+  <!-- Ende -->
+  <div class="panel wide" id="p-end">
+    <h2 id="end-title">Spiel vorbei</h2>
+    <div id="end-body"></div>
+    <div id="end-boardwrap"><div class="sep" id="end-boardtitle">Highscores</div><div id="end-board"></div></div>
+    <div class="row"><button class="big" id="btn-again">Nochmal</button><button class="big ghost" id="btn-end-menu">Menü</button></div>
+    <div class="status" id="end-status"></div>
+  </div>
+
+  <!-- Info -->
+  <div class="panel" id="p-info">
+    <h2 id="info-t">Hinweis</h2>
+    <p class="sub" id="info-s"></p>
+    <button class="big" id="btn-info">OK</button>
+  </div>
+</div>
+
+<script>const GAME_ID = 'gitter-krieg';</script>
+<script src="../_shared/hub.js"></script>
+<script src="js/basis.js"></script>
+<script src="js/render.js"></script>
+<script src="js/gitter.js"></script>
+<script src="js/partikel.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/netz.js"></script>
+<script src="js/spiel.js"></script>
+</body>
+</html>
