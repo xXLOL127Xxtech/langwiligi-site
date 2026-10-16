@@ -3,9 +3,9 @@
 
 const KI_STUFEN = [
   // aufhol: Tempo-Plus, wenn weit hinter dem besten Menschen; vorne: Tempo-Minus, wenn weit davor; abk: Lust auf Abkürzungen
-  { name: 'Leicht', tempo: 0.88, fehler: 0.32, drift: 1, reakt: [1.5, 4], treff: 0.5, aufhol: 0.07, vorne: 0.18, abk: 0.2 },
-  { name: 'Mittel', tempo: 0.955, fehler: 0.18, drift: 2, reakt: [0.8, 2.5], treff: 0.75, aufhol: 0.1, vorne: 0.14, abk: 0.45 },
-  { name: 'Schwer', tempo: 1.0, fehler: 0.07, drift: 3, reakt: [0.3, 1.3], treff: 0.95, aufhol: 0.13, vorne: 0.1, abk: 0.75 },
+  { name: 'Leicht', tempo: 0.88, fehler: 0.32, drift: 1, reakt: [1.5, 4], treff: 0.5, aufhol: 0.07, vorne: 0.18, abk: 0.15 },
+  { name: 'Mittel', tempo: 0.955, fehler: 0.18, drift: 2, reakt: [0.8, 2.5], treff: 0.75, aufhol: 0.1, vorne: 0.14, abk: 0.4 },
+  { name: 'Schwer', tempo: 1.0, fehler: 0.07, drift: 3, reakt: [0.3, 1.3], treff: 0.95, aufhol: 0.13, vorne: 0.1, abk: 0.8 },
 ];
 
 class Bot {
@@ -107,7 +107,12 @@ class Bot {
     if (this.rueckT > 0) { this.rueckT -= dt; inp.gas = 0; inp.bremse = 1; inp.lenk = -inp.lenk; inp.drift = false; }
     this.items(dt, inp);
   }
-  // Abkürzung wählen: pro Runde und Abkürzung wird einmal entschieden
+  // Hat der Bot etwas, um durchs hohe Gras zu rauschen?
+  turboBereit() {
+    const k = this.k;
+    return k.boostT > 0.6 || k.sternT > 1 || (k.roulette <= 0 && ['nitro', 'nitro3', 'goldnitro', 'stern'].includes(k.item));
+  }
+  // Abkürzung wählen: pro Runde und Abkürzung wird einmal entschieden. Ohne Turbo fast nie.
   abkWahl(P, w) {
     if (!w.abk.length) return null;
     if (P.ab >= 0) return (this.abk = w.abk[P.ab]);
@@ -122,7 +127,7 @@ class Bot {
       let ds = A.s1 - P.s; ds = ((ds % w.L) + w.L) % w.L;
       if (ds > 12 && ds < 50 && this.gewuerfelt[A.nr] !== k.runde) {
         this.gewuerfelt[A.nr] = k.runde;
-        if (Math.random() < this.st.abk) return (this.abk = A);
+        if (Math.random() < this.st.abk * (this.turboBereit() ? 1 : 0.08)) return (this.abk = A);
       }
     }
     return null;
@@ -222,9 +227,12 @@ class Bot {
     const t = k.item;
     const w = r.welt;
     const gerade = w.istArena || Math.abs(w.S[w.idx(k.P.s + 20)].k) < 0.008;
+    // Auf der Abkürzung: Turbo im hohen Gras zünden
+    const imGras = this.abk && k.P.ab === this.abk.nr && k.P.abS < this.abk.grasBis;
     let benutzen = false;
     switch (t) {
-      case 'nitro': case 'nitro3': case 'goldnitro': benutzen = gerade && !k.drift.an; break;
+      case 'nitro': case 'nitro3': case 'goldnitro': benutzen = imGras || (gerade && !k.drift.an && !this.abk); break;
+      case 'stern': benutzen = imGras || !this.abk; break;
       case 'hupe': benutzen = !!this.gegnerVorne(10, 3.2) || r.items.liste.some(g => g.typ === 'blau' && g.pos.distanceTo(k.pos) < 25) || this.itemT < -12; break;
       case 'banane': case 'falle': case 'bombe': case 'gruen': case 'rot':
         benutzen = true; this.haltT = 3 + Math.random() * 10; break;

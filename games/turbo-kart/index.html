@@ -214,6 +214,13 @@ details.help summary{cursor:pointer;font-weight:700}
 .h-blitz{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 .h-blitz.an{animation:flash .6s ease-out}
 @keyframes flash{0%{opacity:.95}100%{opacity:0}}
+.h-intro{position:absolute;left:50%;bottom:9%;transform:translate(-50%,20px);width:min(640px,86%);padding:14px 20px 16px;border-radius:16px;background:var(--panel);border:1px solid var(--line);text-align:center;opacity:0;transition:opacity .5s,transform .5s;pointer-events:none}
+.h-intro.an{opacity:1;transform:translate(-50%,0)}
+.h-intro b{display:block;font:400 calc(34px*var(--s)) var(--fn);color:var(--gelb);letter-spacing:1px;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+.h-intro span{display:block;margin-top:6px;font:600 calc(15px*var(--s))/1.35 system-ui;color:#e8ecf4}
+.vp.mini .h-intro span{display:none}
+.story{min-height:3.2em;margin:12px auto 0;max-width:720px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font:600 14px/1.4 system-ui;color:#dfe4ee;text-align:center}
+.story b{color:var(--gelb);font-family:var(--fn);font-weight:400;font-size:17px;margin-right:6px}
 .h-name{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font:800 12px system-ui;opacity:.0}
 .vp+.vp .h-name,.vp:first-child:not(:only-child) .h-name{opacity:.7}
 .vp.fertig .h-item,.vp.fertig .h-karte{opacity:.0;transition:opacity .5s}
@@ -301,6 +308,7 @@ details.help summary{cursor:pointer;font-weight:700}
   <div class="panel breit">
     <h2 id="streckeTitel">Strecke</h2>
     <div id="streckeInhalt"></div>
+    <p id="streckeStory" class="story"></p>
     <button class="btn" data-back style="max-width:220px;margin:12px auto 0">Zurück</button>
   </div>
 </section>
@@ -376,7 +384,7 @@ details.help summary{cursor:pointer;font-weight:700}
       <p><b>Münzen:</b> Jede Münze macht dich etwas schneller (höchstens 10). Bei Treffern verlierst du welche.</p>
       <p><b>Hindernisse:</b> Pfützen aus Matsch, Sand, Schnee oder Öl bremsen dich, Pylonen kosten beim Umfahren Tempo. Mit Turbo oder Stern rauschst du einfach durch.</p>
       <p><b>Steinblöcke:</b> Auf manchen Strecken krachen grimmige Steinblöcke herunter. Wenn sie zittern, schnell vorbei – sonst wirst du platt gedrückt. Ihr Schatten zeigt, wo sie landen.</p>
-      <p><b>Abkürzungen:</b> Jede Strecke hat Abkürzungen (gelbe Fähnchen, auf der Karte gestrichelt). Der Weg ist holprig, aber kürzer – mit dem Turbo-Feld oder einem Nitro lohnt er sich richtig.</p>
+      <p><b>Abkürzungen:</b> Jede Strecke hat versteckte Abkürzungen (gelber Wegweiser, auf der Karte gestrichelt). Der Eingang ist eng und voller hohem Gras, Sand oder Schnee, das stark bremst. Zünde dort ein Nitro oder einen Stern – dann sparst du richtig Zeit. In der Lavaburg und auf der Regenbogenbahn gibt es kein Geländer!</p>
       <p><b>Windschatten:</b> Fahr dicht hinter einem anderen Kart. Wenn weisse Streifen erscheinen, lädt sich ein Turbo auf.</p>
       <p><b>Aufholen:</b> Wer weit hinten liegt, ist etwas schneller und bekommt stärkere Items wie Blitz, Rakete oder Stern. Tinte rinnt mit der Zeit weg, mit Turbo oder Stern viel schneller.</p>
       <p><b>Gamepad:</b> A = Gas, B = Bremse, R/ZR = Drift, L/ZL = Item, Start = Pause.</p>
@@ -427,6 +435,8 @@ details.help summary{cursor:pointer;font-weight:700}
 <script src="js/basis.js"></script>
 <script src="js/modelle.js"></script>
 <script src="js/strecken.js"></script>
+<script src="js/waende.js"></script>
+<script src="js/wahrzeichen.js"></script>
 <script src="js/kart.js"></script>
 <script src="js/items.js"></script>
 <script src="js/ki.js"></script>

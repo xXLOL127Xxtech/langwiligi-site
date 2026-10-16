@@ -226,7 +226,7 @@ const Netz = {
       lokal: f.slot === this.you ? 0 : -1,
     }));
     cfg.netz = this.adapter();
-    cfg.introDauer = 3.2;
+    cfg.introDauer = 4;
     this.imRennen = true;
     this.rennId = msg.rid || 0;
     this.gpInfo = msg.gp;
