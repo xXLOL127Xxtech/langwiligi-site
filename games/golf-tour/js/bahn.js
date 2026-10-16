@@ -322,7 +322,7 @@ class Kurs {
     h *= lerp(0.4, 1, glatt);
     h += this.hProfil * smooth(clamp(s / this.laenge, 0, 1));
     const q = Math.max(0, d - korr - 10);
-    h += Math.min(70, T.rand * Math.pow(q / 45, 1.5) * (0.7 + 0.6 * rs.n2(x / 70, z / 70)));
+    h += Math.min(55, T.rand * Math.pow(q / 45, 1.35) * (0.6 + 0.8 * rs.n2(x / 70, z / 70)));
     if (this.meer && seite === this.meer.seite) {
       const w = smooth(clamp((d - this.meer.abst - 2) / 10, 0, 1));
       h = lerp(h, -11, w);

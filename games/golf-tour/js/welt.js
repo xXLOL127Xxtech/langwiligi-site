@@ -1,7 +1,9 @@
 // Golf-Tour – 3D-Welt einer Bahn: Gelände mit gemalter Textur, Himmel, Licht und Schatten, Wasser/Lava, Bäume, Fahne
 'use strict';
 
-const farbe = h => new THREE.Color(h);
+// Farben aus Hex (sRGB) in den linearen Farbraum für die Beleuchtung umrechnen
+const farbe = h => new THREE.Color(h).convertSRGBToLinear();
+const farbeRoh = h => new THREE.Color(h);
 function rgb(h) { const c = new THREE.Color(h); return [c.r * 255, c.g * 255, c.b * 255]; }
 
 // ---------- Gemeinsame Texturen (einmal erzeugt) ----------
@@ -241,8 +243,8 @@ class Welt {
     this.weg = [];                 // alles zum Aufräumen
     this.anim = [];                // Funktionen (dt, t)
     const T = this.T;
-    this.szene.fog = new THREE.Fog(farbe(T.himmel.horizont), T.nebel[0], T.nebel[1]);
-    this.szene.background = farbe(T.himmel.horizont);
+    this.szene.fog = new THREE.Fog(farbe(T.himmel.horizont), T.nebel[0] * 1.5, T.nebel[1] * 1.5);
+    this.szene.background = farbeRoh(T.himmel.horizont);
     this.licht();
     this.himmel();
     this.gelaende();
@@ -258,7 +260,7 @@ class Welt {
     const T = this.T, s = T.sonne;
     const dir = new THREE.Vector3(Math.cos(s.richtung) * Math.cos(s.hoehe), Math.sin(s.hoehe), Math.sin(s.richtung) * Math.cos(s.hoehe)).normalize();
     this.sonneDir = dir;
-    const sonne = new THREE.DirectionalLight(farbe(s.farbe), s.staerke);
+    const sonne = new THREE.DirectionalLight(farbe(s.farbe), s.staerke * 0.52);
     sonne.castShadow = true;
     const q = Einst.grafik === 'hoch' ? 2048 : 1024;
     sonne.shadow.mapSize.set(q, q);
@@ -267,7 +269,7 @@ class Welt {
     sonne.shadow.bias = -0.0004; sonne.shadow.normalBias = 0.04;
     this.szene.add(sonne); this.szene.add(sonne.target);
     this.sonne = sonne;
-    const hemi = new THREE.HemisphereLight(farbe(T.hemi.oben), farbe(T.hemi.unten), T.hemi.staerke);
+    const hemi = new THREE.HemisphereLight(farbe(T.hemi.oben), farbe(T.hemi.unten), T.hemi.staerke * 0.3);
     this.szene.add(hemi);
   }
   // Schatten folgen dem Bereich, auf den die Kamera schaut
@@ -282,8 +284,8 @@ class Welt {
     const mat = new THREE.ShaderMaterial({
       side: THREE.BackSide, depthWrite: false, fog: false,
       uniforms: {
-        oben: { value: farbe(T.himmel.oben) }, hor: { value: farbe(T.himmel.horizont) }, unten: { value: farbe(T.himmel.unten) },
-        sDir: { value: this.sonneDir }, sFarbe: { value: farbe(T.himmel.sonne) },
+        oben: { value: farbeRoh(T.himmel.oben) }, hor: { value: farbeRoh(T.himmel.horizont) }, unten: { value: farbeRoh(T.himmel.unten) },
+        sDir: { value: this.sonneDir }, sFarbe: { value: farbeRoh(T.himmel.sonne) },
       },
       vertexShader: 'varying vec3 vP; void main(){ vP = position; vec4 p = modelViewMatrix * vec4(position,1.0); gl_Position = projectionMatrix * p; }',
       fragmentShader: `uniform vec3 oben; uniform vec3 hor; uniform vec3 unten; uniform vec3 sDir; uniform vec3 sFarbe; varying vec3 vP;
@@ -299,15 +301,8 @@ class Welt {
     this.szene.add(sky);
     this.himmelMesh = sky;
     this.merk(geo); this.merk(mat);
-    // Umgebungslicht für Spiegelungen (Wasser, Ball) aus dem Himmel
-    const envSzene = new THREE.Scene();
-    const envSky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), mat);
-    envSzene.add(envSky);
-    const pm = new THREE.PMREMGenerator(this.renderer);
-    const rt = pm.fromScene(envSzene, 0.02, 0.1, 200);
-    pm.dispose(); envSky.geometry.dispose();
-    this.szene.environment = rt.texture;
-    this.merk(rt);
+    // Umgebungslicht für Spiegelungen (Wasser, Ball): Himmelsverlauf als Panorama-Bild
+    this.szene.environment = this.umgebung();
     // Wolken
     const r = rng(this.kurs.seed + 5);
     const wm = new THREE.SpriteMaterial({ map: Tex.wolke, fog: false, transparent: true, depthWrite: false, opacity: this.T.id === 'vulkan' ? 0.5 : 0.85 });
@@ -322,6 +317,31 @@ class Welt {
       sp.renderOrder = -9;
       this.szene.add(sp);
     }
+  }
+
+  umgebung() {
+    const T = this.T, w = 256, h = 128;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const g = cv.getContext('2d');
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, T.himmel.oben); gr.addColorStop(0.45, T.himmel.horizont); gr.addColorStop(0.52, T.f.fern); gr.addColorStop(1, T.f.rough);
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const s = T.sonne, sx = ((Math.atan2(Math.sin(s.richtung), Math.cos(s.richtung)) / TAU + 1.25) % 1) * w, sy = (0.5 - s.hoehe / Math.PI) * h;
+    const sg = g.createRadialGradient(sx, sy, 0, sx, sy, 22);
+    sg.addColorStop(0, 'rgba(255,255,240,1)'); sg.addColorStop(1, 'rgba(255,255,240,0)');
+    g.fillStyle = sg; g.fillRect(0, 0, w, h);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.encoding = THREE.sRGBEncoding;
+    let env = null;
+    try {
+      const pm = new THREE.PMREMGenerator(this.renderer);
+      env = pm.fromEquirectangular(tex).texture;
+      pm.dispose();
+    } catch (e) { env = null; }
+    tex.dispose();
+    if (env) this.merk(env);
+    return env;
   }
 
   // ---------- Gelände ----------
@@ -371,7 +391,7 @@ class Welt {
           }
           case U.GRUEN: {
             const u = x * dx + z * dz, v = -x * dz + z * dx;
-            f = ((Math.floor(u / 2.6) + Math.floor(v / 2.6)) & 1 ? 1.04 : 0.97) * (0.97 + gr * 0.06) + (n - 0.5) * 0.03;
+            f = ((Math.floor(u / 3.2) & 1) ? 1.03 : 0.975) * (0.97 + gr * 0.06) + (n - 0.5) * 0.03;
             break;
           }
           case U.ABSCHLAG: { const u = -x * dz + z * dx; f = ((Math.floor(u / 1.4)) & 1 ? 1.05 : 0.96) + (n - 0.5) * 0.04; break; }
@@ -411,7 +431,7 @@ class Welt {
       for (let q = 0; q < tw * th / 160; q++) {
         const i = Math.floor(rnd() * tw), j = Math.floor(rnd() * th);
         const t = typ[j * tw + i];
-        if (t !== U.ROUGH && !(T.deko === 'laterne' && t !== U.SAND && t !== U.WASSER)) continue;
+        if (t !== U.ROUGH && !(T.deko === 'laterne' && t === U.FAIRWAY)) continue;
         if (fein.n2(i / 40, j / 40) < 0.45) continue;
         tg.fillStyle = tupfer[Math.floor(rnd() * tupfer.length)];
         tg.globalAlpha = 0.7;
@@ -450,7 +470,7 @@ class Welt {
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
     geo.computeBoundingSphere();
     const tex = this.gelaendeTextur();
-    const mat = mitDetail(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.93, metalness: 0 }), new THREE.Vector2(uMax / 2.5, vMax / 2.5));
+    const mat = mitDetail(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.93, metalness: 0, envMapIntensity: 0.55 }), new THREE.Vector2(uMax / 2.5, vMax / 2.5));
     const mesh = new THREE.Mesh(geo, mat);
     mesh.receiveShadow = true;
     this.szene.add(mesh);
@@ -514,7 +534,7 @@ class Welt {
       if (t.art === 'lava') {
         const map = Tex.lava.clone(); map.needsUpdate = true;
         map.repeat.set((t.x1 - t.x0) / 18, (t.z1 - t.z0) / 18);
-        mat = new THREE.MeshStandardMaterial({ color: '#3a1a10', emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 1.6, roughness: 0.6 });
+        mat = new THREE.MeshStandardMaterial({ color: farbe('#3a1a10'), emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 1.6, roughness: 0.6 });
         this.anim.push((dt, tt) => { map.offset.set(tt * 0.01, Math.sin(tt * 0.2) * 0.03); mat.emissiveIntensity = 1.4 + Math.sin(tt * 1.7) * 0.25; });
         this.merk(map);
       } else {
@@ -557,7 +577,7 @@ class Welt {
           dummy.scale.setScalar(b.s);
           dummy.updateMatrix();
           im.setMatrixAt(i, dummy.matrix);
-          if (mitFarbe) { col.set(b.farbe || '#888888'); im.setColorAt(i, col); }
+          if (mitFarbe) { col.set(b.farbe || '#888888').convertSRGBToLinear(); im.setColorAt(i, col); }
         });
         im.castShadow = true; im.receiveShadow = true;
         if (im.instanceColor) im.instanceColor.needsUpdate = true;
@@ -583,7 +603,7 @@ class Welt {
     // Loch: dunkle Scheibe mit weissem Rand
     const hb = { h: 0, nx: 0, ny: 1, nz: 0 }; k.hoehe(L.x, L.z, hb);
     const loch = new THREE.Group();
-    const scheibe = new THREE.Mesh(this.merk(new THREE.CircleGeometry(PH.R_LOCH, 24)), this.merk(new THREE.MeshBasicMaterial({ color: '#0b0d0a', polygonOffset: true, polygonOffsetFactor: -4 })));
+    const scheibe = new THREE.Mesh(this.merk(new THREE.CircleGeometry(PH.R_LOCH, 24)), this.merk(new THREE.MeshBasicMaterial({ color: farbe('#0b0d0a'), polygonOffset: true, polygonOffsetFactor: -4 })));
     const rand = new THREE.Mesh(this.merk(new THREE.RingGeometry(PH.R_LOCH * 0.92, PH.R_LOCH * 1.08, 24)), this.merk(new THREE.MeshStandardMaterial({ color: '#f2f2f2', polygonOffset: true, polygonOffsetFactor: -4 })));
     scheibe.rotation.x = rand.rotation.x = -Math.PI / 2;
     loch.add(scheibe, rand);
@@ -597,7 +617,7 @@ class Welt {
     // Fahne mit Wellen
     const fg = this.merk(new THREE.PlaneGeometry(0.6, 0.4, 12, 6));
     fg.translate(0.3, 0, 0);
-    const fm = this.merk(new THREE.MeshStandardMaterial({ color: this.T.id === 'vulkan' ? '#ffd23a' : this.T.id === 'kirsch' ? '#d81e3c' : '#ff3b2f', side: THREE.DoubleSide, roughness: 0.7 }));
+    const fm = this.merk(new THREE.MeshStandardMaterial({ color: farbe(this.T.id === 'vulkan' ? '#ffd23a' : this.T.id === 'kirsch' ? '#d81e3c' : '#ff3b2f'), side: THREE.DoubleSide, roughness: 0.7 }));
     const flagge = new THREE.Mesh(fg, fm);
     flagge.position.y = PH.H_FAHNE - 0.22; flagge.castShadow = true;
     g.add(flagge);
@@ -619,11 +639,11 @@ class Welt {
   }
   abschlagMarker() {
     const k = this.kurs, d = k.richtungBei(3);
-    const geo = this.merk(new THREE.SphereGeometry(0.16, 12, 8)), mat = this.merk(new THREE.MeshStandardMaterial({ color: '#2a6cff', roughness: 0.3 }));
+    const geo = this.merk(new THREE.SphereGeometry(0.09, 12, 8)), mat = this.merk(new THREE.MeshStandardMaterial({ color: farbe('#2a6cff'), roughness: 0.3 }));
     for (const s of [-1, 1]) {
       const x = k.start.x - d.z * 3 * s - d.x * 0.5, z = k.start.z + d.x * 3 * s - d.z * 0.5;
       const m = new THREE.Mesh(geo, mat);
-      m.position.set(x, k.hoehe(x, z) + 0.12, z); m.castShadow = true;
+      m.position.set(x, k.hoehe(x, z) + 0.07, z); m.castShadow = true;
       this.szene.add(m);
     }
   }
@@ -665,7 +685,7 @@ class Welt {
     }
     if (T.deko === 'leuchtturm') {
       const lg = new THREE.Group();
-      const ring = (y, h, rr, c) => { const mm = new THREE.Mesh(this.merk(new THREE.CylinderGeometry(rr * 0.85, rr, h, 14)), this.merk(new THREE.MeshStandardMaterial({ color: c }))); mm.position.y = y + h / 2; mm.castShadow = true; lg.add(mm); };
+      const ring = (y, h, rr, c) => { const mm = new THREE.Mesh(this.merk(new THREE.CylinderGeometry(rr * 0.85, rr, h, 14)), this.merk(new THREE.MeshStandardMaterial({ color: farbe(c) }))); mm.position.y = y + h / 2; mm.castShadow = true; lg.add(mm); };
       for (let i = 0; i < 5; i++) ring(i * 4, 4, 2.6 - i * 0.25, i % 2 ? '#d8352a' : '#f6f6f6');
       ring(20, 2.6, 1.6, '#ffe9a0');
       ring(22.6, 1.5, 1.9, '#333333');
@@ -677,7 +697,7 @@ class Welt {
     }
     if (T.deko === 'mesa') {
       const mg = this.merk(new THREE.CylinderGeometry(70, 95, 110, 9));
-      const mm = this.merk(new THREE.MeshStandardMaterial({ color: '#b5703f', flatShading: true }));
+      const mm = this.merk(new THREE.MeshStandardMaterial({ color: farbe('#b5703f'), flatShading: true }));
       for (let i = 0; i < 4; i++) {
         const a = r() * TAU, d = 650 + r() * 400;
         const me = new THREE.Mesh(mg, mm);
@@ -691,6 +711,5 @@ class Welt {
   entsorgen() {
     for (const o of this.weg) { try { o.dispose(); } catch (e) { } }
     this.szene.traverse(o => { if (o.isInstancedMesh) { try { o.dispose(); } catch (e) { } } });
-    if (this.szene.environment) this.szene.environment.dispose();
   }
 }

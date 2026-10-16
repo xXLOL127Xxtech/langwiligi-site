@@ -377,7 +377,7 @@ class Spieler {
     let y = b.p.y;
     if (b.zustand === 'loch') { b.lochFall = Math.min(1, b.lochFall + dt * 3); y = this.kurs.loch.y + PH.R - b.lochFall * 0.12; }
     const ab = Math.hypot(kamPos.x - b.p.x, kamPos.y - y, kamPos.z - b.p.z);
-    const s = Math.max(1, ab * 0.032);
+    const s = Math.max(1.7, ab * 0.034);
     g.userData.mesh.scale.setScalar(s);
     g.position.set(b.p.x, y + PH.R * (s - 1) * (b.zustand === 'loch' ? 0 : 1), b.p.z);
     const rs = clamp(ab * 0.035, 0.12, 9) * (b.zustand === 'loch' ? 0 : 1);
@@ -424,7 +424,7 @@ class Geist {
   grafikUpdate(kamPos) {
     if (!this.grafik) return;
     const p = this.pos, ab = Math.hypot(kamPos.x - p.x, kamPos.y - p.y, kamPos.z - p.z);
-    const s = Math.max(1, ab * 0.032);
+    const s = Math.max(1.7, ab * 0.034);
     this.grafik.userData.mesh.scale.setScalar(s);
     this.grafik.position.set(p.x, p.y + PH.R * (s - 1), p.z);
     const rs = clamp(ab * 0.035, 0.12, 9);
