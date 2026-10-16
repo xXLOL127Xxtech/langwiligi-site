@@ -45,6 +45,9 @@ class Anzeige {
       meld: q('.hMeldung'), meldB: q('.hMeldung b'), meldS: q('.hMeldung span'), marken: q('.hMarken'), hinweis: q('.hHinweis'), unten: q('.hUnten'),
     };
     this.tastenText = tastenText;
+    // Knöpfe im HUD nehmen keinen Tastaturfokus (sonst lösen Leertaste/Enter sie zusätzlich aus)
+    for (const b of root.querySelectorAll('button')) b.tabIndex = -1;
+    root.addEventListener('mousedown', ev => ev.preventDefault());
     this.meldT = 0; this.markenPool = new Map(); this.cache = {};
     this.karteBasis = null;
   }

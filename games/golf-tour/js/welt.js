@@ -425,7 +425,7 @@ class Welt {
     }
     g.putImageData(img, 0, 0);
     // Blumen / Laub / Glut als Tupfer im Rough
-    const tupfer = { blumen: ['#ffffff', '#ffe14a', '#ff7aa8', '#b48aff'], laub: ['#e07a2a', '#c94a28', '#e8b23a'], glut: ['#ff6a1a', '#ffb02a'], laterne: ['#f7b6cc', '#ffffff'] }[T.deko];
+    const tupfer = { blumen: ['#ffffff', '#ffe14a', '#ff7aa8', '#b48aff'], laub: ['#e07a2a', '#c94a28', '#e8b23a'], glut: ['#ff6a1a', '#ffb02a'], laterne: ['#f3a9c2', '#f7c4d6'] }[T.deko];
     if (tupfer) {
       const tg = g;
       for (let q = 0; q < tw * th / 160; q++) {
@@ -433,9 +433,10 @@ class Welt {
         const t = typ[j * tw + i];
         if (t !== U.ROUGH && !(T.deko === 'laterne' && t === U.FAIRWAY)) continue;
         if (fein.n2(i / 40, j / 40) < 0.45) continue;
+        if (T.deko === 'laterne' && rnd() < 0.6) continue;
         tg.fillStyle = tupfer[Math.floor(rnd() * tupfer.length)];
-        tg.globalAlpha = 0.7;
-        tg.fillRect(i, j, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
+        tg.globalAlpha = T.deko === 'laterne' ? 0.45 : 0.7;
+        tg.fillRect(i, j, 1 + rnd(), 1 + rnd());
       }
       tg.globalAlpha = 1;
     }
