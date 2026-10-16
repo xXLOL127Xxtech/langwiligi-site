@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Sternen-Party</title>
+<meta name="description" content="Party-Brettspiel für 4: würfeln, Sterne kaufen, Münzen sammeln und nach jeder Runde ein Minispiel.">
+<meta name="theme-color" content="#ff4fa3">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
+<meta name="spiel-tags" content="Party,Bis 4,Minispiele">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+:root{--acc:#ff4fa3;--acc-d:#a8216a;--gold:#ffd23a;--bg:#0d0f13;--panel:rgba(18,16,36,.88);--line:rgba(255,255,255,.12);--fn:"Lilita One",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hidden{display:none!important}
+button{font-family:inherit}
+kbd{display:inline-block;min-width:22px;padding:1px 6px;margin:0 1px;border-radius:6px;background:rgba(255,255,255,.16);border-bottom:2px solid rgba(255,255,255,.3);font:700 12px system-ui,sans-serif;text-align:center;color:#fff}
+/* ---------- Bildschirme ---------- */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;overflow-y:auto;z-index:20}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px 24px;max-width:520px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:auto}
+.panel.mittel{max-width:780px}.panel.breit{max-width:1000px}
+h2{font-family:var(--fn);font-weight:400;color:var(--gold);margin:0 0 12px;font-size:32px;text-align:center;letter-spacing:1px;text-shadow:0 3px 0 rgba(0,0,0,.4)}
+h3{font-family:var(--fn);font-weight:400;margin:16px 0 6px;font-size:20px;letter-spacing:.5px;color:#fff}
+.logo{text-align:center;margin:0 0 4px;font-family:var(--fn);line-height:.9;font-size:clamp(56px,9vw,100px);letter-spacing:2px}
+.logo span{display:inline-block;background:linear-gradient(#fff6b0,#ffd23a 50%,#ff9b1c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 0 #8a3a00) drop-shadow(0 12px 18px rgba(0,0,0,.5));transform:rotate(-3deg)}
+.logo span.b{background-image:linear-gradient(#ffe0f2,#ff7ac0 55%,#e0288a);filter:drop-shadow(0 5px 0 #6a0a3a) drop-shadow(0 12px 18px rgba(0,0,0,.5));transform:rotate(2deg)}
+.sub{text-align:center;opacity:.85;font-size:15px;margin:0 0 14px}
+.btn{display:block;width:100%;padding:13px 16px;margin:8px 0;border:0;border-radius:14px;font:700 17px system-ui,sans-serif;color:#fff;background:rgba(255,255,255,.1);cursor:pointer;transition:transform .08s,background .15s,box-shadow .15s;text-align:center;outline:none}
+.btn:hover,.btn:focus-visible,.btn:focus{background:rgba(255,255,255,.2);box-shadow:0 0 0 3px var(--gold)}
+.btn:active{transform:scale(.97)}
+.btn.haupt{background:linear-gradient(#ff7ac0,var(--acc));font-family:var(--fn);font-weight:400;font-size:23px;letter-spacing:1px;box-shadow:0 5px 0 var(--acc-d);text-shadow:0 2px 0 rgba(0,0,0,.3)}
+.btn.haupt:hover,.btn.haupt:focus{box-shadow:0 5px 0 var(--acc-d),0 0 0 3px var(--gold)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn small{display:block;font-weight:500;font-size:12.5px;opacity:.8;margin-top:2px;font-family:system-ui,sans-serif;letter-spacing:0}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.lbl{display:block;font-size:12px;opacity:.7;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1;min-width:64px;padding:9px 6px;border:0;border-radius:11px;background:rgba(255,255,255,.08);color:#fff;font:700 14px system-ui,sans-serif;cursor:pointer;outline:none}
+.seg button:hover,.seg button:focus-visible{background:rgba(255,255,255,.18);box-shadow:0 0 0 3px var(--gold)}
+.seg button.on{background:var(--acc);box-shadow:0 3px 0 var(--acc-d)}
+input.txt{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:#fff;font:700 17px system-ui,sans-serif;outline:none;user-select:text;-webkit-user-select:text}
+input.txt:focus{border-color:var(--gold)}
+.err{color:#ff8a80;font-size:14px;min-height:18px;margin-top:6px;text-align:center}
+.hinweis{font-size:13px;opacity:.72;text-align:center;margin-top:10px;line-height:1.5}
+.kopf{position:relative}
+.zurueck{position:absolute;right:0;top:0;width:auto;padding:8px 14px;margin:0;font-size:14px}
+/* Lokal: Plätze */
+.plaetze{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pkarte{position:relative;border-radius:18px;padding:12px 10px;background:rgba(255,255,255,.05);border:3px solid rgba(255,255,255,.08);text-align:center;transition:transform .15s,border-color .2s}
+.pkarte.mensch{border-color:var(--f);background:linear-gradient(180deg,color-mix(in srgb,var(--f) 22%,transparent),rgba(255,255,255,.03))}
+.pkarte.bereit{transform:translateY(-4px);box-shadow:0 10px 30px color-mix(in srgb,var(--f) 40%,transparent)}
+.pkopf{font-family:var(--fn);font-size:19px;letter-spacing:.5px;color:var(--f)}
+.pkarte:not(.mensch) .pkopf{color:#aab}
+.psteuer{font-size:12px;opacity:.85;min-height:22px}
+.pfig{width:110px;height:100px;display:block;margin:4px auto 0}
+.pname{font-weight:800;font-size:16px}.pname small{opacity:.6;font-weight:500}
+.pbereit{font-size:11.5px;margin-top:6px;opacity:.85;line-height:1.7}
+.pbereit.ok{color:#7ef08a;font-weight:800;font-size:15px;opacity:1}
+.pbereit.frei{opacity:.55}
+.bloecke{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;font-size:12px;margin-top:10px}
+.bloecke span.weg{opacity:.3}
+.status{text-align:center;font-weight:800;color:var(--gold);margin:12px 0 0;min-height:20px}
+.einstgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px}
+/* Online */
+.code{font-family:var(--fn);font-size:44px;letter-spacing:8px;text-align:center;color:var(--gold)}
+.lbz{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.06);margin:5px 0;border-left:5px solid var(--f,transparent)}
+.lbz img{width:40px;height:40px}.lbz b{flex:0 0 auto}.lbz span{opacity:.7;font-size:13px}
+.lbz.leer{opacity:.45;justify-content:center;min-height:52px;font-size:13px}
+.figuren{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.fwahl{border:0;border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:4px 2px;cursor:pointer;font:700 11px system-ui;outline:none}
+.fwahl img{width:100%;max-width:60px;display:block;margin:auto}
+.fwahl.on{background:var(--acc)}.fwahl:focus-visible,.fwahl:hover{box-shadow:0 0 0 3px var(--gold)}
+.fwahl:disabled{opacity:.25;cursor:default}
+.anl{font-size:14.5px;line-height:1.55}.anl p{margin:6px 0}.anl ul{margin:4px 0;padding-left:20px}
+.feldsym{display:inline-block;width:16px;height:11px;border-radius:50%;vertical-align:middle;margin-right:4px;border:2px solid #fff}
+/* ---------- Anzeige im Spiel ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+.karte{position:absolute;display:flex;gap:8px;align-items:center;width:268px;padding:8px 12px 8px 8px;border-radius:18px;background:rgba(16,14,32,.82);border:3px solid var(--f);box-shadow:0 8px 24px rgba(0,0,0,.35);transition:transform .25s,box-shadow .25s}
+.karte.k0{left:12px;top:12px}.karte.k1{right:12px;top:12px}.karte.k2{left:12px;bottom:12px}.karte.k3{right:12px;bottom:12px}
+.karte.aktiv{transform:scale(1.05);box-shadow:0 0 0 4px rgba(255,255,255,.6),0 10px 30px rgba(0,0,0,.4)}
+.karte .bild{width:58px;height:58px;flex:0 0 58px;background:radial-gradient(circle,color-mix(in srgb,var(--f) 45%,transparent),transparent 70%);border-radius:50%}
+.karte .info{flex:1;min-width:0}
+.karte .name{font-weight:800;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.karte .art{font-size:11px;opacity:.7;white-space:nowrap}
+.karte .art kbd{font-size:10px;padding:0 4px;min-width:16px}
+.werte{display:flex;gap:14px;font-size:18px;margin-top:2px}
+.werte .stern{color:var(--gold)}.werte b{font-family:var(--fn);font-weight:400;font-size:22px}
+.muenz i,.preis i,.plus i,.sockel i{display:inline-block;width:15px;height:15px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6b0,#ffc61a 60%,#d88a00);border:2px solid #a86400;vertical-align:-2px}
+.items{display:flex;gap:3px;margin-top:3px;min-height:4px}.items img{width:24px;height:24px}
+.platz{position:absolute;top:-10px;left:-8px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-family:var(--fn);font-size:15px;background:#556;border:2px solid #fff}
+.platz.p1{background:linear-gradient(#ffe066,#e0a000);color:#5a3a00}.platz.p2{background:linear-gradient(#f0f0f6,#a0a4b8);color:#333}.platz.p3{background:linear-gradient(#ffb070,#b8601a)}
+#rundeAnz{position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:8px 18px;border-radius:16px;background:rgba(16,14,32,.82);font-size:16px;border:2px solid rgba(255,255,255,.15)}
+#rundeAnz b{font-family:var(--fn);font-weight:400;font-size:24px;color:var(--gold)}
+#rundeAnz .heiss{color:#ff6b8a;font-weight:900}
+#pauseKnopf{position:absolute;left:50%;top:62px;transform:translateX(-50%);pointer-events:auto;width:auto;padding:5px 14px;margin:0;font-size:13px;border-radius:10px;background:rgba(16,14,32,.7)}
+#tonKnopf{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:30;width:42px;height:42px;border-radius:50%;border:0;background:rgba(16,14,32,.7);font-size:19px;cursor:pointer}
+/* Sprechblase */
+#meldung{position:fixed;left:50%;bottom:118px;transform:translateX(-50%);z-index:8;display:flex;gap:14px;align-items:center;max-width:min(680px,calc(100% - 600px));min-width:380px;padding:12px 20px 12px 12px;border-radius:22px;background:rgba(255,255,255,.96);color:#2a1840;box-shadow:0 14px 40px rgba(0,0,0,.4);cursor:pointer}
+#meldung.oben{bottom:auto;top:96px}
+#meldung.neu{animation:auf .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes auf{from{transform:translateX(-50%) scale(.6);opacity:0}}
+#meldung img{width:84px;height:84px;flex:0 0 84px;border-radius:50%;background:radial-gradient(circle,#fff6c4,#ffd4ef)}
+#meldung.wer-grimm img{background:radial-gradient(circle,#ffb0a0,#6a1a3a)}#meldung.wer-gusti img{background:radial-gradient(circle,#e8ecff,#a8b0e0)}
+#meldung b{font-family:var(--fn);font-weight:400;font-size:24px;letter-spacing:.5px;color:#c0207a}
+#meldung.wer-grimm b{color:#b01a2a}
+#meldung p{margin:2px 0 0;font-size:16px;line-height:1.35}
+#meldung small{display:block;margin-top:4px;font-size:12px;opacity:.6}
+#meldung small kbd{background:#2a1840}
+/* Dialog */
+#dialog{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9;width:min(520px,calc(100% - 600px));min-width:360px;max-height:calc(100% - 150px);overflow:auto;padding:14px 16px;border-radius:20px;background:var(--panel);border:1px solid var(--line);box-shadow:0 16px 50px rgba(0,0,0,.5);backdrop-filter:blur(8px)}
+#dialog.klein{text-align:center}
+#dialog .wtitel{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--fn);font-size:21px;letter-spacing:.5px;margin-bottom:8px;text-align:center}
+#dialog .wtitel img{width:40px;height:40px}
+#dialog .btn{margin:6px auto 0;max-width:240px}
+.optionen{display:flex;flex-direction:column;gap:6px}
+#dialog.raster .optionen{display:grid;grid-template-columns:repeat(5,1fr)}
+.opt{display:flex;align-items:center;gap:10px;padding:9px 12px;border:0;border-radius:12px;background:rgba(255,255,255,.08);color:#fff;text-align:left;font-size:15px;cursor:pointer;outline:none;transition:background .12s,transform .12s}
+.opt span{flex:1}.opt b{display:block}.opt small{display:block;opacity:.7;font-size:12px}
+.opt img{width:36px;height:36px}
+.opt.fokus{background:linear-gradient(90deg,var(--acc),#c03ad0);transform:scale(1.02);box-shadow:0 0 0 3px var(--gold)}
+.opt.aus{opacity:.35}
+.opt:disabled{cursor:default}
+#dialog.raster .opt{justify-content:center;text-align:center;font-size:20px;font-family:var(--fn)}
+.preis{font-weight:800;white-space:nowrap}
+/* Banner */
+#banner{position:fixed;left:0;right:0;top:40%;z-index:12;display:flex;justify-content:center;align-items:center;gap:14px;pointer-events:none;opacity:0}
+#banner.zeigen{animation:banner 1.9s ease forwards}
+#banner span{font-family:var(--fn);font-size:clamp(40px,6vw,74px);color:#fff;-webkit-text-stroke:2px rgba(0,0,0,.25);text-shadow:0 5px 0 color-mix(in srgb,var(--f) 70%,#000),0 12px 30px rgba(0,0,0,.5);padding:8px 40px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--f) 75%,transparent) 20%,color-mix(in srgb,var(--f) 75%,transparent) 80%,transparent)}
+#banner span small{font-size:.5em}
+#banner img{width:110px;height:110px}
+@keyframes banner{0%{opacity:0;transform:translateX(-30%) skewX(-10deg)}15%{opacity:1;transform:none}80%{opacity:1;transform:none}100%{opacity:0;transform:translateX(30%) skewX(10deg)}}
+/* Roulette */
+#roulette{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:11;width:min(560px,92%);padding:18px 20px;border-radius:24px;background:linear-gradient(160deg,#3a1a6a,#6a2a9a);border:4px solid var(--gold);box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center}
+#roulette.art-grimm{background:linear-gradient(160deg,#3a0a14,#8a1a2a);border-color:#ff6b3a}
+.rtitel{font-family:var(--fn);font-size:28px;color:var(--gold);margin-bottom:10px}.rtitel small{display:block;font-size:16px;color:#fff;opacity:.8}
+.fenster{position:relative;border-radius:14px;background:rgba(0,0,0,.35);overflow:hidden;padding:4px 0}
+.band div{padding:8px;font:800 20px system-ui;opacity:.35;transform:scale(.85)}
+.band div.mitte{opacity:1;transform:none;font-family:var(--fn);font-weight:400;font-size:34px;letter-spacing:.5px;background:rgba(255,255,255,.12);border-top:2px solid var(--gold);border-bottom:2px solid var(--gold)}
+#roulette.fertig .band div.mitte{animation:blink .4s 3;color:var(--gold)}
+@keyframes blink{50%{transform:scale(1.12)}}
+/* Vollbild-Tafeln */
+#vollbild{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(10,8,24,.55);overflow-y:auto}
+#vollbild.durchsichtig{background:transparent}
+.teamreihe{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.tkarte{width:150px;padding:10px;border-radius:18px;text-align:center;background:#556;transition:background .3s,transform .3s;border:3px solid rgba(255,255,255,.3)}
+.tkarte img{width:100px;height:100px}.tkarte b{display:block}.tkarte span{font-family:var(--fn);font-size:22px}
+.tkarte.blau{background:linear-gradient(#6fb2ff,#2f6fd6);transform:translateY(-6px)}.tkarte.rot{background:linear-gradient(#ff7a7a,#cf2f3a);transform:translateY(-6px)}
+.tkarte.offen{background:linear-gradient(#7ef08a,#22a33a);animation:wackel .5s infinite}
+@keyframes wackel{50%{transform:rotate(3deg)}}
+.format{font-family:var(--fn);font-size:38px;text-align:center;margin-top:14px;color:var(--gold);opacity:.35}
+.format.da{opacity:1;animation:auf2 .4s cubic-bezier(.3,1.6,.5,1)}
+@keyframes auf2{from{transform:scale(.4)}}
+.intro .ikopf{text-align:center}.intro .ikopf small{text-transform:uppercase;letter-spacing:2px;font-weight:800;color:#ff9ad0;font-size:12px}
+.intro h2{font-size:42px;margin:2px 0 6px}
+.itext{text-align:center;font-size:17px;line-height:1.45;margin:0 0 12px}
+.steuerung{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.steuerung div{padding:8px 14px;border-radius:12px;background:rgba(255,255,255,.08);font-size:14.5px}
+.lbl2{display:inline-block;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:800;color:var(--gold);margin-right:8px}
+.tliste{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tz{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.07);cursor:pointer;border:2px solid transparent}
+.tz img{width:40px;height:40px}.tz b{font-size:15px}.tz .st{font-size:11px;opacity:.75;flex:1;text-align:right}
+.tz .haken{font-size:12px;font-weight:800;opacity:.85;min-width:82px;text-align:right}
+.tz.ok{border-color:#7ef08a;background:rgba(126,240,138,.14)}.tz.ok .haken{color:#7ef08a}
+.tz .tm{width:12px;height:40px;border-radius:6px}
+.ergebnis .mname{display:block;text-align:center;opacity:.7;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-size:12px}
+.erliste{display:flex;flex-direction:column;gap:8px}
+.er{display:flex;align-items:center;gap:12px;padding:6px 14px;border-radius:14px;background:rgba(255,255,255,.06);border-left:6px solid var(--f)}
+.er.gew{background:linear-gradient(90deg,rgba(255,210,58,.25),rgba(255,255,255,.05))}
+.er img{width:54px;height:54px}.er b{flex:1;font-size:18px}.er .pl{font-family:var(--fn);font-size:24px;width:34px}
+.er .pk{font-weight:800;font-size:18px;opacity:.8}
+.plus{font-family:var(--fn);font-size:22px;color:var(--gold);animation:auf2 .5s cubic-bezier(.3,1.6,.5,1)}
+.podest{display:flex;justify-content:center;align-items:flex-end;gap:12px;margin:10px 0 14px}
+.pod{display:flex;flex-direction:column;align-items:center;order:3}
+.pod img{width:130px;height:130px}
+.pod.p1{order:2}.pod.p1 img{width:170px;height:170px;animation:huepf 1s infinite}.pod.p2{order:1}.pod.p4{order:4}
+@keyframes huepf{50%{transform:translateY(-12px)}}
+.sockel{width:170px;padding:10px 6px;border-radius:14px 14px 4px 4px;text-align:center;background:linear-gradient(color-mix(in srgb,var(--f) 70%,#fff),var(--f));display:flex;flex-direction:column;gap:2px;font-size:14px}
+.pod.p1 .sockel{min-height:120px}.pod.p2 .sockel{min-height:90px}.pod.p3 .sockel{min-height:70px}.pod.p4 .sockel{min-height:56px}
+.sockel .pn{font-family:var(--fn);font-size:28px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-size:12.5px;margin-bottom:8px}
+.stats div{display:flex;flex-direction:column;padding:8px;border-radius:10px;background:rgba(255,255,255,.06)}.stats span{opacity:.75}
+@media (max-height:760px){.pfig{height:80px}.pkarte{padding:8px}.panel{padding:16px 18px}.logo{font-size:64px}.karte{width:240px}#meldung{bottom:104px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="karten"></div>
+  <div id="rundeAnz"></div>
+  <button id="pauseKnopf" class="btn">Menü (Esc)</button>
+</div>
+<div id="meldung" class="hidden"></div>
+<div id="dialog" class="hidden"></div>
+<div id="roulette" class="hidden"></div>
+<div id="banner"></div>
+<div id="vollbild" class="hidden"></div>
+<button id="tonKnopf" aria-label="Ton"></button>
+
+<!-- Hauptmenü -->
+<div id="sMenue" class="screen hidden">
+  <div class="panel">
+    <div class="logo"><span>Sternen</span><span class="b">Party</span></div>
+    <p class="sub">Würfeln, Münzen sammeln, Sterne kaufen und nach jeder Runde ein Minispiel!</p>
+    <button class="btn haupt" id="mLokal" data-start>Lokal spielen<small>1–4 Spieler an einer Tastatur, der Rest Computer</small></button>
+    <button class="btn" id="mOnline">Online spielen<small>Jeder am eigenen Laptop, mit extra Touchpad-Minispielen</small></button>
+    <button class="btn" id="mAnleitung">Anleitung</button>
+    <p class="hinweis">Menüs: Pfeiltasten oder WASD und Aktionstaste, oder einfach klicken.</p>
+  </div>
+</div>
+
+<!-- Lokal: Spieler beitreten -->
+<div id="sLokal" class="screen hidden">
+  <div class="panel breit">
+    <div class="kopf"><h2>Wer spielt mit?</h2><button class="btn zurueck" data-zurueck>Zurück (Esc)</button></div>
+    <p class="sub">Jeder nimmt sich einen Tastenblock und drückt seine <b>Aktionstaste</b>. Freie Plätze spielt der Computer.</p>
+    <div class="plaetze" id="lPlaetze"></div>
+    <div class="bloecke" id="lBloecke"></div>
+    <div class="status" id="lStatus">Drückt eure Aktionstaste zum Mitmachen!</div>
+    <div class="einstgrid">
+      <div><span class="lbl">Runden</span><div class="seg" data-einst="runden"><button data-v="10">10</button><button data-v="15">15</button><button data-v="20">20</button><button data-v="25">25</button></div></div>
+      <div><span class="lbl">Computer-Gegner</span><div class="seg" data-einst="stufe"><button data-v="0">Leicht</button><button data-v="1">Mittel</button><button data-v="2">Schwer</button></div></div>
+      <div><span class="lbl">Bonus-Sterne am Ende</span><div class="seg" data-einst="bonus"><button data-v="true">An</button><button data-v="false">Aus</button></div></div>
+      <div><span class="lbl">Tempo auf dem Brett</span><div class="seg" data-einst="tempo"><button data-v="1">Normal</button><button data-v="1.6">Schnell</button></div></div>
+    </div>
+    <button class="btn haupt" id="lStart">Starten</button>
+    <p class="hinweis">Laptop-Tastaturen erkennen nicht beliebig viele Tasten gleichzeitig. Die Minispiele brauchen deshalb pro Person nur wenige Tasten.</p>
+  </div>
+</div>
+
+<!-- Online: Raum -->
+<div id="sOnline" class="screen hidden">
+  <div class="panel">
+    <div class="kopf"><h2>Online spielen</h2><button class="btn zurueck" data-zurueck>Zurück</button></div>
+    <span class="lbl">Dein Name</span>
+    <input class="txt" id="oName" maxlength="16" autocomplete="off" placeholder="Name">
+    <button class="btn haupt" id="oErstellen">Neues Spiel erstellen</button>
+    <span class="lbl">Oder mit Code beitreten</span>
+    <div class="row"><input class="txt" id="oCode" maxlength="4" autocomplete="off" placeholder="CODE" style="text-transform:uppercase;letter-spacing:4px;text-align:center"><button class="btn" id="oBeitreten" style="margin:0">Beitreten</button></div>
+    <div class="err" id="oFehler"></div>
+    <p class="hinweis">Online gibt es zusätzliche Minispiele mit Touchpad: zielen, klicken und Bilder nachfahren.</p>
+    <span class="lbl">Rangliste (Siege)</span>
+    <div id="oBoard"></div>
+  </div>
+</div>
+
+<!-- Online: Lobby -->
+<div id="sLobby" class="screen hidden">
+  <div class="panel mittel">
+    <div class="kopf"><h2>Warteraum</h2><button class="btn zurueck" data-zurueck>Verlassen</button></div>
+    <div class="code" id="lbCode">····</div>
+    <button class="btn" id="lbLink" style="max-width:240px;margin:4px auto 10px">Link kopieren</button>
+    <div class="row">
+      <div><span class="lbl">Spieler</span><div id="lbSpieler"></div></div>
+      <div><span class="lbl">Deine Figur</span><div class="figuren" id="lbFiguren" style="grid-template-columns:repeat(4,1fr)"></div></div>
+    </div>
+    <div id="lbEinst" class="einstgrid">
+      <div><span class="lbl">Runden</span><div class="seg" data-einst="runden"><button data-v="10">10</button><button data-v="15">15</button><button data-v="20">20</button><button data-v="25">25</button></div></div>
+      <div><span class="lbl">Computer</span><div class="seg" data-einst="stufe"><button data-v="0">Leicht</button><button data-v="1">Mittel</button><button data-v="2">Schwer</button></div></div>
+      <div><span class="lbl">Bonus-Sterne</span><div class="seg" data-einst="bonus"><button data-v="true">An</button><button data-v="false">Aus</button></div></div>
+    </div>
+    <p class="hinweis" id="lbEinstGast"></p>
+    <button class="btn haupt" id="lbStart">Spiel starten</button>
+    <p class="hinweis" id="lbWarte">Warte, bis der Gastgeber das Spiel startet …</p>
+    <div id="lbBoard"></div>
+  </div>
+</div>
+
+<!-- Anleitung -->
+<div id="sAnleitung" class="screen hidden">
+  <div class="panel mittel anl">
+    <div class="kopf"><h2>So wird gespielt</h2><button class="btn zurueck" data-zurueck>Zurück (Esc)</button></div>
+    <p><b>Ziel:</b> Nach der letzten Runde gewinnt, wer die meisten <b>Sterne</b> hat. Bei Gleichstand zählen die Münzen.</p>
+    <p><b>Ablauf einer Runde:</b> Alle 4 Spieler würfeln nacheinander (1–10) und laufen über die Sternen-Insel. Danach gibt es ein <b>Minispiel</b>. Jeder Gewinner bekommt 10 Münzen.</p>
+    <p><b>Sterne:</b> Stella die Sternenfee wartet irgendwo auf der Insel. Wer vorbeikommt, kann für 20 Münzen einen Stern kaufen. Danach fliegt sie weiter.</p>
+    <h3>Felder</h3>
+    <ul>
+      <li><span class="feldsym" style="background:#2f6fd6"></span><b>Blau</b>: +3 Münzen &nbsp; <span class="feldsym" style="background:#cf2f3a"></span><b>Rot</b>: −3 Münzen (in den letzten 5 Runden doppelt)</li>
+      <li><span class="feldsym" style="background:#22a33a"></span><b>!</b> Glücksfeld: Geschenke &nbsp; <b>?</b> Ereignisfeld: Seilbahn, Strudel, Platztausch …</li>
+      <li><span class="feldsym" style="background:#25102e"></span><b>Grimm-Feld</b>: Graf Grimm dreht sein böses Glücksrad.</li>
+      <li><span class="feldsym" style="background:#c040b0"></span><b>Item</b>: gratis Item &nbsp; <span class="feldsym" style="background:#e06a10"></span><b>VS</b>: Duell um Münzen &nbsp; <span class="feldsym" style="background:#d9a400"></span><b>Bank</b>: vorbei zahlt 5, landen kassiert alles</li>
+      <li><b>Laden</b> und <b>Gusti das Gespenst</b> stehen am Weg: Im Laden kaufst du Items, Gusti stiehlt für dich Münzen oder Sterne.</li>
+    </ul>
+    <h3>Items (höchstens 3)</h3>
+    <p>Doppel- und Dreifachwürfel, Wunschwürfel, Turbo-Schuh (+3), Sternen-Kompass (direkt vor den Stern), Gusti-Glocke.</p>
+    <h3>Minispiel-Teams</h3>
+    <p>Wer auf Blau landet, ist im blauen Team, wer auf Rot oder Grimm landet, im roten. Grüne Felder werden ausgelost. So entsteht <b>Jeder gegen jeden</b>, <b>2 gegen 2</b> oder <b>1 gegen 3</b>.</p>
+    <h3>Steuerung</h3>
+    <p><b>Lokal</b> (eine Tastatur): Spieler 1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Q</kbd>, Spieler 2 <kbd>T</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd> + <kbd>R</kbd>, Spieler 3 <kbd>I</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> + <kbd>U</kbd>, Spieler 4 Pfeiltasten + <kbd>Enter</kbd>. Die Minispiele laufen nur mit Tasten.</p>
+    <p><b>Online</b>: Jeder spielt am eigenen Laptop mit allen Tasten. Dazu kommen Minispiele, in denen du mit dem Touchpad zielst, klickst und nachfährst.</p>
+  </div>
+</div>
+
+<!-- Pause -->
+<div id="sPause" class="screen hidden" style="background:rgba(8,8,20,.6)">
+  <div class="panel">
+    <h2>Pause</h2>
+    <button class="btn haupt" id="pWeiter">Weiter</button>
+    <button class="btn" id="pEnde">Spiel beenden</button>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script src="js/basis.js"></script>
+<script src="js/eingabe.js"></script>
+<script src="js/figuren.js"></script>
+<script src="js/mini.js"></script>
+<script src="js/mini/muenzregen.js"></script>
+<script src="js/mini/schubs-arena.js"></script>
+<script src="js/mini/kreisel-sprung.js"></script>
+<script src="js/mini/ballon-pumpe.js"></script>
+<script src="js/mini/tauziehen.js"></script>
+<script src="js/mini/farbklecks.js"></script>
+<script src="js/mini/pfeil-memo.js"></script>
+<script src="js/mini/bomben-tausch.js"></script>
+<script src="js/mini/fangen.js"></script>
+<script src="js/mini/zielscheiben.js"></script>
+<script src="js/mini/blitzklick.js"></script>
+<script src="js/mini/schneeballschlacht.js"></script>
+<script src="js/mini/nachfahren.js"></script>
+<script src="js/brett.js"></script>
+<script src="js/spiel.js"></script>
+<script src="js/ansicht.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/netz.js"></script>
+<script src="js/haupt.js"></script>
+</body>
+</html>
