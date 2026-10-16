@@ -58,7 +58,7 @@ class Kamera {
       p = new THREE.Vector3(Math.sin(a) * w.gr * 1.1, 26 - t * 3, Math.cos(a) * w.gr * 1.1);
       z = new THREE.Vector3(0, 0, 0);
     } else {
-      const f = clamp(t / 3.2, 0, 1);
+      const f = clamp(t / (r.cfg.introDauer || 4.5), 0, 1);
       const s = w.startS + lerp(150, 25, smooth(f));
       p = w.punkt(s, 0).clone(); p.y += lerp(34, 10, smooth(f));
       const seite = w.S[w.idx(s)].rh;
@@ -158,7 +158,8 @@ const Anzeige = {
         <div class="h-falsch">Falsche Richtung!</div>
         <div class="h-gross"></div>
         <div class="h-toasts"></div>
-        <div class="h-name">${k ? esc(k.name) : ''}</div>`;
+        <div class="h-name">${k ? esc(k.name) : ''}</div>
+        <div class="h-intro"><b>${esc(r.welt.def.name)}</b><span>${esc(r.welt.def.story || '')}</span></div>`;
       hud.appendChild(el);
       const v = {
         el, k, kam: new Kamera(), x: 0, y: 0, w: 1, h: 1,
@@ -167,7 +168,7 @@ const Anzeige = {
         liste: el.querySelector('.h-liste'), platz: el.querySelector('.h-platz'), platzB: el.querySelector('.h-platz b'), karte: el.querySelector('.h-karte'),
         speed: el.querySelector('.h-speed'), tinteEl: el.querySelector('.h-tinte'), blitzEl: el.querySelector('.h-blitz'), falsch: el.querySelector('.h-falsch'),
         gross: el.querySelector('.h-gross'), toasts: el.querySelector('.h-toasts'), ballons: el.querySelector('.h-ballons'),
-        letztesItem: null, rouletteT: 0, listeKey: '',
+        letztesItem: null, rouletteT: 0, listeKey: '', intro: el.querySelector('.h-intro'),
       };
       v.speed.style.backgroundImage = `url(${this.speedBild})`;
       v.kam.P = {};
@@ -434,6 +435,7 @@ const Anzeige = {
     // Effekte
     v.speed.classList.toggle('an', (k.boostT > 0 || k.raketeT > 0) && r.phase === 'rennen');
     this.tinteZeigen(v, k, dt);
+    v.intro.classList.toggle('an', r.phase === 'intro' || (r.phase === 'countdown' && r.cd > 2.2));
     v.falsch.classList.toggle('an', k.falschT > 1.2 && !k.fertig);
   },
   leerfeldZeichnen(r) {

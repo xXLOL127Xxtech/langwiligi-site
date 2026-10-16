@@ -4,10 +4,14 @@
 
 const Wahrzeichen = {
   baue(w) {
+    this._liste = [];
     for (const e of w.def.wahrzeichen || []) {
       const us = Array.isArray(e.u) ? e.u : [e.u];
       us.forEach((u, i) => { if (this[e.typ]) this[e.typ](w, Object.assign({}, e, { u, nr: i })); });
     }
+    // Unbewegte Teile pro Material zusammenfassen: viel weniger Zeichenaufrufe
+    verschmelzen(this._liste, w.gruppe);
+    this._liste = [];
   },
   // ---------- Hilfen ----------
   ort(w, u, d = 0) {
@@ -39,8 +43,10 @@ const Wahrzeichen = {
   },
   gruppe(w, x, y, z, ry = 0) {
     const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ry; w.gruppe.add(g);
+    if (this._liste) this._liste.push(g);
     return g;
   },
+  lebt(o) { o.userData.lebt = true; return o; },
   schatten(g) { g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return g; },
   // Etwas über der Fahrbahn an Position u: lokale Achsen x = quer, z = Fahrtrichtung
   ueber(w, u) {
@@ -85,7 +91,7 @@ const Wahrzeichen = {
     g.add(M(G.kegel(4.2, 5, 8), rot, 0, 18.5, 0));
     g.add(M(G.box(1.6, 2.6, 0.3), holz, 0, 1.3, 4.4));
     for (const y of [6, 11]) g.add(M(G.box(1, 1.2, 0.2), Mat.lam('#4a6a9a'), 0, y, 4.0 - (y - 6) * 0.12));
-    const nabe = new THREE.Group(); nabe.position.set(0, 15, 4.3); g.add(nabe);
+    const nabe = this.lebt(new THREE.Group()); nabe.position.set(0, 15, 4.3); g.add(nabe);
     nabe.add(M(G.zyl(0.6, 0.6, 1, 10), holz, 0, 0, 0, Math.PI / 2, 0, 0));
     for (let i = 0; i < 4; i++) {
       const fl = new THREE.Group(); fl.rotation.z = i * Math.PI / 2;
@@ -168,8 +174,9 @@ const Wahrzeichen = {
       const o = this.neben(w, e.u + (R() - 0.5) * 0.12, 6 + R() * 18, 2, R() < 0.5 ? 1 : -1); if (!o) continue;
       this.belegen(w, o.x, o.z, 3);
       const kuh = this.kuh(w, o.x, o.y, o.z, o.blick + (R() - 0.5) * 1.5);
+      const kopf = this.lebt(kuh.children[3]);
       const ph = R() * 10;
-      w.anim.push(t => { kuh.children[3].rotation.x = Math.sin(t * 1.3 + ph) * 0.15; });
+      w.anim.push(t => { kopf.rotation.x = Math.sin(t * 1.3 + ph) * 0.15; });
     }
   },
   vogelscheuche(w, e) {
@@ -202,7 +209,7 @@ const Wahrzeichen = {
     })));
     g.add(M(G.box(14, 4, 0.4), [holz, holz, holz, holz, new THREE.MeshLambertMaterial({ map: schild }), new THREE.MeshLambertMaterial({ map: schild })], 0, 13.6, 0));
     for (const sd of [-1, 1]) {
-      const f = M(new THREE.PlaneGeometry(3, 2), Mat.lam('#141414', { side: THREE.DoubleSide }), sd * (breit + 1.4) + sd * 1.6, 14.8, 0);
+      const f = this.lebt(M(new THREE.PlaneGeometry(3, 2), Mat.lam('#141414', { side: THREE.DoubleSide }), sd * (breit + 1.4) + sd * 1.6, 14.8, 0));
       g.add(f);
       w.anim.push(t => { f.rotation.y = Math.sin(t * 3 + sd) * 0.25; });
       g.add(M(G.zyl(0.08, 0.08, 4, 5), holz, sd * (breit + 1.4), 15, 0));
@@ -225,7 +232,7 @@ const Wahrzeichen = {
       sg.geometry.computeVertexNormals();
       g.add(sg);
     }
-    const flagge = M(new THREE.PlaneGeometry(2.4, 1.5), Mat.lam('#111111', { side: THREE.DoubleSide }), 0, 21, -3);
+    const flagge = this.lebt(M(new THREE.PlaneGeometry(2.4, 1.5), Mat.lam('#111111', { side: THREE.DoubleSide }), 0, 21, -3));
     g.add(flagge);
     g.add(M(G.kugel(0.35, 8, 6), Mat.lam('#f4f0e0'), 0.05, 21.1, -2.95));
     w.anim.push(t => { flagge.rotation.y = Math.sin(t * 2.5) * 0.4; });
@@ -246,7 +253,7 @@ const Wahrzeichen = {
     g.add(M(G.zyl(1.7, 1.7, 2.6, 10), Mat.leucht('#fff4a0', 1.2), 0, 29.3, 0));
     g.add(M(G.kegel(2.3, 2.6, 10), Mat.lam('#e8322f'), 0, 31.9, 0));
     const strahl = M(new THREE.ConeGeometry(4, 40, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#fff6c0', transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), 0, 0, 20, Math.PI / 2, 0, 0);
-    const dreh = new THREE.Group(); dreh.position.y = 29.3; dreh.add(strahl); g.add(dreh);
+    const dreh = this.lebt(new THREE.Group()); dreh.position.y = 29.3; dreh.add(strahl); g.add(dreh);
     strahl.castShadow = false;
     w.anim.push(t => { dreh.rotation.y = t * 0.8; });
     this.schatten(g); strahl.castShadow = false; strahl.receiveShadow = false;
@@ -312,7 +319,7 @@ const Wahrzeichen = {
     const g = this.gruppe(w, o.x, o.y, o.z, o.blick);
     const gold = Mat.std('#f0c030', { metalness: 0.8, roughness: 0.25, emissive: new THREE.Color('#5a3a00'), emissiveIntensity: 0.4 });
     g.add(M(G.box(3.2, 3, 3.2), Mat.lam('#c89a5a', { flatShading: true }), 0, 1.5, 0));
-    const k = new THREE.Group(); k.position.y = 4; g.add(k);
+    const k = this.lebt(new THREE.Group()); k.position.y = 4; g.add(k);
     k.add(M(G.kugel(1.3, 12, 8), gold, 0, 0, 0, 0, 0, 0, 1, 0.55, 1.4));
     k.add(M(G.kugel(0.6, 10, 8), gold, 0, 0.1, 1.6, 0, 0, 0, 1, 0.6, 0.8));
     for (const sx of [-1, 1]) for (const z of [-0.6, 0.2, 1]) k.add(M(G.box(1.4, 0.12, 0.14), gold, sx * 1.1, -0.3, z, 0, 0, sx * 0.4));
@@ -443,7 +450,7 @@ const Wahrzeichen = {
     this.schatten(g);
     // Rauch
     const rauch = [];
-    for (let i = 0; i < 5; i++) { const r = M(G.kugel(0.8, 8, 6), new THREE.MeshLambertMaterial({ color: '#dddddd', transparent: true, opacity: 0.5 }), 3.5, 11 + i * 1.5, -2); r.castShadow = false; g.add(r); rauch.push(r); }
+    for (let i = 0; i < 5; i++) { const r = this.lebt(M(G.kugel(0.8, 8, 6), new THREE.MeshLambertMaterial({ color: '#dddddd', transparent: true, opacity: 0.5 }), 3.5, 11 + i * 1.5, -2)); r.castShadow = false; g.add(r); rauch.push(r); }
     w.anim.push(t => rauch.forEach((r, i) => { const f = (t * 0.3 + i / 5) % 1; r.position.y = 11 + f * 7; r.position.x = 3.5 + f * 2; r.scale.setScalar(0.6 + f * 1.6); r.material.opacity = 0.55 * (1 - f); }));
   },
   eishoehle(w, e) {
@@ -484,7 +491,7 @@ const Wahrzeichen = {
     const g = this.gruppe(w, o.x, o.y, o.z, o.blick + Math.PI / 2);
     const stahl = Mat.lam('#c8ccd8');
     for (const sz of [-3, 3]) for (const sx of [-1, 1]) g.add(M(G.box(0.8, 26, 0.8), stahl, sx * 6, 12, sz, 0, 0, sx * 0.25));
-    const rad = new THREE.Group(); rad.position.y = 24; g.add(rad);
+    const rad = this.lebt(new THREE.Group()); rad.position.y = 24; g.add(rad);
     const licht = new THREE.MeshBasicMaterial({ color: '#ff2fa8' });
     for (const sz of [-2.5, 2.5]) { rad.add(M(G.torus(18, 0.35, TAU, 6, 40), stahl, 0, 0, sz)); rad.add(M(G.torus(18.2, 0.2, TAU, 4, 40), licht, 0, 0, sz)); }
     rad.add(M(G.zyl(1.2, 1.2, 6, 10), stahl, 0, 0, 0, Math.PI / 2, 0, 0));
@@ -574,9 +581,9 @@ const Wahrzeichen = {
     const g = this.gruppe(w, o.x, this.boden(w), o.z, 0);
     g.add(M(new THREE.DodecahedronGeometry(3.5, 0), Mat.lam('#2a1a16', { flatShading: true }), 0, -0.5, 0, 0, 0, 0, 1, 0.5, 1));
     const lava = new THREE.MeshBasicMaterial({ color: '#ff7a10' });
-    const strahl = M(G.zyl(0.6, 1.4, 1, 8), lava, 0, 0.5, 0); strahl.castShadow = false; g.add(strahl);
+    const strahl = this.lebt(M(G.zyl(0.6, 1.4, 1, 8), lava, 0, 0.5, 0)); strahl.castShadow = false; g.add(strahl);
     const tropfen = [];
-    for (let i = 0; i < 6; i++) { const tp = M(G.kugel(0.5, 6, 4), lava, 0, 0, 0); tp.castShadow = false; g.add(tp); tropfen.push(tp); }
+    for (let i = 0; i < 6; i++) { const tp = this.lebt(M(G.kugel(0.5, 6, 4), lava, 0, 0, 0)); tp.castShadow = false; g.add(tp); tropfen.push(tp); }
     const ph = e.nr * 1.7;
     w.anim.push(t => {
       const x = ((t + ph) % 6) / 6, an = x < 0.35 ? Math.sin(x / 0.35 * Math.PI) : 0;
@@ -589,13 +596,13 @@ const Wahrzeichen = {
     const { g, breit } = this.ueber(w, e.u);
     const m = new THREE.MeshBasicMaterial({ color: '#ff7ae0', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
     const ring = M(G.torus(breit + 3, 0.5, TAU, 8, 48), m, 0, 2, 0); ring.castShadow = false; g.add(ring);
-    const sterne = new THREE.Group(); g.add(sterne); sterne.position.y = 2;
+    const sterne = this.lebt(new THREE.Group()); g.add(sterne); sterne.position.y = 2;
     for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; const s = M(new THREE.OctahedronGeometry(0.9, 0), new THREE.MeshBasicMaterial({ color: '#fff6a0' }), Math.cos(a) * (breit + 3), Math.sin(a) * (breit + 3), 0); s.castShadow = false; sterne.add(s); }
     w.anim.push(t => { m.color.setHSL((e.nr * 0.2 + t * 0.12) % 1, 1, 0.65); sterne.rotation.z = t * 0.6 * (e.nr % 2 ? 1 : -1); });
   },
   raumstation(w, e) {
     const { p, A } = this.ort(w, e.u);
-    const g = this.gruppe(w, p.x + A.rh.x * 90, p.y + 30, p.z + A.rh.z * 90, A.h);
+    const g = this.lebt(this.gruppe(w, p.x + A.rh.x * 90, p.y + 30, p.z + A.rh.z * 90, A.h));
     const weiss = Mat.std('#e8ecf4', { metalness: 0.4, roughness: 0.35 }), panel = Mat.std('#2a4aa8', { metalness: 0.6, roughness: 0.3, emissive: new THREE.Color('#0a1a5a'), emissiveIntensity: 0.6 });
     const ring = new THREE.Group(); g.add(ring);
     ring.add(M(G.torus(22, 2.2, TAU, 10, 48), weiss));
@@ -606,3 +613,48 @@ const Wahrzeichen = {
     w.anim.push(t => { ring.rotation.z = t * 0.15; g.position.y = p.y + 30 + Math.sin(t * 0.4) * 2; });
   },
 };
+
+// Statische Meshes mehrerer Gruppen pro Material (und Schattenart) zu je einem Mesh zusammenfassen.
+// Bewegte Teile (userData.lebt bei sich oder einem Vorfahren) bleiben, wie sie sind.
+function verschmelzen(gruppen, ziel) {
+  const toepfe = new Map();
+  ziel.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(ziel.matrixWorld).invert();
+  const lebt = (o, wurzel) => { for (let p = o; p; p = p.parent) { if (p.userData && p.userData.lebt) return true; if (p === wurzel) break; } return false; };
+  for (const wurzel of gruppen) {
+    const weg = [];
+    wurzel.traverse(o => {
+      if (!o.isMesh || o.isInstancedMesh || Array.isArray(o.material) || lebt(o, wurzel)) return;
+      const key = o.material.uuid + (o.castShadow ? 's' : '') + (o.receiveShadow ? 'e' : '');
+      if (!toepfe.has(key)) toepfe.set(key, { mat: o.material, cast: o.castShadow, recv: o.receiveShadow, geos: [] });
+      let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+      toepfe.get(key).geos.push(g);
+      weg.push(o);
+    });
+    for (const o of weg) o.parent.remove(o);
+  }
+  for (const t of toepfe.values()) {
+    const farbig = !!t.mat.vertexColors;
+    let n = 0; for (const g of t.geos) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = farbig ? new Float32Array(n * 3) : null;
+    let o = 0;
+    for (const g of t.geos) {
+      const c = g.attributes.position.count;
+      pos.set(g.attributes.position.array, o * 3);
+      if (g.attributes.normal) nor.set(g.attributes.normal.array, o * 3);
+      if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2);
+      if (col) { if (g.attributes.color) col.set(g.attributes.color.array, o * 3); else col.fill(1, o * 3, (o + c) * 3); }
+      o += c;
+      g.dispose();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    if (col) geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const m = new THREE.Mesh(geo, t.mat);
+    m.castShadow = t.cast; m.receiveShadow = t.recv;
+    ziel.add(m);
+  }
+}

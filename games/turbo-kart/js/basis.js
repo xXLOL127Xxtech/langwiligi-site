@@ -36,7 +36,7 @@ const Einst = Object.assign({
   wahl: [{ f: 0, k: 0 }, { f: 2, k: 1 }, { f: 4, k: 2 }, { f: 6, k: 3 }],
 }, (() => { try { return JSON.parse(localStorage.getItem(EINST_KEY)) || {}; } catch (e) { return {}; } })());
 function einstSpeichern() { try { localStorage.setItem(EINST_KEY, JSON.stringify(Einst)); } catch (e) { } }
-const REKORD_KEY = GAME_ID + '-rekorde';
+const REKORD_KEY = GAME_ID + '-rekorde2';   // neue Strecken: neue Rekordliste
 const Rekorde = (() => { try { return JSON.parse(localStorage.getItem(REKORD_KEY)) || {}; } catch (e) { return {}; } })();
 function rekordSpeichern() { try { localStorage.setItem(REKORD_KEY, JSON.stringify(Rekorde)); } catch (e) { } }
 

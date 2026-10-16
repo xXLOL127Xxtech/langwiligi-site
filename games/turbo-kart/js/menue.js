@@ -278,6 +278,15 @@ const App = {
       box.querySelectorAll('.st').forEach(b => b.onclick = () => { Ton.sfx('ok'); this.einzelStart(+b.dataset.i); });
       const z = $('zufallStrecke'); if (z) z.onclick = () => { Ton.sfx('ok'); this.einzelStart((Math.random() * STRECKEN.length) | 0); };
     }
+    // Geschichte der Strecke unter den Karten anzeigen
+    const story = $('streckeStory');
+    const zeigeStory = def => { story.innerHTML = def && def.story ? `<b>${esc(def.name)}</b>${esc(def.story)}` : (m === 'schlacht' ? 'Platz die Ballons der anderen – wer am Ende die meisten Punkte hat, gewinnt.' : 'Zeig auf eine Strecke, um ihre Geschichte zu lesen.'); };
+    zeigeStory(m === 'schlacht' ? null : STRECKEN[0]);
+    box.querySelectorAll('.st').forEach(b => {
+      const def = m === 'schlacht' ? null : STRECKEN[+b.dataset.i];
+      b.addEventListener('mouseenter', () => zeigeStory(def));
+      b.addEventListener('focus', () => zeigeStory(def));
+    });
     this.zeige('sStrecke');
   },
   // ---------- Fahrerlisten ----------

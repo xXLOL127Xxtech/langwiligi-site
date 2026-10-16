@@ -229,7 +229,8 @@ class Kart {
       if (w) this.wandStoss(w.x, w.z);
     } else if (!P.fall) {
       const grenze = P.lim - 1.1;
-      if (Math.abs(P.d) > grenze && Math.sign(P.d) !== P.offen) {
+      // an der Abzweigung einer Abkürzung hat die Strecke keine Wand
+      if (Math.abs(P.d) > grenze && Math.sign(P.d) !== P.offen && !(P.ab < 0 && welt.abk.length && welt.imKorridor(this.pos.x, this.pos.y, this.pos.z))) {
         const sgn = Math.sign(P.d), push = Math.abs(P.d) - grenze;
         this.wandStoss(-P.hx * sgn * push, -P.hz * sgn * push);
       }

@@ -378,7 +378,7 @@ class Rennen {
     // Ablauf
     if (!gast) {
       if (this.phase === 'intro') {
-        if (this.phaseT > (this.cfg.introDauer || 3.2) || (Eingabe.hit.size && !this.netz)) { this.phase = 'countdown'; this.phaseT = 0; this.cd = 3.0; }
+        if (this.phaseT > (this.cfg.introDauer || 4.5) || (Eingabe.hit.size && !this.netz)) { this.phase = 'countdown'; this.phaseT = 0; this.cd = 3.0; }
       } else if (this.phase === 'countdown') {
         this.cd -= dt;
         if (this.cd <= 0) this.los();

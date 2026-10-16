@@ -110,7 +110,7 @@ const STRECKEN = [
       [35, 15, 32, 8], [-80, 55, 28, 6], [-140, -40, 28, 3], [-250, -50, 40, 1], [-200, 90, 35], [-260, 230, 45]],
     items: [0.06, 0.3, 0.47, 0.685, 0.79], boost: [[0.155, 0], [0.362, -0.4], [0.362, 0.4], [0.93, 0]], rampen: [0.53],
     muenzen: [[0.02, 0.4, 6], [0.145, -0.4, 5], [0.37, 0, 7], [0.56, 0.3, 5], [0.7, -0.3, 5], [0.95, -0.4, 6]],
-    abschnitte: [], abk: [],
+    abschnitte: [], abk: [[0.04, 0.17, -1]],
     wahrzeichen: [{ typ: 'girlanden', u: 0.975 }, { typ: 'windmuehle', u: 0.21 }, { typ: 'scheune', u: 0.395 }, { typ: 'kuehe', u: 0.6 }, { typ: 'heuballen', u: [0.12, 0.33, 0.5, 0.74, 0.86] }, { typ: 'vogelscheuche', u: 0.68 }],
   },
   {
@@ -120,7 +120,7 @@ const STRECKEN = [
       [-190, -50, 35], [-310, -20, 40], [-380, 110, 50], [-120, 160, 140]],
     items: [0.08, 0.22, 0.42, 0.6, 0.72], boost: [[0.03, 0], [0.53, -0.35], [0.53, 0.35], [0.88, 0]], rampen: [0.66],
     muenzen: [[0.12, 0.3, 6], [0.29, 0, 6], [0.45, -0.3, 5], [0.58, 0.3, 5], [0.74, 0, 6], [0.92, -0.4, 6]],
-    abschnitte: [{ von: 0.275, bis: 0.35, fall: true, stil: 'holz' }], abk: [],
+    abschnitte: [{ von: 0.275, bis: 0.35, fall: true, stil: 'holz' }], abk: [[0.08, 0.16, -1], [0.67, 0.16, -1]],
     wahrzeichen: [{ typ: 'piratentor', u: 0.045 }, { typ: 'piratenschiff', u: 0.31 }, { typ: 'leuchtturm', u: 0.5 }, { typ: 'strandkorb', u: [0.15, 0.62, 0.8] }],
   },
   {
@@ -130,8 +130,8 @@ const STRECKEN = [
       [-20, -60, 30, 2], [-140, -10, 28], [-250, -120, 40], [-330, 0, 35], [-250, 120, 30], [-300, 210, 40], [0, 180, 150]],
     items: [0.07, 0.17, 0.39, 0.6, 0.91], boost: [[0.495, 0], [0.66, -0.35], [0.66, 0.35], [0.97, 0]], rampen: [0.79],
     muenzen: [[0.03, -0.4, 6], [0.2, 0.3, 5], [0.42, 0, 6], [0.56, -0.3, 5], [0.7, 0.3, 5], [0.86, 0, 6]],
-    abschnitte: [], abk: [],
-    steine: [[0.3, -0.42, 0], [0.3, 0.42, 2.8], [0.72, 0, 1.2]],
+    abschnitte: [], abk: [[0.03, 0.14, -1], [0.58, 0.14, -1]],
+    steine: [[0.3, -0.42, 0], [0.3, 0.42, 2.8], [0.77, 0, 1.2]],
     wahrzeichen: [{ typ: 'felsbogen', u: 0.12 }, { typ: 'felsbogen', u: 0.64 }, { typ: 'sphinx', u: 0.96 }, { typ: 'skarabaeus', u: 0.5 }],
   },
   {
@@ -141,7 +141,7 @@ const STRECKEN = [
       [-150, 150, 45, 0], [-300, 210, 45], [-400, 80, 50], [-330, -110, 40], [-200, -60, 26], [-150, -170, 30, 2]],
     items: [0.04, 0.17, 0.36, 0.54, 0.68, 0.96], boost: [[0.115, 0], [0.61, -0.35], [0.61, 0.35], [0.93, 0]], rampen: [0.87],
     muenzen: [[0.07, 0.3, 5], [0.2, -0.3, 5], [0.42, 0, 7], [0.58, 0.3, 5], [0.73, -0.3, 5], [0.9, 0, 6]],
-    abschnitte: [{ von: 0.962, bis: 1, bruecke: true, stil: 'holz', wand: 'holz' }, { von: 0, bis: 0.115, bruecke: true, stil: 'holz', wand: 'holz' }], abk: [],
+    abschnitte: [{ von: 0.962, bis: 1, bruecke: true, stil: 'holz', wand: 'holz' }, { von: 0, bis: 0.115, bruecke: true, stil: 'holz', wand: 'holz' }], abk: [[0.03, 0.18, 1], [0.52, 0.19, -1]],
     steine: [[0.28, -0.42, 0], [0.28, 0.42, 2.8], [0.75, 0, 1.4]],
     wahrzeichen: [{ typ: 'tempeltor', u: 0.115 }, { typ: 'wasserfall', u: 0.6 }, { typ: 'affenstatue', u: [0.05, 0.45, 0.8] }],
   },
@@ -152,7 +152,7 @@ const STRECKEN = [
       [50, -250, 40, 24], [-80, -170, 30, 22], [-200, -230, 35, 20], [-330, -120, 45, 16], [-250, 0, 35, 11], [-330, 120, 40, 6], [-250, 250, 45, 1]],
     items: [0.06, 0.33, 0.55, 0.79, 0.94], boost: [[0.44, -0.35], [0.44, 0.35], [0.66, 0], [0.85, 0]], rampen: [0.485],
     muenzen: [[0.03, 0.3, 6], [0.22, 0, 5], [0.4, -0.3, 6], [0.6, 0.3, 5], [0.72, 0, 6], [0.9, -0.3, 6]],
-    abschnitte: [{ von: 0.6, bis: 0.66, eis: true }, { von: 0.83, bis: 0.88, eis: true }], abk: [],
+    abschnitte: [{ von: 0.6, bis: 0.66, eis: true }, { von: 0.83, bis: 0.88, eis: true }], abk: [[0.31, 0.15, -1]],
     steine: [[0.25, -0.42, 0], [0.25, 0.42, 2.8]],
     wahrzeichen: [{ typ: 'seilbahn' }, { typ: 'skihuette', u: 0.47 }, { typ: 'eishoehle', u: 0.547 }],
   },
@@ -163,7 +163,7 @@ const STRECKEN = [
       [60, -100, 28, 0], [-200, -100, 30], [-300, 230, 30]],
     items: [0.06, 0.15, 0.37, 0.62, 0.8], boost: [[0.28, -0.35], [0.28, 0.35], [0.48, 0], [0.72, 0], [0.93, 0]], rampen: [0.84],
     muenzen: [[0.03, -0.3, 6], [0.2, 0.3, 5], [0.45, 0, 6], [0.6, -0.3, 5], [0.76, 0.3, 6], [0.9, 0, 6]],
-    abschnitte: [{ von: 0.405, bis: 0.675, bruecke: true }], abk: [],
+    abschnitte: [{ von: 0.405, bis: 0.675, bruecke: true }], abk: [[0.08, 0.14, -1]],
     wahrzeichen: [{ typ: 'tunnel', u: 0.278, laenge: 70 }, { typ: 'riesenrad', u: 0.58 }, { typ: 'neonbogen', u: [0.02, 0.09, 0.8, 0.86] }],
   },
   {
@@ -173,9 +173,9 @@ const STRECKEN = [
       [100, -120, 24, 3], [-40, -120, 24, 3], [-40, -230, 28, 2], [-280, -230, 35, 2], [-280, 0, 30, 1], [-160, 60, 30, 1], [-280, 220, 35, 1]],
     items: [0.07, 0.33, 0.505, 0.82, 0.94], boost: [[0.39, 0], [0.62, -0.35], [0.62, 0.35], [0.915, 0]], rampen: [0.412],
     muenzen: [[0.03, 0.3, 6], [0.2, -0.3, 5], [0.36, 0, 5], [0.6, 0, 6], [0.76, -0.3, 5], [0.88, 0.3, 6]],
-    abschnitte: [{ von: 0.135, bis: 0.16, fall: true, stil: 'holz' }, { von: 0.7, bis: 0.74, fall: true, stil: 'holz' }], abk: [],
+    abschnitte: [{ von: 0.135, bis: 0.16, fall: true, stil: 'holz' }, { von: 0.7, bis: 0.74, fall: true, stil: 'holz' }], abk: [[0.6, 0.19, -1]],
     steine: [[0.25, -0.42, 0], [0.25, 0.42, 2.8], [0.55, 0, 1.2], [0.86, -0.4, 0.6]],
-    wahrzeichen: [{ typ: 'burgtor', u: 0.08 }, { typ: 'thronsaal', u: 0.62, laenge: 90 }, { typ: 'zugbruecke', u: [0.1475, 0.72] }, { typ: 'lavafontaene', u: [0.2, 0.45, 0.78, 0.95] }],
+    wahrzeichen: [{ typ: 'burgtor', u: 0.08 }, { typ: 'thronsaal', u: 0.4, laenge: 70 }, { typ: 'zugbruecke', u: [0.1475, 0.72] }, { typ: 'lavafontaene', u: [0.2, 0.45, 0.78, 0.95] }],
   },
   {
     id: 'regenbogenbahn', name: 'Regenbogenbahn', cup: 1, thema: 'all', breite: 13, rand: 1, skala: 0.702,
@@ -184,7 +184,7 @@ const STRECKEN = [
       [-200, -100, 40, 20], [-120, -240, 40, 18], [-320, -260, 50, 16], [-400, -40, 50, 18], [-260, 120, 40, 20], [-340, 260, 50, 20]],
     items: [0.06, 0.22, 0.35, 0.54, 0.72, 0.94], boost: [[0.15, 0], [0.42, -0.35], [0.42, 0.35], [0.8, 0]], rampen: [0.47],
     muenzen: [[0.03, 0.3, 6], [0.18, -0.3, 6], [0.38, 0, 6], [0.6, 0.3, 6], [0.76, 0, 6], [0.88, -0.3, 6]],
-    abschnitte: [{ von: 0.44, bis: 0.53, fall: true }, { von: 0.76, bis: 0.86, fall: true }], abk: [],
+    abschnitte: [{ von: 0.44, bis: 0.53, fall: true }, { von: 0.76, bis: 0.86, fall: true }], abk: [[0.27, 0.14, -1]],
     steine: [[0.62, -0.4, 0], [0.62, 0.4, 2.8]],
     wahrzeichen: [{ typ: 'sternentor', u: [0.04, 0.17, 0.4, 0.73, 0.9] }, { typ: 'raumstation', u: 0.0 }],
   },
@@ -421,9 +421,11 @@ class Strecke {
   }
   // ---------- Abkürzungen ----------
   // Ein schmaler Weg quer durchs Innenfeld (Bézierkurve zwischen zwei Punkten der Strecke).
+  // Eingang eng, danach ein Stück hohes Gras (bremst stark, ausser mit Turbo oder Stern), dann ein holpriger Weg.
+  // Der Weg liegt auf dem Boden; in der Lava ein Felsdamm, im Weltall ein Sternenpfad – dort ohne Geländer.
   // Wo er die Strecke berührt, ist die Seite zur Strecke hin offen (keine Wand).
   abkBerechnen() {
-    const d = this.def, L = this.L, th = d.thema;
+    const d = this.def, L = this.L, th = d.thema, boden = this.th.wasser ? 0 : this.bodenY();
     this.abk = [];
     (d.abk || []).forEach(([u1, sp, sd], nr) => {
       const s1 = u1 * L + this.startS, s2 = s1 + sp * L;
@@ -443,6 +445,34 @@ class Strecke {
         const f = clamp((l - fein[j].l) / Math.max(1e-6, fein[j + 1].l - fein[j].l), 0, 1);
         P.push({ p: fein[j].p.clone().lerp(fein[j + 1].p, f), s: l });
       }
+      const fall = !!th && (th === 'all' || this.th.lavaSee);
+      const A = { nr, P, len, s1: ((s1 % L) + L) % L, span: sp * L, seite: sd, d0, d3, fall, rauh: th === 'stadt' ? 0.9 : 0.84 };
+      // Wo verlässt der Weg die Strecke? (für Höhe, Engstelle und hohes Gras)
+      const o = {};
+      A.ein = -1;
+      for (const q of P) {
+        this.projHaupt(o, q.p.x, q.p.y, q.p.z);
+        q.mitte = Math.abs(o.d) < o.lim && Math.abs(o.bodenY - q.p.y) < 2.5;
+        q.haupt = o.bodenY;
+        if (A.ein < 0 && Math.abs(o.d) > o.w + 0.6) A.ein = (((o.s - A.s1) % L) + L) % L;
+      }
+      let iE = P.findIndex(q => !q.mitte), iA = P.length - 1 - [...P].reverse().findIndex(q => !q.mitte);
+      if (iE < 0) { iE = 0; iA = P.length - 1; }
+      const sE = P[iE].s, sA = P[iA].s;
+      A.grasBis = sE + (sA - sE) * (th === 'strand' ? 0.42 : 0.35);
+      // Höhe: auf dem Gelände (mit kurzer Rampe an den Enden), sonst als Damm
+      const tief = boden !== null && !this.th.lavaSee && Math.max(P[iE].p.y, P[iA].p.y) - boden < 4.5;
+      for (const q of P) {
+        if (tief && !q.mitte) {
+          const ab = Math.min(q.s - sE, sA - q.s), f = smooth(clamp(1 - ab / 16, 0, 1));
+          q.p.y = boden + 0.08 + (q.p.y - boden - 0.08) * f;
+        }
+        // Breite: am Eingang eng
+        const eng = smooth(clamp((q.s - sE - 14) / 10, 0, 1)) * smooth(clamp((sA - q.s + 4) / 10, 0, 1));
+        q.w = lerp(fall ? 3.2 : 2.7, fall ? 3.6 : 3.8, eng);
+        q.lim = q.w + (fall ? 0.4 : 1.2);
+        q.gras = q.s >= sE - 6 && q.s < A.grasBis;
+      }
       for (let i = 0; i <= n; i++) {
         const q = P[i];
         q.t = new THREE.Vector3().subVectors(P[Math.min(n, i + 1)].p, P[Math.max(0, i - 1)].p).normalize();
@@ -450,20 +480,14 @@ class Strecke {
         q.rh = new THREE.Vector3(-Math.cos(q.h), 0, Math.sin(q.h));
         q.n = new THREE.Vector3().crossVectors(q.rh, q.t).normalize();
       }
-      const A = { nr, P, len, s1: ((s1 % L) + L) % L, span: sp * L, seite: sd, d0, d3, w: 3.8, rand: 1.1, rauh: th === 'stadt' ? 0.9 : th === 'all' ? 0.85 : 0.76 };
-      A.lim = A.w + A.rand;
       let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9;
-      const o = {};
-      A.ein = -1;
       for (const q of P) {
         mnx = Math.min(mnx, q.p.x); mxx = Math.max(mxx, q.p.x); mnz = Math.min(mnz, q.p.z); mxz = Math.max(mxz, q.p.z);
         this.projHaupt(o, q.p.x, q.p.y, q.p.z);
-        q.mitte = Math.abs(o.d) < o.lim;
-        // Wie weit nach der Abzweigung man die Strecke verlässt
-        if (A.ein < 0 && Math.abs(o.d) > o.w + 0.6) A.ein = (((o.s - A.s1) % L) + L) % L;
-        q.offen = Math.abs(o.d) < o.lim + A.lim + 0.5 ? ((o.cx - q.p.x) * q.rh.x + (o.cz - q.p.z) * q.rh.z > 0 ? 1 : -1) : 0;
+        q.offen = Math.abs(o.d) < o.lim + q.lim + 0.5 && Math.abs(o.bodenY - q.p.y) < 3 ? ((o.cx - q.p.x) * q.rh.x + (o.cz - q.p.z) * q.rh.z > 0 ? 1 : -1) : 0;
       }
-      const r = A.lim + 1;
+      A.lim = 5; A.w = 3.8;
+      const r = A.lim + 8;
       A.box = { mnx: mnx - r, mxx: mxx + r, mnz: mnz - r, mxz: mxz + r };
       this.abk.push(A);
     });
@@ -490,8 +514,9 @@ class Strecke {
     o.d = (x - o.cx) * o.hx + (z - o.cz) * o.hz;
     return o;
   }
+  abkLim(q) { return lerp(q.A0.lim, q.B0.lim, q.f); }
   imKorridor(x, y, z, extra = 0) {
-    for (const A of this.abk) { const q = this.abkLage(A, x, y, z); if (q && Math.abs(q.d) < A.lim + extra) return true; }
+    for (const A of this.abk) { const q = this.abkLage(A, x, y, z); if (q && Math.abs(q.d) < this.abkLim(q) + extra) return true; }
     return false;
   }
   // Punkt auf der Abkürzung bei lokaler Länge s (davor und danach weiter auf der Strecke)
@@ -546,23 +571,32 @@ class Strecke {
   proj(o, x, y, z) {
     this.projHaupt(o, x, y, z);
     o.ab = -1; o.offen = 0;
-    if (this.abk.length && Math.abs(o.d) > o.w + 0.6) {
+    if (this.abk.length) {
+      // Liegt der Punkt auf dieser Höhe überhaupt auf der Strecke? (Strecken über- und untereinander)
+      const hauptPasst = Math.abs(y - o.bodenY) < 3.5;
+      const aufStrasse = hauptPasst && Math.abs(o.d) <= o.w + 0.6;
       for (const A of this.abk) {
+        if (aufStrasse) break;
         const q = this.abkLage(A, x, y, z);
-        if (!q || Math.abs(q.d) > A.lim) continue;
+        if (!q) continue;
+        const lim = this.abkLim(q);
+        // ohne Geländer: etwas breiter mitzählen, damit man herunterfällt statt zur Strecke zu springen
+        if (Math.abs(q.d) > lim + (A.fall ? 6 : 0)) continue;
+        if (hauptPasst && Math.abs(y - q.cy) > Math.abs(y - o.bodenY) + 1.5 && Math.abs(o.d) <= o.lim) continue;
         // Auf der Abkürzung: Werte relativ zu ihr, Fortschritt auf die Strecke umgerechnet
-        const aufHaupt = Math.abs(o.d) <= o.lim;
+        const aufHaupt = Math.abs(o.d) <= o.lim && Math.abs(o.bodenY - q.cy) < 2.5;
         o.ab = A.nr; o.abS = q.A0.s + q.f * (q.B0.s - q.A0.s);
         o.abH = q.A0.h + wrapA(q.B0.h - q.A0.h) * q.f;
-        o.d = q.d; o.hx = q.hx; o.hz = q.hz; o.w = A.w; o.lim = A.lim;
+        o.d = q.d; o.hx = q.hx; o.hz = q.hz; o.w = lerp(q.A0.w, q.B0.w, q.f); o.lim = lim;
         o.offen = (q.f < 0.5 ? q.A0 : q.B0).offen;
         if (!aufHaupt) {
           o.bodenY = q.cy;
           o.nx = lerp(q.A0.n.x, q.B0.n.x, q.f); o.ny = lerp(q.A0.n.y, q.B0.n.y, q.f); o.nz = lerp(q.A0.n.z, q.B0.n.z, q.f);
-        }
-        o.fall = false; o.eis = false;
+          o.fall = A.fall;
+        } else o.fall = false;
+        o.eis = false;
         o.s = (A.s1 + o.abS / A.len * A.span) % this.L;
-        o.flaeche = Math.abs(q.d) <= A.w ? 'piste' : 'gelaende';
+        o.flaeche = Math.abs(q.d) <= o.w && !(q.f < 0.5 ? q.A0 : q.B0).gras ? 'piste' : 'gelaende';
         o.rauh = A.rauh;
         break;
       }
@@ -716,7 +750,13 @@ class Strecke {
         const lim0 = (A.lim + 0.15) * sd, lim1 = (B.lim + 0.15) * sd;
         const p0 = V(A, lim0), p1 = V(B, lim1);
         // Lücke in der Wand, wo eine Abkürzung abzweigt
-        if (wall && this.abk.length && (this.imKorridor(p0[0], p0[1], p0[2], 0.4) || this.imKorridor(p1[0], p1[1], p1[2], 0.4))) wall = false;
+        if (wall && this.abk.length) {
+          const tiefe = A.wand === 'fels' ? [0, 3, 6, 9.5] : A.wand === 'schnee' ? [0, 1.5, 2.4] : [0, 0.6];
+          for (const t of tiefe) {
+            const x0 = p0[0] + A.rh.x * sd * t, z0 = p0[2] + A.rh.z * sd * t, x1 = p1[0] + B.rh.x * sd * t, z1 = p1[2] + B.rh.z * sd * t;
+            if (this.imKorridor(x0, p0[1], z0, 0.6) || this.imKorridor(x1, p1[1], z1, 0.6)) { wall = false; break; }
+          }
+        }
         wandSeg[sd][i] = wall;
         wandProben[sd][i] = { x: p0[0], y: p0[1], z: p0[2], ax: A.rh.x * sd, az: A.rh.z * sd, s: A.s, stil: A.wand, h: hW };
         // Böschung bzw. Unterseite
@@ -944,77 +984,84 @@ class Strecke {
     this.baueSteine();
     this.baueBremsen();
   }
-  // Grafik der Abkürzungen: Weg, Wände, Unterbau, Turbo-Feld, Fähnchen und Münzen
+  // Grafik der Abkürzungen: hohes Gras am Eingang, Weg, Ränder mit Wandprofil, Unterbau, Wegweiser und Münzen
   baueAbk() {
     if (!this.abk.length) return;
     const g = this.gruppe, th = this.th, bodenY = this.bodenY(), thema = this.def.thema;
-    const stil = { wiese: 'dschungel', strand: 'sand', wueste: 'sand', dschungel: 'dschungel', schnee: 'schnee', stadt: 'stadt', lava: 'burg', all: 'regenbogen' }[thema] || 'dschungel';
-    const wandStil = { wiese: 'holz', strand: 'holz', wueste: 'fels', dschungel: 'holz', schnee: 'schnee', stadt: 'beton', lava: 'burg', all: 'leucht' }[thema] || 'holz';
-    const hW = { holz: 1.1, fels: 2.2, schnee: 1.3, beton: 1.3, burg: 1.6, leucht: 1.0 }[wandStil];
-    const platte = bodenY === null || th.lavaSee;
+    const weg = { wiese: 'dschungel', strand: 'holz', wueste: 'sand', dschungel: 'dschungel', schnee: 'schnee', stadt: 'stadt', lava: 'burg', all: 'regenbogen' }[thema] || 'dschungel';
+    const gras = { wiese: 'gras', strand: 'sand', wueste: 'sand', dschungel: 'dschungel', schnee: 'schnee', stadt: 'stadt', lava: 'lava', all: 'mond' }[thema] || 'gras';
+    const wandStil = { wiese: 'holz', strand: 'holz', wueste: 'fels', dschungel: 'holz', schnee: 'schnee', stadt: 'beton' }[thema];
     const o = {};
     // Höhe eines Punkts: auf der Hauptstrecke deren Oberfläche, sonst die der Abkürzung
-    const Y = (x, y, z) => { this.projHaupt(o, x, y, z); return Math.abs(o.d) <= o.lim ? o.bodenY : y; };
-    const strasse = [], waende = [], unter = [], boesch = [], pfeiler = [];
-    const pos = [], uv = [];
+    const Y = (x, y, z) => { this.projHaupt(o, x, y, z); return Math.abs(o.d) <= o.lim && Math.abs(o.bodenY - y) < 2.5 ? o.bodenY : y; };
+    const flaechen = { weg: [], gras: [] }, unter = [], boesch = [], pfeiler = [], buesche = [];
     const quad = (arr, a, b, c, d2, uvs) => arr.push([a, b, c, d2, uvs]);
+    const R = rng(hashStr(this.def.id) + 5);
     for (const A of this.abk) {
       const P = A.P;
       const rand = (q, d, dy = 0) => { const x = q.p.x + q.rh.x * d, z = q.p.z + q.rh.z * d; return [x, Y(x, q.p.y, z) + dy, z]; };
+      const wandPk = { '-1': [], '1': [] };
       for (let i = 0; i < P.length - 1; i++) {
         const a = P[i], b = P[i + 1];
-        const va = a.s / (A.w * 2), vb = b.s / (A.w * 2);
-        quad(strasse, rand(a, -A.w, 0.045), rand(a, A.w, 0.045), rand(b, A.w, 0.045), rand(b, -A.w, 0.045), [[0, va], [1, va], [1, vb], [0, vb]]);
+        const va = a.s / 7.6, vb = b.s / 7.6;
+        // Fahrfläche (bis zum Rand, damit kein Spalt bleibt)
+        const art = a.gras ? 'gras' : 'weg';
+        quad(flaechen[art], rand(a, -a.lim, 0.05), rand(a, a.lim, 0.05), rand(b, b.lim, 0.05), rand(b, -b.lim, 0.05), [[0, va], [1, va], [1, vb], [0, vb]]);
         for (const sd of [-1, 1]) {
-          const e0 = rand(a, A.lim * sd), e1 = rand(b, A.lim * sd);
-          if (a.offen !== sd && b.offen !== sd) {
-            const w0 = rand(a, (A.lim + 0.15) * sd), w1 = rand(b, (A.lim + 0.15) * sd);
-            const u0 = a.s / 8, u1 = b.s / 8;
-            quad(waende, [w0[0], w0[1] - 0.5, w0[2]], [w1[0], w1[1] - 0.5, w1[2]], [w1[0], w1[1] + hW, w1[2]], [w0[0], w0[1] + hW, w0[2]], [[u0, 0], [u1, 0], [u1, 1], [u0, 1]]);
+          // Ränder: Wandprofil wie an der Strecke (nicht auf der offenen Seite und nicht auf der Strecke selbst)
+          if (wandStil && !A.fall) {
+            const zu = a.offen === sd || a.mitte;
+            if (zu) { if (wandPk[sd].length) { Waende.lauf(this, g, wandPk[sd], wandStil, { h: wandStil === 'fels' ? 2.6 : undefined }); wandPk[sd] = []; } }
+            else { const w0 = rand(a, (a.lim + 0.15) * sd); wandPk[sd].push({ x: w0[0], y: w0[1], z: w0[2], ax: a.rh.x * sd, az: a.rh.z * sd, s: a.s }); }
           }
           if (a.mitte && b.mitte) continue;
-          if (platte) quad(unter, [e0[0], e0[1] - 1.6, e0[2]], [e1[0], e1[1] - 1.6, e1[2]], [e1[0], e1[1] + 0.03, e1[2]], [e0[0], e0[1] + 0.03, e0[2]]);
+          const e0 = rand(a, a.lim * sd), e1 = rand(b, b.lim * sd);
+          if (bodenY === null) quad(unter, [e0[0], e0[1] - 1.6, e0[2]], [e1[0], e1[1] - 1.6, e1[2]], [e1[0], e1[1] + 0.05, e1[2]], [e0[0], e0[1] + 0.05, e0[2]]);
           else {
-            const hA = Math.max(0, a.p.y - bodenY), hB = Math.max(0, b.p.y - bodenY);
-            const eA = 1.5 + hA * 1.3, eB = 1.5 + hB * 1.3;
-            quad(boesch, e0, [e0[0] + a.rh.x * eA * sd, bodenY - 0.4, e0[2] + a.rh.z * eA * sd], [e1[0] + b.rh.x * eB * sd, bodenY - 0.4, e1[2] + b.rh.z * eB * sd], e1);
+            // Böschung bis zum Boden (in der Lava ein Felsdamm)
+            const tief = bodenY - 0.4, hA = Math.max(0, a.p.y - tief), hB = Math.max(0, b.p.y - tief);
+            const eA = 0.8 + hA * 1.1, eB = 0.8 + hB * 1.1;
+            quad(boesch, [e0[0], e0[1] + 0.04, e0[2]], [e0[0] + a.rh.x * eA * sd, tief, e0[2] + a.rh.z * eA * sd], [e1[0] + b.rh.x * eB * sd, tief, e1[2] + b.rh.z * eB * sd], [e1[0], e1[1] + 0.04, e1[2]]);
+          }
+          // Büsche und Steine neben dem hohen Gras verstecken den Eingang ein wenig
+          if (a.gras && i % 2 === 0 && R() < 0.8) {
+            const ab = a.lim + 1.2 + R() * 3;
+            buesche.push({ x: a.p.x + a.rh.x * ab * sd, y: Y(a.p.x, a.p.y, a.p.z), z: a.p.z + a.rh.z * ab * sd, s: 0.9 + R() * 0.9, r: R() * TAU });
           }
         }
-        if (platte && !(a.mitte && b.mitte)) {
-          const l0 = rand(a, -A.lim, -1.6), r0 = rand(a, A.lim, -1.6), l1 = rand(b, -A.lim, -1.6), r1 = rand(b, A.lim, -1.6);
+        if (bodenY === null && !(a.mitte && b.mitte)) {
+          const l0 = rand(a, -a.lim, -1.6), r0 = rand(a, a.lim, -1.6), l1 = rand(b, -b.lim, -1.6), r1 = rand(b, b.lim, -1.6);
           quad(unter, r0, l0, l1, r1);
-          if (i % 6 === 0) { const unten = bodenY === null ? a.p.y - 40 : bodenY - 1, h = a.p.y - 1.6 - unten; if (h > 0.5) pfeiler.push({ x: a.p.x, y: unten + h / 2, z: a.p.z, s: 1, sy: h }); }
+          if (i % 8 === 0) { const unten = a.p.y - 40, h = a.p.y - 1.6 - unten; pfeiler.push({ x: a.p.x, y: unten + h / 2, z: a.p.z, s: 1, sy: h }); }
         }
       }
-      // Turbo-Feld kurz nach der Abzweigung, damit sich die Abkürzung lohnt
-      let k0 = P.findIndex(q => !q.mitte && !q.offen);
-      if (k0 < 0) k0 = Math.floor(P.length * 0.2);
-      const q = P[Math.min(P.length - 2, k0 + 2)];
-      const tm = new THREE.Mesh(new THREE.PlaneGeometry(4, 7), new THREE.MeshBasicMaterial({ map: Tex.turbo(), transparent: true, polygonOffset: true, polygonOffsetFactor: -3 }));
-      tm.position.copy(q.p); tm.position.y += 0.1;
-      tm.quaternion.copy(this.lage(q)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
-      g.add(tm);
-      this.boosts.push({ ab: A.nr, s: q.s, d: 0, b: 2.2, l: 3.6 });
-      // Fähnchen am Eingang
-      const e = P[Math.max(0, k0 - 1)];
-      for (const sd of [-1, 1]) {
-        const x = e.p.x + e.rh.x * (A.lim + 0.5) * sd, z = e.p.z + e.rh.z * (A.lim + 0.5) * sd, y = Y(x, e.p.y, z);
-        const f = new THREE.Group();
-        f.add(M(G.zyl(0.08, 0.08, 3.2, 6), Mat.std('#f4f4f4'), 0, 1.6, 0));
-        const fahne = M(new THREE.ConeGeometry(0.45, 1.3, 3), Mat.std('#ffd23a', { emissive: new THREE.Color('#ffb000'), emissiveIntensity: 0.25 }), 0, 2.75, 0.62, Math.PI / 2, 0, 0);
-        fahne.scale.set(1, 1, 0.15); f.add(fahne);
-        f.position.set(x, y, z); f.rotation.y = e.h;
-        f.traverse(m => { if (m.isMesh) m.castShadow = true; });
-        g.add(f);
-        this.anim.push(t => { fahne.rotation.z = Math.sin(t * 4 + sd) * 0.15; });
+      if (wandStil && !A.fall) for (const sd of ['-1', '1']) if (wandPk[sd].length) Waende.lauf(this, g, wandPk[sd], wandStil, { h: wandStil === 'fels' ? 2.6 : undefined });
+      // Büschel im hohen Gras (in der Stadt: Baustelle mit Pylonen)
+      for (const q of P) if (q.gras && !q.mitte) for (let k = 0; k < (thema === 'stadt' ? 1 : 3); k++) {
+        if (thema === 'stadt' && R() < 0.6) continue;
+        const d = (R() * 2 - 1) * q.w;
+        buesche.push({ x: q.p.x + q.rh.x * d, y: q.p.y + 0.05, z: q.p.z + q.rh.z * d, s: 0.7 + R() * 0.5, sy: 0.6 + R() * 0.6, r: R() * TAU, halm: true });
       }
+      // Wegweiser am Eingang (auf der Seite weg von der Strecke)
+      const k0 = Math.max(0, P.findIndex(q => !q.mitte) - 1), e = P[k0];
+      const sd = e.offen ? -e.offen : 1;
+      const x = e.p.x + e.rh.x * (e.lim + 1.3) * sd, z = e.p.z + e.rh.z * (e.lim + 1.3) * sd, y = Y(x, e.p.y, z);
+      const sch = new THREE.Group();
+      const holz = Mat.lam('#7a5232');
+      sch.add(M(G.box(0.22, 2.6, 0.22), holz, 0, 1.3, 0));
+      const pfeil = new THREE.Shape(); pfeil.moveTo(-1.2, -0.35); pfeil.lineTo(0.6, -0.35); pfeil.lineTo(0.6, -0.6); pfeil.lineTo(1.3, 0); pfeil.lineTo(0.6, 0.6); pfeil.lineTo(0.6, 0.35); pfeil.lineTo(-1.2, 0.35); pfeil.lineTo(-1.2, -0.35);
+      const pm = M(new THREE.ExtrudeGeometry(pfeil, { depth: 0.12, bevelEnabled: false }), Mat.lam('#ffd23a'), 0, 2.2, 0.12, 0, Math.PI / 2 * (sd > 0 ? 1 : -1) + Math.PI / 2, 0);
+      sch.add(pm);
+      sch.position.set(x, y, z); sch.rotation.y = e.h;
+      sch.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      g.add(sch);
       // Münzen als Belohnung
-      for (let i = 0; i < 5; i++) { const p = this.abkPunkt(A, A.len * (0.4 + i * 0.06), 0); p.y += 1.0; this.muenzPlaetze.push(p); }
+      for (let i = 0; i < 5; i++) { const p = this.abkPunkt(A, A.len * (0.45 + i * 0.07), 0); p.y += 1.0; this.muenzPlaetze.push(p); }
     }
     const geo = (list, weltUV) => {
       const pos = [], uv = [], idx = [];
       list.forEach((q, n) => {
-        for (let k = 0; k < 4; k++) { pos.push(...q[k]); if (q[4] && !weltUV) uv.push(...q[4][k]); else uv.push(q[k][0] / 20, q[k][2] / 20 + q[k][1] / 20); }
+        for (let k = 0; k < 4; k++) { pos.push(...q[k]); if (q[4] && !weltUV) uv.push(...q[4][k]); else uv.push(q[k][0] / 14, q[k][2] / 14 + q[k][1] / 14); }
         const v = n * 4; idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
       });
       const gg = new THREE.BufferGeometry();
@@ -1023,24 +1070,35 @@ class Strecke {
       gg.setIndex(idx); gg.computeVertexNormals();
       return gg;
     };
-    let sm;
-    if (stil === 'regenbogen') sm = new THREE.MeshBasicMaterial({ map: Tex.regenbogen(), transparent: true, opacity: 0.92, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
-    else sm = new THREE.MeshLambertMaterial({ map: Tex.strasse(stil), side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
-    const ms = new THREE.Mesh(geo(strasse), sm); ms.receiveShadow = true; g.add(ms);
-    if (waende.length) {
-      let wm;
-      if (wandStil === 'leucht') { wm = new THREE.MeshBasicMaterial({ color: '#7af0ff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }); this.anim.push(t => wm.color.setHSL((t * 0.1 + 0.5) % 1, 0.9, 0.6)); }
-      else { const tex = Tex.wand(wandStil).clone(); tex.needsUpdate = true; wm = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }); }
-      const mw = new THREE.Mesh(geo(waende), wm); mw.castShadow = wandStil !== 'leucht'; mw.receiveShadow = true; g.add(mw);
+    const off = m => { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -4; m.side = THREE.DoubleSide; return m; };
+    let wm;
+    if (weg === 'regenbogen') wm = off(new THREE.MeshBasicMaterial({ map: Tex.regenbogen(), transparent: true, opacity: 0.92 }));
+    else if (weg === 'holz') { const t = Tex.wand('holz').clone(); t.needsUpdate = true; t.rotation = Math.PI / 2; wm = off(new THREE.MeshLambertMaterial({ map: t })); }
+    else wm = off(new THREE.MeshLambertMaterial({ map: Tex.strasse(weg) }));
+    if (flaechen.weg.length) { const m = new THREE.Mesh(geo(flaechen.weg), wm); m.receiveShadow = true; g.add(m); }
+    if (flaechen.gras.length) {
+      const gm = thema === 'all' ? off(new THREE.MeshBasicMaterial({ map: Tex.boden(gras), color: '#b088ff', transparent: true, opacity: 0.95 })) : off(new THREE.MeshLambertMaterial({ map: Tex.boden(gras), color: thema === 'lava' ? '#ffffff' : '#d8e8c8' }));
+      const m = new THREE.Mesh(geo(flaechen.gras, true), gm); m.receiveShadow = true; g.add(m);
     }
-    if (boesch.length) { const m = new THREE.Mesh(geo(boesch, true), new THREE.MeshLambertMaterial({ map: Tex.boden(th.boden === 'stadt' ? 'stadt' : th.boden === 'lava' ? 'erde' : (th.boden || 'gras')), side: THREE.DoubleSide })); m.receiveShadow = true; g.add(m); }
-    if (unter.length) {
-      const um = thema === 'all' ? new THREE.MeshBasicMaterial({ color: '#3a1a6a', transparent: true, opacity: 0.7, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: Tex.wand(th.wand === 'burg' ? 'burg' : 'beton'), side: THREE.DoubleSide });
-      g.add(new THREE.Mesh(geo(unter, true), um));
+    if (boesch.length) {
+      const bm = th.lavaSee ? new THREE.MeshStandardMaterial({ color: '#3a2420', flatShading: true, roughness: 1, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: Tex.boden(th.boden === 'stadt' ? 'stadt' : (th.boden || 'gras')), side: THREE.DoubleSide });
+      const m = new THREE.Mesh(geo(boesch, true), bm); m.receiveShadow = true; m.castShadow = !!th.lavaSee; g.add(m);
     }
-    if (pfeiler.length) {
-      const pm = thema === 'all' ? new THREE.MeshBasicMaterial({ color: '#5a2a9a', transparent: true, opacity: 0.5 }) : new THREE.MeshLambertMaterial({ map: Tex.wand(th.wand === 'burg' ? 'burg' : 'beton') });
-      streuen(g, [{ geo: G.box(1.4, 1, 1.4), mat: pm }], pfeiler);
+    if (unter.length) g.add(new THREE.Mesh(geo(unter, true), new THREE.MeshBasicMaterial({ color: '#3a1a6a', transparent: true, opacity: 0.7, side: THREE.DoubleSide })));
+    if (pfeiler.length) streuen(g, [{ geo: G.box(1.4, 1, 1.4), mat: new THREE.MeshBasicMaterial({ color: '#5a2a9a', transparent: true, opacity: 0.5 }) }], pfeiler);
+    if (buesche.length) {
+      const farbe = { wiese: '#4aa83f', strand: '#9ab85a', wueste: '#b0804a', dschungel: '#3a9a3a', schnee: '#eef4fb', stadt: '#6a6e78' }[thema] || '#4aa83f';
+      const busch = buesche.filter(b => !b.halm), halm = buesche.filter(b => b.halm);
+      streuen(g, [{ geo: thema === 'wueste' || thema === 'stadt' ? new THREE.DodecahedronGeometry(1, 0) : new THREE.IcosahedronGeometry(1, 0), mat: Mat.lam(farbe, { flatShading: true }), y: 0.5, sy: 0.75 }], busch);
+      if (thema === 'stadt') streuen(g, [{ geo: G.kegel(0.38, 0.95, 8), mat: Mat.lam('#ff6a10'), y: 0.5 }, { geo: G.zyl(0.26, 0.3, 0.15, 8), mat: Mat.lam('#ffffff'), y: 0.55 }, { geo: G.box(0.9, 0.08, 0.9), mat: Mat.lam('#ff6a10'), y: 0.04 }], halm.map(h => Object.assign(h, { s: 1, sy: 1 })));
+      else if (thema === 'schnee') streuen(g, [{ geo: G.kugel(0.7, 7, 5), mat: Mat.lam('#ffffff', { flatShading: true }), y: 0.1, sy: 0.45 }], halm, false);
+      else if (thema === 'lava') streuen(g, [{ geo: new THREE.DodecahedronGeometry(0.45, 0), mat: Mat.lam('#2a1a16', { flatShading: true }), y: 0.15, sy: 0.6 }, { geo: G.kugel(0.12, 5, 4), mat: new THREE.MeshBasicMaterial({ color: '#ff7a10' }), y: 0.35, x: 0.2 }], halm, false);
+      else if (thema === 'all') streuen(g, [{ geo: new THREE.OctahedronGeometry(0.35, 0), mat: new THREE.MeshBasicMaterial({ color: '#fff6a0' }), y: 0.4, sy: 1.6 }], halm, false);
+      else {
+        const hm = Mat.lam(thema === 'wueste' || thema === 'strand' ? '#c8a860' : '#5aaa3a', { flatShading: true });
+        const h = G.kegel(0.09, 0.9, 3);
+        streuen(g, [{ geo: h, mat: hm, y: 0.42 }, { geo: h, mat: hm, x: 0.18, y: 0.38, rz: -0.35 }, { geo: h, mat: hm, x: -0.16, y: 0.38, rz: 0.4 }, { geo: h, mat: hm, z: 0.17, y: 0.36, rx: 0.4 }], halm, false);
+      }
     }
   }
   // Steinblöcke mit grimmigem Gesicht, die immer wieder auf die Strecke krachen
