@@ -130,7 +130,8 @@ function showEnd(res, mode) {
   } else {
     if (mode === 'versus') {
       const win = res[0];
-      title = win.slot === mySlot ? '🏆 Du hast gewonnen!' : esc(win.name) + ' gewinnt';
+      const tie = res.length > 1 && res[1].score === win.score;
+      title = tie ? 'Unentschieden' : win.slot === mySlot ? '🏆 Du hast gewonnen!' : esc(win.name) + ' gewinnt';
     } else {
       const team = res.reduce((a, r) => a + r.score, 0);
       title = 'Koop vorbei';

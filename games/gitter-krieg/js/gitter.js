@@ -49,7 +49,10 @@ const Gitter = (() => {
       let x = vx[k] + ax[k], y = vy[k] + ay[k], z = vz[k] + az[k];
       ax[k] = ay[k] = az[k] = 0;
       px[k] += x; py[k] += y; pz[k] += z;
-      if (x * x + y * y + z * z < 1e-6) { x = y = z = 0; }
+      const v2 = x * x + y * y + z * z;
+      if (v2 < 1e-6) { x = y = z = 0; }
+      else if (v2 > 784) { const f = 28 / Math.sqrt(v2); x *= f; y *= f; z *= f; }   // Tempolimit, damit nichts zerreisst
+      if (pz[k] > 500) pz[k] = 500; else if (pz[k] < -700) pz[k] = -700;
       const d = damp[k];
       vx[k] = x * d; vy[k] = y * d; vz[k] = z * d;
       damp[k] = 0.98;
@@ -106,7 +109,7 @@ const Gitter = (() => {
   function draw(camX, camY) {
     const v = R.view;
     for (let k = 0; k < N; k++) {
-      const f = (pz[k] + 2000) / 2000;
+      const f = clamp((pz[k] + 2000) / 2000, 0.65, 1.25);
       sx[k] = camX + (px[k] - camX) * f;
       sy[k] = camY + (py[k] - camY) * f;
       const dx = px[k] - rx[k], dy = py[k] - ry[k];
@@ -121,11 +124,11 @@ const Gitter = (() => {
     };
     for (let j = j0; j <= j1; j++) {
       const thick = j % 3 === 0;
-      for (let i = i0; i < i1; i++) { const k = j * C + i; line(k, k + 1, thick, thick ? 0.3 : 0.17); }
+      for (let i = i0; i < i1; i++) { const k = j * C + i; line(k, k + 1, thick, thick ? 0.27 : 0.15); }
     }
     for (let i = i0; i <= i1; i++) {
       const thick = i % 3 === 0;
-      for (let j = j0; j < j1; j++) { const k = j * C + i; line(k, k + C, thick, thick ? 0.3 : 0.17); }
+      for (let j = j0; j < j1; j++) { const k = j * C + i; line(k, k + C, thick, thick ? 0.27 : 0.15); }
     }
     // Zwischenlinien (Mittelpunkte der Nachbarzellen)
     for (let j = j0; j < j1; j++) {

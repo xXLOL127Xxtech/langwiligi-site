@@ -115,7 +115,7 @@ const FX = {
         } else if (sz === 2) {
           this.burst(x, y, c, 420, 1100, 0.8, 2.2, 2.2, 0.25);
           this.ring(x, y, [1, 0.5, 0.5], 90, 900, 1.2, 2.6);
-          Gitter.explosive(260, x, y, 360);
+          Gitter.explosive(180, x, y, 320);
           this.shake = Math.max(this.shake, 14);
           Snd.boom(2);
         } else {
@@ -131,8 +131,8 @@ const FX = {
         const c = PCOLS[slot % PCOLS.length] || PCOLS[0];
         this.burst(x, y, c, 700, 1400, 1.0, 2.8, 2.4, 0.4);
         this.burst(x, y, [1, 0.7, 0.3], 350, 900, 0.8, 2.2, 2, 0.3);
-        this.ring(x, y, c, 120, 1300, 1.4, 3);
-        Gitter.explosive(900, x, y, 600, -120);
+        this.ring(x, y, c, 100, 1100, 1.2, 2.2);
+        Gitter.explosive(420, x, y, 450, -120);
         this.shake = Math.max(this.shake, slot === this.mySlot ? 28 : 14);
         if (slot === this.mySlot) { this.flash = Math.max(this.flash, 0.5); this.tint = [1, 0.4, 0.3]; }
         Snd.die();
@@ -141,12 +141,12 @@ const FX = {
       case EV.BOMB: {
         const [, x, y, slot] = ev;
         const c = PCOLS[slot % PCOLS.length] || PCOLS[0];
-        this.ring(x, y, [1, 1, 1], 260, 2200, 1.4, 3.2);
-        this.ring(x, y, c, 200, 1600, 1.6, 2.6);
-        this.burst(x, y, c, 300, 1500, 0.8, 2, 2, 0.5, false);
-        Gitter.explosive(2600, x, y, 1100, -200);
-        this.shake = Math.max(this.shake, 30);
-        this.flash = Math.max(this.flash, 0.8); this.tint = [0.7, 0.85, 1];
+        this.ring(x, y, [1, 1, 1], 160, 1500, 1.1, 2);
+        this.ring(x, y, c, 140, 1100, 1.3, 1.8);
+        this.burst(x, y, c, 220, 1200, 0.6, 1.6, 1.7, 0.5, false);
+        Gitter.explosive(700, x, y, 800, -150);
+        this.shake = Math.max(this.shake, 22);
+        this.flash = Math.max(this.flash, 0.35); this.tint = [0.6, 0.8, 1];
         Snd.bomb();
         break;
       }
@@ -185,7 +185,7 @@ const FX = {
         const [, x, y] = ev;
         this.burst(x, y, EDEF[ET.BLACKHOLE].col, 500, 1300, 0.9, 2.4, 2.2, 0.3);
         this.ring(x, y, EDEF[ET.PROTON].col, 100, 1000, 1.2, 2.4);
-        Gitter.explosive(700, x, y, 500, -150);
+        Gitter.explosive(380, x, y, 420, -150);
         this.shake = Math.max(this.shake, 16);
         Snd.boom(2);
         break;
