@@ -251,10 +251,10 @@ function carPainter(kind, L, top, rnd) {
 function buildZug(sim, rnd) {
   const mid = ['offen', 'container', 'kessel', 'kasten', 'container', 'offen', 'kessel', 'kasten'];
   for (let i = mid.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [mid[i], mid[j]] = [mid[j], mid[i]]; }
-  const kinds = ['kasten', ...mid.slice(0, 7), 'lok'];
+  const kinds = ['kasten', ...mid.slice(0, 5), 'lok'];
   const cars = [];
   let x = 0;
-  const GAP = 1.6;
+  const GAP = 1.0;
   kinds.forEach((kind, i) => {
     const L = kind === 'lok' ? 15 : 12;
     const top = { kasten: 4.4, offen: 3.9, container: 4.3, kessel: 4.45, lok: 4.3 }[kind];
@@ -271,7 +271,7 @@ function buildZug(sim, rnd) {
       standY = 3.55;
     } else if (kind === 'container') fx.push(rc(-L / 2 + 0.1, 1.5, L / 2 - 0.1, 1.8, 'dunkel'), rc(-L / 2 + 0.2, 1.8, L / 2 - 0.2, top, 'blech'));
     else if (kind === 'kessel') {
-      const h = L / 2 - 0.6;
+      const h = L / 2 - 0.3;
       fx.push(rc(-L / 2 + 0.1, 1.5, L / 2 - 0.1, 1.8, 'dunkel'));
       fx.push(poly([[-h, 1.8], [h, 1.8], [h, 3.6], [h - 0.4, 4.2], [h - 1.2, 4.45], [-h + 1.2, 4.45], [-h + 0.4, 4.2], [-h, 3.6]], 'dunkel', { tank: true, friction: 0.35 }));
     } else if (kind === 'lok') {
@@ -314,7 +314,7 @@ function buildZug(sim, rnd) {
   cars.forEach((c, i) => { if (i > 0) { spots.push({ mb: c.mb, x: -2.8, y: c.standY + 0.5 }); spots.push({ mb: c.mb, x: 2.6, y: c.standY + 0.5 }); } });
   const cps = [0, 2, 4, 6].map(i => ({ x: cars[i].x - cars[i].L / 2, car: cars[i] }));
   const map = {
-    minX: -3, maxX: end + 3, killY: 1.15, camMinY: -0.6, camMaxY: 15, startX: cars[0].x, goalX: loco.x + 1,
+    minX: -3, maxX: end + 3, killY: 2.7, camMinY: -0.6, camMaxY: 15, startX: cars[0].x, goalX: loco.x + 1,
     cps, spots, maxPickups: 6, cars, hzBodies: [gantry, tunnel], deathText: { sturz: 'vom Zug gefallen' },
     spawn(sim, cpi, idx) {
       const c = cps[clamp(cpi, 0, cps.length - 1)].car;
@@ -690,7 +690,7 @@ function buildBau(sim, rnd) {
   // Einsturz-Bretter
   const plank = (cx, y) => {
     sim.addDeco(scaffoldDeco(2.8, 6), cx, y - 3.2, -1);
-    return sim.addBody({ type: 'kinematic', x: cx, y: y - 0.15, crumble: true, delay: 0.55, respawn: 7, w: 2.9, fixtures: [bx(2.9, 0.3, 0, 0, 'brett')], friction: 0.9, density: 1.5 });
+    return sim.addBody({ type: 'kinematic', x: cx, y: y - 0.15, crumble: true, delay: 1.0, respawn: 5, w: 2.9, fixtures: [bx(2.9, 0.3, 0, 0, 'brett')], friction: 0.9, density: 1.5 });
   };
   for (const x of [15.5, 18.5, 21.5, 24.5]) plank(x, 0);
   for (const x of [41.5, 44.5]) plank(x, 2.0);
@@ -699,7 +699,7 @@ function buildBau(sim, rnd) {
   const beam = sim.addBody({ type: 'kinematic', x: 56, y: 1.8, fixtures: [bx(4.2, 0.36, 0, 0, 'stahl')], friction: 0.9,
     paint: (g, P) => { RRo(g, P, -2.1, -0.18, 2.1, 0.18, '#c4532c', '#17121d'); RR(g, P, -2.05, 0.08, 2.05, 0.14, '#e07448'); for (let x = -1.8; x < 2; x += 0.6) { RR(g, P, x, -0.12, x + 0.08, 0.06, '#8e3a1f'); } } });
   // Abrissbirne
-  const ball = sim.addBody({ type: 'kinematic', x: 46.5, y: 3.8, fixtures: [circ(0.75, 0, 0, 'dunkel')], friction: 0.3, restitution: 0.4,
+  const ball = sim.addBody({ type: 'kinematic', x: 46.5, y: 4.2, fixtures: [circ(0.75, 0, 0, 'dunkel')], friction: 0.3, restitution: 0.4,
     paint: (g, P) => { const [cx, cy] = P(0, 0); circlePx(g, cx, cy, 14, '#17121d'); circlePx(g, cx, cy, 12.5, '#3a3d44'); circlePx(g, cx - 4, cy - 4, 5, '#5f6673'); circlePx(g, cx - 5, cy - 6, 2, '#9aa3b2'); box(g, cx - 2, cy - 16, 4, 4, '#17121d'); } });
   // Fallende Stahlträger (Pool)
   const girders = [0, 1].map(i => {
@@ -737,7 +737,7 @@ function buildBau(sim, rnd) {
       drive(beam.body, bxp, 1.8 + 0.04 * Math.sin(t * 2.3), 0.01 * Math.sin(t * 1.7), dt);
       // Abrissbirne
       const ang = 1.05 * Math.sin(t * Math.PI * 2 / 3.8);
-      drive(ball.body, 46.5 + Math.sin(ang) * 8.2, 12 - Math.cos(ang) * 8.2, ang, dt);
+      drive(ball.body, 46.5 + Math.sin(ang) * 8.2, 12.4 - Math.cos(ang) * 8.2, ang, dt);
       // Stahlträger
       if (sim.phase !== 'countdown') {
         st.gNext -= dt;
@@ -764,7 +764,7 @@ function buildBau(sim, rnd) {
     },
     netState() { return st.warnT > 0 ? Math.round(st.warnX * 10) : 0; },
     hazards(sim) {
-      return [{ circle: (tau) => { const a = 1.05 * Math.sin((sim.t + tau) * Math.PI * 2 / 3.8); return { x: 46.5 + Math.sin(a) * 8.2, y: 12 - Math.cos(a) * 8.2, r: 0.8 }; } },
+      return [{ circle: (tau) => { const a = 1.05 * Math.sin((sim.t + tau) * Math.PI * 2 / 3.8); return { x: 46.5 + Math.sin(a) * 8.2, y: 12.4 - Math.cos(a) * 8.2, r: 0.8 }; } },
         ...(st.warnT > 0 ? [{ circle: () => ({ x: st.warnX, y: 3, r: 2.2 }) }] : [])];
     },
     drawBack(ctx, cam, view) {
@@ -785,7 +785,7 @@ function buildBau(sim, rnd) {
       ctx.fillRect(bx0 - 4, by0 - 14, 8, 3);
       ctx.strokeStyle = '#17121d'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx0, by0 - 12); ctx.lineTo(bx0 - 30, by0); ctx.moveTo(bx0, by0 - 12); ctx.lineTo(bx0 + 30, by0); ctx.stroke();
       const o = M[ball.mi];
-      const pxp = Math.round(46.5 * PPM - cam.x), pyp = Math.round(cam.y - 12 * PPM);
+      const pxp = Math.round(46.5 * PPM - cam.x), pyp = Math.round(cam.y - 12.4 * PPM);
       const ox = Math.round(o[0] * PPM - cam.x), oy = Math.round(cam.y - o[1] * PPM);
       ctx.strokeStyle = '#2a2d34'; ctx.beginPath(); ctx.moveTo(pxp, pyp); ctx.lineTo(ox, oy - 14); ctx.stroke();
       for (let k = 0; k < 1; k += 0.08) { ctx.fillStyle = '#5f6673'; ctx.fillRect(Math.round(lerp(pxp, ox, k)), Math.round(lerp(pyp, oy - 14, k)), 2, 2); }

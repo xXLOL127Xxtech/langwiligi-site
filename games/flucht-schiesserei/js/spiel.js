@@ -12,7 +12,7 @@ const MASKS = { 1: 0xffff, 2: 1 | 2 | 8 | 16, 4: 1 | 8, 8: 1 | 2 | 4 | 8 | 16, 1
 
 // Bewegung: Jeder Druck neigt die Figur und lässt sie immer gleich hoch abspringen
 const JUMP_VY = 8.7;        // immer gleiche Absprung-Geschwindigkeit nach oben (≈1.7 m hoch)
-const JUMP_VX = 2.5;        // seitlicher Anteil in Druckrichtung
+const JUMP_VX = 3.1;        // seitlicher Anteil in Druckrichtung
 const JUMP_TILT = 3.3;      // zusätzlich: je schräger die Figur, desto weiter der Sprung
 const LEAN_TAP = 2.7;       // Dreh-Impuls bei jedem Druck (kurzes Antippen = leichte Neigung)
 const LEAN_MAX = 4.8;       // Drehgeschwindigkeit beim Halten
@@ -73,7 +73,8 @@ function bodySprite(def) {
   if (def.paint) def.paint(g, P, def, c.width, c.height);
   else paintFixtures(g, def.fixtures, P);
   if (def.paintAfter) def.paintAfter(g, P, def);
-  return { img: c, ox: -minx * PPM + m, oy: maxy * PPM + m };
+  const ox = -minx * PPM + m, oy = maxy * PPM + m;
+  return { img: c, ox, oy, rad: Math.hypot(Math.max(ox, c.width - ox), Math.max(oy, c.height - oy)) };
 }
 
 class Sim {
@@ -143,7 +144,7 @@ class Sim {
       idx: i, name: slot.name, outfit: slot.outfit, isBot: !!slot.bot, body, alive: true, hp: 100, weapon: null, ammo: 0, cd: 0,
       aim: 0, input: { l: false, r: false, fire: false, aim: 0, lp: 0, rp: 0 }, seenL: 0, seenR: 0,
       ground: false, groundBody: null, groundPt: null, lastGround: 0, lastJump: -1, jumpBuf: null, deadT: 0, shield: 0, flash: 0,
-      cp: 0, escapes: score, kills: 0, prog: 0, holdT: 0,
+      cp: 0, escapes: score, kills: 0, prog: 0, holdT: 0, lieT: 0,
     };
     body.setUserData({ kind: 'player', p });
     this.players.push(p);
@@ -153,7 +154,8 @@ class Sim {
   canJump(p) { return (p.ground || this.t - p.lastGround < 0.09) && this.t - p.lastJump > 0.22; }
   press(p, side) {
     const b = p.body;
-    b.setAngularVelocity(b.getAngularVelocity() * 0.25 - side * LEAN_TAP);
+    const air = !p.ground && this.t - p.lastGround > 0.09;
+    b.setAngularVelocity(b.getAngularVelocity() * (air ? 0.6 : 0.25) - side * LEAN_TAP * (air ? 0.65 : 1));
     if (this.canJump(p)) this.jump(p, side);
     else p.jumpBuf = { side, t: this.t };
   }
@@ -209,7 +211,10 @@ class Sim {
     } else {
       p.holdT = 0;
       let K = p.ground ? 42 : 13, D = p.ground ? 8 : 2.2;
-      if (p.ground && Math.abs(ang) > 1.15) K *= 0.3;
+      // Liegt die Figur, rappelt sie sich nach kurzer Zeit wieder auf (Stehauf-Männchen)
+      if (p.ground && Math.abs(ang) > 0.95) p.lieT += dt; else if (Math.abs(ang) < 0.4) p.lieT = 0;
+      if (p.lieT > 0.45) { K = 140; D = 14; }
+      else if (p.ground && Math.abs(ang) > 1.15) K *= 0.3;
       b.applyTorque((-K * clamp(ang, -1.6, 1.6) - D * av) * I, true);
     }
     if (Math.abs(av) > 11) b.setAngularVelocity(Math.sign(av) * 11);
@@ -224,7 +229,7 @@ class Sim {
     b.setLinearVelocity(V2(sp.vx || 0, sp.vy || 0));
     b.setAngularVelocity(0);
     b.setAwake(true);
-    p.alive = true; p.hp = 100; p.shield = 1.6; p.deadT = 0; p.weapon = null; p.ammo = 0; p.jumpBuf = null;
+    p.alive = true; p.hp = 100; p.shield = 1.6; p.lieT = 0; p.deadT = 0; p.weapon = null; p.ammo = 0; p.jumpBuf = null;
     this.ev('spawn', p.idx, +sp.x.toFixed(2), +sp.y.toFixed(2));
   }
   kill(p, cause, byIdx) {
