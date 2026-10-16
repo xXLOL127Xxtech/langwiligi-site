@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Flucht-Schiesserei</title>
+<meta name="description" content="Wackelige Gauner hüpfen zum Fluchtfahrzeug – über rasende Züge, schwankende Flugzeuge und einstürzende Brücken.">
+<meta name="theme-color" content="#f2c94c">
+<meta name="spiel-modi" content="Online,Bots">
+<meta name="spiel-tags" content="Bis 4 Spieler,Pixel-Art">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: rgba(16, 17, 24, 0.82); --panel: #1b1d26; --panel-2: #252835; --line: rgba(255,255,255,0.12);
+    --text: #f2efe8; --muted: #a9a59b; --accent: #f2c94c; --accent-2: #ffe08a; --good: #6fdc8c; --bad: #ef5350;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0f13; color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+  canvas#c { display: block; position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  body.ingame canvas#c { cursor: none; }
+  button, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; }
+  .hidden { display: none !important; }
+
+  /* HUD */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  body.ingame #hud { display: block; }
+  #score { position: absolute; top: 10px; left: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px; min-width: 210px; }
+  .sr { display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 22px; }
+  .sr i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .sr b { flex: 1; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .sr.me b { color: var(--accent-2); font-weight: 800; }
+  .sr .st { color: var(--accent); letter-spacing: 1px; }
+  .sr .kl { color: var(--muted); font-size: 11px; min-width: 30px; text-align: right; }
+  #topr { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; pointer-events: auto; align-items: center; }
+  #maplbl { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; height: 36px; display: flex; align-items: center; font-size: 13px; font-weight: 700; }
+  .ib { height: 36px; min-width: 36px; padding: 0 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); font-weight: 800; }
+  #weapon { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    padding: 6px 14px; display: flex; align-items: center; gap: 12px; min-height: 46px; }
+  #weapon:empty { display: none; }
+  #weapon img { image-rendering: pixelated; height: 24px; }
+  #weapon b { display: block; font-size: 14px; } #weapon span { font-size: 12px; color: var(--muted); }
+  #help { position: absolute; right: 12px; bottom: 12px; font-size: 12px; color: rgba(255,255,255,.8); text-shadow: 0 1px 3px #000; text-align: right; line-height: 1.7; }
+  kbd { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 5px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08);
+    font: 600 11px/1.5 ui-monospace, monospace; text-align: center; color: var(--text); }
+  #feed { position: absolute; top: 56px; right: 10px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .fi { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; font-size: 13px; transition: opacity .6s; }
+  .fi.mine { border-color: rgba(242,201,76,.5); }
+  .fi.out { opacity: 0; }
+  #banner { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%); text-align: center; }
+  #banner .big { font-size: clamp(30px, 6vw, 66px); font-weight: 900; text-shadow: 0 4px 0 #000, 0 6px 24px rgba(0,0,0,.6); letter-spacing: .01em; }
+  #banner .small { font-size: 18px; font-weight: 700; text-shadow: 0 2px 6px #000; margin-top: 6px; }
+  #banner.pop { animation: pop .3s; }
+  @keyframes pop { 0% { transform: translate(-50%, -50%) scale(.6); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+  /* Bildschirme */
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: radial-gradient(ellipse at center, rgba(10,12,16,.55), rgba(10,12,16,.92)); overflow: auto; }
+  .panel { width: min(600px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); max-height: 100%; overflow: auto; }
+  .panel.wide { width: min(900px, 100%); }
+  h1 { margin: 0; font-size: clamp(34px, 6vw, 52px); letter-spacing: -0.02em; line-height: 1; }
+  h1 em { font-style: normal; color: var(--accent); }
+  h2 { margin: 0 0 6px; font-size: 24px; }
+  .sub { color: var(--muted); margin: 8px 0 16px; line-height: 1.45; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 12px;
+    background: var(--panel-2); border: 1px solid var(--line); font-weight: 700; transition: transform .08s, filter .1s; }
+  .btn:hover { filter: brightness(1.18); } .btn:active { transform: scale(.97); }
+  .btn.primary { background: linear-gradient(180deg, #f8d468, #e0a826); color: #2a1f05; border-color: transparent; }
+  .btn.sel { border-color: var(--accent); background: rgba(242,201,76,.16); }
+  .btn:disabled { opacity: .45; cursor: default; filter: none; transform: none; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > .btn { flex: 1; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .small { font-size: 12px; color: var(--muted); }
+  .lbl { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-top: 6px; }
+  input[type=text], select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #12141a; color: var(--text); font: inherit; }
+  .code { font: 800 34px ui-monospace, monospace; letter-spacing: .2em; text-align: center; color: var(--accent-2); padding: 8px; background: #12141a; border-radius: 12px; }
+  .status { font-size: 13px; color: var(--muted); min-height: 18px; display: flex; align-items: center; gap: 8px; }
+  .status.err { color: #ff8a80; }
+  .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.2); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; align-items: center; }
+  .mi { display: grid; grid-template-columns: 12px auto; gap: 0 8px; font-size: 13px; margin-bottom: 7px; }
+  .mi i { width: 10px; height: 10px; border-radius: 3px; margin-top: 4px; grid-row: span 2; }
+  .mi span { color: var(--muted); grid-column: 2; font-size: 12px; }
+  .lp { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel-2); border-radius: 10px; margin-bottom: 6px; font-weight: 700; }
+  .lp i, #end-table i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 6px; }
+  table#end-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 6px 0 14px; }
+  #end-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: left; padding: 4px 6px; }
+  #end-table td { padding: 7px 6px; border-top: 1px solid var(--line); }
+  #end-table tr.me td { color: var(--accent-2); font-weight: 800; }
+  #end-table td:nth-child(3), #end-table td:nth-child(4), #end-table th:nth-child(3), #end-table th:nth-child(4) { text-align: right; }
+  #pause { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,10,14,.6); }
+  .logo { image-rendering: pixelated; width: 100%; max-width: 360px; height: auto; display: block; margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div id="score"></div>
+  <div id="topr"><div id="maplbl"></div><button class="ib" id="btn-mute" title="Ton (M)">🔊</button><button class="ib" id="btn-pause" title="Menü (Esc)">☰</button></div>
+  <div id="feed"></div>
+  <div id="banner" class="hidden"></div>
+  <div id="weapon"></div>
+  <div id="help"><kbd>A</kbd> <kbd>D</kbd> neigen &amp; springen · Touchpad: zielen · Klick oder <kbd>Leertaste</kbd>: schiessen</div>
+</div>
+
+<div class="screen" id="menu">
+  <div class="panel wide">
+    <div class="grid2">
+      <div class="col">
+        <h1>Flucht-<em>Schiesserei</em></h1>
+        <p class="sub">Die Beute ist im Sack – jetzt nichts wie weg! Hüpf mit deinem wackeligen Gauner als Erster zum Fluchtfahrzeug. Waffen liegen in Kisten herum, und die Karten verändern sich ständig.</p>
+        <div class="lbl">Dein Name</div>
+        <input type="text" id="name" maxlength="16" placeholder="Name eingeben">
+        <button class="btn primary" id="btn-solo">🤖 Solo gegen Bots</button>
+        <button class="btn" id="btn-online">🌐 Online spielen</button>
+        <div class="status" id="menu-status"></div>
+      </div>
+      <div class="col">
+        <div class="lbl">Steuerung (Tastatur + Touchpad)</div>
+        <div class="keys">
+          <span><kbd>A</kbd> / <kbd>←</kbd></span><span>nach links neigen und abspringen</span>
+          <span><kbd>D</kbd> / <kbd>→</kbd></span><span>nach rechts neigen und abspringen</span>
+          <span>kurz / lang</span><span>Antippen neigt leicht, Halten neigt stark – der Sprung ist immer gleich hoch</span>
+          <span>Touchpad</span><span>Zeiger bewegen = Waffe zielt stufenlos</span>
+          <span>Klick / <kbd>Leer</kbd></span><span>schiessen (Rückstoss schubst dich!)</span>
+          <span><kbd>Esc</kbd> · <kbd>M</kbd></span><span>Menü · Ton aus/an</span>
+        </div>
+        <div class="lbl">Karten</div>
+        <div id="map-list"></div>
+        <div id="board-box"><div class="lbl">Online-Rangliste</div><div id="menu-board"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="solo">
+  <div class="panel col">
+    <h2>Solo gegen Bots</h2>
+    <div class="lbl">Anzahl Bots</div>
+    <div class="row" id="so-bots"><button class="btn" data-v="1">1</button><button class="btn" data-v="2">2</button><button class="btn" data-v="3">3</button></div>
+    <div class="lbl">Stärke</div>
+    <div class="row" id="so-level"><button class="btn" data-v="0">Leicht</button><button class="btn" data-v="1">Mittel</button><button class="btn" data-v="2">Schwer</button></div>
+    <div class="lbl">Karte</div>
+    <select id="so-map"></select>
+    <p class="small">Wer zuerst 3-mal entkommt, gewinnt.</p>
+    <div class="row"><button class="btn" data-back>Zurück</button><button class="btn primary" id="btn-go">Los geht's!</button></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="online">
+  <div class="panel col">
+    <h2>Online spielen</h2>
+    <p class="sub">Bis zu 4 Spieler pro Raum. Freie Plätze kannst du mit Bots füllen.</p>
+    <button class="btn primary" id="btn-create">Raum erstellen</button>
+    <div class="lbl">Oder mit Code beitreten</div>
+    <div class="row"><input type="text" id="join-code" maxlength="4" placeholder="z.B. K7QD" style="flex:1;text-transform:uppercase"><button class="btn" id="btn-join" style="flex:none">Beitreten</button></div>
+    <div class="status" id="online-status"></div>
+    <div class="row"><button class="btn" data-back>Zurück</button></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="lobby">
+  <div class="panel col">
+    <h2>Raum</h2>
+    <div class="code" id="lobby-code">----</div>
+    <button class="btn" id="btn-copy">Link kopieren</button>
+    <div class="lbl">Spieler</div>
+    <div id="lobby-list"></div>
+    <div id="lobby-host" class="col">
+      <div class="lbl">Freie Plätze mit Bots füllen</div>
+      <div class="row" id="lb-bots"><button class="btn" data-v="0">0</button><button class="btn" data-v="1">1</button><button class="btn" data-v="2">2</button><button class="btn" data-v="3">3</button></div>
+      <div class="lbl">Bot-Stärke</div>
+      <div class="row" id="lb-level"><button class="btn" data-v="0">Leicht</button><button class="btn" data-v="1">Mittel</button><button class="btn" data-v="2">Schwer</button></div>
+      <div class="lbl">Karte</div>
+      <select id="lb-map"></select>
+      <button class="btn primary" id="btn-lstart">Spiel starten</button>
+    </div>
+    <div id="lobby-wait" class="col"><div class="status"><span class="spin"></span>Warte, bis der Host startet …</div><div class="small" id="lobby-wait-info"></div></div>
+    <div class="row"><button class="btn" id="btn-leave">Raum verlassen</button></div>
+  </div>
+</div>
+
+<div class="screen hidden" id="end">
+  <div class="panel col">
+    <h2 id="end-title">Ende</h2>
+    <table id="end-table"></table>
+    <div id="end-board"></div>
+    <div class="status hidden" id="end-wait"><span class="spin"></span>Warte auf den Host …</div>
+    <div class="row"><button class="btn" id="btn-menu2">Menü</button><button class="btn" id="btn-lobby">Zur Lobby</button><button class="btn primary" id="btn-again">Nochmal</button></div>
+  </div>
+</div>
+
+<div id="pause" class="hidden">
+  <div class="panel col" style="width:min(360px,100%)">
+    <h2 id="pause-t">Pause</h2>
+    <button class="btn primary" id="btn-resume">Weiter</button>
+    <button class="btn" id="btn-quit">Zum Menü</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/planck-js/1.4.3/planck.min.js"></script>
+<script src="../_shared/hub.js"></script>
+<script>const GAME_ID = 'flucht-schiesserei';</script>
+<script src="js/kunst.js"></script>
+<script src="js/spiel.js"></script>
+<script src="js/karten.js"></script>
+<script src="js/bot.js"></script>
+<script src="js/grafik.js"></script>
+<script src="js/haupt.js"></script>
+</body>
+</html>

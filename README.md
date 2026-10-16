@@ -27,6 +27,7 @@
 | [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
 | [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
+| [Flucht-Schiesserei](https://langwiligi.site/flucht-schiesserei/) | Online · Bots | Wackelige Gauner hüpfen zum Fluchtfahrzeug – über Züge, Flugzeuge und Brücken. |
 | [Formenfabrik](https://langwiligi.site/formenfabrik/) | Solo | Formen schneiden, drehen, färben und eine riesige Fabrik automatisieren. Original: shapez von tobspr Games (GPL-3.0). |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |
