@@ -8,7 +8,7 @@ const CC = {
   200: { max: 35, acc: 1.2, name: '200 ccm' },
 };
 const SCHWERKRAFT = 30;
-const DRIFT_STUFEN = [0.8, 1.85, 3.1];          // Ladezeit für Blau, Orange, Lila
+const DRIFT_STUFEN = [0.7, 1.6, 2.7];          // Ladezeit für Blau, Orange, Lila
 const DRIFT_BOOST = [0, 0.85, 1.5, 2.3];       // Turbodauer je Stufe
 const FUNKEN_FARBEN = [null, new THREE.Color('#4fc8ff'), new THREE.Color('#ffa21f'), new THREE.Color('#d86bff')];
 const TEAMFARBEN = ['#e8352f', '#2f6fe8'];
@@ -101,7 +101,7 @@ class Kart {
     const r = this.r, welt = r.welt, cc = CC[r.cc];
     this.inp = inp;
     // Zeitgeber
-    for (const k of ['boostT', 'sternT', 'kleinT', 'tinteT', 'schutzT', 'raketeT', 'goldT', 'abgewuergt', 'wandT']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    for (const k of ['boostT', 'sternT', 'kleinT', 'tinteT', 'schutzT', 'raketeT', 'goldT', 'abgewuergt', 'wandT', 'matschT']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
     if (this.roulette > 0) {
       this.roulette -= dt;
       if (this.roulette <= 0) { this.item = this.rouletteItem; this.anzahl = /3$/.test(this.item) ? 3 : 1; if (this.item === 'goldnitro') this.goldT = 0; if (this.lokal >= 0) Ton.sfx('itemda'); }
@@ -116,7 +116,7 @@ class Kart {
     if (this.raketeT > 0) { gas = 1; bremse = 0; }
     this.lenk = damp(this.lenk, lenk, 16, dt);
     // Beim Driften wird die Lenkung geglättet, damit Tastatur-Lenken nicht ruckelt
-    this.driftLenk = damp(this.driftLenk || 0, lenk, 6, dt);
+    this.driftLenk = damp(this.driftLenk || 0, lenk, 13, dt);
     // Höchstgeschwindigkeit
     const P = this.P;
     let vmax = cc.max * (0.93 + this.w.tempo * 0.02) * (1 + Math.min(this.muenzen, 10) * 0.005);
@@ -124,6 +124,9 @@ class Kart {
     if (this.kleinT > 0) vmax *= 0.72;
     const gelaende = !this.luft && P.flaeche === 'gelaende';
     if (gelaende && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0) vmax *= clamp(0.5 + this.w.gelaende * 0.12, 0.4, 0.66);
+    // Pfütze (Matsch, Sand, Öl …): bremst wie Gelände, Buggys kommen besser durch
+    const matsch = this.matschT > 0 && !this.luft && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0;
+    if (matsch) vmax *= clamp(0.52 + this.w.gelaende * 0.1, 0.45, 0.65);
     let vZiel = vmax;
     if (this.sternT > 0) vZiel = vmax * 1.16;
     if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * 1.36);
@@ -137,7 +140,7 @@ class Kart {
     } else if (gas && !bremse) {
       if (this.v < 0) this.v += 30 * dt;
       else if (this.v < vZiel) this.v = Math.min(vZiel, this.v + beschl * dt * (1 - 0.6 * this.v / vZiel));
-      else this.v = damp(this.v, vZiel, gelaende ? 3.5 : 1.5, dt);
+      else this.v = damp(this.v, vZiel, gelaende || matsch ? 3.5 : 1.5, dt);
     } else if (bremse) {
       if (this.v > 0.5) this.v -= 32 * dt;
       else this.v = Math.max(-9, this.v - 14 * dt);
@@ -152,7 +155,7 @@ class Kart {
     let dreh = 0;
     const d = this.drift;
     if (inp.driftDruck && lenkbar && !this.luft && this.raketeT <= 0) {
-      this.vy = 5.2; this.luft = true; this.hop = true;
+      this.vy = 4.3; this.luft = true; this.hop = true;
       if (this.lokal >= 0) Ton.sfx('hop', 0.7);
     }
     if (d.an) {
@@ -162,7 +165,8 @@ class Kart {
     }
     if (d.an) {
       const eng = clamp((this.driftLenk * d.dir + 1) / 2, 0, 1);
-      dreh = -d.dir * handl * (0.36 + 0.84 * eng) * vf;
+      // eng (in die Kurve lenken) bis weit (dagegen lenken): grosser Spielraum wie bei Mario Kart
+      dreh = -d.dir * handl * (0.4 + 1.05 * eng) * vf;
       d.t += dt * (0.65 + 0.85 * eng) * (this.luft ? 0.3 : 1);
       const st = d.t > DRIFT_STUFEN[2] ? 3 : d.t > DRIFT_STUFEN[1] ? 2 : d.t > DRIFT_STUFEN[0] ? 1 : 0;
       if (st > d.stufe) { d.stufe = st; if (this.lokal >= 0) Ton.sfx('funke' + st, 0.8); }
@@ -175,7 +179,7 @@ class Kart {
     this.yaw = wrapA(this.yaw + dreh * dt);
     this.driftVis = damp(this.driftVis, d.an ? -d.dir * 0.36 : 0, 8, dt);
     // Bewegungsrichtung folgt der Nase mit Haftung
-    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 9 : 18;
+    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 7.5 : 18;
     this.mYaw = wrapA(this.yaw + wrapA(this.mYaw - this.yaw) * Math.exp(-haft * dt));
     if (d.an && !this.luft) {
       // leichtes Rutschen nach aussen
@@ -246,6 +250,22 @@ class Kart {
       for (const b of welt.boosts) {
         let ds = P.s - b.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
         if (ds > -b.l && ds < b.l && Math.abs(P.d - b.d) < b.b + 0.6) { if (this.boostT < 0.9) this.boost(1.1, 'feld'); }
+      }
+      for (const b of welt.bremsen || []) {
+        let ds = P.s - b.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
+        if (ds > -b.l && ds < b.l && Math.abs(P.d - b.d) < b.b) {
+          if (!(this.matschT > 0) && this.lokal >= 0 && va > 6 && this.boostT <= 0 && this.sternT <= 0) Ton.sfx('land', 0.5);
+          this.matschT = 0.2;
+        }
+      }
+      for (const h of welt.huetchen || []) {
+        if (h.weg) continue;
+        const dx = this.pos.x - h.p.x, dz = this.pos.z - h.p.z;
+        if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(this.pos.y - h.p.y) < 2) {
+          welt.huetchenTreffer(h, this);
+          if (this.sternT <= 0 && this.raketeT <= 0) this.v *= 0.7;
+          if (this.lokal >= 0) { Ton.sfx('wand', 0.5); this.r.kameraWackeln(this.lokal, 0.15); }
+        }
       }
       if (schanze > 2.2 && this.v > 8) {
         this.luft = true; this.vy = 6 + this.v * 0.22; this.sprungTrick = true; this.trickFenster = 0.35;

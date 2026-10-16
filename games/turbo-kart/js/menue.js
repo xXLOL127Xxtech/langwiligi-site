@@ -65,12 +65,12 @@ const StreckenBild = {
     const key = def.id;
     if (this.cache[key]) return this.cache[key];
     const th = THEMEN[def.thema];
-    const c = Tex.canvas(320, 220, (g, w, h) => {
+    const c = Tex.canvas(320, 200, (g, w, h) => {
       const gr = g.createLinearGradient(0, 0, 0, h);
       gr.addColorStop(0, th.himmel[1]); gr.addColorStop(1, th.himmel[0]);
       g.fillStyle = gr; g.fillRect(0, 0, w, h);
       const bodenFarbe = { gras: '#4fae3a', sand: '#e6c78c', schnee: '#eef4fb', stadt: '#2a2d33', lava: '#ff5a00', dschungel: '#3f8f2f', mond: '#9a9aa8' }[th.boden] || null;
-      if (bodenFarbe) { g.globalAlpha = 0.85; g.fillStyle = bodenFarbe; g.beginPath(); g.ellipse(w / 2, h / 2 + 10, w * 0.47, h * 0.42, 0, 0, TAU); g.fill(); g.globalAlpha = 1; }
+      if (bodenFarbe) { g.globalAlpha = 0.85; g.fillStyle = bodenFarbe; g.beginPath(); g.ellipse(w / 2, h / 2 + 4, w * 0.47, h * 0.44, 0, 0, TAU); g.fill(); g.globalAlpha = 1; }
       if (arena) {
         const s = 150 / def.gr / 2;
         g.save(); g.translate(w / 2, h / 2 + 4);
@@ -80,8 +80,8 @@ const StreckenBild = {
         g.restore();
       } else {
         const st = Strecken.welt(STRECKEN.indexOf(def));
-        const b = st.box, sk = Math.min(280 / (b.mxx - b.mnx), 180 / (b.mxz - b.mnz));
-        const P = s => [w / 2 + (s.p.x - b.cx) * sk, h / 2 + 8 + (s.p.z - b.cz) * sk];
+        const b = st.box, sk = Math.min(280 / (b.mxx - b.mnx), 160 / (b.mxz - b.mnz));
+        const P = s => [w / 2 + (s.p.x - b.cx) * sk, h / 2 + (s.p.z - b.cz) * sk];
         const pfad = () => { g.beginPath(); st.S.forEach((s, i) => { const [x, y] = P(s); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath(); };
         g.lineJoin = 'round';
         pfad(); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 15; g.stroke();

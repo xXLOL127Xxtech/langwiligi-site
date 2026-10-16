@@ -51,6 +51,16 @@ class Bot {
       let ds = o.fortschritt - k.fortschritt;
       if (ds > 1 && ds < 14 && Math.abs(o.P.d - d) < 2.4 && o.v < k.v) d = o.P.d + (o.P.d > 0 ? -3.5 : 3.5);
     }
+    // Pfützen und Pylonen: gute Fahrer weichen aus
+    for (const b of w.bremsen || []) {
+      let ds = b.s - P.s; if (ds < -w.L / 2) ds += w.L; if (ds > w.L / 2) ds -= w.L;
+      if (ds > 0 && ds < 32 && Math.abs(b.d - d) < b.b + 1.6 && (this.pfT === b ? this.pfJa : (this.pfT = b, this.pfJa = Math.random() < st.treff))) d = b.d + (b.d > d ? -(b.b + 2) : b.b + 2);
+    }
+    for (const h of w.huetchen || []) {
+      if (h.weg) continue;
+      let ds = h.s - P.s; if (ds < -w.L / 2) ds += w.L; if (ds > w.L / 2) ds -= w.L;
+      if (ds > 0 && ds < 26 && Math.abs(h.d - d) < 1.8 && (this.pfT === h.reihe ? this.pfJa : (this.pfT = h.reihe, this.pfJa = Math.random() < st.treff))) d = h.d + (h.d > d ? -2.2 : 2.2);
+    }
     d = clamp(d, -S2.w * 0.85, S2.w * 0.85);
     if (S2.fall || w.S[w.idx(P.s + 5)].fall) d = clamp(d * 0.6, -S2.w * 0.55, S2.w * 0.55);
     const tp = w.punkt(s2, d, _v1);
