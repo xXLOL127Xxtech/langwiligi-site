@@ -8,6 +8,7 @@
 #   <meta name="theme-color" content="#ffb703">       Akzentfarbe der Karte
 #   <meta name="spiel-modi" content="Lokal,Online,Bots,Solo">  Spielmodi (Häkchen auf der Karte + Filter)
 #   <meta name="spiel-tags" content="1 gegen 1,3D">   Schildchen auf dem Bild
+#   <meta name="spiel-typ" content="Action,3D">       Typen für den Typ-Filter (Liste in tools/spiel-pruefen.js)
 #   cover.svg / cover.png / cover.jpg / cover.webp    Bild (16:10, z.B. 640x400)
 # "Neu" auf der Startseite = Datum, an dem games/<name>/index.html zum ersten Mal in Git auftaucht.
 # Aussehen der Startseite: startseite/ (index.html mit Platzhaltern, start.css, start.js)
@@ -44,8 +45,17 @@ find "$BUILD" -mindepth 1 -maxdepth 1 -type f -delete
 version() { cksum "$1" | cut -d' ' -f1; }
 # Zurück-Knopf und Bewertung (games/_shared/back.js) in jedes Spiel einbauen
 BACK_V="$(version "$SRC/_shared/back.js")"
+# data-v = Version des Spiels (Tag der letzten Änderung). Ändert sie sich, fragt die Bewertung nochmal nach.
+game_version() {
+  local t=""
+  if git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+    t="$(git -C "$ROOT" log -1 --format=%cs -- "games/$1" 2>/dev/null)"
+  fi
+  printf '%s' "${t:-$(version "$SRC/$1/index.html")}"
+}
 for f in "$BUILD"/*/index.html; do
-  grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s"></script>\n' "$BACK_V" >> "$f"
+  slug="$(basename "$(dirname "$f")")"
+  grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" >> "$f"
 done
 
 html_unescape() { sed -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g'; }
@@ -76,6 +86,8 @@ for dir in "$SRC"/*/; do
   color="$(meta theme-color "$page")"
   [[ "$color" =~ ^#[0-9a-fA-F]{3,8}$ ]] || color="#ff2e88"
   tags="$(meta spiel-tags "$page")"
+  # Typen als Schlüssel: "Pixel-Art,3D" -> "pixel-art 3d"
+  typ="$(meta spiel-typ "$page" | tr '[:upper:]' '[:lower:]' | tr ',' ' ' | tr -s ' ' | sed 's/^ *//; s/ *$//' | tr -cd 'a-z0-9 -')"
   when="$(added "$slug")"
   if [ "$when" -gt "$newest_t" ]; then newest_t="$when"; newest_title="$title"; fi
 
@@ -115,7 +127,7 @@ for dir in "$SRC"/*/; do
   done
 
   cat >> "$CARDS" <<EOF
-      <a class="card" href="$slug/" style="--c: $color" data-filter="$filter" data-slug="$slug" data-added="$when" data-title="$title">
+      <a class="card" href="$slug/" style="--c: $color" data-filter="$filter" data-typ="$typ" data-slug="$slug" data-added="$when" data-title="$title">
         <div class="frame"><div class="body">
           <div class="cover">$img<div class="pills">$pills</div><span class="badge-new">Neu</span></div>
           <div class="info">

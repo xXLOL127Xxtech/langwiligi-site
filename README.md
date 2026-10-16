@@ -75,7 +75,8 @@ Besitzer lädt direkt auf main hoch ──────┤
 - **Spiel-Server**: Änderungen an `server/game-hub.js` spielt der Server beim Hochladen selbst ein und startet sich neu.
   Wurde `server/langwiligi-deploy.sh` geändert, einmal `server-aktualisieren.cmd` doppelklicken.
 - **Bewertungen & Empfehlungen**: `https://langwiligi.site/api/empfehlungen#SCHLÜSSEL` (Schlüssel in `/var/lib/game-hub/admin-key.txt`).
-  Links die Empfehlungen, rechts die Bewertungen, beide löschbar.
+  Links die Empfehlungen, rechts die Bewertungen mit Verbesserungsvorschlägen, beide löschbar.
+  Bewertet wird erst am Rundenende. Nach jeder Änderung an einem Spiel wird nochmal gefragt, die neue Bewertung ersetzt dann die alte desselben Geräts.
 
 - **Spiele**: reines HTML/CSS/JavaScript, eine `index.html` pro Ordner, kein Build-Schritt.
 - **Startseite**: Vorlage in `startseite/`, die Spielkarten baut `deploy.sh` beim Hochladen aus `<title>` und den `<meta>`-Angaben jedes Spiels.

@@ -34,6 +34,7 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
 <meta name="theme-color" content="#ff6b4a">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="1 gegen 1,3D">
+<meta name="spiel-typ" content="Action,3D">
 ```
 
 - **`<title>`**: Name des Spiels, so wie er auf der Startseite stehen soll.
@@ -44,6 +45,8 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
   - `Online`: gegen Freunde über das Internet (siehe Abschnitt 6)
   - `Bots`: gegen Computer-Gegner
   - `Solo`: allein spielen, z.B. auf Punkte oder Level
+- **`spiel-typ`**: 1–3 Typen für den Typ-Filter der Startseite, durch Komma getrennt. Erlaubt sind genau diese Wörter:
+  `3D`, `Pixel-Art`, `Action`, `Strategie`, `Klassiker`, `Denkspiel`, `Geschick`, `Physik`, `Rennen`, `Party`, `Aufbau`.
 - **`spiel-tags`**: Freie Schildchen auf dem Bild, höchstens 2–3 kurze Begriffe (z.B. `1 gegen 1`, `3D`, `Rangliste`, `Strategie`). Die Modi aus `spiel-modi` gehören hier **nicht** hinein.
 
 ## 3. Titelbild (Pflicht)
@@ -63,7 +66,7 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
   - ID `lw-back`
   - CSS-Klassen, die mit `lw-` beginnen
   - die globalen Variablen `window.GameHub` und `window.LW`
-- **Unten rechts** blendet die Webseite nach der ersten Runde einmal eine kleine Bewertung (1–5 Sterne) ein.
+- **Unten rechts** blendet die Webseite am Ende einer Runde eine kleine Bewertung (1–5 Sterne und ein Textfeld) ein. Sobald wieder gespielt wird, verschwindet sie.
 - **localStorage**: Eigene Schlüssel beginnen immer mit der Spiel-ID, z.B. `panzer-pong-settings`. Der Schlüssel `lw-name` gehört allen Spielen gemeinsam. Lies und schreib ihn nur über `GameHub.getName()` und `GameHub.setName()`.
 - Das Spiel darf nicht die ganze Seite neu laden oder auf andere Domains umleiten.
 
@@ -153,8 +156,8 @@ Regeln des Servers, sonst wird das Ergebnis abgelehnt:
 
 ### Rundenende melden (empfohlen)
 
-Die Webseite fragt nach der ersten Runde nach einer Bewertung. Sie erkennt das Rundenende meist selbst
-(„Nochmal“-Knopf, Sieg-Meldung, Rangliste). Sicherer ist es, wenn das Spiel es meldet:
+Die Webseite fragt erst am Ende einer Runde (Sieg, Niederlage, Game Over) nach einer Bewertung, nie mitten im Spiel.
+Sie erkennt das Rundenende meist selbst („Nochmal“-Knopf, Sieg-Meldung, Rangliste). Sicherer ist es, wenn das Spiel es meldet:
 
 ```js
 if (window.LW) LW.rundeFertig();   // am Ende jeder Runde aufrufen, egal ob gewonnen oder verloren
@@ -175,7 +178,7 @@ Liefere einen **Ordner `<spiel-id>/`** mit:
 
 **Checkliste vor der Abgabe**
 - [ ] Ordnername = Spiel-ID: klein, ohne Umlaute und Leerzeichen, identisch mit `GAME_ID` im Code
-- [ ] `<title>`, `description`, `theme-color`, `spiel-modi`, `spiel-tags` vorhanden
+- [ ] `<title>`, `description`, `theme-color`, `spiel-modi`, `spiel-typ`, `spiel-tags` vorhanden
 - [ ] `cover.webp` im 16:10-Format ohne Text
 - [ ] Startet lokal per Doppelklick ohne Fehler in der Konsole (F12)
 - [ ] Läuft auch ohne `GameHub` (Online-Teil wird dann ausgeblendet)

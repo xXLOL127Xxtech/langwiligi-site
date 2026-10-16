@@ -65,12 +65,22 @@
     </header>
 
     <div class="toolbar">
-      <nav class="seg filters" aria-label="Spiele filtern">
-        <button type="button" data-f="alle" aria-pressed="true">Alle</button>
-        <button type="button" data-f="lokal" aria-pressed="false">Lokal</button>
-        <button type="button" data-f="online" aria-pressed="false">Online</button>
-        <button type="button" data-f="bots" aria-pressed="false">Gegen Bots</button>
-        <button type="button" data-f="solo" aria-pressed="false">Solo</button>
+      <nav class="filters" aria-label="Spiele filtern">
+        <div class="dd" data-key="f">
+          <button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="false"><span class="dd-k">Modus</span><b class="dd-v">Alle</b><i class="dd-c"></i></button>
+          <div class="dd-menu" role="menu" hidden>
+            <button type="button" role="menuitemradio" data-v="alle">Alle Modi</button>
+            <button type="button" role="menuitemradio" data-v="lokal">Lokal <small>2 an einem Gerät</small></button>
+            <button type="button" role="menuitemradio" data-v="online">Online <small>mit Freunden</small></button>
+            <button type="button" role="menuitemradio" data-v="bots">Gegen Bots</button>
+            <button type="button" role="menuitemradio" data-v="solo">Solo</button>
+          </div>
+        </div>
+        <div class="dd" data-key="t">
+          <button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="false"><span class="dd-k">Typ</span><b class="dd-v">Alle</b><i class="dd-c"></i></button>
+          <div class="dd-menu" role="menu" hidden></div>
+        </div>
+        <button type="button" class="dd-reset" id="reset" hidden>Filter zurücksetzen ✕</button>
       </nav>
       <div class="seg sort" role="group" aria-label="Sortieren">
         <span class="seg-label">Sortieren</span>

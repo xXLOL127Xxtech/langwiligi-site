@@ -132,7 +132,7 @@ function readBody(req, max, cb) {
   req.on('data', c => { body += c; if (body.length > max) req.destroy(); });
   req.on('end', () => { let m = null; try { m = JSON.parse(body); } catch (e) {} cb(m && typeof m === 'object' ? m : null); });
 }
-// ---------- Bewertungen (1–5 Sterne, pro Gerät und Spiel einmal) ----------
+// ---------- Bewertungen (1–5 Sterne + Verbesserungsvorschlag, pro Gerät und Spiel zählt die neuste) ----------
 // Das Gerät schickt eine zufällige ID mit (localStorage). Gespeichert wird nur ein Hash davon.
 const RATINGS_FILE = path.join(DATA_DIR, 'bewertungen.json');
 const MAX_RATINGS = 20000;
@@ -225,7 +225,7 @@ select{font:14px system-ui,sans-serif;color:var(--text);background:var(--bg);bor
 a{color:var(--yellow)}.msg{color:var(--muted)}</style></head><body><main><h1>Empfehlungen &amp; Bewertungen</h1><p class="msg" id="err"></p>
 <div class="cols"><section id="tips-col"><h2>Empfehlungen</h2><p class="sub" id="tips-sub">Lade …</p><div id="tips"></div></section>
 <section id="rates-col"><h2>Bewertungen</h2><p class="sub" id="rates-sub">Lade …</p><div class="sum" id="sum"></div>
-<select id="filter"><option value="">Alle Spiele</option></select><div id="rates"></div></section></div></main>
+<select id="filter"><option value="">Alle Spiele</option></select> <label class="msg"><input type="checkbox" id="notes"> nur mit Verbesserungsvorschlag</label><div id="rates"></div></section></div></main>
 <script>
 var key=decodeURIComponent(location.hash.slice(1)),allRates=[];
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -245,12 +245,12 @@ document.getElementById('rates-sub').textContent=rows.length?rows.length+' Bewer
 document.getElementById('sum').innerHTML=games.map(function(g){return '<b>'+esc(names[g])+'</b><span>'+(by[g].s/by[g].n).toFixed(1)+' ★</span><span>'+by[g].n+'×</span>'}).join('');
 var f=document.getElementById('filter'),cur=f.value;f.innerHTML='<option value="">Alle Spiele</option>'+games.map(function(g){return '<option value="'+esc(g)+'"'+(g===cur?' selected':'')+'>'+esc(names[g])+'</option>'}).join('');
 listRates()}
-function listRates(){var g=document.getElementById('filter').value;
-document.getElementById('rates').innerHTML=allRates.filter(function(r){return !g||r.game===g}).slice().reverse().slice(0,300).map(function(r){
-return '<div class="item"><div><h3>'+esc(r.name||r.game)+' <span class="stars">'+stars(r.stars)+'</span></h3><div class="meta">'+when(r.at)+'</div></div>'+
+function listRates(){var g=document.getElementById('filter').value,n=document.getElementById('notes').checked;
+document.getElementById('rates').innerHTML=allRates.filter(function(r){return (!g||r.game===g)&&(!n||r.note)}).slice().reverse().slice(0,300).map(function(r){
+return '<div class="item"><div><h3>'+esc(r.name||r.game)+' <span class="stars">'+stars(r.stars)+'</span></h3>'+(r.note?'<p>'+link(r.note)+'</p>':'')+'<div class="meta">'+when(r.at)+(r.v?' · Version '+esc(r.v):'')+'</div></div>'+
 '<nav><button class="del" data-t="rate" data-a="delete" data-id="'+r.id+'">Löschen</button></nav></div>'}).join('')}
 function err(e){document.getElementById('err').textContent=e.message==='key'?'Falscher oder fehlender Schlüssel. Link: …/api/empfehlungen#SCHLUESSEL':'Server nicht erreichbar.'}
-document.getElementById('filter').addEventListener('change',listRates);
+document.getElementById('filter').addEventListener('change',listRates);document.getElementById('notes').addEventListener('change',listRates);
 document.body.addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;
 if(b.dataset.t==='tip')call('empfehlungen.json','POST',{action:b.dataset.a,id:b.dataset.id}).then(showTips,err);
 else call('bewertungen.json','POST',{action:'delete',id:b.dataset.id}).then(showRates,err)});
@@ -415,16 +415,25 @@ const server = http.createServer((req, res) => {
     return res.end(ADMIN_PAGE);
   }
   if (url.pathname === '/api/bewertung' && req.method === 'POST') {
-    return readBody(req, 1024, m => {
+    return readBody(req, 2048, m => {
       if (!m) return json(res, 400, { error: 'bad-json' });
       const game = cleanGame(m.game), stars = Number(m.stars), cid = String(m.cid || '');
+      const v = cleanText(m.v, 20).replace(/[^0-9a-z-]/gi, ''), note = cleanText(m.note, 500);
       if (!game || !Number.isInteger(stars) || stars < 1 || stars > 5 || !/^[a-z0-9]{8,64}$/i.test(cid)) return json(res, 400, { error: 'invalid' });
       if (!isKnownGame(game)) return json(res, 400, { error: 'unknown-game' });
       const who = hashId(cid), now = Date.now();
-      if (ratings.some(r => r.game === game && r.who === who)) return json(res, 409, { error: 'schon-bewertet' });
       if (!ratingAllowed(clientIp(req), now)) return json(res, 429, { error: 'too-fast' });
-      ratings.push({ id: crypto.randomBytes(6).toString('hex'), at: now, game, stars, who });
-      if (ratings.length > MAX_RATINGS) ratings.splice(0, ratings.length - MAX_RATINGS);
+      // Pro Gerät und Spiel zählt nur die neuste Bewertung: nach einer Änderung am Spiel ersetzt sie die alte.
+      // Kommt nur noch der Verbesserungsvorschlag nach (gleiche Version), wird er an die Bewertung angehängt.
+      const old = ratings.find(r => r.game === game && r.who === who);
+      if (old) {
+        old.stars = stars; old.at = now;
+        if (old.v !== v) { old.note = ''; old.v = v; }
+        if (note) old.note = note;
+      } else {
+        ratings.push({ id: crypto.randomBytes(6).toString('hex'), at: now, game, stars, who, v, note });
+        if (ratings.length > MAX_RATINGS) ratings.splice(0, ratings.length - MAX_RATINGS);
+      }
       saveRatings();
       json(res, 200, { ok: true, stats: gameStats()[game] });
     });
@@ -443,7 +452,7 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === '/api/bewertungen.json') {
     if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
-    const list = () => ratings.map(r => ({ id: r.id, at: r.at, game: r.game, name: gameTitle(r.game), stars: r.stars }));
+    const list = () => ratings.map(r => ({ id: r.id, at: r.at, game: r.game, name: gameTitle(r.game), stars: r.stars, v: r.v || '', note: r.note || '' }));
     if (req.method !== 'POST') return json(res, 200, list());
     return readBody(req, 1024, m => {
       const i = ratings.findIndex(r => m && r.id === m.id);

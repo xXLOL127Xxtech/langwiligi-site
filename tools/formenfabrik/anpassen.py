@@ -160,6 +160,7 @@ rep("src/html/index.html",
         <meta name="theme-color" content="#9b8cff" />
         <meta name="spiel-modi" content="Solo" />
         <meta name="spiel-tags" content="Fabrik,Aufbau" />
+        <meta name="spiel-typ" content="Aufbau,Strategie" />
 """)
 rep("src/html/index.html", """        <meta name="theme-color" content="#393747" />
 """, "")
