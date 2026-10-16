@@ -16,7 +16,7 @@
 | [Billard](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
 | [Bottle-Flip](https://langwiligi.site/flaschen-flip/) | Solo | Flip die Flasche und lande sie aufrecht. |
 | [Bubble-Race](https://langwiligi.site/bubble-duell/) | Online · Bots | Bubble-Shooter im Duell. |
-| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Bots | Team gegen Bots: Gegner in Blasen fangen, 8 Level. |
+| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Lokal · Online · Bots | Gegner in Blasen fangen: 8 Level gegen Bots, 1 gegen 1 oder 2 gegen 2 auf Zufallskarten. |
 | [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
 | [Catapult](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
 | [Clumsy Bird](https://langwiligi.site/clumsy-bird/) | Solo | Flatter durch die Röhren. Original: Ellison Leão (GPL-3.0). |
