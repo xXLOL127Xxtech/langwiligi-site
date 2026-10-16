@@ -271,6 +271,11 @@
     .then(function (d) { if (d && typeof d === 'object') stats = d; }, function () {})
     .then(function () { if (done) { showRatings(); if (sort === 'top') apply(true); } else ready(); });
 
+  // ---------- Besuch zählen (nur eine Zahl pro Tag, keine Cookies) -> /api/aufruf ----------
+  if (API === '/api') {
+    fetch(API + '/aufruf', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ seite: 'start' }) }).catch(function () {});
+  }
+
   // ---------- Spiel empfehlen -> /api/empfehlung ----------
   var tip = $('tip'), form = $('tip-form'), msg = $('tip-msg');
   var send = form.querySelector('[type="submit"]');

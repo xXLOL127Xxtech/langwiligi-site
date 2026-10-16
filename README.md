@@ -74,8 +74,11 @@ Besitzer lädt direkt auf main hoch ──────┤
   (oder lokal `hochladen.cmd`).
 - **Spiel-Server**: Änderungen an `server/game-hub.js` spielt der Server beim Hochladen selbst ein und startet sich neu.
   Wurde `server/langwiligi-deploy.sh` geändert, einmal `server-aktualisieren.cmd` doppelklicken.
-- **Bewertungen & Empfehlungen**: `https://langwiligi.site/api/empfehlungen#SCHLÜSSEL` (Schlüssel in `/var/lib/game-hub/admin-key.txt`).
-  Links die Empfehlungen, rechts die Bewertungen mit Verbesserungsvorschlägen, beide löschbar.
+- **Übersicht (Aufrufe, Bewertungen & Empfehlungen)**: `https://langwiligi.site/api/empfehlungen#SCHLÜSSEL` (Schlüssel in `/var/lib/game-hub/admin-key.txt`).
+  Oben die Aufrufe: Startseite heute/gestern/Durchschnitt, Diagramme für Woche, Monat und Jahre (Startseite und alle Spiele zusammen), meistgespielte Spiele.
+  Ein Gerät zählt pro Seite höchstens alle 30 Minuten einmal, ohne Cookies. Die Tageszahlen bleiben 60 Tage (`aufrufe.json`),
+  der Durchschnitt pro Tag jeder fertigen Woche bleibt für immer (`verlauf.json`), daraus kommt die Jahres-Ansicht.
+  Darunter links die Empfehlungen, rechts die Bewertungen mit Verbesserungsvorschlägen, beide löschbar.
   Bewertet wird erst am Rundenende. Nach jeder Änderung an einem Spiel wird nochmal gefragt, die neue Bewertung ersetzt dann die alte desselben Geräts.
 
 - **Spiele**: reines HTML/CSS/JavaScript, eine `index.html` pro Ordner, kein Build-Schritt.
