@@ -10,6 +10,9 @@ const CC = {
 const SCHWERKRAFT = 30;
 const DRIFT_STUFEN = [0.7, 1.6, 2.7];          // Ladezeit für Blau, Orange, Lila
 const DRIFT_BOOST = [0, 0.85, 1.5, 2.3];       // Turbodauer je Stufe
+// Driftlenkung wie bei Mario Kart: Drehrate im Verhältnis zum normalen Lenken
+const DRIFT_AUSSEN = 0.08, DRIFT_INNEN = 1.55;  // voll dagegen gelenkt (fast geradeaus) bis voll eingelenkt
+const DRIFT_EINSTIEG = 0.35;                   // so lange lenkt der Drift am Anfang nur träge ein (s)
 const FUNKEN_FARBEN = [null, new THREE.Color('#4fc8ff'), new THREE.Color('#ffa21f'), new THREE.Color('#d86bff')];
 const TEAMFARBEN = ['#e8352f', '#2f6fe8'];
 const TEAMNAMEN = ['Rot', 'Blau'];
@@ -121,8 +124,8 @@ class Kart {
     let gas = lenkbar ? inp.gas || 0 : 0, bremse = lenkbar ? inp.bremse || 0 : 0, lenk = lenkbar ? inp.lenk || 0 : 0;
     if (this.raketeT > 0) { gas = 1; bremse = 0; }
     this.lenk = damp(this.lenk, lenk, 16, dt);
-    // Beim Driften wird die Lenkung geglättet, damit Tastatur-Lenken nicht ruckelt
-    this.driftLenk = damp(this.driftLenk || 0, lenk, 20, dt);
+    // Beim Driften wird die Lenkung geglättet, damit Tastatur-Lenken nicht ruckelt und sich gut dosieren lässt
+    this.driftLenk = damp(this.driftLenk || 0, lenk, 10, dt);
     // Höchstgeschwindigkeit
     const P = this.P;
     let vmax = cc.max * (0.93 + this.w.tempo * 0.02) * (1 + Math.min(this.muenzen, 10) * 0.005);
@@ -171,13 +174,17 @@ class Kart {
       if (!inp.drift || va < 8 || this.treffer || !lenkbar || bremse) this.driftEnde(lenkbar && !bremse);
     } else if (inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3 && this.raketeT <= 0 && (this.hop || this.driftFenster > 0)) {
       // auch kurz nach der Landung kann man die Driftrichtung noch wählen
-      d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0; this.driftFenster = 0;
+      this.driftStart(Math.sign(lenk));
     }
     if (d.an) {
+      d.zeit += dt;
       const eng = clamp((this.driftLenk * d.dir + 1) / 2, 0, 1);
-      // eng (in die Kurve lenken) bis weit (dagegen lenken): grosser Spielraum wie bei Mario Kart.
-      // Nach aussen gelenkt fährt das Kart fast geradeaus, nach innen viel enger als ohne Drift.
-      dreh = -d.dir * handl * (0.3 + 1.4 * eng) * vf;
+      // Blickrichtung und Fahrtrichtung sind getrennt: Die Lenkung bestimmt nur, wie stark die Nase einschwenkt.
+      // Voll dagegen gelenkt fährt das Kart fast geradeaus, voll eingelenkt viel enger als ohne Drift.
+      // Am Anfang schwenkt der Drift nur träge ein, damit man ihn noch korrigieren kann.
+      const ein = smooth(clamp(d.zeit / DRIFT_EINSTIEG, 0, 1));
+      d.ein = ein;
+      dreh = -d.dir * handl * lerp(DRIFT_AUSSEN, DRIFT_INNEN, eng) * lerp(0.3, 1, ein) * vf;
       d.eng = eng;
       d.t += dt * (0.65 + 0.85 * eng) * (this.luft ? 0.3 : 1);
       const st = d.t > DRIFT_STUFEN[2] ? 3 : d.t > DRIFT_STUFEN[1] ? 2 : d.t > DRIFT_STUFEN[0] ? 1 : 0;
@@ -189,13 +196,14 @@ class Kart {
     if (P.eis && !this.luft) dreh *= 0.75;
     if (this.luft) dreh *= 0.6;
     this.yaw = wrapA(this.yaw + dreh * dt);
-    this.driftVis = damp(this.driftVis, d.an ? -d.dir * (0.26 + 0.2 * (d.eng || 0.5)) : 0, 8, dt);
-    // Bewegungsrichtung folgt der Nase mit Haftung (beim engen Driften greifen die Reifen besser)
-    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 5.5 + 5 * (d.eng || 0.5) : 18;
+    // Nase zeigt beim Driften schräg in die Kurve (nur Darstellung), weiter beim Einlenken
+    this.driftVis = damp(this.driftVis, d.an ? -d.dir * (0.24 + 0.22 * (d.eng || 0.5)) * lerp(0.6, 1, d.ein || 0) : 0, 7, dt);
+    // Bewegungsrichtung folgt der Nase mit Haftung (beim engen Driften greifen die Reifen besser, am Anfang noch kaum)
+    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? lerp(2.5, 4 + 5 * (d.eng || 0.5), d.ein || 0) : 18;
     this.mYaw = wrapA(this.yaw + wrapA(this.mYaw - this.yaw) * Math.exp(-haft * dt));
     if (d.an && !this.luft) {
       // leichtes Rutschen nach aussen, beim Gegenlenken etwas mehr
-      const rutsch = 1.6 * (1.25 - 0.75 * (d.eng || 0.5));
+      const rutsch = 1.4 * (1.2 - 0.7 * (d.eng || 0.5)) * (d.ein || 0);
       this.ix += Math.cos(this.mYaw) * d.dir * rutsch * dt;
       this.iz -= Math.sin(this.mYaw) * d.dir * rutsch * dt;
     }
@@ -263,7 +271,7 @@ class Kart {
         this.luft = false; this.vy = 0;
         if (this.hop) {
           this.hop = false;
-          if (!d.an && inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3) { d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0; }
+          if (!d.an && inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3) this.driftStart(Math.sign(lenk));
           else if (!d.an && inp.drift) this.driftFenster = 0.35;
         }
         if (this.trick > 0) { this.boost(0.9, 'trick'); this.trick = 0; }
@@ -339,6 +347,11 @@ class Kart {
         if (this.drift.an && stoss > 0.5) this.driftEnde(false);
       }
     }
+  }
+  driftStart(dir) {
+    const d = this.drift;
+    d.an = true; d.dir = dir; d.t = 0; d.stufe = 0; d.zeit = 0; d.ein = 0;
+    this.driftFenster = 0;
   }
   driftEnde(boost) {
     const d = this.drift;
