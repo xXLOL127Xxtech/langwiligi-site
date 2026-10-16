@@ -158,10 +158,12 @@ function ratingAllowed(ip, now) {
   return true;
 }
 
-// ---------- Aufrufe (für "Trendet" auf der Startseite) ----------
+// ---------- Aufrufe (für "Trendet" auf der Startseite und die Übersicht für den Betreiber) ----------
 // plays[spiel][JJJJ-MM-TT] = Anzahl. Ein Gerät zählt pro Spiel höchstens alle 30 Minuten einmal.
+// Die Startseite zählt gleich, unter START_KEY (kein Spielordner, darum mit _).
 const PLAYS_FILE = path.join(DATA_DIR, 'aufrufe.json');
 const PLAY_DAYS = 60;
+const START_KEY = '_start';
 let plays = {};
 try { plays = JSON.parse(fs.readFileSync(PLAYS_FILE, 'utf8')); } catch (e) { plays = {}; }
 let playsTimer = null;
@@ -173,7 +175,15 @@ function savePlays() {
     fs.renameSync(PLAYS_FILE + '.tmp', PLAYS_FILE);
   }, 1000);
 }
-function day(t) { return new Date(t).toISOString().slice(0, 10); }
+// Tage nach Schweizer Zeit, damit ein Besuch um 00:30 zum richtigen Tag zählt
+const DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' });
+function day(t) {
+  const p = {};
+  DAY_FMT.formatToParts(new Date(t)).forEach(x => { p[x.type] = x.value; });
+  return p.year + '-' + p.month + '-' + p.day;
+}
+function addDays(d, n) { return new Date(Date.parse(d + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10); }
+function monday(d) { return addDays(d, -((new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7)); }
 const lastPlay = new Map();
 function countPlay(game, ip, now) {
   const key = ip + '|' + game;
@@ -183,9 +193,92 @@ function countPlay(game, ip, now) {
   const g = plays[game] || (plays[game] = {});
   const d = day(now);
   g[d] = (g[d] || 0) + 1;
-  const oldest = day(now - PLAY_DAYS * 86400000);
+  const oldest = addDays(d, -PLAY_DAYS);
   Object.keys(g).forEach(k => { if (k < oldest) delete g[k]; });
   savePlays();
+}
+// Aufrufe eines Tages: Startseite und alle Spiele zusammen
+function dayTotals(d) {
+  const t = { start: 0, spiele: 0 };
+  Object.keys(plays).forEach(g => { t[g === START_KEY ? 'start' : 'spiele'] += plays[g][d] || 0; });
+  return t;
+}
+
+// ---------- Verlauf: Wochenschnitt für die Jahres-Ansicht ----------
+// Die Tageszahlen bleiben nur PLAY_DAYS Tage. Von jeder fertigen Woche (Montag bis Sonntag) wird darum
+// der Durchschnitt pro Tag aufbewahrt, und zwar für immer: wochen[Montag] = { start, spiele }.
+// seit = erster gezählter Tag; Tage davor zählen nicht in den Durchschnitt.
+const HISTORY_FILE = path.join(DATA_DIR, 'verlauf.json');
+let history = { seit: {}, wochen: {} };
+try {
+  const h = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+  if (h && h.seit && h.wochen) history = h;
+} catch (e) { /* noch kein Verlauf */ }
+function weekAvg(mon, last) {
+  const out = {};
+  ['start', 'spiele'].forEach(s => {
+    let sum = 0, n = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(mon, i);
+      if (d > last || d < history.seit[s]) continue;
+      sum += dayTotals(d)[s]; n++;
+    }
+    out[s] = n ? Math.round(sum / n * 10) / 10 : null;
+  });
+  return out;
+}
+function rollWeeks() {
+  const today = day(Date.now()), oldest = addDays(today, -PLAY_DAYS);
+  let changed = false;
+  if (!history.seit.start) { history.seit.start = today; changed = true; }
+  if (!history.seit.spiele) {
+    let first = today;
+    Object.keys(plays).forEach(g => { if (g !== START_KEY) Object.keys(plays[g]).forEach(d => { if (d < first) first = d; }); });
+    history.seit.spiele = first < oldest ? oldest : first;
+    changed = true;
+  }
+  // Nur Wochen, deren Tage noch alle vorhanden sind
+  let m = monday(oldest);
+  if (m < oldest) m = addDays(m, 7);
+  for (const cur = monday(today); m < cur; m = addDays(m, 7)) {
+    if (history.wochen[m]) continue;
+    const w = weekAvg(m, addDays(m, 6));
+    if (w.start === null && w.spiele === null) continue;
+    history.wochen[m] = w;
+    changed = true;
+  }
+  if (changed) {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(HISTORY_FILE + '.tmp', JSON.stringify(history, null, 1));
+      fs.renameSync(HISTORY_FILE + '.tmp', HISTORY_FILE);
+    } catch (e) { console.error('Verlauf nicht gespeichert:', e.message); }
+  }
+}
+rollWeeks();
+setInterval(rollWeeks, 3600000);
+// Alles für die Übersicht: Tageszahlen, Wochenschnitte (inkl. laufender Woche) und Aufrufe pro Spiel
+function visitStats() {
+  const today = day(Date.now()), days = [];
+  for (let i = PLAY_DAYS - 1; i >= 0; i--) {
+    const d = addDays(today, -i), t = dayTotals(d);
+    days.push({ d, start: d < history.seit.start ? null : t.start, spiele: d < history.seit.spiele ? null : t.spiele });
+  }
+  const cur = monday(today);
+  const weeks = Object.keys(history.wochen).filter(w => w < cur).sort().map(w => Object.assign({ w }, history.wochen[w]));
+  weeks.push(Object.assign({ w: cur, laufend: true }, weekAvg(cur, today)));
+  const week = addDays(today, -6), month = addDays(today, -29), games = [];
+  Object.keys(plays).forEach(g => {
+    if (g === START_KEY) return;
+    const e = { game: g, name: gameTitle(g), week: 0, month: 0 };
+    Object.keys(plays[g]).forEach(d => {
+      if (d >= month) e.month += plays[g][d];
+      if (d >= week) e.week += plays[g][d];
+    });
+    if (e.month) games.push(e);
+  });
+  games.sort((a, b) => b.month - a.month || b.week - a.week);
+  return { today, days, weeks, games };
 }
 
 // Öffentliche Zahlen pro Spiel: Durchschnitt, Anzahl Bewertungen, Aufrufe der letzten 7 Tage
@@ -193,8 +286,9 @@ function gameStats() {
   const out = {};
   const get = g => out[g] || (out[g] = { avg: 0, count: 0, sum: 0, week: 0 });
   ratings.forEach(r => { const e = get(r.game); e.count++; e.sum += r.stars; });
-  const since = day(Date.now() - 6 * 86400000);
+  const since = addDays(day(Date.now()), -6);
   Object.keys(plays).forEach(g => {
+    if (g === START_KEY) return;
     const e = get(g);
     Object.keys(plays[g]).forEach(d => { if (d >= since) e.week += plays[g][d]; });
   });
@@ -205,7 +299,7 @@ function gameStats() {
 // Übersicht für den Betreiber. Der Schlüssel steht nach dem # und wird darum nie an den Server/ins Log geschickt.
 const ADMIN_PAGE = `<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
-<title>Empfehlungen und Bewertungen</title><style>
+<title>Langwiligi Übersicht</title><style>
 :root{color-scheme:dark;--bg:#07060d;--panel:#100e1c;--line:#2a2540;--text:#ecebf5;--muted:#8e89a8;--pink:#ff2e88;--cyan:#22e4ff;--yellow:#ffe14d}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1240px;margin:0 auto;padding:32px 16px 64px}h1{margin:0 0 20px;font-size:28px;letter-spacing:.02em}
@@ -222,7 +316,30 @@ button:hover{border-color:var(--cyan)}button.del:hover{border-color:var(--pink);
 .sum{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;margin:0 0 14px;font-size:14px}.sum b{font-weight:600}
 .sum span{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
 select{font:14px system-ui,sans-serif;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:6px 8px;margin:0 0 6px}
-a{color:var(--yellow)}.msg{color:var(--muted)}</style></head><body><main><h1>Empfehlungen &amp; Bewertungen</h1><p class="msg" id="err"></p>
+a{color:var(--yellow)}.msg{color:var(--muted)}
+#stats-col{margin:0 0 24px}#stats-col h2{color:var(--yellow)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:0 0 16px}
+.tile{border:1px solid var(--line);border-radius:4px;padding:10px 12px}.tile b{display:block;font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile span{color:var(--muted);font-size:13px}
+.range{display:flex;gap:6px;margin:0 0 12px}.range button[aria-pressed="true"]{border-color:var(--yellow);color:var(--yellow)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:24px}@media (max-width:820px){.charts{grid-template-columns:1fr}}
+figure{margin:0;min-width:0}figcaption{font-weight:600;margin:0 0 6px}figcaption span{color:var(--muted);font-weight:400;font-size:13px}
+.chart{position:relative;height:220px;outline:none}.chart:focus-visible{box-shadow:0 0 0 2px var(--yellow);border-radius:3px}
+.chart svg{display:block;width:100%;height:220px}.chart text{font:11px system-ui,sans-serif;fill:var(--muted);font-variant-numeric:tabular-nums}
+.chart text.val{fill:var(--text);font-weight:600;font-size:12px}.chart .bar.hi{filter:brightness(1.3)}
+.tip{position:absolute;top:4px;pointer-events:none;background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:6px 9px;font-size:13px;white-space:nowrap;display:none;transform:translateX(-50%)}
+.tip b{display:block;font-size:16px;font-variant-numeric:tabular-nums}.tip span{color:var(--muted)}
+.empty{color:var(--muted);display:flex;align-items:center;justify-content:center;height:100%}
+#top-h{margin:20px 0 6px;font-size:15px}details{margin-top:14px;color:var(--muted);font-size:14px}summary{cursor:pointer}
+table{border-collapse:collapse;margin-top:8px;font-variant-numeric:tabular-nums}td,th{padding:3px 14px 3px 0;text-align:right;color:var(--text)}td:first-child,th:first-child{text-align:left}th{color:var(--muted);font-weight:600}
+</style></head><body><main><h1>Übersicht</h1><p class="msg" id="err"></p>
+<section id="stats-col"><h2>Aufrufe</h2><p class="sub">Ein Gerät zählt pro Seite höchstens alle 30 Minuten einmal. Ohne Cookies, es wird nur gezählt.</p>
+<div class="tiles" id="tiles"></div>
+<div class="range" role="group" aria-label="Zeitraum"><button data-r="7" aria-pressed="true">Woche</button><button data-r="30" aria-pressed="false">Monat</button><button data-r="jahre" aria-pressed="false">Jahre</button></div>
+<div class="charts"><figure><figcaption>Startseite <span class="unit"></span></figcaption><div class="chart" id="ch-start" tabindex="0"></div></figure>
+<figure><figcaption>Spiele, alle zusammen <span class="unit"></span></figcaption><div class="chart" id="ch-spiele" tabindex="0"></div></figure></div>
+<details><summary>Als Tabelle</summary><table id="tbl"></table></details>
+<h3 id="top-h">Meistgespielt</h3><div class="sum" id="top"></div></section>
 <div class="cols"><section id="tips-col"><h2>Empfehlungen</h2><p class="sub" id="tips-sub">Lade …</p><div id="tips"></div></section>
 <section id="rates-col"><h2>Bewertungen</h2><p class="sub" id="rates-sub">Lade …</p><div class="sum" id="sum"></div>
 <select id="filter"><option value="">Alle Spiele</option></select> <label class="msg"><input type="checkbox" id="notes"> nur mit Verbesserungsvorschlag</label><div id="rates"></div></section></div></main>
@@ -254,7 +371,63 @@ document.getElementById('filter').addEventListener('change',listRates);document.
 document.body.addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;
 if(b.dataset.t==='tip')call('empfehlungen.json','POST',{action:b.dataset.a,id:b.dataset.id}).then(showTips,err);
 else call('bewertungen.json','POST',{action:'delete',id:b.dataset.id}).then(showRates,err)});
-call('empfehlungen.json','GET').then(showTips,err);call('bewertungen.json','GET').then(showRates,err);
+var visits=null,range='7',COLORS={start:'#0fa3bf',spiele:'#ff2e88'};
+function day(d,o){o.timeZone='UTC';return new Date(d+'T12:00:00Z').toLocaleDateString('de-CH',o)}
+function num(v){return v==null?'–':(Math.round(v*10)/10).toLocaleString('de-CH')}
+function avg(list,k){var s=0,n=0;list.forEach(function(d){if(d[k]!=null){s+=d[k];n++}});return n?s/n:null}
+function points(k){
+if(range==='jahre')return visits.weeks.map(function(w){return{v:w[k],t:'Woche ab '+day(w.w,{day:'numeric',month:'numeric',year:'numeric'})+(w.laufend?' (laufend)':''),x:day(w.w,{month:'short',year:'2-digit'})}});
+return visits.days.slice(-range).map(function(d){return{v:d[k],t:day(d.d,{weekday:'short',day:'numeric',month:'numeric',year:'numeric'}),
+x:range==='7'?day(d.d,{weekday:'short',day:'numeric',month:'numeric'}):day(d.d,{day:'numeric',month:'numeric'})}})}
+function nice(x){if(x<=0)return 1;var p=Math.pow(10,Math.floor(Math.log10(x))),f=x/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p}
+function draw(el,pts,color,line){
+var W=el.clientWidth||600,H=220,L=40,R=12,T=22,B=24,pw=W-L-R,ph=H-T-B,n=pts.length,max=0,last=-1;
+pts.forEach(function(p,i){if(p.v!=null){if(p.v>max)max=p.v;last=i}});
+if(last<0){el.innerHTML='<div class="empty">Noch keine Daten</div>';return}
+var step=nice(max/4),top=step*Math.max(1,Math.ceil(max/step)),cw=pw/n,bw=Math.max(1,Math.min(48,cw-2));
+function y(v){return T+ph-v/top*ph}function cx(i){return L+cw*(i+.5)}
+var g='',k=Math.ceil(n/Math.max(1,Math.floor(pw/64)));
+for(var t=0;t<=top+1e-9;t+=step)g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t)+'" y2="'+y(t)+'" stroke="var(--line)"/><text x="'+(L-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+num(t)+'</text>';
+pts.forEach(function(p,i){if((n-1-i)%k)return;var e=cx(i)+30>W;g+='<text x="'+(e?W-2:cx(i))+'" y="'+(H-6)+'" text-anchor="'+(e?'end':'middle')+'">'+esc(p.x)+'</text>'});
+if(line){var d='',pen=false;pts.forEach(function(p,i){if(p.v==null){pen=false;return}d+=(pen?'L':'M')+cx(i)+' '+y(p.v);pen=true});
+g+='<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round"/>';
+function alone(i){return(!pts[i-1]||pts[i-1].v==null)&&(!pts[i+1]||pts[i+1].v==null)}
+pts.forEach(function(p,i){if(p.v!=null&&(n<=40||alone(i)))g+='<circle cx="'+cx(i)+'" cy="'+y(p.v)+'" r="4" fill="'+color+'" stroke="var(--panel)" stroke-width="2"/>'});
+g+='<line class="cross" x1="0" x2="0" y1="'+T+'" y2="'+(T+ph)+'" stroke="var(--muted)" visibility="hidden"/>'}
+else pts.forEach(function(p,i){if(!p.v)return;var x=cx(i)-bw/2,yy=y(p.v),r=Math.min(4,bw/2,T+ph-yy),b=T+ph;
+g+='<path class="bar" data-i="'+i+'" fill="'+color+'" d="M'+x+' '+b+'V'+(yy+r)+'Q'+x+' '+yy+' '+(x+r)+' '+yy+'H'+(x+bw-r)+'Q'+(x+bw)+' '+yy+' '+(x+bw)+' '+(yy+r)+'V'+b+'Z"/>'});
+g+='<text class="val" x="'+cx(last)+'" y="'+(y(pts[last].v)-8)+'" text-anchor="middle">'+num(pts[last].v)+'</text>';
+el.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Diagramm, Werte auch in der Tabelle">'+g+'</svg><div class="tip"><b></b><span></span></div>';
+el._c={pts:pts,L:L,cw:cw,cx:cx,line:line,i:-1}}
+function show(el,i){var c=el._c;if(!c)return;var tip=el.querySelector('.tip'),cr=el.querySelector('.cross');
+el.querySelectorAll('.bar.hi').forEach(function(b){b.classList.remove('hi')});
+if(i<0||i>=c.pts.length){c.i=-1;tip.style.display='none';if(cr)cr.setAttribute('visibility','hidden');return}
+c.i=i;var p=c.pts[i],x=c.cx(i);
+tip.querySelector('b').textContent=p.v==null?'nicht gezählt':num(p.v)+(range==='jahre'?' pro Tag':'');
+tip.querySelector('span').textContent=p.t;tip.style.display='block';
+tip.style.left=Math.max(tip.offsetWidth/2,Math.min(el.clientWidth-tip.offsetWidth/2,x))+'px';
+if(cr){cr.setAttribute('x1',x);cr.setAttribute('x2',x);cr.setAttribute('visibility','visible')}
+var b=el.querySelector('.bar[data-i="'+i+'"]');if(b)b.classList.add('hi')}
+['ch-start','ch-spiele'].forEach(function(id){var el=document.getElementById(id);
+el.addEventListener('pointermove',function(e){var c=el._c;if(c)show(el,Math.floor((e.clientX-el.getBoundingClientRect().left-c.L)/c.cw))});
+el.addEventListener('pointerleave',function(){show(el,-1)});el.addEventListener('blur',function(){show(el,-1)});
+el.addEventListener('keydown',function(e){var c=el._c;if(!c)return;var i=c.i<0?c.pts.length-1:c.i;
+if(e.key==='ArrowLeft')i--;else if(e.key==='ArrowRight')i++;else return;e.preventDefault();show(el,Math.max(0,Math.min(c.pts.length-1,i)))});
+el.addEventListener('focus',function(){if(el._c)show(el,el._c.pts.length-1)})});
+function render(){if(!visits)return;var s=points('start'),p=points('spiele');
+draw(document.getElementById('ch-start'),s,COLORS.start,range==='jahre');draw(document.getElementById('ch-spiele'),p,COLORS.spiele,range==='jahre');
+document.querySelectorAll('.unit').forEach(function(u){u.textContent=range==='jahre'?'· Durchschnitt pro Tag, je Woche':'· Aufrufe pro Tag'});
+document.getElementById('tbl').innerHTML='<tr><th>'+(range==='jahre'?'Woche (Ø pro Tag)':'Tag')+'</th><th>Startseite</th><th>Spiele</th></tr>'+
+s.map(function(x,i){return '<tr><td>'+esc(x.t)+'</td><td>'+num(x.v)+'</td><td>'+num(p[i].v)+'</td></tr>'}).reverse().join('')}
+function showVisits(v){visits=v;var d=v.days,t=d[d.length-1],y=d[d.length-2];
+document.getElementById('tiles').innerHTML=[[num(t.start),'Startseite heute'],[num(y.start),'Startseite gestern'],[num(avg(d.slice(-7),'start')),'Startseite Ø pro Tag, 7 Tage'],
+[num(avg(d.slice(-30),'start')),'Startseite Ø pro Tag, 30 Tage'],[num(t.spiele),'Spiel-Aufrufe heute']].map(function(x){return '<div class="tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('');
+document.getElementById('top').innerHTML=v.games.length?'<b>Spiel</b><span>7 Tage</span><span>30 Tage</span>'+v.games.slice(0,15).map(function(g){return '<b>'+esc(g.name)+'</b><span>'+g.week+'</span><span>'+g.month+'</span>'}).join(''):'<span class="msg">Noch keine Aufrufe.</span>';
+render()}
+document.querySelector('.range').addEventListener('click',function(e){var b=e.target.closest('button[data-r]');if(!b)return;range=b.dataset.r;
+document.querySelectorAll('.range button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});render()});
+var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(render,150)});
+call('aufrufe.json','GET').then(showVisits,err);call('empfehlungen.json','GET').then(showTips,err);call('bewertungen.json','GET').then(showRates,err);
 </script></body></html>`;
 
 function cleanName(n) {
@@ -441,7 +614,8 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/aufruf' && req.method === 'POST') {
     return readBody(req, 512, m => {
       const game = cleanGame(m && m.game);
-      if (game && isKnownGame(game)) countPlay(game, clientIp(req), Date.now());
+      if (m && m.seite === 'start') countPlay(START_KEY, clientIp(req), Date.now());
+      else if (game && isKnownGame(game)) countPlay(game, clientIp(req), Date.now());
       json(res, 200, { ok: true });
     });
   }
@@ -459,6 +633,10 @@ const server = http.createServer((req, res) => {
       if (i >= 0 && m.action === 'delete') { ratings.splice(i, 1); saveRatings(); }
       json(res, 200, list());
     });
+  }
+  if (url.pathname === '/api/aufrufe.json') {
+    if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
+    return json(res, 200, visitStats());
   }
   if (url.pathname === '/api/empfehlungen.json') {
     if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
