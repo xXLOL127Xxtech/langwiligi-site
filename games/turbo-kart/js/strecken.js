@@ -88,6 +88,8 @@ const STRECKEN = [
     pts: [[-60, -120], [40, -122], [110, -112], [152, -80], [162, -30], [140, 12], [98, 26], [70, 52], [76, 92, 3], [110, 122, 7], [102, 162, 7], [52, 178, 4], [-10, 162, 1], [-50, 128], [-100, 136], [-150, 112], [-168, 50], [-148, -8], [-158, -70], [-122, -112]],
     items: [0.1, 0.38, 0.62, 0.86], boost: [[0.28, 0], [0.72, -0.4], [0.72, 0.4]], rampen: [0.455], muenzen: [[0.05, 0.4, 6], [0.2, -0.3, 6], [0.5, 0, 5], [0.8, 0.5, 6]],
     abschnitte: [],
+    // Abkürzungen: [Start (Anteil der Runde), Länge der umfahrenen Strecke, Seite]
+    abk: [[0.05, 0.24, 1], [0.63, 0.2, 1]],
   },
   {
     id: 'palmenstrand', name: 'Palmenstrand', cup: 0, thema: 'strand', laenge: 1150, breite: 10, rand: 7,
@@ -95,12 +97,16 @@ const STRECKEN = [
     items: [0.12, 0.36, 0.58, 0.84], boost: [[0.3, 0.3], [0.66, 0], [0.92, -0.3]], rampen: [0.75], muenzen: [[0.07, -0.4, 6], [0.24, 0.4, 5], [0.46, 0, 7], [0.7, -0.3, 5], [0.9, 0.3, 6]],
     abschnitte: [{ von: 0.37, bis: 0.56, fall: true, stil: 'holz' }],
     wasserY: -0.6,
+    abk: [[0.1, 0.21, 1]],
   },
   {
     id: 'wuestenschlucht', name: 'Wüstenschlucht', cup: 0, thema: 'wueste', laenge: 1200, breite: 10.5, rand: 6, wandH: 7,
     pts: [[0, -150], [80, -150], [140, -120], [150, -60], [100, -20], [40, -10], [10, 30], [30, 80], [90, 100, 2], [150, 90, 4], [190, 130, 4], [170, 190, 2], [100, 210], [20, 190], [-40, 150], [-90, 160], [-150, 130], [-170, 60], [-130, 10], [-150, -60], [-120, -120], [-60, -150]],
     items: [0.08, 0.3, 0.55, 0.8], boost: [[0.2, -0.4], [0.2, 0.4], [0.47, 0], [0.9, 0]], rampen: [0.44, 0.68], muenzen: [[0.04, 0, 6], [0.25, 0.4, 5], [0.5, -0.4, 5], [0.62, 0, 6], [0.85, 0.3, 5]],
     abschnitte: [],
+    abk: [[0.08, 0.15, 1]],
+    // Fallende Steinblöcke: [Position, seitlich (-1 bis 1), Zeitversatz]
+    steine: [[0.36, -0.42, 0], [0.36, 0.42, 2.8], [0.75, 0, 1.0]],
   },
   {
     id: 'dschungeltempel', name: 'Dschungeltempel', cup: 0, thema: 'dschungel', laenge: 1150, breite: 10, rand: 6,
@@ -108,12 +114,16 @@ const STRECKEN = [
     items: [0.15, 0.4, 0.65, 0.9], boost: [[0.25, 0], [0.75, 0]], rampen: [0.55], muenzen: [[0.05, 0.3, 6], [0.3, -0.3, 6], [0.48, 0, 5], [0.8, 0.3, 6]],
     abschnitte: [{ von: 0.17, bis: 0.33, bruecke: true, stil: 'holz', wand: 'holz' }],
     start: 0.5,
+    abk: [[0.27, 0.22, 1]],
+    steine: [[0.08, -0.42, 0], [0.08, 0.42, 2.8]],
   },
   {
     id: 'eisgipfel', name: 'Eisgipfel', cup: 1, thema: 'schnee', laenge: 1250, breite: 10.5, rand: 7,
     pts: [[0, -150, 0], [100, -160, 2], [170, -120, 5], [180, -50, 9], [130, -10, 12], [60, -20, 14], [20, 20, 16], [40, 70, 18], [110, 80, 20], [170, 110, 20], [160, 170, 17], [80, 190, 13], [0, 160, 10], [-60, 180, 8], [-130, 160, 6], [-170, 100, 4], [-140, 40, 3], [-180, -30, 2], [-150, -110, 1], [-80, -150, 0]],
     items: [0.1, 0.34, 0.6, 0.85], boost: [[0.22, 0], [0.5, -0.4], [0.5, 0.4], [0.93, 0]], rampen: [0.7], muenzen: [[0.05, 0, 6], [0.28, 0.4, 5], [0.45, -0.3, 6], [0.78, 0, 6]],
     abschnitte: [{ von: 0.4, bis: 0.5, eis: true }, { von: 0.76, bis: 0.84, eis: true }],
+    abk: [[0.03, 0.17, 1]],
+    steine: [[0.28, -0.42, 0], [0.28, 0.42, 2.8]],
   },
   {
     id: 'neonstadt', name: 'Neonstadt', cup: 1, thema: 'stadt', laenge: 1300, breite: 11, rand: 2,
@@ -124,18 +134,23 @@ const STRECKEN = [
     hoehen: [[0.5, 0.2], [0.57, 9], [0.74, 9], [0.84, 0.2]],
     items: [0.1, 0.35, 0.6, 0.88], boost: [[0.2, 0], [0.47, 0.4], [0.47, -0.4], [0.78, 0]], rampen: [], muenzen: [[0.05, 0.4, 7], [0.28, -0.4, 6], [0.52, 0, 6], [0.92, 0, 6]],
     abschnitte: [{ von: 0.55, bis: 0.76, bruecke: true }],
+    abk: [[0.18, 0.23, -1]],
   },
   {
     id: 'lavaburg', name: 'Lavaburg', cup: 1, thema: 'lava', laenge: 1200, breite: 10, rand: 3, wandH: 2.5,
     pts: [[0, -130, 1], [100, -130, 1], [160, -100, 1], [170, -30, 3], [120, 10, 5], [50, 0, 5], [10, 40, 5], [40, 100, 6], [110, 110, 8], [160, 150, 8], [120, 200, 6], [40, 210, 4], [-40, 180, 3], [-80, 120, 3], [-150, 120, 2], [-180, 50, 2], [-140, -10, 1], [-160, -80, 1], [-100, -130, 1]],
     items: [0.1, 0.35, 0.6, 0.86], boost: [[0.18, 0], [0.5, 0], [0.75, -0.3], [0.75, 0.3]], rampen: [0.42], muenzen: [[0.05, 0, 6], [0.3, 0.4, 5], [0.55, -0.4, 5], [0.8, 0, 6]],
     abschnitte: [{ von: 0.22, bis: 0.32, fall: true }, { von: 0.62, bis: 0.7, fall: true }],
+    abk: [[0.03, 0.17, 1]],
+    steine: [[0.46, -0.42, 0], [0.46, 0.42, 2.8], [0.8, 0, 1.4]],
   },
   {
     id: 'regenbogenbahn', name: 'Regenbogenbahn', cup: 1, thema: 'all', laenge: 1450, breite: 10, rand: 1,
     pts: [[0, -160, 20], [120, -170, 22], [200, -110, 28], [210, -20, 36], [150, 40, 40], [70, 20, 34], [20, 70, 30], [60, 140, 26], [150, 160, 30], [200, 220, 34], [120, 270, 30], [20, 250, 24], [-60, 200, 18], [-120, 230, 14], [-200, 190, 12], [-230, 100, 14], [-170, 30, 18], [-220, -50, 20], [-190, -130, 20], [-100, -165, 20]],
     items: [0.08, 0.3, 0.52, 0.74, 0.92], boost: [[0.15, 0], [0.4, -0.3], [0.4, 0.3], [0.62, 0], [0.85, 0]], rampen: [0.69], muenzen: [[0.05, 0, 6], [0.22, 0.4, 6], [0.46, -0.3, 6], [0.65, 0, 6], [0.88, 0.3, 6]],
     abschnitte: [{ von: 0, bis: 1, fall: true }, { von: 0.96, bis: 1, fall: false }, { von: 0, bis: 0.06, fall: false }, { von: 0.3, bis: 0.38, fall: false }, { von: 0.55, bis: 0.6, fall: false }],
+    abk: [[0.05, 0.17, 1], [0.79, 0.16, 1]],
+    steine: [[0.34, -0.4, 0], [0.34, 0.4, 2.8], [0.575, 0, 1.2]],
   },
 ];
 const ARENEN = [
@@ -237,6 +252,13 @@ function streuen(gruppe, teile, plaetze, schatten = true) {
   }
 }
 
+function bezier(a, b, c, d, t, out) {
+  const u = 1 - t;
+  return (out || new THREE.Vector3()).set(0, 0, 0).addScaledVector(a, u * u * u).addScaledVector(b, 3 * u * u * t).addScaledVector(c, 3 * u * t * t).addScaledVector(d, t * t * t);
+}
+const STEIN_H = 7.5;        // Höhe, auf der die Steinblöcke warten
+const STEIN_TAKT = 5.6;     // Sekunden pro Fall
+
 // ---------- Streckenbauer ----------
 class Strecke {
   constructor(def) {
@@ -245,6 +267,7 @@ class Strecke {
     this.gruppe = new THREE.Group();
     this.anim = [];       // Funktionen, die jedes Bild aufgerufen werden (Wasser, Lava, ...)
     this.boxPlaetze = []; this.muenzPlaetze = []; this.boosts = []; this.rampen = [];
+    this.abk = []; this.steine = [];
     this.berechne();
   }
   berechne() {
@@ -341,6 +364,9 @@ class Strecke {
     let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9;
     for (const s of S) { mnx = Math.min(mnx, s.p.x); mxx = Math.max(mxx, s.p.x); mnz = Math.min(mnz, s.p.z); mxz = Math.max(mxz, s.p.z); }
     this.box = { mnx, mxx, mnz, mxz, cx: (mnx + mxx) / 2, cz: (mnz + mxz) / 2, r: Math.max(mxx - mnx, mxz - mnz) / 2 };
+    // Start
+    this.startS = (d.start || 0) * L;
+    this.abkBerechnen();
     // Belegungsraster (für Deko)
     this.raster = new Map();
     for (const s of S) {
@@ -351,8 +377,96 @@ class Strecke {
         this.raster.set(Math.floor((s.p.x + x) / c) + ',' + Math.floor((s.p.z + z) / c), 1);
       }
     }
-    // Start
-    this.startS = (d.start || 0) * L;
+    for (const A of this.abk) for (const q of A.P) {
+      const rr = A.lim + 4, c = 6;
+      for (let x = -rr; x <= rr; x += c / 2) for (let z = -rr; z <= rr; z += c / 2) if (x * x + z * z <= rr * rr) this.raster.set(Math.floor((q.p.x + x) / c) + ',' + Math.floor((q.p.z + z) / c), 1);
+    }
+  }
+  // ---------- Abkürzungen ----------
+  // Ein schmaler Weg quer durchs Innenfeld (Bézierkurve zwischen zwei Punkten der Strecke).
+  // Wo er die Strecke berührt, ist die Seite zur Strecke hin offen (keine Wand).
+  abkBerechnen() {
+    const d = this.def, L = this.L, th = d.thema;
+    this.abk = [];
+    (d.abk || []).forEach(([u1, sp, sd], nr) => {
+      const s1 = u1 * L + this.startS, s2 = s1 + sp * L;
+      const A1 = this.S[this.idx(s1)], A2 = this.S[this.idx(s2)];
+      const d0 = sd * A1.w * 0.5, d3 = sd * A2.w * 0.5;
+      const p0 = this.punkt(s1, d0), p3 = this.punkt(s2, d3);
+      const ch = p0.distanceTo(p3);
+      const p1 = p0.clone().addScaledVector(A1.t, ch * 0.25), p2 = p3.clone().addScaledVector(A2.t, -ch * 0.25);
+      // fein abtasten, dann gleichmässig alle ~2 m ein Punkt
+      const fein = [{ p: p0.clone(), l: 0 }];
+      for (let i = 1; i <= 400; i++) { const q = bezier(p0, p1, p2, p3, i / 400); fein.push({ p: q, l: fein[i - 1].l + q.distanceTo(fein[i - 1].p) }); }
+      const len = fein[400].l, n = Math.max(8, Math.round(len / 2)), P = [];
+      let j = 0;
+      for (let i = 0; i <= n; i++) {
+        const l = i / n * len;
+        while (j < 399 && fein[j + 1].l < l) j++;
+        const f = clamp((l - fein[j].l) / Math.max(1e-6, fein[j + 1].l - fein[j].l), 0, 1);
+        P.push({ p: fein[j].p.clone().lerp(fein[j + 1].p, f), s: l });
+      }
+      for (let i = 0; i <= n; i++) {
+        const q = P[i];
+        q.t = new THREE.Vector3().subVectors(P[Math.min(n, i + 1)].p, P[Math.max(0, i - 1)].p).normalize();
+        q.h = Math.atan2(q.t.x, q.t.z);
+        q.rh = new THREE.Vector3(-Math.cos(q.h), 0, Math.sin(q.h));
+        q.n = new THREE.Vector3().crossVectors(q.rh, q.t).normalize();
+      }
+      const A = { nr, P, len, s1: ((s1 % L) + L) % L, span: sp * L, seite: sd, d0, d3, w: 3.8, rand: 1.1, rauh: th === 'stadt' ? 0.9 : th === 'all' ? 0.85 : 0.76 };
+      A.lim = A.w + A.rand;
+      let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9;
+      const o = {};
+      A.ein = -1;
+      for (const q of P) {
+        mnx = Math.min(mnx, q.p.x); mxx = Math.max(mxx, q.p.x); mnz = Math.min(mnz, q.p.z); mxz = Math.max(mxz, q.p.z);
+        this.projHaupt(o, q.p.x, q.p.y, q.p.z);
+        q.mitte = Math.abs(o.d) < o.lim;
+        // Wie weit nach der Abzweigung man die Strecke verlässt
+        if (A.ein < 0 && Math.abs(o.d) > o.w + 0.6) A.ein = (((o.s - A.s1) % L) + L) % L;
+        q.offen = Math.abs(o.d) < o.lim + A.lim + 0.5 ? ((o.cx - q.p.x) * q.rh.x + (o.cz - q.p.z) * q.rh.z > 0 ? 1 : -1) : 0;
+      }
+      const r = A.lim + 1;
+      A.box = { mnx: mnx - r, mxx: mxx + r, mnz: mnz - r, mxz: mxz + r };
+      this.abk.push(A);
+    });
+  }
+  // Lage eines Punkts zur Abkürzung (null = nicht in der Nähe)
+  abkLage(A, x, y, z) {
+    const b = A.box;
+    if (x < b.mnx || x > b.mxx || z < b.mnz || z > b.mxz) return null;
+    const P = A.P, n = P.length;
+    let best = 0, bd = 1e18;
+    for (let i = 0; i < n; i++) { const p = P[i].p, dd = (p.x - x) ** 2 + (p.z - z) ** 2; if (dd < bd) { bd = dd; best = i; } }
+    let a = Math.min(best, n - 2), b2 = a + 1;
+    const seg = () => { const sx = P[b2].p.x - P[a].p.x, sz = P[b2].p.z - P[a].p.z; return ((x - P[a].p.x) * sx + (z - P[a].p.z) * sz) / (sx * sx + sz * sz); };
+    let f = seg();
+    if (f < 0 && a > 0) { a--; b2--; f = seg(); }
+    if ((f < -0.02 && a === 0) || (f > 1.02 && b2 === n - 1)) return null;
+    f = clamp(f, 0, 1);
+    const A0 = P[a], B0 = P[b2], o = this._lage || (this._lage = {});
+    o.a = a; o.f = f; o.A0 = A0; o.B0 = B0;
+    o.cx = lerp(A0.p.x, B0.p.x, f); o.cy = lerp(A0.p.y, B0.p.y, f); o.cz = lerp(A0.p.z, B0.p.z, f);
+    if (Math.abs(y - o.cy) > 6) return null;
+    const hx = lerp(A0.rh.x, B0.rh.x, f), hz = lerp(A0.rh.z, B0.rh.z, f), hl = Math.hypot(hx, hz);
+    o.hx = hx / hl; o.hz = hz / hl;
+    o.d = (x - o.cx) * o.hx + (z - o.cz) * o.hz;
+    return o;
+  }
+  imKorridor(x, y, z, extra = 0) {
+    for (const A of this.abk) { const q = this.abkLage(A, x, y, z); if (q && Math.abs(q.d) < A.lim + extra) return true; }
+    return false;
+  }
+  // Punkt auf der Abkürzung bei lokaler Länge s (davor und danach weiter auf der Strecke)
+  abkPunkt(A, s, d, out) {
+    out = out || new THREE.Vector3();
+    if (s >= A.len) return this.punkt(A.s1 + A.span + (s - A.len), A.d3 * 0.6 + d, out);
+    if (s <= 0) return this.punkt(A.s1 + s, A.d0 + d, out);
+    const n = A.P.length - 1, f = s / A.len * n, i = Math.min(n - 1, Math.floor(f)), t = f - i;
+    const a = A.P[i], b = A.P[i + 1];
+    out.lerpVectors(a.p, b.p, t);
+    out.x += lerp(a.rh.x, b.rh.x, t) * d; out.z += lerp(a.rh.z, b.rh.z, t) * d;
+    return out;
   }
   bodenY() { return this.th.lavaSee ? -2 : this.th.wasser ? -0.6 : this.th.boden ? 0 : null; }
   frei(x, z) { return !this.raster.has(Math.floor(x / 6) + ',' + Math.floor(z / 6)); }
@@ -393,6 +507,32 @@ class Strecke {
   }
   // Projektion: füllt o.si, o.s, o.d, o.boden { y, nx, ny, nz }, o.lim, o.fall, o.flaeche
   proj(o, x, y, z) {
+    this.projHaupt(o, x, y, z);
+    o.ab = -1; o.offen = 0;
+    if (this.abk.length && Math.abs(o.d) > o.w + 0.6) {
+      for (const A of this.abk) {
+        const q = this.abkLage(A, x, y, z);
+        if (!q || Math.abs(q.d) > A.lim) continue;
+        // Auf der Abkürzung: Werte relativ zu ihr, Fortschritt auf die Strecke umgerechnet
+        const aufHaupt = Math.abs(o.d) <= o.lim;
+        o.ab = A.nr; o.abS = q.A0.s + q.f * (q.B0.s - q.A0.s);
+        o.abH = q.A0.h + wrapA(q.B0.h - q.A0.h) * q.f;
+        o.d = q.d; o.hx = q.hx; o.hz = q.hz; o.w = A.w; o.lim = A.lim;
+        o.offen = (q.f < 0.5 ? q.A0 : q.B0).offen;
+        if (!aufHaupt) {
+          o.bodenY = q.cy;
+          o.nx = lerp(q.A0.n.x, q.B0.n.x, q.f); o.ny = lerp(q.A0.n.y, q.B0.n.y, q.f); o.nz = lerp(q.A0.n.z, q.B0.n.z, q.f);
+        }
+        o.fall = false; o.eis = false;
+        o.s = (A.s1 + o.abS / A.len * A.span) % this.L;
+        o.flaeche = Math.abs(q.d) <= A.w ? 'piste' : 'gelaende';
+        o.rauh = A.rauh;
+        break;
+      }
+    }
+    return o;
+  }
+  projHaupt(o, x, y, z) {
     const S = this.S, N = this.n;
     let i = this.suche(x, y, z, o.si === undefined ? -1 : o.si);
     let a = i, b = (i + 1) % N;
@@ -410,6 +550,7 @@ class Strecke {
     const hx = lerp(A.rh.x, B.rh.x, f), hz = lerp(A.rh.z, B.rh.z, f);
     const hl = Math.hypot(hx, hz);
     const d = ((x - cx) * hx + (z - cz) * hz) / hl;
+    o.cx = cx; o.cz = cz;
     o.s = A.s + f * this.ds;
     o.d = d;
     o.hx = hx / hl; o.hz = hz / hl;
@@ -459,6 +600,7 @@ class Strecke {
       g.add(boden);
     }
     this.baueStrasse(qual);
+    this.baueAbk();
     this.baueStart();
     this.baueFeatures();
     this.baueDeko(qual);
@@ -529,11 +671,13 @@ class Strecke {
           quads.schulter.push({ a: p[0], b: p[1], c: p[2], d: p[3], welt: true, flip: sd < 0 });
         }
         // Wände
-        const wall = !A.fall && !B.fall && A.wand !== 'keine';
+        let wall = !A.fall && !B.fall && A.wand !== 'keine';
         const hW = A.wand === 'leucht' ? 1.0 : (this.def.wandH || (A.wand === 'schnee' ? 1.6 : A.wand === 'fels' ? 6 : 1.3));
+        const lim0 = (A.lim + 0.15) * sd, lim1 = (B.lim + 0.15) * sd;
+        const p0 = V(A, lim0), p1 = V(B, lim1);
+        // Lücke in der Wand, wo eine Abkürzung abzweigt
+        if (wall && this.abk.length && (this.imKorridor(p0[0], p0[1], p0[2], 0.4) || this.imKorridor(p1[0], p1[1], p1[2], 0.4))) wall = false;
         if (wall) {
-          const lim0 = (A.lim + 0.15) * sd, lim1 = (B.lim + 0.15) * sd;
-          const p0 = V(A, lim0), p1 = V(B, lim1);
           const u0 = A.s / 8, u1 = (A.s + this.ds) / 8;
           const arr = sd < 0 ? quads.wandL : quads.wandR;
           arr.push({ a: [p0[0], p0[1] - 0.5, p0[2]], b: [p1[0], p1[1] - 0.5, p1[2]], c: [p1[0], p1[1] + hW, p1[2]], d: [p0[0], p0[1] + hW, p0[2]], uv: [[u0, 0], [u1, 0], [u1, 1], [u0, 1]], flip: sd > 0, stil: A.wand, h: hW });
@@ -759,7 +903,168 @@ class Strecke {
       g.add(m);
       this.rampen.push({ s: ((s % L) + L) % L, w: A.w });
     }
+    this.baueSteine();
     this.baueBremsen();
+  }
+  // Grafik der Abkürzungen: Weg, Wände, Unterbau, Turbo-Feld, Fähnchen und Münzen
+  baueAbk() {
+    if (!this.abk.length) return;
+    const g = this.gruppe, th = this.th, bodenY = this.bodenY(), thema = this.def.thema;
+    const stil = { wiese: 'dschungel', strand: 'sand', wueste: 'sand', dschungel: 'dschungel', schnee: 'schnee', stadt: 'stadt', lava: 'burg', all: 'regenbogen' }[thema] || 'dschungel';
+    const wandStil = { wiese: 'holz', strand: 'holz', wueste: 'fels', dschungel: 'holz', schnee: 'schnee', stadt: 'beton', lava: 'burg', all: 'leucht' }[thema] || 'holz';
+    const hW = { holz: 1.1, fels: 2.2, schnee: 1.3, beton: 1.3, burg: 1.6, leucht: 1.0 }[wandStil];
+    const platte = bodenY === null || th.lavaSee;
+    const o = {};
+    // Höhe eines Punkts: auf der Hauptstrecke deren Oberfläche, sonst die der Abkürzung
+    const Y = (x, y, z) => { this.projHaupt(o, x, y, z); return Math.abs(o.d) <= o.lim ? o.bodenY : y; };
+    const strasse = [], waende = [], unter = [], boesch = [], pfeiler = [];
+    const pos = [], uv = [];
+    const quad = (arr, a, b, c, d2, uvs) => arr.push([a, b, c, d2, uvs]);
+    for (const A of this.abk) {
+      const P = A.P;
+      const rand = (q, d, dy = 0) => { const x = q.p.x + q.rh.x * d, z = q.p.z + q.rh.z * d; return [x, Y(x, q.p.y, z) + dy, z]; };
+      for (let i = 0; i < P.length - 1; i++) {
+        const a = P[i], b = P[i + 1];
+        const va = a.s / (A.w * 2), vb = b.s / (A.w * 2);
+        quad(strasse, rand(a, -A.w, 0.045), rand(a, A.w, 0.045), rand(b, A.w, 0.045), rand(b, -A.w, 0.045), [[0, va], [1, va], [1, vb], [0, vb]]);
+        for (const sd of [-1, 1]) {
+          const e0 = rand(a, A.lim * sd), e1 = rand(b, A.lim * sd);
+          if (a.offen !== sd && b.offen !== sd) {
+            const w0 = rand(a, (A.lim + 0.15) * sd), w1 = rand(b, (A.lim + 0.15) * sd);
+            const u0 = a.s / 8, u1 = b.s / 8;
+            quad(waende, [w0[0], w0[1] - 0.5, w0[2]], [w1[0], w1[1] - 0.5, w1[2]], [w1[0], w1[1] + hW, w1[2]], [w0[0], w0[1] + hW, w0[2]], [[u0, 0], [u1, 0], [u1, 1], [u0, 1]]);
+          }
+          if (a.mitte && b.mitte) continue;
+          if (platte) quad(unter, [e0[0], e0[1] - 1.6, e0[2]], [e1[0], e1[1] - 1.6, e1[2]], [e1[0], e1[1] + 0.03, e1[2]], [e0[0], e0[1] + 0.03, e0[2]]);
+          else {
+            const hA = Math.max(0, a.p.y - bodenY), hB = Math.max(0, b.p.y - bodenY);
+            const eA = 1.5 + hA * 1.3, eB = 1.5 + hB * 1.3;
+            quad(boesch, e0, [e0[0] + a.rh.x * eA * sd, bodenY - 0.4, e0[2] + a.rh.z * eA * sd], [e1[0] + b.rh.x * eB * sd, bodenY - 0.4, e1[2] + b.rh.z * eB * sd], e1);
+          }
+        }
+        if (platte && !(a.mitte && b.mitte)) {
+          const l0 = rand(a, -A.lim, -1.6), r0 = rand(a, A.lim, -1.6), l1 = rand(b, -A.lim, -1.6), r1 = rand(b, A.lim, -1.6);
+          quad(unter, r0, l0, l1, r1);
+          if (i % 6 === 0) { const unten = bodenY === null ? a.p.y - 40 : bodenY - 1, h = a.p.y - 1.6 - unten; if (h > 0.5) pfeiler.push({ x: a.p.x, y: unten + h / 2, z: a.p.z, s: 1, sy: h }); }
+        }
+      }
+      // Turbo-Feld kurz nach der Abzweigung, damit sich die Abkürzung lohnt
+      let k0 = P.findIndex(q => !q.mitte && !q.offen);
+      if (k0 < 0) k0 = Math.floor(P.length * 0.2);
+      const q = P[Math.min(P.length - 2, k0 + 2)];
+      const tm = new THREE.Mesh(new THREE.PlaneGeometry(4, 7), new THREE.MeshBasicMaterial({ map: Tex.turbo(), transparent: true, polygonOffset: true, polygonOffsetFactor: -3 }));
+      tm.position.copy(q.p); tm.position.y += 0.1;
+      tm.quaternion.copy(this.lage(q)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
+      g.add(tm);
+      this.boosts.push({ ab: A.nr, s: q.s, d: 0, b: 2.2, l: 3.6 });
+      // Fähnchen am Eingang
+      const e = P[Math.max(0, k0 - 1)];
+      for (const sd of [-1, 1]) {
+        const x = e.p.x + e.rh.x * (A.lim + 0.5) * sd, z = e.p.z + e.rh.z * (A.lim + 0.5) * sd, y = Y(x, e.p.y, z);
+        const f = new THREE.Group();
+        f.add(M(G.zyl(0.08, 0.08, 3.2, 6), Mat.std('#f4f4f4'), 0, 1.6, 0));
+        const fahne = M(new THREE.ConeGeometry(0.45, 1.3, 3), Mat.std('#ffd23a', { emissive: new THREE.Color('#ffb000'), emissiveIntensity: 0.25 }), 0, 2.75, 0.62, Math.PI / 2, 0, 0);
+        fahne.scale.set(1, 1, 0.15); f.add(fahne);
+        f.position.set(x, y, z); f.rotation.y = e.h;
+        f.traverse(m => { if (m.isMesh) m.castShadow = true; });
+        g.add(f);
+        this.anim.push(t => { fahne.rotation.z = Math.sin(t * 4 + sd) * 0.15; });
+      }
+      // Münzen als Belohnung
+      for (let i = 0; i < 5; i++) { const p = this.abkPunkt(A, A.len * (0.4 + i * 0.06), 0); p.y += 1.0; this.muenzPlaetze.push(p); }
+    }
+    const geo = (list, weltUV) => {
+      const pos = [], uv = [], idx = [];
+      list.forEach((q, n) => {
+        for (let k = 0; k < 4; k++) { pos.push(...q[k]); if (q[4] && !weltUV) uv.push(...q[4][k]); else uv.push(q[k][0] / 20, q[k][2] / 20 + q[k][1] / 20); }
+        const v = n * 4; idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
+      });
+      const gg = new THREE.BufferGeometry();
+      gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      gg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      gg.setIndex(idx); gg.computeVertexNormals();
+      return gg;
+    };
+    let sm;
+    if (stil === 'regenbogen') sm = new THREE.MeshBasicMaterial({ map: Tex.regenbogen(), transparent: true, opacity: 0.92, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
+    else sm = new THREE.MeshLambertMaterial({ map: Tex.strasse(stil), side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1 });
+    const ms = new THREE.Mesh(geo(strasse), sm); ms.receiveShadow = true; g.add(ms);
+    if (waende.length) {
+      let wm;
+      if (wandStil === 'leucht') { wm = new THREE.MeshBasicMaterial({ color: '#7af0ff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false }); this.anim.push(t => wm.color.setHSL((t * 0.1 + 0.5) % 1, 0.9, 0.6)); }
+      else { const tex = Tex.wand(wandStil).clone(); tex.needsUpdate = true; wm = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide }); }
+      const mw = new THREE.Mesh(geo(waende), wm); mw.castShadow = wandStil !== 'leucht'; mw.receiveShadow = true; g.add(mw);
+    }
+    if (boesch.length) { const m = new THREE.Mesh(geo(boesch, true), new THREE.MeshLambertMaterial({ map: Tex.boden(th.boden === 'stadt' ? 'stadt' : th.boden === 'lava' ? 'erde' : (th.boden || 'gras')), side: THREE.DoubleSide })); m.receiveShadow = true; g.add(m); }
+    if (unter.length) {
+      const um = thema === 'all' ? new THREE.MeshBasicMaterial({ color: '#3a1a6a', transparent: true, opacity: 0.7, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map: Tex.wand(th.wand === 'burg' ? 'burg' : 'beton'), side: THREE.DoubleSide });
+      g.add(new THREE.Mesh(geo(unter, true), um));
+    }
+    if (pfeiler.length) {
+      const pm = thema === 'all' ? new THREE.MeshBasicMaterial({ color: '#5a2a9a', transparent: true, opacity: 0.5 }) : new THREE.MeshLambertMaterial({ map: Tex.wand(th.wand === 'burg' ? 'burg' : 'beton') });
+      streuen(g, [{ geo: G.box(1.4, 1, 1.4), mat: pm }], pfeiler);
+    }
+  }
+  // Steinblöcke mit grimmigem Gesicht, die immer wieder auf die Strecke krachen
+  baueSteine() {
+    const d = this.def, L = this.L, g = this.gruppe;
+    this.steine = [];
+    if (!d.steine) return;
+    const stil = { wueste: 'fels', schnee: 'schnee' }[d.thema] || 'burg';
+    const tex = Tex.wand(stil).clone(); tex.needsUpdate = true;
+    const farbe = d.thema === 'schnee' ? '#bfe6ff' : d.thema === 'all' ? '#9a8ac8' : '#ffffff';
+    const steinM = new THREE.MeshLambertMaterial({ map: tex, color: farbe });
+    const dunkel = Mat.std('#1a1418', { roughness: 0.6 }), weiss = Mat.std('#ffffff', { roughness: 0.4 }), stachel = Mat.std('#8a8490', { roughness: 0.5 });
+    const schattenM = new THREE.MeshBasicMaterial({ map: Tex.punkt(), color: '#000', transparent: true, opacity: 0.3, depthWrite: false });
+    for (const [u, df, phase] of d.steine) {
+      const s = u * L + this.startS, A = this.S[this.idx(s)];
+      const dd = df * A.w, p = this.punkt(s, dd);
+      const grp = new THREE.Group();
+      const koerper = new THREE.Group();
+      koerper.add(M(G.box(3.8, 3.4, 3.0), steinM, 0, 1.7, 0));
+      // Gesicht schaut den Fahrern entgegen
+      const z = -1.52;
+      for (const sx of [-1, 1]) {
+        koerper.add(M(G.box(0.85, 0.6, 0.08), weiss, sx * 0.8, 2.25, z));
+        koerper.add(M(G.box(0.34, 0.4, 0.06), dunkel, sx * 0.62, 2.18, z - 0.05));
+        koerper.add(M(G.box(1.05, 0.24, 0.12), dunkel, sx * 0.8, 2.75, z - 0.02, 0, 0, -sx * 0.38));
+      }
+      koerper.add(M(G.box(2.3, 0.62, 0.08), dunkel, 0, 1.05, z));
+      for (let i = 0; i < 5; i++) koerper.add(M(G.box(0.3, 0.26, 0.06), weiss, -0.9 + i * 0.45, 1.24, z - 0.05));
+      // Stacheln
+      for (const sx of [-1, 1]) for (const sz of [-0.8, 0.8]) {
+        koerper.add(M(G.kegel(0.32, 0.7, 6), stachel, sx * 1.2, 3.75, sz));
+        koerper.add(M(G.kegel(0.32, 0.7, 6), stachel, sx * 2.25, 1.7, sz, 0, 0, -sx * Math.PI / 2));
+      }
+      koerper.traverse(m => { if (m.isMesh) m.castShadow = true; });
+      grp.add(koerper);
+      grp.position.copy(p); grp.rotation.y = A.h;
+      g.add(grp);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 4.4), schattenM.clone());
+      sh.position.copy(p); sh.position.y += 0.1;
+      sh.quaternion.copy(this.lage(A)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
+      sh.renderOrder = 1;
+      g.add(sh);
+      this.steine.push({ s: ((s % L) + L) % L, d: dd, p: p.clone(), h: A.h, hw: 1.9, hd: 1.5, phase, m: koerper, sh, y: STEIN_H, faellt: false, aufprall: false });
+    }
+  }
+  // Ablauf: warten (zum Schluss zittern), herunterkrachen, liegen bleiben, langsam hochziehen
+  steineSchritt(t) {
+    for (const st of this.steine) {
+      const x = (((t + st.phase) % STEIN_TAKT) + STEIN_TAKT) % STEIN_TAKT;
+      let y, zit = false;
+      if (x < 2.6) { y = STEIN_H; zit = x > 1.95; }
+      else if (x < 2.85) { const f = (x - 2.6) / 0.25; y = STEIN_H * (1 - f * f); }
+      else if (x < 4.1) y = 0;
+      else y = STEIN_H * smooth((x - 4.1) / 1.5);
+      st.aufprall = st.y > 0 && y === 0;
+      st.faellt = x >= 2.6 && x < 2.95;
+      st.y = y;
+      st.m.position.set(zit ? (Math.random() - 0.5) * 0.18 : 0, y, zit ? (Math.random() - 0.5) * 0.18 : 0);
+      const nah = 1 - y / STEIN_H;
+      st.sh.material.opacity = 0.22 + 0.5 * nah;
+      st.sh.scale.setScalar(0.75 + 0.35 * nah);
+    }
   }
   // Bremsfallen wie im echten Kart-Spiel: Pfützen (Matsch, Sand, Schnee, Öl …) und Pylonen, die man umfährt
   baueBremsen() {
@@ -767,7 +1072,7 @@ class Strecke {
     this.bremsen = []; this.huetchen = [];
     let h = 7; for (const ch of d.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
     const zufall = rng(h);
-    const belegt = [0, ...(d.items || []), ...(d.boost || []).map(b => b[0]), ...(d.rampen || [])];
+    const belegt = [0, ...(d.items || []), ...(d.boost || []).map(b => b[0]), ...(d.rampen || []), ...(d.steine || []).map(x => x[0]), ...(d.abk || []).flatMap(a => [a[0], a[0] + a[1]])];
     const nah = (u, v, m) => { const x = Math.abs(u - v) % 1; return Math.min(x, 1 - x) < m; };
     const frei = u => {
       if (belegt.some(b => nah(u, b, 0.04))) return false;
