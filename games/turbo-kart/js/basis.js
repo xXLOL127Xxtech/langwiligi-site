@@ -221,6 +221,7 @@ const Ton = {
       case 'ziel': [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => T(f, 0.2, { typ: 'square', vol: 0.12, delay: i * 0.1 })); break;
       case 'verloren': [392, 370, 349, 330].forEach((f, i) => T(f, 0.3, { typ: 'triangle', vol: 0.14, delay: i * 0.22 })); break;
       case 'rettung': T(600, 0.6, { typ: 'triangle', vol: 0.1, slide: 1200 }); break;
+      case 'stein': R(0.7, { freq: 220, q: 0.6, vol: 0.8, ftyp: 'lowpass', slide: 50 }); T(55, 0.5, { typ: 'sine', vol: 0.5, slide: 30 }); break;
       case 'falle': R(0.4, { freq: 600, q: 0.6, vol: 0.3, slide: 100, ftyp: 'lowpass' }); break;
     }
   },

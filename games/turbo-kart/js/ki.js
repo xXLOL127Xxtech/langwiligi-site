@@ -2,9 +2,10 @@
 'use strict';
 
 const KI_STUFEN = [
-  { name: 'Leicht', tempo: 0.88, fehler: 0.32, drift: 1, reakt: [1.5, 4], treff: 0.5, gummi: 0.12 },
-  { name: 'Mittel', tempo: 0.955, fehler: 0.18, drift: 2, reakt: [0.8, 2.5], treff: 0.75, gummi: 0.09 },
-  { name: 'Schwer', tempo: 1.0, fehler: 0.07, drift: 3, reakt: [0.3, 1.3], treff: 0.95, gummi: 0.06 },
+  // aufhol: Tempo-Plus, wenn weit hinter dem besten Menschen; vorne: Tempo-Minus, wenn weit davor; abk: Lust auf Abkürzungen
+  { name: 'Leicht', tempo: 0.88, fehler: 0.32, drift: 1, reakt: [1.5, 4], treff: 0.5, aufhol: 0.07, vorne: 0.18, abk: 0.2 },
+  { name: 'Mittel', tempo: 0.955, fehler: 0.18, drift: 2, reakt: [0.8, 2.5], treff: 0.75, aufhol: 0.1, vorne: 0.14, abk: 0.45 },
+  { name: 'Schwer', tempo: 1.0, fehler: 0.07, drift: 3, reakt: [0.3, 1.3], treff: 0.95, aufhol: 0.13, vorne: 0.1, abk: 0.75 },
 ];
 
 class Bot {
@@ -61,9 +62,16 @@ class Bot {
       let ds = h.s - P.s; if (ds < -w.L / 2) ds += w.L; if (ds > w.L / 2) ds -= w.L;
       if (ds > 0 && ds < 26 && Math.abs(h.d - d) < 1.8 && (this.pfT === h.reihe ? this.pfJa : (this.pfT = h.reihe, this.pfJa = Math.random() < st.treff))) d = h.d + (h.d > d ? -2.2 : 2.2);
     }
+    // Steinblöcken ausweichen
+    for (const sb of w.steine) {
+      let ds = sb.s - P.s; if (ds < -w.L / 2) ds += w.L; if (ds > w.L / 2) ds -= w.L;
+      if (ds > -2 && ds < 30 && Math.abs(sb.d - d) < sb.hw + 1.8 && (this.stT === sb ? this.stJa : (this.stT = sb, this.stJa = Math.random() < st.treff + 0.1))) d = sb.d + (sb.d > d || (sb.d === d && k.idx % 2) ? -(sb.hw + 2.4) : sb.hw + 2.4);
+    }
     d = clamp(d, -S2.w * 0.85, S2.w * 0.85);
     if (S2.fall || w.S[w.idx(P.s + 5)].fall) d = clamp(d * 0.6, -S2.w * 0.55, S2.w * 0.55);
-    const tp = w.punkt(s2, d, _v1);
+    // Abkürzung: dem Weg folgen statt der Strecke
+    const abk = this.abkWahl(P, w);
+    const tp = abk ? this.abkZiel(abk, P, w, la) : w.punkt(s2, d, _v1);
     const soll = Math.atan2(tp.x - k.pos.x, tp.z - k.pos.z);
     const diff = wrapA(soll - k.yaw);
     inp.lenk = clamp(-diff * 3.2, -1, 1);
@@ -71,8 +79,11 @@ class Bot {
     this.driftCD -= dt;
     const kv = w.S[w.idx(P.s + 12)].k, kJetzt = w.S[w.idx(P.s + 3)].k;
     const dir = -Math.sign(kv);
-    if (!k.drift.an) {
-      if (st.drift > 0 && Math.abs(kv) > 0.013 && k.v > 14 && !k.luft && this.driftCD <= 0 && Math.abs(P.d) < P.w * 0.8) {
+    if (abk && (P.ab >= 0 || k.drift.an)) {
+      // auf der Abkürzung wird nicht gedriftet
+      inp.drift = false;
+    } else if (!k.drift.an) {
+      if (st.drift > 0 && !abk && Math.abs(kv) > 0.013 && k.v > 14 && !k.luft && this.driftCD <= 0 && Math.abs(P.d) < P.w * 0.8) {
         inp.drift = true; inp.lenk = dir;
         this.driftCD = 0.6;
       }
@@ -95,6 +106,32 @@ class Bot {
     if (this.steckT > 1.2) { this.rueckT = 0.9; this.steckT = 0; }
     if (this.rueckT > 0) { this.rueckT -= dt; inp.gas = 0; inp.bremse = 1; inp.lenk = -inp.lenk; inp.drift = false; }
     this.items(dt, inp);
+  }
+  // Abkürzung wählen: pro Runde und Abkürzung wird einmal entschieden
+  abkWahl(P, w) {
+    if (!w.abk.length) return null;
+    if (P.ab >= 0) return (this.abk = w.abk[P.ab]);
+    const k = this.k;
+    if (this.abk) {
+      let ds = P.s - this.abk.s1; ds = ((ds % w.L) + w.L) % w.L;
+      if (ds > Math.max(0, this.abk.ein) + 10 && ds < w.L - 80) this.abk = null;   // vorbei oder verpasst
+      return this.abk;
+    }
+    this.gewuerfelt = this.gewuerfelt || {};
+    for (const A of w.abk) {
+      let ds = A.s1 - P.s; ds = ((ds % w.L) + w.L) % w.L;
+      if (ds > 12 && ds < 50 && this.gewuerfelt[A.nr] !== k.runde) {
+        this.gewuerfelt[A.nr] = k.runde;
+        if (Math.random() < this.st.abk) return (this.abk = A);
+      }
+    }
+    return null;
+  }
+  abkZiel(A, P, w, la) {
+    let sl;
+    if (P.ab === A.nr) sl = P.abS + la;
+    else { let ds = A.s1 - P.s; ds = ((ds % w.L) + w.L) % w.L; if (ds > w.L / 2) ds -= w.L; sl = la - ds; }
+    return w.abkPunkt(A, sl, 0, _v1);
   }
   arena(dt, inp) {
     const k = this.k, r = k.r, w = r.welt;

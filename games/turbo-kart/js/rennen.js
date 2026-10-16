@@ -179,6 +179,13 @@ class Effekte {
       this.nor.neu(pos.x, pos.y + 1, pos.z, Math.cos(a) * v, 3 + Math.random() * 4, Math.sin(a) * v, _c, 1.4 + Math.random(), 2.5, 6, -1, 1.5);
     }
   }
+  staub(pos, radius) {
+    const f = this.farbe('#c8bfb0').clone();
+    for (let i = 0; i < 34 * this.viel; i++) {
+      const a = Math.random() * TAU, v = 4 + Math.random() * 6;
+      this.nor.neu(pos.x + Math.cos(a) * radius * 0.6, pos.y + 0.3, pos.z + Math.sin(a) * radius * 0.6, Math.cos(a) * v, 1 + Math.random() * 2.5, Math.sin(a) * v, f, 0.7 + Math.random() * 0.5, 1.2, 2.8, -0.5, 2.5);
+    }
+  }
   welle(pos, radius) {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.25, 8, 40), new THREE.MeshBasicMaterial({ color: '#fff6a0', transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
     ring.rotation.x = Math.PI / 2; ring.position.copy(pos); ring.position.y += 0.8;
@@ -219,7 +226,11 @@ class Effekte {
         if (Math.random() < 0.8 * v) if (Math.random() < 0.5) this.add.neu(_v1.x, _v1.y, _v1.z, -Math.sin(k.yaw) * 4 + (Math.random() - 0.5) * 2, 1 + Math.random(), -Math.cos(k.yaw) * 4 + (Math.random() - 0.5) * 2, this.farbe(k.boostT > 1.5 ? '#c070ff' : '#ff9a20'), 0.2, 0.45, 0.1);
       }
     }
-    if (k.P.flaeche === 'gelaende' && !k.luft && Math.abs(k.v) > 6 && Math.random() < 0.6 * v) {
+    if (k.windT > 0.15 && Math.random() < 0.7 * v) {
+      const a = Math.random() * TAU, rr = 0.9 + Math.random() * 0.6;
+      this.add.neu(k.pos.x + Math.cos(a) * rr, k.pos.y + 0.6 + Math.sin(a) * rr * 0.6, k.pos.z + Math.sin(a) * rr, -Math.sin(k.yaw) * 14, 0, -Math.cos(k.yaw) * 14, this.farbe('#e8f4ff'), 0.25, 0.22, 0.05);
+    }
+    if ((k.P.flaeche === 'gelaende' || k.P.flaeche === 'piste') && !k.luft && Math.abs(k.v) > 6 && Math.random() < 0.6 * v) {
       const th = this.r.welt.th.boden;
       const col = th === 'schnee' ? '#ffffff' : th === 'sand' ? '#e8c890' : th === 'stadt' ? '#808088' : '#9a7a50';
       k.hinterradPos(Math.random() < 0.5 ? 0 : 1, _v1);
@@ -387,8 +398,11 @@ class Rennen {
         eingaben.set(k, this.phase === 'rennen' || this.phase === 'ende' ? k.bot.input(dt) : { gas: 0, bremse: 0, lenk: 0 });
       }
     }
-    // Gummiband für Computer
+    // Gummiband für Computer, Aufholhilfe für Menschen weiter hinten
     if (!gast && this.phase === 'rennen' && !this.welt.istArena) this.gummiband();
+    if (this.phase === 'rennen' && !this.welt.istArena) this.aufholen();
+    // Steinblöcke (Zeit vom Rennen, damit sie online bei allen gleich fallen)
+    if (!this.welt.istArena && this.welt.steine.length) this.steine();
     // Physik in kleinen Schritten
     const n = Math.max(1, Math.ceil(dt / (1 / 90)));
     const h = dt / n;
@@ -401,6 +415,7 @@ class Rennen {
       }
       this.kollisionen();
     }
+    if (this.phase === 'rennen' && !this.welt.istArena) this.windschatten(dt);
     // Items benutzen
     if (this.phase === 'rennen') for (const [k, inp] of eingaben) this.items.steuerung(k, inp);
     this.items.schritt(dt);
@@ -474,6 +489,8 @@ class Rennen {
       l.material.emissiveIntensity = an ? 2 : 0;
     });
   }
+  // Wie bei Mario Kart: Computer weit hinten holen schnell auf, Computer vorne bleiben in der Nähe
+  // hartnäckig, werden aber langsamer, je weiter sie wegziehen. So kann man sie immer noch einholen.
   gummiband() {
     let best = -1e9;
     for (const k of this.karts) if (k.istMensch() && !k.fertig) best = Math.max(best, k.fortschritt);
@@ -482,7 +499,58 @@ class Rennen {
       if (k.typ !== 'bot') continue;
       const st = KI_STUFEN[k.botStufe];
       const diff = best - k.fortschritt;
-      k.botTempo = st.tempo * (1 + clamp(diff / 350, -0.6, 1) * st.gummi);
+      const f = diff >= 0 ? 1 + clamp(diff / 220, 0, 1) * st.aufhol : 1 - clamp((-diff - 25) / 200, 0, 1) * st.vorne;
+      k.botTempo = st.tempo * f;
+    }
+  }
+  // Menschen weit hinten bekommen etwas mehr Tempo (nicht im Zeitfahren)
+  aufholen() {
+    if (this.modus === 'zeit' || this.karts.length < 2) return;
+    let erster = -1e9;
+    for (const k of this.karts) if (!k.fertig) erster = Math.max(erster, k.fortschritt);
+    for (const k of this.lokale) k.aufhol = k.fertig ? 0 : clamp((erster - k.fortschritt - 20) / 260, 0, 1) * 0.07;
+  }
+  // Windschatten: kurz hinter einem anderen Kart fahren lädt einen kleinen Turbo auf
+  windschatten(dt) {
+    for (const k of this.karts) {
+      if (k.typ === 'netz') continue;
+      let drin = false;
+      if (k.v > 15 && !k.luft && k.boostT <= 0 && !k.treffer && k.rettung <= 0 && !k.fertig) {
+        const fx = Math.sin(k.yaw), fz = Math.cos(k.yaw);
+        for (const o of this.karts) {
+          if (o === k || o.v < 12 || o.rettung > 0) continue;
+          const dx = o.pos.x - k.pos.x, dz = o.pos.z - k.pos.z;
+          const vor = dx * fx + dz * fz;
+          if (vor < 2.5 || vor > 15 || Math.abs(o.pos.y - k.pos.y) > 2) continue;
+          if (Math.abs(dx * fz - dz * fx) < 1.6 + vor * 0.07) { drin = true; break; }
+        }
+      }
+      const w = k.windT || 0;
+      if (drin) {
+        k.windT = w + dt;
+        if (k.windT > 1.3) { k.windT = -1.6; k.boost(1.0, 'wind'); this.fx.text(k, 'Windschatten!'); }
+      } else k.windT = w > 0 ? Math.max(0, w - dt * 2) : Math.min(0, w + dt);
+    }
+  }
+  // Steinblöcke heben sich, zittern und krachen herunter. Wer darunter steht, wird platt gedrückt.
+  steine() {
+    const w = this.welt;
+    w.steineSchritt(this.rennZeit);
+    for (const st of w.steine) {
+      if (st.faellt && st.y < 2.4) {
+        const c = Math.cos(st.h), sn = Math.sin(st.h);
+        for (const k of this.karts) {
+          const dx = k.pos.x - st.p.x, dz = k.pos.z - st.p.z;
+          if (Math.abs(k.pos.y - st.p.y) > 3) continue;
+          if (Math.abs(dx * c - dz * sn) < st.hw + 0.6 && Math.abs(dx * sn + dz * c) < st.hd + 0.6) this.trifft(k, 'platt', null);
+        }
+      }
+      if (st.aufprall) {
+        this.fx.staub(st.p, st.hw + 1.5);
+        this.kameraWackelnAlle(st.p, 0.7);
+        let nah = 1e9; for (const k of this.lokale) nah = Math.min(nah, k.pos.distanceTo(st.p));
+        if (nah < 45) Ton.sfx('stein', 1 - nah / 45);
+      }
     }
   }
   kollisionen() {

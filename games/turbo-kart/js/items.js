@@ -5,7 +5,7 @@
 const ITEM_TABELLE = {
   banane: [30, 8, 0], banane3: [6, 6, 0], gruen: [24, 12, 3], gruen3: [4, 10, 4], rot: [0, 16, 8], rot3: [0, 6, 10],
   falle: [10, 3, 0], muenze: [18, 6, 0], hupe: [4, 4, 2], nitro: [0, 12, 10], nitro3: [0, 6, 14], goldnitro: [0, 0, 7],
-  bombe: [0, 6, 4], tinte: [0, 6, 3], stern: [0, 2, 12], blitz: [0, 0, 5], blau: [0, 3, 5], rakete: [0, 0, 10],
+  bombe: [0, 6, 4], tinte: [0, 6, 3], stern: [0, 2, 12], blitz: [0, 1, 12], blau: [0, 3, 5], rakete: [0, 0, 10],
 };
 const SCHLACHT_ITEMS = ['banane', 'banane3', 'gruen', 'gruen3', 'rot', 'rot3', 'bombe', 'nitro', 'stern', 'falle', 'hupe', 'tinte'];
 const ITEM_CODE = Object.keys(ITEMS);
@@ -108,7 +108,9 @@ class Items {
     else if (modus === 'chaos') liste = Object.keys(ITEM_TABELLE).map(t => [t, 10]);
     else {
       const n = r.karts.length;
-      const pf = n > 1 ? (k.platz - 1) / (n - 1) : 0.5;
+      // Platz plus etwas Abstand zum Ersten: wer weit zurückliegt, bekommt bessere Items (Blitz, Rakete, Stern)
+      const erster = Math.max(...r.karts.map(o => o.fortschritt));
+      const pf = n > 1 ? clamp((k.platz - 1) / (n - 1) + clamp((erster - k.fortschritt - 60) / 600, 0, 0.25), 0, 1) : 0.5;
       liste = Object.entries(ITEM_TABELLE).map(([t, w]) => [t, pf < 0.5 ? lerp(w[0], w[1], pf * 2) : lerp(w[1], w[2], (pf - 0.5) * 2)]);
     }
     // Einschränkungen
@@ -338,7 +340,7 @@ class Items {
             let tx, tz;
             if (dist < 28 || w.istArena) { tx = z.pos.x; tz = z.pos.z; }
             else {
-              const p = w.punkt(g.P.s + 16, clamp(z.P.d, -6, 6), _v1);
+              const p = g.P.ab >= 0 ? w.abkPunkt(w.abk[g.P.ab], g.P.abS + 16, 0, _v1) : w.punkt(g.P.s + 16, clamp(z.P.ab >= 0 ? 0 : z.P.d, -6, 6), _v1);
               tx = p.x; tz = p.z;
             }
             const soll = Math.atan2(tx - g.pos.x, tz - g.pos.z);

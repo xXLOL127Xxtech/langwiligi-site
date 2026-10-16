@@ -101,7 +101,13 @@ class Kart {
     const r = this.r, welt = r.welt, cc = CC[r.cc];
     this.inp = inp;
     // Zeitgeber
-    for (const k of ['boostT', 'sternT', 'kleinT', 'tinteT', 'schutzT', 'raketeT', 'goldT', 'abgewuergt', 'wandT', 'matschT']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    for (const k of ['boostT', 'sternT', 'kleinT', 'tinteT', 'schutzT', 'raketeT', 'goldT', 'abgewuergt', 'wandT', 'matschT', 'driftFenster']) if (this[k] > 0) this[k] = Math.max(0, this[k] - dt);
+    // Tinte wird vom Fahrtwind weggeweht, mit Turbo, Stern oder Rakete viel schneller (wie bei Mario Kart)
+    if (this.tinteT > 0) {
+      const wisch = this.boostT > 0 || this.sternT > 0 || this.raketeT > 0 ? 2.2 : 0.35 * clamp(Math.abs(this.v) / CC[r.cc].max, 0, 1);
+      this.tinteT = Math.max(0, this.tinteT - wisch * dt);
+      if (this.fertig) this.tinteT = 0;
+    }
     if (this.roulette > 0) {
       this.roulette -= dt;
       if (this.roulette <= 0) { this.item = this.rouletteItem; this.anzahl = /3$/.test(this.item) ? 3 : 1; if (this.item === 'goldnitro') this.goldT = 0; if (this.lokal >= 0) Ton.sfx('itemda'); }
@@ -116,11 +122,12 @@ class Kart {
     if (this.raketeT > 0) { gas = 1; bremse = 0; }
     this.lenk = damp(this.lenk, lenk, 16, dt);
     // Beim Driften wird die Lenkung geglättet, damit Tastatur-Lenken nicht ruckelt
-    this.driftLenk = damp(this.driftLenk || 0, lenk, 13, dt);
+    this.driftLenk = damp(this.driftLenk || 0, lenk, 20, dt);
     // Höchstgeschwindigkeit
     const P = this.P;
     let vmax = cc.max * (0.93 + this.w.tempo * 0.02) * (1 + Math.min(this.muenzen, 10) * 0.005);
     if (this.typ === 'bot') vmax *= this.botTempo || 1;
+    else if (this.aufhol) vmax *= 1 + this.aufhol;
     if (this.kleinT > 0) vmax *= 0.72;
     const gelaende = !this.luft && P.flaeche === 'gelaende';
     if (gelaende && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0) vmax *= clamp(0.5 + this.w.gelaende * 0.12, 0.4, 0.66);
@@ -131,7 +138,9 @@ class Kart {
     if (this.sternT > 0) vZiel = vmax * 1.16;
     if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * 1.36);
     if (this.raketeT > 0) vZiel = cc.max * 1.55;
-    const beschl = (9.5 + this.w.beschl * 2.9) * cc.acc;
+    // Abkürzung: holpriger Weg, mit Turbo kein Problem
+    if (P.flaeche === 'piste' && !this.luft && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0) vmax *= clamp((P.rauh || 0.8) + this.w.gelaende * 0.06, 0.74, 0.97);
+    const beschl = (9.5 + this.w.beschl * 2.9) * cc.acc * (1 + (this.aufhol || 0));
     if (this.treffer) {
       this.v *= Math.exp(-2.6 * dt);
     } else if (this.boostT > 0 || this.raketeT > 0 || (this.sternT > 0 && gas)) {
@@ -160,13 +169,16 @@ class Kart {
     }
     if (d.an) {
       if (!inp.drift || va < 8 || this.treffer || !lenkbar || bremse) this.driftEnde(lenkbar && !bremse);
-    } else if (inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3 && this.raketeT <= 0 && this.hop) {
-      d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0;
+    } else if (inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3 && this.raketeT <= 0 && (this.hop || this.driftFenster > 0)) {
+      // auch kurz nach der Landung kann man die Driftrichtung noch wählen
+      d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0; this.driftFenster = 0;
     }
     if (d.an) {
       const eng = clamp((this.driftLenk * d.dir + 1) / 2, 0, 1);
-      // eng (in die Kurve lenken) bis weit (dagegen lenken): grosser Spielraum wie bei Mario Kart
-      dreh = -d.dir * handl * (0.4 + 1.05 * eng) * vf;
+      // eng (in die Kurve lenken) bis weit (dagegen lenken): grosser Spielraum wie bei Mario Kart.
+      // Nach aussen gelenkt fährt das Kart fast geradeaus, nach innen viel enger als ohne Drift.
+      dreh = -d.dir * handl * (0.3 + 1.4 * eng) * vf;
+      d.eng = eng;
       d.t += dt * (0.65 + 0.85 * eng) * (this.luft ? 0.3 : 1);
       const st = d.t > DRIFT_STUFEN[2] ? 3 : d.t > DRIFT_STUFEN[1] ? 2 : d.t > DRIFT_STUFEN[0] ? 1 : 0;
       if (st > d.stufe) { d.stufe = st; if (this.lokal >= 0) Ton.sfx('funke' + st, 0.8); }
@@ -177,18 +189,19 @@ class Kart {
     if (P.eis && !this.luft) dreh *= 0.75;
     if (this.luft) dreh *= 0.6;
     this.yaw = wrapA(this.yaw + dreh * dt);
-    this.driftVis = damp(this.driftVis, d.an ? -d.dir * 0.36 : 0, 8, dt);
-    // Bewegungsrichtung folgt der Nase mit Haftung
-    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 7.5 : 18;
+    this.driftVis = damp(this.driftVis, d.an ? -d.dir * (0.26 + 0.2 * (d.eng || 0.5)) : 0, 8, dt);
+    // Bewegungsrichtung folgt der Nase mit Haftung (beim engen Driften greifen die Reifen besser)
+    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 5.5 + 5 * (d.eng || 0.5) : 18;
     this.mYaw = wrapA(this.yaw + wrapA(this.mYaw - this.yaw) * Math.exp(-haft * dt));
     if (d.an && !this.luft) {
-      // leichtes Rutschen nach aussen
-      this.ix += -Math.cos(this.mYaw) * d.dir * 1.6 * dt * -1;
-      this.iz += Math.sin(this.mYaw) * d.dir * 1.6 * dt * -1;
+      // leichtes Rutschen nach aussen, beim Gegenlenken etwas mehr
+      const rutsch = 1.6 * (1.25 - 0.75 * (d.eng || 0.5));
+      this.ix += Math.cos(this.mYaw) * d.dir * rutsch * dt;
+      this.iz -= Math.sin(this.mYaw) * d.dir * rutsch * dt;
     }
     // Rakete fährt allein der Strecke nach
     if (this.raketeT > 0 && !welt.istArena) {
-      const tp = welt.punkt(P.s + 18, welt.S[welt.idx(P.s + 18)].ideal * 0.3, _v1);
+      const tp = P.ab >= 0 ? welt.abkPunkt(welt.abk[P.ab], P.abS + 18, 0, _v1) : welt.punkt(P.s + 18, welt.S[welt.idx(P.s + 18)].ideal * 0.3, _v1);
       const soll = Math.atan2(tp.x - this.pos.x, tp.z - this.pos.z);
       this.yaw = this.mYaw = wrapA(this.yaw + wrapA(soll - this.yaw) * Math.min(1, 6 * dt));
     }
@@ -202,7 +215,7 @@ class Kart {
     let bodenY = P.bodenY;
     // Schanzen heben den Boden an
     let schanze = -1;
-    if (!welt.istArena) for (const rp of welt.rampen) {
+    if (!welt.istArena && P.ab < 0) for (const rp of welt.rampen) {
       let ds = P.s - rp.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
       if (ds > -3 && ds < 3 && Math.abs(P.d) < rp.w) { bodenY += (ds + 3) / 6 * 0.9; schanze = ds; }
     }
@@ -216,9 +229,22 @@ class Kart {
       if (w) this.wandStoss(w.x, w.z);
     } else if (!P.fall) {
       const grenze = P.lim - 1.1;
-      if (Math.abs(P.d) > grenze) {
+      if (Math.abs(P.d) > grenze && Math.sign(P.d) !== P.offen) {
         const sgn = Math.sign(P.d), push = Math.abs(P.d) - grenze;
         this.wandStoss(-P.hx * sgn * push, -P.hz * sgn * push);
+      }
+    }
+    // Steinblöcke, die unten sind, wirken wie Wände
+    if (!welt.istArena) for (const st of welt.steine) {
+      if (st.y > 1.7) continue;
+      const dx = this.pos.x - st.p.x, dz = this.pos.z - st.p.z;
+      if (dx * dx + dz * dz > 30 || Math.abs(this.pos.y - st.p.y) > 3) continue;
+      const c = Math.cos(st.h), sn = Math.sin(st.h);
+      const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+      const ex = st.hw + 1.0 - Math.abs(lx), ez = st.hd + 1.0 - Math.abs(lz);
+      if (ex > 0 && ez > 0) {
+        if (ex < ez) this.wandStoss(Math.sign(lx) * ex * c, -Math.sign(lx) * ex * sn);
+        else this.wandStoss(Math.sign(lz) * ez * sn, Math.sign(lz) * ez * c);
       }
     }
     const g = SCHWERKRAFT * (welt.schwer || 1);
@@ -237,28 +263,30 @@ class Kart {
         if (this.hop) {
           this.hop = false;
           if (!d.an && inp.drift && lenkbar && va > 10 && Math.abs(lenk) > 0.3) { d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0; }
+          else if (!d.an && inp.drift) this.driftFenster = 0.35;
         }
         if (this.trick > 0) { this.boost(0.9, 'trick'); this.trick = 0; }
         if (hart) { this.federV = -3; if (this.lokal >= 0) Ton.sfx('land', 0.7); }
       }
     }
     // Sicherer Punkt / Absturz
-    if (!this.luft && !ueberRand && P.flaeche !== 'gelaende' && !welt.istArena) this.sicher = { si: P.si, yaw: this.yaw };
+    if (!this.luft && !ueberRand && P.flaeche !== 'gelaende' && P.ab < 0 && !welt.istArena) this.sicher = { si: P.si, yaw: this.yaw };
     if (this.pos.y < (welt.todY !== undefined ? welt.todY : -40) || (ueberRand && this.pos.y < P.bodenY - 14)) this.starteRettung();
     // Strecken-Elemente
     if (!welt.istArena && !this.luft) {
       for (const b of welt.boosts) {
-        let ds = P.s - b.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
+        if ((b.ab === undefined ? -1 : b.ab) !== P.ab) continue;
+        let ds = b.ab === undefined ? P.s - b.s : P.abS - b.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
         if (ds > -b.l && ds < b.l && Math.abs(P.d - b.d) < b.b + 0.6) { if (this.boostT < 0.9) this.boost(1.1, 'feld'); }
       }
-      for (const b of welt.bremsen || []) {
+      if (P.ab < 0) for (const b of welt.bremsen || []) {
         let ds = P.s - b.s; if (ds > welt.L / 2) ds -= welt.L; if (ds < -welt.L / 2) ds += welt.L;
         if (ds > -b.l && ds < b.l && Math.abs(P.d - b.d) < b.b) {
           if (!(this.matschT > 0) && this.lokal >= 0 && va > 6 && this.boostT <= 0 && this.sternT <= 0) Ton.sfx('land', 0.5);
           this.matschT = 0.2;
         }
       }
-      for (const h of welt.huetchen || []) {
+      for (const h of P.ab < 0 ? welt.huetchen || [] : []) {
         if (h.weg) continue;
         const dx = this.pos.x - h.p.x, dz = this.pos.z - h.p.z;
         if (dx * dx + dz * dz < 1.5 * 1.5 && Math.abs(this.pos.y - h.p.y) < 2) {
@@ -284,7 +312,7 @@ class Kart {
     this.n.lerp(zielN, 1 - Math.exp(-10 * dt)).normalize();
     // Falsche Richtung
     if (!welt.istArena && r.phase === 'rennen' && !this.fertig) {
-      const hd = welt.S[P.si].h;
+      const hd = P.ab >= 0 ? P.abH : welt.S[P.si].h;
       if (Math.abs(wrapA(this.yaw - hd)) > 2.1 && va > 3) this.falschT += dt; else this.falschT = Math.max(0, this.falschT - dt * 2);
     }
   }

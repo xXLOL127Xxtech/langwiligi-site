@@ -30,7 +30,8 @@ class Kamera {
       w.proj(this.P, this.pos.x, this.pos.y, this.pos.z);
       // Kamera bleibt innerhalb der Wände (sonst wird das Bild beim Driften schwarz)
       const grenze = this.P.lim - 0.8;
-      if (!this.P.fall && Math.abs(this.P.d) > grenze) {
+      // (auf einer Abkürzung nur an deren Wänden, sonst würde die Kamera zur Strecke springen)
+      if (!this.P.fall && Math.abs(this.P.d) > grenze && Math.sign(this.P.d) !== this.P.offen && (this.P.ab >= 0 || !(k.P.ab >= 0))) {
         const zu = Math.abs(this.P.d) - grenze, sg = Math.sign(this.P.d);
         this.pos.x -= this.P.hx * sg * zu; this.pos.z -= this.P.hz * sg * zu;
       }
@@ -202,6 +203,12 @@ const Anzeige = {
       pfad(); g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 13; g.stroke();
       pfad(); g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 8; g.stroke();
       pfad(); g.strokeStyle = r.welt.def.thema === 'all' ? '#c08aff' : 'rgba(90,100,120,.9)'; g.lineWidth = 5; g.stroke();
+      // Abkürzungen gestrichelt
+      for (const A of w.abk) {
+        g.beginPath(); A.P.forEach((q, i) => { const [x, y] = P(q.p.x, q.p.z); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+        g.setLineDash([]); g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 6; g.stroke();
+        g.setLineDash([4, 3]); g.strokeStyle = '#ffd23a'; g.lineWidth = 3; g.stroke(); g.setLineDash([]);
+      }
       const [sx, sy] = P(w.punkt(w.startS, 0).x, w.punkt(w.startS, 0).z);
       g.fillStyle = '#fff'; g.fillRect(sx - 5, sy - 5, 10, 10); g.fillStyle = '#111'; g.fillRect(sx - 5, sy - 5, 5, 5); g.fillRect(sx, sy, 5, 5);
     }
@@ -286,10 +293,20 @@ const Anzeige = {
       html += `<i style="left:${x}%;top:${y}%;width:${s}vmin;height:${s}vmin;transform:translate(-50%,-50%) rotate(${R() * 360}deg);background-image:url(${this.tintenBild(i % 3)})"></i>`;
     }
     v.tinteEl.innerHTML = html;
-    v.tinteEl.classList.remove('weg'); void v.tinteEl.offsetWidth;
-    v.tinteEl.classList.add('an');
-    clearTimeout(v.tinteT);
-    v.tinteT = setTimeout(() => { v.tinteEl.classList.remove('an'); v.tinteEl.classList.add('weg'); }, 4200);
+    v.tinteRutsch = 0;
+    v.tinteMax = Math.max(v.k ? v.k.tinteT : 0, 0.01);
+  },
+  // Tinte pro Bild: rinnt nach unten und verblasst, je nachdem wie viel Tinte das Kart noch hat
+  tinteZeigen(v, k, dt) {
+    const t = k.tinteT || 0;
+    if (t <= 0 && !v.tinteSicht) return;
+    const f = v.tinteMax ? clamp(t / v.tinteMax, 0, 1) : 0;
+    const sicht = t > 0 ? 0.95 * Math.min(1, f * 2.2) : 0;
+    v.tinteSicht = sicht;
+    v.tinteRutsch = (v.tinteRutsch || 0) + dt * (1.5 + 5 * (1 - f));
+    v.tinteEl.style.opacity = sicht.toFixed(3);
+    v.tinteEl.style.transform = `translateY(${v.tinteRutsch.toFixed(2)}vmin) scaleY(${(1 + (1 - f) * 0.25).toFixed(3)})`;
+    if (sicht <= 0) { v.tinteEl.innerHTML = ''; v.tinteSicht = 0; }
   },
   tintenBild(n) {
     this.tinten = this.tinten || [];
@@ -416,6 +433,7 @@ const Anzeige = {
     if (v.kartenT <= 0) { v.kartenT = 1 / 20; this.karteZeichnen(v.karte, r, k); }
     // Effekte
     v.speed.classList.toggle('an', (k.boostT > 0 || k.raketeT > 0) && r.phase === 'rennen');
+    this.tinteZeigen(v, k, dt);
     v.falsch.classList.toggle('an', k.falschT > 1.2 && !k.fertig);
   },
   leerfeldZeichnen(r) {

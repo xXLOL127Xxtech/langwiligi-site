@@ -209,10 +209,8 @@ details.help summary{cursor:pointer;font-weight:700}
 .h-speed{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .25s;pointer-events:none}
 .h-speed.an{opacity:.4}
 @keyframes speed{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.06) rotate(1deg)}100%{transform:scale(1) rotate(0)}}
-.h-tinte{position:absolute;inset:0;pointer-events:none;opacity:0}
+.h-tinte{position:absolute;inset:0;pointer-events:none;opacity:0;transform-origin:50% 0}
 .h-tinte i{position:absolute;background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4))}
-.h-tinte.an{opacity:.95;transition:opacity .2s}
-.h-tinte.weg{opacity:0;transition:opacity 1.2s}
 .h-blitz{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 .h-blitz.an{animation:flash .6s ease-out}
 @keyframes flash{0%{opacity:.95}100%{opacity:0}}
@@ -371,12 +369,16 @@ details.help summary{cursor:pointer;font-weight:700}
     </div>
     <details class="help" open>
       <summary>So fährst du schnell</summary>
-      <p><b>Driften:</b> Halte die Drift-Taste in der Kurve gedrückt und lenke. Mit der Lenkung steuerst du den Drift enger oder weiter. Die Funken werden <b style="color:#4fc8ff">blau</b>, dann <b style="color:#ffa21f">orange</b> und zuletzt <b style="color:#d86bff">lila</b>. Lass los für einen Mini-Turbo – je länger, desto stärker.</p>
+      <p><b>Driften:</b> Halte die Drift-Taste in der Kurve gedrückt und lenke. Mit der Lenkung steuerst du den Drift viel enger oder fast geradeaus. Hast du beim Hüpfen noch nicht gelenkt, kannst du die Richtung kurz nach der Landung noch wählen. Die Funken werden <b style="color:#4fc8ff">blau</b>, dann <b style="color:#ffa21f">orange</b> und zuletzt <b style="color:#d86bff">lila</b>. Lass los für einen Mini-Turbo – je länger, desto stärker.</p>
       <p><b>Raketenstart:</b> Gib Gas, kurz nachdem die „2“ erscheint. Zu früh und der Motor wird abgewürgt!</p>
       <p><b>Tricks:</b> Drück auf einer Schanze in der Luft die Drift-Taste – bei der Landung gibt es einen Turbo.</p>
       <p><b>Items:</b> Fahr durch die bunten Würfel. Bananen und Kugeln kannst du mit gedrückter Item-Taste hinter dir halten (schützt vor Kugeln). Mit gedrückter Bremse wirfst du in die andere Richtung.</p>
       <p><b>Münzen:</b> Jede Münze macht dich etwas schneller (höchstens 10). Bei Treffern verlierst du welche.</p>
       <p><b>Hindernisse:</b> Pfützen aus Matsch, Sand, Schnee oder Öl bremsen dich, Pylonen kosten beim Umfahren Tempo. Mit Turbo oder Stern rauschst du einfach durch.</p>
+      <p><b>Steinblöcke:</b> Auf manchen Strecken krachen grimmige Steinblöcke herunter. Wenn sie zittern, schnell vorbei – sonst wirst du platt gedrückt. Ihr Schatten zeigt, wo sie landen.</p>
+      <p><b>Abkürzungen:</b> Jede Strecke hat Abkürzungen (gelbe Fähnchen, auf der Karte gestrichelt). Der Weg ist holprig, aber kürzer – mit dem Turbo-Feld oder einem Nitro lohnt er sich richtig.</p>
+      <p><b>Windschatten:</b> Fahr dicht hinter einem anderen Kart. Wenn weisse Streifen erscheinen, lädt sich ein Turbo auf.</p>
+      <p><b>Aufholen:</b> Wer weit hinten liegt, ist etwas schneller und bekommt stärkere Items wie Blitz, Rakete oder Stern. Tinte rinnt mit der Zeit weg, mit Turbo oder Stern viel schneller.</p>
       <p><b>Gamepad:</b> A = Gas, B = Bremse, R/ZR = Drift, L/ZL = Item, Start = Pause.</p>
     </details>
     <button class="btn haupt" data-back>Alles klar!</button>
