@@ -196,7 +196,7 @@ class Effekte {
     const spur = k.drift.an && !k.luft && k.P.flaeche !== 'gelaende';
     for (let i = 0; i < 2; i++) {
       if (spur) k.hinterradPos(i, _v1);
-      this.spuren.punkt(k.idx * 2 + i, _v1.x, _v1.y - 0.06, _v1.z, k.anzeigeYaw, spur);
+      this.spuren.punkt(k.idx * 2 + i, _v1.x, _v1.y - 0.06, _v1.z, k.anzeigeYaw, spur && isFinite(_v1.x + _v1.y + _v1.z));
     }
     if (k.drift.an && !k.luft) {
       const st = k.drift.stufe;
@@ -557,7 +557,7 @@ class Rennen {
     if (k.lokal >= 0 && k.runde >= 2 && k.runde <= this.runden) {
       if (k.runde === this.runden) {
         if (this.anzeige) this.anzeige.gross(k.lokal, 'Letzte Runde!', 'letzte');
-        if (!this.letzteRundeGespielt) { this.letzteRundeGespielt = true; Ton.sfx('letzte'); setTimeout(() => Ton.tempo(1.13), 1500); }
+        if (!this.letzteRundeGespielt) { this.letzteRundeGespielt = true; Ton.sfx('letzte'); setTimeout(() => Ton.tempo(1.06), 1500); setTimeout(() => Ton.tempo(1), 16000); }
       } else {
         Ton.sfx('runde');
         if (this.anzeige) this.anzeige.gross(k.lokal, 'Runde ' + k.runde, 'runde');

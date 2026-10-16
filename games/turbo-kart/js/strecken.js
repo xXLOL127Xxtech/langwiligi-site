@@ -726,9 +726,7 @@ class Strecke {
       const dd = df * A.w;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(4, 7), bmat);
       const p = this.punkt(s, dd); m.position.copy(p); m.position.y += 0.09;
-      m.quaternion.setFromEuler(new THREE.Euler(0, A.h, 0)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
-      // an die Neigung anpassen
-      m.rotateOnAxis(new THREE.Vector3(0, 1, 0), 0);
+      m.quaternion.copy(this.lage(A)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
       g.add(m);
       this.boosts.push({ s: ((s % L) + L) % L, d: dd, b: 2.2, l: 3.6 });
     }
@@ -754,11 +752,18 @@ class Strecke {
       })));
       const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: rt }));
       const p = this.punkt(s, 0); m.position.copy(p);
-      m.quaternion.setFromEuler(new THREE.Euler(0, A.h, 0));
+      m.quaternion.copy(this.lage(A));
       m.castShadow = true; m.receiveShadow = true;
       g.add(m);
       this.rampen.push({ s: ((s % L) + L) % L, w: A.w });
     }
+  }
+  // Ausrichtung an Steigung und Neigung der Strecke
+  lage(A) {
+    const z = A.t.clone().normalize(), y = A.n.clone().normalize();
+    const x = new THREE.Vector3().crossVectors(y, z).normalize();
+    y.crossVectors(z, x);
+    return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
   }
   // Freie Plätze neben der Strecke suchen
   plaetze(n, abMin, abMax, R, ausser = 0) {
