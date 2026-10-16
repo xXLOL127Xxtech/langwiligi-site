@@ -20,7 +20,7 @@ const THEMEN = {
   },
   dschungel: {
     himmel: ['#3aa0d8', '#9fe0d0', '#f2ffe8'], sonne: '#fff6d0', sonneI: 1.05, hemi: ['#d8ffe0', '#2f5a24', 0.85],
-    nebel: ['#a8d8b0', 220, 900], boden: 'dschungel', strasse: 'dschungel', wand: 'holz', berge: '#2f7a35',
+    nebel: ['#a8d8b0', 220, 900], boden: 'dschungel', strasse: 'dschungel', wand: 'tempel', berge: '#2f7a35',
     musik: { seed: 404, bpm: 144, root: 60, skala: 'moll', prog: [0, 5, 2, 6, 0, 5, 3, 4], stil: 'pop', lead: 'triangle' },
   },
   schnee: {
@@ -50,107 +50,143 @@ const THEMEN = {
   },
 };
 
-// Polygon mit abgerundeten Ecken (für Stadtstrecken)
-function ecken(pts, r) {
-  const out = [];
-  const n = pts.length;
+// Strecke als Vieleck: jede Ecke [x, z, radius, höhe] wird mit einem Kreisbogen abgerundet.
+// Gestartet wird in der Mitte der Geraden von der letzten zur ersten Ecke.
+function kurs(ecken, skala = 1) {
+  const n = ecken.length, V = ecken.map(e => ({ x: e[0] * skala, z: e[1] * skala, r: e[2] || 20, y: e[3] || 0 }));
+  const roh = [];   // Punkte mit Höhe
+  const stuecke = [];
   for (let i = 0; i < n; i++) {
-    const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
-    const d1 = Math.hypot(b[0] - a[0], b[1] - a[1]), d2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
-    const r1 = Math.min(r, d1 * 0.45), r2 = Math.min(r, d2 * 0.45);
-    const y = b[2] || 0;
-    const ya = a[2] || 0, yc = c[2] || 0;
-    out.push([b[0] + (a[0] - b[0]) / d1 * r1, b[1] + (a[1] - b[1]) / d1 * r1, lerp(y, ya, r1 / d1)]);
-    out.push([(b[0] * 2 + (a[0] - b[0]) / d1 * r1 * 0.5 + (c[0] - b[0]) / d2 * r2 * 0.5) / 2, (b[1] * 2 + (a[1] - b[1]) / d1 * r1 * 0.5 + (c[1] - b[1]) / d2 * r2 * 0.5) / 2, y]);
-    out.push([b[0] + (c[0] - b[0]) / d2 * r2, b[1] + (c[1] - b[1]) / d2 * r2, lerp(y, yc, r2 / d2)]);
+    const a = V[(i - 1 + n) % n], b = V[i], c = V[(i + 1) % n];
+    const d1x = b.x - a.x, d1z = b.z - a.z, l1 = Math.hypot(d1x, d1z);
+    const d2x = c.x - b.x, d2z = c.z - b.z, l2 = Math.hypot(d2x, d2z);
+    const u1x = d1x / l1, u1z = d1z / l1, u2x = d2x / l2, u2z = d2z / l2;
+    const th = Math.acos(clamp(u1x * u2x + u1z * u2z, -1, 1));
+    let r = b.r, t = r * Math.tan(th / 2);
+    const tmax = Math.min(l1, l2) * 0.49;
+    if (t > tmax) { t = tmax; r = t / Math.tan(th / 2); }
+    const p1 = { x: b.x - u1x * t, z: b.z - u1z * t }, p2 = { x: b.x + u2x * t, z: b.z + u2z * t };
+    const kreuz = u1x * u2z - u1z * u2x;   // Drehsinn
+    stuecke.push({ p1, p2, b, r, th, kreuz, u1x, u1z, y: b.y });
   }
-  return out;
-}
-// Acht aus einer Lemniskate, mit Brücke über die Kreuzung
-function acht(a, n, hoehe) {
   const pts = [];
+  const SCH = 8;
   for (let i = 0; i < n; i++) {
-    const t = i / n * TAU;
-    const s = Math.sin(t), c = Math.cos(t);
-    const x = a * c / (1 + s * s), z = a * s * c / (1 + s * s) * 1.25;
-    const dt = wrapA(t - Math.PI / 2);
-    const y = hoehe * Math.exp(-(dt * dt) / 0.55) + 0.2;
-    pts.push([x, z, y]);
+    const s = stuecke[i], nx = stuecke[(i + 1) % n];
+    // Bogen um die Ecke
+    if (s.th > 1e-3) {
+      const m = Math.max(2, Math.ceil(s.r * s.th / SCH));
+      // Mittelpunkt: von p1 senkrecht zur Einfahrtsrichtung
+      const sg = s.kreuz > 0 ? 1 : -1;
+      const cx = s.p1.x - s.u1z * s.r * sg, cz = s.p1.z + s.u1x * s.r * sg;
+      const a0 = Math.atan2(s.p1.z - cz, s.p1.x - cx);
+      for (let k = 0; k <= m; k++) { const a = a0 + sg * s.th * k / m; pts.push({ x: cx + Math.cos(a) * s.r, z: cz + Math.sin(a) * s.r, y: s.y }); }
+    } else pts.push({ x: s.b.x, z: s.b.z, y: s.y });
+    // Gerade zur nächsten Ecke
+    const gl = Math.hypot(nx.p1.x - s.p2.x, nx.p1.z - s.p2.z), m = Math.floor(gl / SCH);
+    for (let k = 1; k < m; k++) { const f = k / m; pts.push({ x: lerp(s.p2.x, nx.p1.x, f), z: lerp(s.p2.z, nx.p1.z, f), y: lerp(s.y, nx.y, smooth(f)) }); }
   }
-  return pts;
+  // Höhen weich machen
+  const H = pts.map(p => p.y);
+  for (let pass = 0; pass < 6; pass++) for (let i = 0; i < pts.length; i++) pts[i].y = (H[(i - 1 + pts.length) % pts.length] + H[i] * 2 + H[(i + 1) % pts.length]) / 4, H[i] = pts[i].y;
+  // Start in die Mitte der letzten Geraden legen
+  const s = stuecke[n - 1], e = stuecke[0];
+  const mx = (s.p2.x + e.p1.x) / 2, mz = (s.p2.z + e.p1.z) / 2;
+  let bi = 0, bd = 1e18; pts.forEach((p, i) => { const d = (p.x - mx) ** 2 + (p.z - mz) ** 2; if (d < bd) { bd = d; bi = i; } });
+  const out = pts.slice(bi).concat(pts.slice(0, bi));
+  // doppelte Punkte entfernen
+  return out.filter((p, i) => i === 0 || Math.hypot(p.x - out[i - 1].x, p.z - out[i - 1].z) > 1).map(p => [p.x, p.z, p.y]);
 }
 
 // ---------- Strecken ----------
+// ecken: Vieleck der Strecke [x, z, Kurvenradius, Höhe], skala: Grösse. Positionen (items, boost …) als Anteil der Runde ab dem Start.
+// abschnitte (fall, bruecke, eis, stil, wand) zählen ab dem ersten Punkt der Strecke, nicht ab dem Start.
 const CUPS = [{ name: 'Nitro-Cup', symbol: 'nitro' }, { name: 'Stern-Cup', symbol: 'stern' }];
 const STRECKEN = [
   {
-    id: 'sonnenwiese', name: 'Sonnenwiesen-Ring', cup: 0, thema: 'wiese', laenge: 1050, breite: 10.5, rand: 7,
-    pts: [[-60, -120], [40, -122], [110, -112], [152, -80], [162, -30], [140, 12], [98, 26], [70, 52], [76, 92, 3], [110, 122, 7], [102, 162, 7], [52, 178, 4], [-10, 162, 1], [-50, 128], [-100, 136], [-150, 112], [-168, 50], [-148, -8], [-158, -70], [-122, -112]],
-    items: [0.1, 0.38, 0.62, 0.86], boost: [[0.28, 0], [0.72, -0.4], [0.72, 0.4]], rampen: [0.455], muenzen: [[0.05, 0.4, 6], [0.2, -0.3, 6], [0.5, 0, 5], [0.8, 0.5, 6]],
-    abschnitte: [],
-    // Abkürzungen: [Start (Anteil der Runde), Länge der umfahrenen Strecke, Seite]
-    abk: [[0.05, 0.24, 1], [0.63, 0.2, 1]],
+    id: 'sonnenwiese', name: 'Sonnenwiesen-Ring', cup: 0, thema: 'wiese', breite: 13, rand: 6, skala: 0.792,
+    story: 'Erntefest in Sonnenwil! Rase an der Windmühle vorbei, mitten durch die rote Scheune und über die Hügel der Kuhweide.',
+    ecken: [[250, 230, 45], [250, 70, 40], [170, 25, 24], [235, -55, 26], [235, -180, 45, 1], [-10, -210, 50, 3], [-95, -150, 24, 4], [15, -90, 24, 6],
+      [35, 15, 32, 8], [-80, 55, 28, 6], [-140, -40, 28, 3], [-250, -50, 40, 1], [-200, 90, 35], [-260, 230, 45]],
+    items: [0.06, 0.3, 0.47, 0.685, 0.79], boost: [[0.155, 0], [0.362, -0.4], [0.362, 0.4], [0.93, 0]], rampen: [0.53],
+    muenzen: [[0.02, 0.4, 6], [0.145, -0.4, 5], [0.37, 0, 7], [0.56, 0.3, 5], [0.7, -0.3, 5], [0.95, -0.4, 6]],
+    abschnitte: [], abk: [],
+    wahrzeichen: [{ typ: 'girlanden', u: 0.975 }, { typ: 'windmuehle', u: 0.21 }, { typ: 'scheune', u: 0.395 }, { typ: 'kuehe', u: 0.6 }, { typ: 'heuballen', u: [0.12, 0.33, 0.5, 0.74, 0.86] }, { typ: 'vogelscheuche', u: 0.68 }],
   },
   {
-    id: 'palmenstrand', name: 'Palmenstrand', cup: 0, thema: 'strand', laenge: 1150, breite: 10, rand: 7,
-    pts: [[0, -100], [90, -110], [160, -82], [190, -22], [172, 38], [130, 68], [136, 112, 2], [118, 160, 2.5], [60, 182, 2.5], [0, 160, 2], [-28, 108], [-80, 88], [-140, 112], [-196, 76], [-204, 4], [-166, -52], [-92, -84]],
-    items: [0.12, 0.36, 0.58, 0.84], boost: [[0.3, 0.3], [0.66, 0], [0.92, -0.3]], rampen: [0.75], muenzen: [[0.07, -0.4, 6], [0.24, 0.4, 5], [0.46, 0, 7], [0.7, -0.3, 5], [0.9, 0.3, 6]],
-    abschnitte: [{ von: 0.37, bis: 0.56, fall: true, stil: 'holz' }],
-    wasserY: -0.6,
-    abk: [[0.1, 0.21, 1]],
+    id: 'palmenstrand', name: 'Palmenstrand', cup: 0, thema: 'strand', breite: 13, rand: 6, skala: 0.855,
+    story: 'Die Piratenbucht ruft! Über den wackligen Holzsteg, vorbei am gestrandeten Piratenschiff und rund ums Leuchtturm-Kap.',
+    ecken: [[360, 110, 50], [340, -40, 35], [235, -60, 28], [195, -230, 26], [115, -70, 28], [20, -90, 40], [-60, -200, 30, 1], [-170, -180, 30, 1],
+      [-190, -50, 35], [-310, -20, 40], [-380, 110, 50], [-120, 160, 140]],
+    items: [0.08, 0.22, 0.42, 0.6, 0.72], boost: [[0.03, 0], [0.53, -0.35], [0.53, 0.35], [0.88, 0]], rampen: [0.66],
+    muenzen: [[0.12, 0.3, 6], [0.29, 0, 6], [0.45, -0.3, 5], [0.58, 0.3, 5], [0.74, 0, 6], [0.92, -0.4, 6]],
+    abschnitte: [{ von: 0.275, bis: 0.35, fall: true, stil: 'holz' }], abk: [],
+    wahrzeichen: [{ typ: 'piratentor', u: 0.045 }, { typ: 'piratenschiff', u: 0.31 }, { typ: 'leuchtturm', u: 0.5 }, { typ: 'strandkorb', u: [0.15, 0.62, 0.8] }],
   },
   {
-    id: 'wuestenschlucht', name: 'Wüstenschlucht', cup: 0, thema: 'wueste', laenge: 1200, breite: 10.5, rand: 6, wandH: 7,
-    pts: [[0, -150], [80, -150], [140, -120], [150, -60], [100, -20], [40, -10], [10, 30], [30, 80], [90, 100, 2], [150, 90, 4], [190, 130, 4], [170, 190, 2], [100, 210], [20, 190], [-40, 150], [-90, 160], [-150, 130], [-170, 60], [-130, 10], [-150, -60], [-120, -120], [-60, -150]],
-    items: [0.08, 0.3, 0.55, 0.8], boost: [[0.2, -0.4], [0.2, 0.4], [0.47, 0], [0.9, 0]], rampen: [0.44, 0.68], muenzen: [[0.04, 0, 6], [0.25, 0.4, 5], [0.5, -0.4, 5], [0.62, 0, 6], [0.85, 0.3, 5]],
-    abschnitte: [],
-    abk: [[0.08, 0.15, 1]],
-    // Fallende Steinblöcke: [Position, seitlich (-1 bis 1), Zeitversatz]
-    steine: [[0.36, -0.42, 0], [0.36, 0.42, 2.8], [0.75, 0, 1.0]],
+    id: 'wuestenschlucht', name: 'Wüstenschlucht', cup: 0, thema: 'wueste', breite: 13, rand: 5, wandH: 7, skala: 0.765,
+    story: 'Auf der Jagd nach dem goldenen Skarabäus: durch die enge Schlucht, unter den Felsbögen hindurch und an der Sphinx vorbei. Achtung, Steinschlag!',
+    ecken: [[300, 200, 40], [330, 60, 35], [230, 0, 30], [320, -90, 30], [250, -200, 40, 3], [120, -150, 30, 4], [60, -240, 28, 4], [-60, -170, 35, 3],
+      [-20, -60, 30, 2], [-140, -10, 28], [-250, -120, 40], [-330, 0, 35], [-250, 120, 30], [-300, 210, 40], [0, 180, 150]],
+    items: [0.07, 0.17, 0.39, 0.6, 0.91], boost: [[0.495, 0], [0.66, -0.35], [0.66, 0.35], [0.97, 0]], rampen: [0.79],
+    muenzen: [[0.03, -0.4, 6], [0.2, 0.3, 5], [0.42, 0, 6], [0.56, -0.3, 5], [0.7, 0.3, 5], [0.86, 0, 6]],
+    abschnitte: [], abk: [],
+    steine: [[0.3, -0.42, 0], [0.3, 0.42, 2.8], [0.72, 0, 1.2]],
+    wahrzeichen: [{ typ: 'felsbogen', u: 0.12 }, { typ: 'felsbogen', u: 0.64 }, { typ: 'sphinx', u: 0.96 }, { typ: 'skarabaeus', u: 0.5 }],
   },
   {
-    id: 'dschungeltempel', name: 'Dschungeltempel', cup: 0, thema: 'dschungel', laenge: 1150, breite: 10, rand: 6,
-    pts: acht(230, 26, 10),
-    items: [0.15, 0.4, 0.65, 0.9], boost: [[0.25, 0], [0.75, 0]], rampen: [0.55], muenzen: [[0.05, 0.3, 6], [0.3, -0.3, 6], [0.48, 0, 5], [0.8, 0.3, 6]],
-    abschnitte: [{ von: 0.17, bis: 0.33, bruecke: true, stil: 'holz', wand: 'holz' }],
-    start: 0.5,
-    abk: [[0.27, 0.22, 1]],
-    steine: [[0.08, -0.42, 0], [0.08, 0.42, 2.8]],
+    id: 'dschungeltempel', name: 'Dschungeltempel', cup: 0, thema: 'dschungel', breite: 13, rand: 5, skala: 0.765, start: 0.62,
+    story: 'Der Tempel des Smaragdaffen erwacht! Über die Holzbrücke der grossen Acht, durch das Tempeltor und vorbei an den steinernen Wächtern.',
+    ecken: [[0, 0, 10, 11], [150, 150, 45, 2], [300, 210, 45], [400, 80, 50], [330, -110, 40], [200, -60, 26], [150, -170, 30],
+      [-150, 150, 45, 0], [-300, 210, 45], [-400, 80, 50], [-330, -110, 40], [-200, -60, 26], [-150, -170, 30, 2]],
+    items: [0.04, 0.17, 0.36, 0.54, 0.68, 0.96], boost: [[0.115, 0], [0.61, -0.35], [0.61, 0.35], [0.93, 0]], rampen: [0.87],
+    muenzen: [[0.07, 0.3, 5], [0.2, -0.3, 5], [0.42, 0, 7], [0.58, 0.3, 5], [0.73, -0.3, 5], [0.9, 0, 6]],
+    abschnitte: [{ von: 0.962, bis: 1, bruecke: true, stil: 'holz', wand: 'holz' }, { von: 0, bis: 0.115, bruecke: true, stil: 'holz', wand: 'holz' }], abk: [],
+    steine: [[0.28, -0.42, 0], [0.28, 0.42, 2.8], [0.75, 0, 1.4]],
+    wahrzeichen: [{ typ: 'tempeltor', u: 0.115 }, { typ: 'wasserfall', u: 0.6 }, { typ: 'affenstatue', u: [0.05, 0.45, 0.8] }],
   },
   {
-    id: 'eisgipfel', name: 'Eisgipfel', cup: 1, thema: 'schnee', laenge: 1250, breite: 10.5, rand: 7,
-    pts: [[0, -150, 0], [100, -160, 2], [170, -120, 5], [180, -50, 9], [130, -10, 12], [60, -20, 14], [20, 20, 16], [40, 70, 18], [110, 80, 20], [170, 110, 20], [160, 170, 17], [80, 190, 13], [0, 160, 10], [-60, 180, 8], [-130, 160, 6], [-170, 100, 4], [-140, 40, 3], [-180, -30, 2], [-150, -110, 1], [-80, -150, 0]],
-    items: [0.1, 0.34, 0.6, 0.85], boost: [[0.22, 0], [0.5, -0.4], [0.5, 0.4], [0.93, 0]], rampen: [0.7], muenzen: [[0.05, 0, 6], [0.28, 0.4, 5], [0.45, -0.3, 6], [0.78, 0, 6]],
-    abschnitte: [{ von: 0.4, bis: 0.5, eis: true }, { von: 0.76, bis: 0.84, eis: true }],
-    abk: [[0.03, 0.17, 1]],
-    steine: [[0.28, -0.42, 0], [0.28, 0.42, 2.8]],
+    id: 'eisgipfel', name: 'Eisgipfel', cup: 1, thema: 'schnee', breite: 13, rand: 6, skala: 0.756,
+    story: 'Die Seilbahn ist viel zu langsam! Die Serpentinen hinauf, vorbei an der Skihütte, durch die glitzernde Eishöhle und rasant zurück ins Tal.',
+    ecken: [[300, 250, 40, 0], [340, 140, 40, 2], [120, 95, 22, 6], [340, 40, 22, 11], [120, -15, 22, 16], [300, -90, 35, 20], [300, -220, 45, 23],
+      [50, -250, 40, 24], [-80, -170, 30, 22], [-200, -230, 35, 20], [-330, -120, 45, 16], [-250, 0, 35, 11], [-330, 120, 40, 6], [-250, 250, 45, 1]],
+    items: [0.06, 0.33, 0.55, 0.79, 0.94], boost: [[0.44, -0.35], [0.44, 0.35], [0.66, 0], [0.85, 0]], rampen: [0.485],
+    muenzen: [[0.03, 0.3, 6], [0.22, 0, 5], [0.4, -0.3, 6], [0.6, 0.3, 5], [0.72, 0, 6], [0.9, -0.3, 6]],
+    abschnitte: [{ von: 0.6, bis: 0.66, eis: true }, { von: 0.83, bis: 0.88, eis: true }], abk: [],
+    steine: [[0.25, -0.42, 0], [0.25, 0.42, 2.8]],
+    wahrzeichen: [{ typ: 'seilbahn' }, { typ: 'skihuette', u: 0.47 }, { typ: 'eishoehle', u: 0.547 }],
   },
   {
-    id: 'neonstadt', name: 'Neonstadt', cup: 1, thema: 'stadt', laenge: 1300, breite: 11, rand: 2,
-    pts: ecken([[-150, -140], [150, -140], [150, 60], [-60, 60], [-60, 160], [60, 160, 9], [60, -60, 9], [-150, -60]], 32).map(p => {
-      // Rampe auf die Hochstrasse und wieder hinunter
-      return p;
-    }),
-    hoehen: [[0.5, 0.2], [0.57, 9], [0.74, 9], [0.84, 0.2]],
-    items: [0.1, 0.35, 0.6, 0.88], boost: [[0.2, 0], [0.47, 0.4], [0.47, -0.4], [0.78, 0]], rampen: [], muenzen: [[0.05, 0.4, 7], [0.28, -0.4, 6], [0.52, 0, 6], [0.92, 0, 6]],
-    abschnitte: [{ von: 0.55, bis: 0.76, bruecke: true }],
-    abk: [[0.18, 0.23, -1]],
+    id: 'neonstadt', name: 'Neonstadt', cup: 1, thema: 'stadt', breite: 13, rand: 2, skala: 0.675,
+    story: 'Mitternachtsrennen in Neonstadt! Durch den Lichtertunnel, hinauf auf die Hochstrasse und vorbei am leuchtenden Riesenrad.',
+    ecken: [[300, 230, 30], [300, 40, 30], [170, 40, 28], [170, -230, 30], [-60, -230, 30, 9], [-60, 100, 28, 9], [60, 100, 28, 9],
+      [60, -100, 28, 0], [-200, -100, 30], [-300, 230, 30]],
+    items: [0.06, 0.15, 0.37, 0.62, 0.8], boost: [[0.28, -0.35], [0.28, 0.35], [0.48, 0], [0.72, 0], [0.93, 0]], rampen: [0.84],
+    muenzen: [[0.03, -0.3, 6], [0.2, 0.3, 5], [0.45, 0, 6], [0.6, -0.3, 5], [0.76, 0.3, 6], [0.9, 0, 6]],
+    abschnitte: [{ von: 0.405, bis: 0.675, bruecke: true }], abk: [],
+    wahrzeichen: [{ typ: 'tunnel', u: 0.278, laenge: 70 }, { typ: 'riesenrad', u: 0.58 }, { typ: 'neonbogen', u: [0.02, 0.09, 0.8, 0.86] }],
   },
   {
-    id: 'lavaburg', name: 'Lavaburg', cup: 1, thema: 'lava', laenge: 1200, breite: 10, rand: 3, wandH: 2.5,
-    pts: [[0, -130, 1], [100, -130, 1], [160, -100, 1], [170, -30, 3], [120, 10, 5], [50, 0, 5], [10, 40, 5], [40, 100, 6], [110, 110, 8], [160, 150, 8], [120, 200, 6], [40, 210, 4], [-40, 180, 3], [-80, 120, 3], [-150, 120, 2], [-180, 50, 2], [-140, -10, 1], [-160, -80, 1], [-100, -130, 1]],
-    items: [0.1, 0.35, 0.6, 0.86], boost: [[0.18, 0], [0.5, 0], [0.75, -0.3], [0.75, 0.3]], rampen: [0.42], muenzen: [[0.05, 0, 6], [0.3, 0.4, 5], [0.55, -0.4, 5], [0.8, 0, 6]],
-    abschnitte: [{ von: 0.22, bis: 0.32, fall: true }, { von: 0.62, bis: 0.7, fall: true }],
-    abk: [[0.03, 0.17, 1]],
-    steine: [[0.46, -0.42, 0], [0.46, 0.42, 2.8], [0.8, 0, 1.4]],
+    id: 'lavaburg', name: 'Lavaburg', cup: 1, thema: 'lava', breite: 13, rand: 3, wandH: 2.5, skala: 0.720,
+    story: 'Die Burg des Feuerkönigs! Über die Zugbrücken, durch Burgtor und Thronsaal – und pass auf die Steinwächter auf, die herunterkrachen.',
+    ecken: [[300, 220, 30, 1], [300, 40, 28, 2], [200, 40, 24, 3], [200, -80, 24, 4], [300, -80, 24, 5], [300, -230, 30, 5], [100, -230, 30, 4],
+      [100, -120, 24, 3], [-40, -120, 24, 3], [-40, -230, 28, 2], [-280, -230, 35, 2], [-280, 0, 30, 1], [-160, 60, 30, 1], [-280, 220, 35, 1]],
+    items: [0.07, 0.33, 0.505, 0.82, 0.94], boost: [[0.39, 0], [0.62, -0.35], [0.62, 0.35], [0.915, 0]], rampen: [0.412],
+    muenzen: [[0.03, 0.3, 6], [0.2, -0.3, 5], [0.36, 0, 5], [0.6, 0, 6], [0.76, -0.3, 5], [0.88, 0.3, 6]],
+    abschnitte: [{ von: 0.135, bis: 0.16, fall: true, stil: 'holz' }, { von: 0.7, bis: 0.74, fall: true, stil: 'holz' }], abk: [],
+    steine: [[0.25, -0.42, 0], [0.25, 0.42, 2.8], [0.55, 0, 1.2], [0.86, -0.4, 0.6]],
+    wahrzeichen: [{ typ: 'burgtor', u: 0.08 }, { typ: 'thronsaal', u: 0.62, laenge: 90 }, { typ: 'zugbruecke', u: [0.1475, 0.72] }, { typ: 'lavafontaene', u: [0.2, 0.45, 0.78, 0.95] }],
   },
   {
-    id: 'regenbogenbahn', name: 'Regenbogenbahn', cup: 1, thema: 'all', laenge: 1450, breite: 10, rand: 1,
-    pts: [[0, -160, 20], [120, -170, 22], [200, -110, 28], [210, -20, 36], [150, 40, 40], [70, 20, 34], [20, 70, 30], [60, 140, 26], [150, 160, 30], [200, 220, 34], [120, 270, 30], [20, 250, 24], [-60, 200, 18], [-120, 230, 14], [-200, 190, 12], [-230, 100, 14], [-170, 30, 18], [-220, -50, 20], [-190, -130, 20], [-100, -165, 20]],
-    items: [0.08, 0.3, 0.52, 0.74, 0.92], boost: [[0.15, 0], [0.4, -0.3], [0.4, 0.3], [0.62, 0], [0.85, 0]], rampen: [0.69], muenzen: [[0.05, 0, 6], [0.22, 0.4, 6], [0.46, -0.3, 6], [0.65, 0, 6], [0.88, 0.3, 6]],
-    abschnitte: [{ von: 0, bis: 1, fall: true }, { von: 0.96, bis: 1, fall: false }, { von: 0, bis: 0.06, fall: false }, { von: 0.3, bis: 0.38, fall: false }, { von: 0.55, bis: 0.6, fall: false }],
-    abk: [[0.05, 0.17, 1], [0.79, 0.16, 1]],
-    steine: [[0.34, -0.4, 0], [0.34, 0.4, 2.8], [0.575, 0, 1.2]],
+    id: 'regenbogenbahn', name: 'Regenbogenbahn', cup: 1, thema: 'all', breite: 13, rand: 1, skala: 0.702,
+    story: 'Eine Reise durch die Sterne! Vom Raumhafen durch funkelnde Sternentore, über Brücken ohne Geländer bis zum Ringplaneten.',
+    ecken: [[300, 260, 60, 20], [380, 60, 60, 26], [250, -60, 40, 32], [340, -220, 50, 36], [120, -280, 50, 34], [40, -120, 35, 30], [-60, 40, 40, 24],
+      [-200, -100, 40, 20], [-120, -240, 40, 18], [-320, -260, 50, 16], [-400, -40, 50, 18], [-260, 120, 40, 20], [-340, 260, 50, 20]],
+    items: [0.06, 0.22, 0.35, 0.54, 0.72, 0.94], boost: [[0.15, 0], [0.42, -0.35], [0.42, 0.35], [0.8, 0]], rampen: [0.47],
+    muenzen: [[0.03, 0.3, 6], [0.18, -0.3, 6], [0.38, 0, 6], [0.6, 0.3, 6], [0.76, 0, 6], [0.88, -0.3, 6]],
+    abschnitte: [{ von: 0.44, bis: 0.53, fall: true }, { von: 0.76, bis: 0.86, fall: true }], abk: [],
+    steine: [[0.62, -0.4, 0], [0.62, 0.4, 2.8]],
+    wahrzeichen: [{ typ: 'sternentor', u: [0.04, 0.17, 0.4, 0.73, 0.9] }, { typ: 'raumstation', u: 0.0 }],
   },
 ];
 const ARENEN = [
@@ -273,6 +309,7 @@ class Strecke {
   berechne() {
     const d = this.def;
     // Rohform auf Ziellänge skalieren
+    if (!d.pts) d.pts = kurs(d.ecken, d.skala);
     let raw = d.pts.map(p => new THREE.Vector3(p[0], p[2] || 0, p[1]));
     let c0 = new THREE.CatmullRomCurve3(raw, true, 'centripetal');
     c0.arcLengthDivisions = 3000;
@@ -576,7 +613,7 @@ class Strecke {
       const bm = new THREE.MeshLambertMaterial({ map: Tex.boden(th.boden).clone() });
       bm.map.needsUpdate = true; bm.map.repeat.set(160, 160);
       const boden = new THREE.Mesh(new THREE.PlaneGeometry(3200, 3200), bm);
-      boden.rotation.x = -Math.PI / 2; boden.position.set(this.box.cx, bodenY === null ? 0 : (th.lavaSee || th.wasser ? bodenY - 0.4 : bodenY - 0.02), this.box.cz);
+      boden.rotation.x = -Math.PI / 2; boden.position.set(this.box.cx, bodenY === null ? 0 : (th.lavaSee || th.wasser ? bodenY - 0.4 : bodenY - 0.15), this.box.cz);
       boden.receiveShadow = true;
       if (th.lavaSee) {
         boden.material = new THREE.MeshBasicMaterial({ map: Tex.lava().clone(), color: '#ffffff' });
@@ -603,6 +640,7 @@ class Strecke {
     this.baueAbk();
     this.baueStart();
     this.baueFeatures();
+    Wahrzeichen.baue(this);
     this.baueDeko(qual);
     // Wasser-/Lavaplane als "tödlicher Boden"
     this.todY = bodenY === null ? -60 : (th.lavaSee || th.wasser) ? bodenY - 0.5 : -30;
@@ -650,7 +688,9 @@ class Strecke {
       const p = s.p, r = s.r;
       return [p.x + r.x * off, p.y + r.y * off + dy, p.z + r.z * off];
     };
-    const quads = { strasse: {}, rand: [], schulter: [], wandL: [], wandR: [], boeschung: [], unter: [] };
+    const quads = { strasse: {}, rand: [], schulter: [], boeschung: [], unter: [] };
+    const wandProben = { '-1': new Array(N).fill(null), '1': new Array(N).fill(null) };
+    const wandSeg = { '-1': new Array(N).fill(false), '1': new Array(N).fill(false) };
     const strassenGeo = {};
     const pushQuad = (arr, a, b, c, d2, uv) => { arr.push({ a, b, c, d: d2, uv }); };
     for (let i = 0; i < N; i++) {
@@ -677,11 +717,8 @@ class Strecke {
         const p0 = V(A, lim0), p1 = V(B, lim1);
         // Lücke in der Wand, wo eine Abkürzung abzweigt
         if (wall && this.abk.length && (this.imKorridor(p0[0], p0[1], p0[2], 0.4) || this.imKorridor(p1[0], p1[1], p1[2], 0.4))) wall = false;
-        if (wall) {
-          const u0 = A.s / 8, u1 = (A.s + this.ds) / 8;
-          const arr = sd < 0 ? quads.wandL : quads.wandR;
-          arr.push({ a: [p0[0], p0[1] - 0.5, p0[2]], b: [p1[0], p1[1] - 0.5, p1[2]], c: [p1[0], p1[1] + hW, p1[2]], d: [p0[0], p0[1] + hW, p0[2]], uv: [[u0, 0], [u1, 0], [u1, 1], [u0, 1]], flip: sd > 0, stil: A.wand, h: hW });
-        }
+        wandSeg[sd][i] = wall;
+        wandProben[sd][i] = { x: p0[0], y: p0[1], z: p0[2], ax: A.rh.x * sd, az: A.rh.z * sd, s: A.s, stil: A.wand, h: hW };
         // Böschung bzw. Unterseite
         const ausLim = A.lim * sd, ausLimB = B.lim * sd;
         const pA = V(A, ausLim), pB = V(B, ausLimB);
@@ -734,6 +771,8 @@ class Strecke {
         const tex = Tex.wand('holz').clone(); tex.needsUpdate = true; tex.repeat.set(1, 1); tex.rotation = Math.PI / 2;
         mat = new THREE.MeshLambertMaterial({ map: tex });
       } else mat = new THREE.MeshLambertMaterial({ map: Tex.strasse(key) });
+      // Fahrbahn gewinnt immer gegen Boden und Böschung darunter
+      mat.polygonOffset = true; mat.polygonOffsetFactor = -1; mat.polygonOffsetUnits = -2;
       const m = new THREE.Mesh(baueGeo(quads.strasse[key]), mat);
       m.receiveShadow = true;
       g.add(m);
@@ -756,23 +795,22 @@ class Strecke {
         : new THREE.MeshLambertMaterial({ map: Tex.wand(this.th.wand === 'burg' ? 'burg' : this.def.thema === 'strand' || this.def.thema === 'dschungel' ? 'holz' : 'beton') });
       const m = new THREE.Mesh(baueGeo(quads.unter, false), um); g.add(m);
     }
-    for (const arr of [quads.wandL, quads.wandR]) {
-      const nachStil = {};
-      for (const q of arr) (nachStil[q.stil] = nachStil[q.stil] || []).push(q);
-      for (const st in nachStil) {
-        let mat;
-        if (st === 'leucht') {
-          mat = new THREE.MeshBasicMaterial({ color: '#7af0ff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
-        } else {
-          const tex = Tex.wand(st).clone(); tex.needsUpdate = true;
-          tex.repeat.set(st === 'fels' ? 0.5 : 1, st === 'fels' ? 1 : 1);
-          mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
-        }
-        const m = new THREE.Mesh(baueGeo(nachStil[st], false), mat);
-        m.castShadow = st !== 'leucht'; m.receiveShadow = true;
-        g.add(m);
-        if (st === 'leucht') this.anim.push(t => { mat.color.setHSL((t * 0.1) % 1, 0.9, 0.6); });
+    // Wände: zusammenhängende Stücke mit mitlaufendem Profil
+    for (const sd of ['-1', '1']) {
+      const seg = wandSeg[sd], pr = wandProben[sd];
+      const gilt = i => seg[i] || seg[(i - 1 + N) % N];
+      let start = 0; while (start < N && gilt(start)) start++;
+      const ganz = start >= N;
+      if (ganz) start = 0;
+      const liste = [];
+      for (let k = 0; k <= N; k++) {
+        const i = (start + k) % N;
+        if (!gilt(i)) { liste.push(null); continue; }
+        const q = Object.assign({}, pr[i]);
+        if (k > 0 && start + k >= N) q.s += this.L;   // über die Ziellinie hinweg weiterzählen
+        liste.push(q);
       }
+      for (const st of Waende.stuecke(liste)) Waende.lauf(this, g, st.pk, st.stil, { h: st.h, zu: ganz });
     }
     // Brückenpfeiler
     const pfeiler = [];
@@ -1183,7 +1221,7 @@ class Strecke {
   baueDeko(qual) {
     const g = this.gruppe, th = this.th, R = rng(hashStr(this.def.id));
     const viel = qual === 'niedrig' ? 0.45 : qual === 'mittel' ? 0.75 : 1;
-    const N = x => Math.round(x * viel);
+    const N = x => Math.round(x * viel * clamp(this.L / 1150, 1, 2));
     const by = this.bodenY() || 0;
     // Berge rundum
     if (th.berge) {
@@ -1220,14 +1258,6 @@ class Strecke {
         streuen(g, [{ geo: G.zyl(0.06, 0.06, 3, 5), mat: Mat.lam('#eeeeee'), y: 1.5 }, { geo: G.kegel(2, 0.8, 8), mat: new THREE.MeshLambertMaterial({ color: '#fff' }), y: 3, farbig: true }], sch);
         const st = this.plaetze(N(40), 5, 60, R, 5).map(q => Object.assign(q, { s: 1 + R() * 2.5 }));
         streuen(g, [{ geo: new THREE.DodecahedronGeometry(1, 0), mat: Mat.lam('#9a8a7a', { flatShading: true }), y: 0.4, sy: 0.7 }], st);
-        // Leuchtturm
-        const lt = new THREE.Group();
-        for (let i = 0; i < 5; i++) lt.add(M(G.zyl(2.4 - i * 0.25, 2.6 - i * 0.25, 5, 14), Mat.lam(i % 2 ? '#e8322f' : '#ffffff'), 0, 2.5 + i * 5, 0));
-        lt.add(M(G.zyl(1.6, 1.6, 2.5, 10), Mat.leucht('#fff4a0', 1.2), 0, 26, 0));
-        lt.add(M(G.kegel(2.2, 2.5, 10), Mat.lam('#e8322f'), 0, 28.5, 0));
-        const lp = this.ring(1, 40, 60, R)[0];
-        lt.position.set(this.box.cx + this.box.r * 0.2, 0, this.box.mxz + 120);
-        g.add(lt);
         this.huetten(R);
         this.ballons(R, 5);
         break;
