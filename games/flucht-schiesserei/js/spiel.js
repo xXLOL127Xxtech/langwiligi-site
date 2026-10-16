@@ -184,6 +184,7 @@ class Sim {
   updatePlayer(p, dt, live) {
     const b = p.body, inp = p.input;
     if (p.flash > 0) p.flash -= dt;
+    if (p.escaped) return;
     if (!p.alive) {
       p.deadT += dt;
       if (p.deadT > RESPAWN && this.phase !== 'escaped') this.respawn(p);
@@ -233,7 +234,7 @@ class Sim {
     this.ev('spawn', p.idx, +sp.x.toFixed(2), +sp.y.toFixed(2));
   }
   kill(p, cause, byIdx) {
-    if (!p.alive) return;
+    if (!p.alive || p.escaped) return;
     p.alive = false; p.deadT = 0; p.hp = 0; p.weapon = null; p.ammo = 0;
     if (byIdx != null && byIdx >= 0 && byIdx !== p.idx) this.players[byIdx].kills++;
     const pos = p.body.getPosition();
@@ -469,14 +470,17 @@ class Sim {
         for (let i = p.cp + 1; i < map.cps.length; i++) if (pos.x >= map.cps[i].x) p.cp = i;
       }
       p.prog = clamp((pos.x - map.startX) / (map.goalX - map.startX), 0, 1);
-      if (p.alive && this.phase === 'play') {
+      if (p.alive && p.hp > 0 && this.phase === 'play') {
         const g = map.goal(this);
         if (pos.x > g.x0 && pos.x < g.x1 && pos.y > g.y0 && pos.y < g.y1) {
           this.phase = 'escaped'; this.phaseT = 0; this.winner = p.idx; p.escapes++;
+          // Eingestiegen: Figur verschwindet im Fluchtfahrzeug und kann nicht mehr sterben (sonst lag eine "Leiche" im Ziel)
+          p.escaped = true; p.shield = 0; p.weapon = null; p.ammo = 0;
+          b.setLinearVelocity(V2(0, 0)); b.setAngularVelocity(0); b.setActive(false);
           this.ev('escape', p.idx);
         }
       }
-      if (p.alive) {
+      if (p.alive && !p.escaped) {
         const c = b.getPosition();
         for (const pk of this.pickups) {
           if (pk.taken) continue;
@@ -515,7 +519,7 @@ class Sim {
       const b = p.body, pos = b.getPosition(), v = b.getLinearVelocity();
       let fl = 0;
       if (p.alive) fl |= 1; if (p.ground) fl |= 2; if (p.shield > 0) fl |= 4; if (p.flash > 0) fl |= 8;
-      if (p.input.l) fl |= 16; if (p.input.r) fl |= 32;
+      if (p.input.l) fl |= 16; if (p.input.r) fl |= 32; if (p.escaped) fl |= 64;
       return [pos.x, pos.y, b.getAngle(), p.aim, p.weapon ? WKEYS.indexOf(p.weapon) : -1, p.ammo, Math.max(0, Math.round(p.hp)), fl, v.x, v.y];
     });
     const M = this.movers.map(mb => { const b = mb.body, p = b.getPosition(); return [p.x, p.y, b.getAngle(), mb.state]; });
