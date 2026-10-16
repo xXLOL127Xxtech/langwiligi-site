@@ -4,7 +4,7 @@ Minis.reg({
   id: 'kreisel-sprung', name: 'Kreisel-Sprung',
   text: 'Graf Grimm dreht seinen Feuerstab im Kreis, immer schneller! Spring im richtigen Moment darüber. Wer getroffen wird, fliegt raus.',
   steuerung: { tasten: 'Aktion springen' },
-  formate: ['ffa', '2v2', '1v3', 'duell'],
+  formate: ['ffa', '2v2', 'duell'],
   dauer: 50,
   CX: 800, CY: 575, K: .42,      // Mitte der Arena auf dem Bildschirm, K staucht die Tiefe
   RAD: 330,                      // Abstand der Spieler von der Mitte

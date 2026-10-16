@@ -34,7 +34,7 @@ const Spiel = {
     BrettBild.vorbereiten(this.brett);
     this.host = true; this.abbruch = false;
     this.Z = {
-      v: 0, modus: opt.modus, phase: 'start', runde: 1, runden: opt.runden, zug: 0, bonus: opt.bonus !== false,
+      v: 0, modus: opt.modus, zeiger: !!opt.zeiger, phase: 'start', runde: 1, runden: opt.runden, zug: 0, bonus: opt.bonus !== false,
       reihenfolge: [0, 1, 2, 3], aktiv: -1, schritte: 0, wuerfel: null, frage: null, meldung: null,
       fx: [], kamera: { art: 'alle' }, mini: null, roulette: null, letzte5: false, ende: null,
       sternFeld: -1, bank: 0, sternWeg: -1,
@@ -559,7 +559,7 @@ const Spiel = {
     const einsatzOpts = [5, 10, 20].map(n => ({ w: n, t: n + ' Münzen', aus: n > max })).concat([{ w: 0, t: 'Nur um die Ehre', aus: false }]);
     const einsatz = await this.frage(sp, 'einsatz', { titel: 'Einsatz?', optionen: einsatzOpts });
     Z.meldung = null;
-    const pool = Minis.pool('duell', Z.modus === 'online');
+    const pool = Minis.pool('duell', Z.modus === 'online' || Z.zeiger);
     const def = wahl(pool);
     const erg = await this.minispiel(def.id, [sp, g], 'duell', [0, 1], -1);
     Z.phase = 'brett'; Z.kamera = { art: 'sp', i: sp };
@@ -605,7 +605,7 @@ const Spiel = {
     this.aktualisiere();
     await this.warte(1800);
     // Roulette über den passenden Pool
-    const pool = Minis.pool(format, Z.modus === 'online');
+    const pool = Minis.pool(format, Z.modus === 'online' || Z.zeiger);
     this.zuletzt = this.zuletzt || [];
     let auswahl = pool.filter(d => !this.zuletzt.includes(d.id));
     if (!auswahl.length) auswahl = pool;
@@ -664,10 +664,12 @@ const Spiel = {
       quellen: m.teilnehmer.map(p => {
         const s = Z.spieler[p];
         if (s.art === 'bot') return { art: 'bot' };
-        if (Z.modus === 'lokal') return { art: 'block', block: s.block };
+        // Gegen Computer: ein Mensch mit allen Tasten und dem Touchpad
+        if (Z.modus === 'lokal') return Z.zeiger ? { art: 'selbst' } : { art: 'block', block: s.block };
         return s.slot === Netz.you ? { art: 'selbst' } : { art: 'netz', slot: s.slot };
       }),
-      ich: Z.modus === 'online' ? m.teilnehmer.findIndex(p => Z.spieler[p].art !== 'bot' && Z.spieler[p].slot === Netz.you) : -1,
+      ich: Z.modus === 'online' ? m.teilnehmer.findIndex(p => Z.spieler[p].art !== 'bot' && Z.spieler[p].slot === Netz.you)
+        : Z.zeiger ? m.teilnehmer.findIndex(p => Z.spieler[p].art === 'mensch') : -1,
     };
   },
   bereit(sp) {

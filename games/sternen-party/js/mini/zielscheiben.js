@@ -8,7 +8,7 @@ Minis.reg({
   text: 'Schiess die Scheiben ab, bevor sie wegklappen! Gold-Sterne geben 3 Punkte, Grimm-Scheiben kosten 2.',
   steuerung: { zeiger: 'Zielen mit dem Touchpad, Linksklick schiesst' },
   zeiger: true,
-  formate: ['ffa', '2v2', '1v3', 'duell'],
+  formate: ['ffa', '2v2', 'duell'],
   dauer: 30,
   // Schienen (y der Schiene, Fahrtrichtung). Die Scheibe sitzt STIEL px über der Schiene.
   SCHIENEN: [{ y: 340, dir: 1 }, { y: 530, dir: -1 }, { y: 720, dir: 1 }],

@@ -51,11 +51,11 @@ const UI = {
     const s = Z.spieler[f.sp];
     if (Z.modus === 'online') return s.art !== 'bot' && s.slot === Netz.you;
     if (s.art !== 'mensch') return false;
-    return klick || block === -1 || s.block === block;
+    return klick || block === -1 || s.block === block || Z.zeiger;
   },
   irgendeinMensch(block, klick) {
     const Z = Spiel.Z;
-    if (Z.modus === 'online') return true;
+    if (Z.modus === 'online' || Z.zeiger) return true;
     return klick || block === -1 || Z.spieler.some(s => s.art === 'mensch' && s.block === block);
   },
   // ---------- Tasten ----------
@@ -122,7 +122,7 @@ const UI = {
   bereitTaste(block) {
     const Z = Spiel.Z, m = Z.mini;
     if (Z.modus === 'online') { this.bereitMelden(-1); return; }
-    const sp = Z.spieler.findIndex(s => s.art === 'mensch' && s.block === block);
+    const sp = Z.spieler.findIndex(s => s.art === 'mensch' && (s.block === block || Z.zeiger));
     if (sp >= 0 && m.teilnehmer.includes(sp)) Spiel.bereit(sp);
     else if (block === -1) Z.spieler.forEach((s, i) => { if (s.art === 'mensch' && Z.spieler.filter(x => x.art === 'mensch').length === 1) Spiel.bereit(i); });
   },
@@ -172,7 +172,7 @@ const UI = {
     if (this.geaendert('karten', key)) {
       $('karten').innerHTML = Z.spieler.map((s, i) => {
         const platz = (rang.find(r => r.i === i) || {}).platz || 1;
-        const art = s.art === 'bot' ? `Computer · ${['Leicht', 'Mittel', 'Schwer'][s.stufe]}` : Z.modus === 'lokal' ? blockText(s.block) : (s.slot === Netz.you ? 'Du' : 'Online');
+        const art = s.art === 'bot' ? `Computer · ${['Leicht', 'Mittel', 'Schwer'][s.stufe]}` : Z.modus === 'lokal' && !Z.zeiger ? blockText(s.block) : Z.zeiger ? 'Du' : (s.slot === Netz.you ? 'Du' : 'Online');
         return `<div class="karte k${i}${Z.aktiv === i ? ' aktiv' : ''}" style="--f:${PLATZ_FARBEN[i]}">
           <div class="platz p${platz}">${platz}.</div>
           <img class="bild" src="${figurBild(s.figur, 96)}" alt="">
@@ -195,7 +195,7 @@ const UI = {
     const Z = Spiel.Z, m = Z.meldung;
     const box = $('meldung');
     const f = Z.frage;
-    const hinweis = f && f.typ === 'info' && this.darf(-1, true) ? (Z.modus === 'lokal' && f.sp >= 0 ? `${aktionTaste(Z.spieler[f.sp].block)} weiter` : 'Klick oder Aktion: weiter') : '';
+    const hinweis = f && f.typ === 'info' && this.darf(-1, true) ? (Z.modus === 'lokal' && !Z.zeiger && f.sp >= 0 ? `${aktionTaste(Z.spieler[f.sp].block)} weiter` : 'Klick oder Aktion: weiter') : '';
     // Ist gleichzeitig ein Auswahl-Dialog offen, rückt die Sprechblase nach oben
     const oben = !!(f && f.typ !== 'info' && f.typ !== 'wuerfel');
     if (!this.geaendert('meldung', (m ? m.id : 0) + '|' + hinweis + '|' + Z.phase + '|' + oben)) return;
@@ -223,10 +223,10 @@ const UI = {
       this.wahl = best; Ansicht.wahlFeld = opts[best].w;
     }
     box.classList.remove('hidden');
-    const steuer = s && Z.modus === 'lokal' ? `Steuerung: ${blockText(s.block)}` : 'Pfeiltasten/WASD wählen, Aktion bestätigt, oder klicken';
+    const steuer = s && Z.modus === 'lokal' && !Z.zeiger ? `Steuerung: ${blockText(s.block)}` : 'Pfeiltasten/WASD wählen, Aktion bestätigt, oder klicken';
     if (f.typ === 'wuerfel') {
       box.className = 'klein';
-      box.innerHTML = ich ? `<div class="wtitel">Drück ${s && Z.modus === 'lokal' ? aktionTaste(s.block) : '<kbd>Aktion</kbd>'} um den Würfel zu schlagen!</div>` : `<div class="wtitel">${esc(s ? s.name : '')} würfelt …</div>`;
+      box.innerHTML = ich ? `<div class="wtitel">Drück ${s && Z.modus === 'lokal' && !Z.zeiger ? aktionTaste(s.block) : '<kbd>Aktion</kbd>'} um den Würfel zu schlagen!</div>` : `<div class="wtitel">${esc(s ? s.name : '')} würfelt …</div>`;
       if (ich) box.innerHTML += `<button class="btn haupt" data-i="0">Würfeln</button>`;
       box.querySelectorAll('[data-i]').forEach(b => b.onclick = ev => { ev.stopPropagation(); this.antworten(true); });
       return;
@@ -303,11 +303,11 @@ const UI = {
     const zeilen = m.teilnehmer.map((p, k) => {
       const s = Z.spieler[p];
       const team = m.format === '2v2' || m.format === '1v3' ? `<span class="tm" style="background:${TEAM_FARBEN[m.teams[k]]}"></span>` : '';
-      const steuer = s.art === 'bot' ? 'Computer' : online ? (s.slot === Netz.you ? 'Du' : 'Online') : blockText(s.block);
-      return `<div class="tz${m.bereit[k] ? ' ok' : ''}" data-bereit="${p}">${team}<img src="${figurBild(s.figur, 64)}" alt=""><b>${esc(s.name)}</b><span class="st">${steuer}</span><span class="haken">${m.bereit[k] ? '✔ Bereit' : online || s.art === 'bot' ? 'wartet …' : `${aktionTaste(s.block)} drücken`}</span></div>`;
+      const steuer = s.art === 'bot' ? 'Computer' : online ? (s.slot === Netz.you ? 'Du' : 'Online') : Z.zeiger ? 'Du' : blockText(s.block);
+      return `<div class="tz${m.bereit[k] ? ' ok' : ''}" data-bereit="${p}">${team}<img src="${figurBild(s.figur, 64)}" alt=""><b>${esc(s.name)}</b><span class="st">${steuer}</span><span class="haken">${m.bereit[k] ? '✔ Bereit' : online || s.art === 'bot' ? 'wartet …' : Z.zeiger ? 'Aktion drücken' : `${aktionTaste(s.block)} drücken`}</span></div>`;
     }).join('');
     const st = def.steuerung || {};
-    return `<div class="panel mittel intro"><div class="ikopf"><small>${fm}${def.zeiger ? ' · Online-Spezial' : ''}</small><h2>${esc(def.name)}</h2></div>
+    return `<div class="panel mittel intro"><div class="ikopf"><small>${fm}${def.zeiger ? ' · Touchpad-Spiel' : ''}</small><h2>${esc(def.name)}</h2></div>
       <p class="itext">${esc(def.text)}</p>
       <div class="steuerung">${st.tasten ? `<div><span class="lbl2">Tasten</span>${esc(st.tasten)}</div>` : ''}${st.zeiger ? `<div><span class="lbl2">Touchpad</span>${esc(st.zeiger)}</div>` : ''}</div>
       <div class="tliste">${zeilen}</div>

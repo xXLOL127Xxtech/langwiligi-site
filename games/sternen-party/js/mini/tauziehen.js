@@ -4,7 +4,7 @@ Minis.reg({
   id: 'tauziehen', name: 'Tauziehen am Vulkan',
   text: 'Zieht im Takt! Drück die Aktion, wenn der Zeiger im grünen Feld ist: das gibt einen starken Zug. Wer daneben drückt, stolpert. Die Verlierer plumpsen in den Lavagraben.',
   steuerung: { tasten: 'Aktion im Takt drücken (einmal pro Takt)' },
-  formate: ['2v2', '1v3', 'duell'],
+  formate: ['2v2', 'duell'],
   ZEIT: 30,                      // danach entscheidet die Seilposition
   BODEN: 700,                    // Höhe der Felsplatten
   GRABEN: [680, 920],            // Lavagraben in der Mitte

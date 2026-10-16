@@ -122,7 +122,8 @@ const App = {
     setTimeout(() => { const b = id && $(id).querySelector('[data-start],.btn.haupt,.btn'); if (b && document.activeElement.tagName !== 'INPUT') b.focus(); }, 30);
   },
   menues() {
-    $('mLokal').onclick = () => this.lokalZeigen();
+    $('mBots').onclick = () => this.lokalZeigen('bots');
+    $('mLokal').onclick = () => this.lokalZeigen('zwei');
     $('mOnline').onclick = () => { this.zeige('sOnline'); this.onlineZeigen(); };
     $('mAnleitung').onclick = () => this.zeige('sAnleitung');
     $('mOnline').disabled = !HUB;
@@ -185,9 +186,19 @@ const App = {
   },
 
   // ---------- Lokal: Beitreten mit der eigenen Aktionstaste ----------
-  lokalZeigen() {
+  // art 'bots': 1 Mensch gegen 3 Computer, mit Touchpad-Minispielen. 'zwei': 2 Menschen an einer Tastatur + 2 Computer.
+  lokalZeigen(art) {
+    this.lokalArt = art || this.lokalArt || 'zwei';
     if (!this.lokal) this.lokal = [0, 1, 2, 3].map(i => ({ art: 'bot', block: -1, figur: -1, bereit: false, stufe: Einst.stufe }));
+    // Zu viele Menschen für diesen Modus? Überzählige werden wieder Computer
+    let n = 0;
+    this.lokal.forEach((p, i) => { if (p.art === 'mensch' && ++n > this.maxMenschen()) this.lokal[i] = { art: 'bot', block: -1, figur: -1, bereit: false, stufe: Einst.stufe }; });
     this.lokal.forEach(p => { p.bereit = false; });
+    const bots = this.lokalArt === 'bots';
+    $('lTitel').textContent = bots ? 'Gegen Computer' : 'Lokal zu zweit';
+    $('lText').innerHTML = bots
+      ? 'Drück eine <b>Aktionstaste</b> (Q, R, U oder Enter), um mitzumachen. Du spielst gegen drei Computer und kannst in den Minispielen auch das Touchpad benutzen.'
+      : 'Jeder nimmt sich einen Tastenblock und drückt seine <b>Aktionstaste</b>. Höchstens zwei Spieler, die anderen Plätze spielt der Computer.';
     this.figurenVerteilen();
     this.zeige('sLokal');
     this.lokalRendern();
@@ -205,11 +216,15 @@ const App = {
       p.figur = f; vergeben.add(f);
     }
   },
+  maxMenschen() { return this.lokalArt === 'bots' ? 1 : 2; },
   lokalTaste(block, rolle) {
     const L = this.lokal;
+    // Gegen Computer: alle Tasten gehören dem einen Spieler
+    if (this.lokalArt === 'bots' && block >= 0) { const m = L.find(p => p.art === 'mensch'); if (m) block = m.block; }
     let i = L.findIndex(p => p.art === 'mensch' && p.block === block);
     if (i < 0) {
-      if (rolle !== 'aktion') return;
+      if (rolle !== 'aktion' || block < 0) return;
+      if (L.filter(p => p.art === 'mensch').length >= this.maxMenschen()) return;
       // Beitreten: ersten Computer-Platz übernehmen
       i = L.findIndex(p => p.art === 'bot');
       if (i < 0) return;
@@ -285,7 +300,8 @@ const App = {
     for (const s of spieler) { namenZaehler[s.name] = (namenZaehler[s.name] || 0) + 1; }
     Einst.figuren = L.map(p => p.figur); einstSpeichern();
     this.letzteAuswahl = spieler;
-    Spiel.neu(spieler, { modus: 'lokal', runden: Einst.runden, bonus: Einst.bonus });
+    this.letzteOpt = { modus: 'lokal', runden: Einst.runden, bonus: Einst.bonus, zeiger: this.lokalArt === 'bots' };
+    Spiel.neu(spieler, this.letzteOpt);
     this.spielZeigen();
   },
   spielZeigen() {
@@ -304,7 +320,7 @@ const App = {
   nochmal() {
     if (Spiel.Z.modus === 'lokal') {
       Spiel.beenden();
-      Spiel.neu(this.letzteAuswahl, { modus: 'lokal', runden: Einst.runden, bonus: Einst.bonus });
+      Spiel.neu(this.letzteAuswahl, Object.assign({}, this.letzteOpt, { runden: Einst.runden, bonus: Einst.bonus }));
       this.spielZeigen();
     } else if (Netz.host) {
       Spiel.beenden();

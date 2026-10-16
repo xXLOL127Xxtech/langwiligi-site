@@ -4,7 +4,7 @@ Minis.reg({
   id: 'ballon-pumpe', name: 'Ballon-Pumpe',
   text: 'Hämmer auf die Aktionstaste und pump deinen Ballon auf, bis er platzt! Wer zuerst drei Ballone zum Platzen bringt, gewinnt.',
   steuerung: { tasten: 'Aktion so schnell wie möglich drücken (gedrückt halten zählt nicht)' },
-  formate: ['ffa', '2v2', '1v3', 'duell'],
+  formate: ['ffa', '2v2', 'duell'],
   dauer: 40,
   BODEN: 800,                    // Höhe der Wiese
   DUESE: 590,                    // Höhe, wo der Ballon am Ständer hängt
