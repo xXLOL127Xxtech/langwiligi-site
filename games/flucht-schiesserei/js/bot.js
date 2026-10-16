@@ -145,7 +145,7 @@ class Bot {
       this.scan = 0.25;
       let best = null, bd = L.look;
       for (const q of sim.players) {
-        if (q === p || !q.alive) continue;
+        if (q === p || !q.alive || q.escaped) continue;
         const c = q.body.getPosition();
         const d = Math.hypot(c.x - pos.x, c.y - pos.y);
         if (d < bd && this.visible(q)) { bd = d; best = q; }

@@ -16,7 +16,7 @@
 | [Billard](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
 | [Bottle-Flip](https://langwiligi.site/flaschen-flip/) | Solo | Flip die Flasche und lande sie aufrecht. |
 | [Bubble-Race](https://langwiligi.site/bubble-duell/) | Online · Bots | Bubble-Shooter im Duell. |
-| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Bots | Team gegen Bots: Gegner in Blasen fangen, 8 Level. |
+| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Lokal · Online · Bots | Gegner in Blasen fangen: 8 Level gegen Bots, 1 gegen 1 oder 2 gegen 2 auf Zufallskarten. |
 | [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
 | [Catapult](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
 | [Clumsy Bird](https://langwiligi.site/clumsy-bird/) | Solo | Flatter durch die Röhren. Original: Ellison Leão (GPL-3.0). |
@@ -75,7 +75,8 @@ Besitzer lädt direkt auf main hoch ──────┤
 - **Spiel-Server**: Änderungen an `server/game-hub.js` spielt der Server beim Hochladen selbst ein und startet sich neu.
   Wurde `server/langwiligi-deploy.sh` geändert, einmal `server-aktualisieren.cmd` doppelklicken.
 - **Bewertungen & Empfehlungen**: `https://langwiligi.site/api/empfehlungen#SCHLÜSSEL` (Schlüssel in `/var/lib/game-hub/admin-key.txt`).
-  Links die Empfehlungen, rechts die Bewertungen, beide löschbar.
+  Links die Empfehlungen, rechts die Bewertungen mit Verbesserungsvorschlägen, beide löschbar.
+  Bewertet wird erst am Rundenende. Nach jeder Änderung an einem Spiel wird nochmal gefragt, die neue Bewertung ersetzt dann die alte desselben Geräts.
 
 - **Spiele**: reines HTML/CSS/JavaScript, eine `index.html` pro Ordner, kein Build-Schritt.
 - **Startseite**: Vorlage in `startseite/`, die Spielkarten baut `deploy.sh` beim Hochladen aus `<title>` und den `<meta>`-Angaben jedes Spiels.

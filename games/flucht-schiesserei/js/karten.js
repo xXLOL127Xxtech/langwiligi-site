@@ -251,10 +251,12 @@ function carPainter(kind, L, top, rnd) {
 function buildZug(sim, rnd) {
   const mid = ['offen', 'container', 'kessel', 'kasten', 'container', 'offen', 'kessel', 'kasten'];
   for (let i = mid.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [mid[i], mid[j]] = [mid[j], mid[i]]; }
-  const kinds = ['kasten', ...mid.slice(0, 5), 'lok'];
+  const kinds = ['kasten', ...mid, 'lok'];
   const cars = [];
   let x = 0;
   const GAP = 1.0;
+  // Lücken zwischen den Wagen unterschiedlich breit: einfach nur rechts drücken reicht nicht mehr
+  const gaps = kinds.map((k, i) => i === 0 ? GAP : GAP + (rnd() < 0.5 ? 0.35 + rnd() * 0.45 : rnd() * 0.2));
   kinds.forEach((kind, i) => {
     const L = kind === 'lok' ? 15 : 12;
     const top = { kasten: 4.4, offen: 3.9, container: 4.3, kessel: 4.45, lok: 4.3 }[kind];
@@ -281,9 +283,9 @@ function buildZug(sim, rnd) {
     const cx = x + L / 2;
     const mb = sim.addBody({ type: 'kinematic', x: cx, y: 0, fixtures: fx, friction: 0.85, paint: carPainter(kind, L, top, rnd), bounds: [-L / 2 - 0.4, 0, L / 2 + 0.4, top + 1.8], tag: 'car' });
     cars.push({ mb, kind, L, x: cx, top, standY, phase: i * 1.7 });
-    x += L + GAP;
+    x += L + (gaps[i + 1] || GAP);
   });
-  const end = x - GAP;
+  const end = x - (gaps[kinds.length] || GAP);
   const loco = cars[cars.length - 1];
   // Gefahren: Signalbrücke und Tunnel
   const gantry = sim.addBody({ type: 'kinematic', x: 400, y: 0, layer: -1, fixtures: [rc(-0.5, 6.15, 0.5, 6.75, 'stahl', { friction: 0.2 })],
@@ -309,10 +311,10 @@ function buildZug(sim, rnd) {
         RR(g, P, ex - 1.5, 10.6, ex + 1.5, 11, '#5f9a4a');
       }
     } });
-  const hz = { next: 7 + rnd() * 3, gantryOn: false, tunnelOn: false, lastTunnel: 0, bump: -10, bumpNext: 5 };
+  const hz = { next: 5 + rnd() * 2, gantryOn: false, tunnelOn: false, lastTunnel: 0, bump: -10, bumpNext: 5 };
   const spots = [];
   cars.forEach((c, i) => { if (i > 0) { spots.push({ mb: c.mb, x: -2.8, y: c.standY + 0.5 }); spots.push({ mb: c.mb, x: 2.6, y: c.standY + 0.5 }); } });
-  const cps = [0, 2, 4, 6].map(i => ({ x: cars[i].x - cars[i].L / 2, car: cars[i] }));
+  const cps = [0, 2, 4, 6, 8].map(i => ({ x: cars[i].x - cars[i].L / 2, car: cars[i] }));
   const map = {
     minX: -3, maxX: end + 3, killY: 2.7, camMinY: -0.6, camMaxY: 15, startX: cars[0].x, goalX: loco.x + 1,
     cps, spots, maxPickups: 6, cars, hzBodies: [gantry, tunnel], deathText: { sturz: 'vom Zug gefallen' },
@@ -351,7 +353,7 @@ function buildZug(sim, rnd) {
           h.state = 0;
           h.body.setTransform(V2(map.maxX + 2 * ZUG_V, 0), 0);
           h.body.setLinearVelocity(V2(-ZUG_V, 0));
-          hz.next = 5 + sim.rng() * 5;
+          hz.next = 4.5 + sim.rng() * 4.5;
         }
       }
     },
@@ -510,6 +512,11 @@ function buildFlug(sim, rnd) {
     rc(6, -2.5, 10, -1.85, 'dunkel'),
     rc(16.5, -2.5, 19.5, -1.35, 'stahl'),
     rc(26, 0.6, 26.55, 2.5, 'blech'),
+    // zusätzliche Hindernisse: Frachtstapel und herabhängende Ladung
+    rc(-17, 0.55, -16.4, 2.5, 'blech'),
+    rc(-1.2, -2.5, 0.6, -1.5, 'dunkel'),
+    rc(11.5, 0.6, 12.05, 2.5, 'blech'),
+    rc(27.2, -2.5, 28.6, -1.3, 'stahl'),
   ];
   const fus = sim.addBody({ type: 'kinematic', x: PX, y: PY, fixtures: fx, friction: 0.6, paint: paintRumpf, signs, bounds: [-46.2, -4.8, 49.8, 9.6], tag: 'rumpf' });
   // Lose Fracht
@@ -527,10 +534,12 @@ function buildFlug(sim, rnd) {
     RR(g, P, -0.05, -h / 2 + 0.08, 0.05, h / 2 - 0.08, col);
   };
   crate(-24, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#c8432f') });
-  crate(-11, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#2d6fb5') });
+  crate(-24, -0.9, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#2d6fb5') });
   crate(1.5, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#c8432f') });
   crate(13, -2.0, 0.95, 0.95, 'holz', { paint: crPaint(0.95, 0.95, '#3d8a4f') });
-  crate(23, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#e0a030') });
+  crate(-33, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#2d6fb5') });
+  crate(-6.5, -1.95, 1.05, 1.05, 'holz', { paint: crPaint(1.05, 1.05, '#3d8a4f') });
+
   // Fässer (rollen)
   for (const lx of [-2.5, 14.8, 31]) {
     const p = fus.body.getWorldPoint(V2(lx, -2.05));
@@ -540,15 +549,23 @@ function buildFlug(sim, rnd) {
   }
   // Rollcontainer (schwer, fast ohne Reibung)
   {
-    const p = fus.body.getWorldPoint(V2(-9.5, -1.85));
+    const p = fus.body.getWorldPoint(V2(3.8, -1.85));
     const mb = sim.addBody({ type: 'dynamic', x: p.x, y: p.y, cat: CAT.PROP, fixtures: [bx(2.8, 1.3, 0, 0, 'blech')], friction: 0.015, density: 2.6,
       paint: (g, P, def) => { RRo(g, P, -1.4, -0.65, 1.4, 0.65, '#9aa3b2', '#17121d'); for (let x = -1.2; x < 1.3; x += 0.3) RR(g, P, x, -0.5, x + 0.06, 0.5, '#7d8794'); RR(g, P, -1.35, 0.5, 1.35, 0.6, '#c8d2dc'); RR(g, P, -1.0, -0.15, 1.0, 0.15, '#f2c94c'); for (const x of [-1.0, 1.0]) { const [cx, cy] = P(x, -0.6); circlePx(g, cx, cy, 3, '#17121d'); } } });
-    mb.lhome = { x: -9.5, y: -1.85 }; props.push(mb);
+    mb.lhome = { x: 3.8, y: -1.85 }; props.push(mb);
   }
-  const st = { turbNext: 7 + rnd() * 4, turbT: -10, pocket: false, warn: 0 };
-  const spotsL = [[-35, -2], [-28.5, -1.2], [-18, -1.0], [-12.5, -2], [-3.5, -2], [3.5, -2], [8, -1.5], [12, -2], [18, -1], [22, -2], [29, -2], [33, -2]];
+  // Gepäckwagen fahren hin und her und schubsen alle zurück: drüber springen!
+  const carts = [[-11, 3.2, 0.9, 0], [22.9, 2.3, 1.15, 2]].map(([mid, amp, w, ph]) => {
+    const mb = sim.addBody({ type: 'kinematic', x: PX + mid, y: PY - 1.95, fixtures: [bx(1.7, 1.1, 0, 0, 'blech')], friction: 0.4,
+      paint: (g, P) => { RRo(g, P, -0.85, -0.55, 0.85, 0.55, '#f2c94c', '#17121d'); RR(g, P, -0.8, 0.3, 0.8, 0.42, '#ffe08a');
+        for (let x = -0.7; x < 0.8; x += 0.35) RR(g, P, x, -0.4, x + 0.17, -0.25, '#17121d');
+        for (const x of [-0.55, 0.55]) { const [cx, cy] = P(x, -0.55); circlePx(g, cx, cy, 3, '#17121d'); circlePx(g, cx, cy, 1, '#9aa3b2'); } } });
+    return { mb, mid, amp, w, ph };
+  });
+  const st = { turbNext: 5 + rnd() * 3, turbT: -10, pocket: false, warn: 0 };
+  const spotsL = [[-35, -2], [-28.5, -1.2], [-18, -1.0], [-5, -2], [-3.5, -2], [8, -1.5], [12, -2], [18, -1], [29, -2], [33, -2]];
   const spots = spotsL.map(([x, y]) => ({ mb: fus, x, y: y + 0.2 }));
-  const cpsL = [[-37.5, -1.6], [-23, -1.6], [-8, -1.6], [8, -1.0], [21, -1.6]];
+  const cpsL = [[-37.5, -1.6], [-23, -1.6], [-5, -1.6], [8, -1.0], [27.3, -0.9]];
   const cps = cpsL.map(([lx, ly]) => ({ x: PX + lx - 1, lx, ly }));
   const pose = (t) => {
     let a = 0.1 * Math.sin(t * 0.45) + 0.05 * Math.sin(t * 1.13 + 1.3);
@@ -584,11 +601,16 @@ function buildFlug(sim, rnd) {
     update(sim, t, dt) {
       if (sim.phase !== 'countdown') {
         st.turbNext -= dt;
-        if (st.turbNext <= 0) { st.turbT = t + 1.6; st.pocket = sim.rng() < 0.5; st.turbNext = 9 + sim.rng() * 6; }
+        if (st.turbNext <= 0) { st.turbT = t + 1.6; st.pocket = sim.rng() < 0.55; st.turbNext = 6.5 + sim.rng() * 4.5; }
       }
       st.warn = (t > st.turbT - 1.6 && t < st.turbT + 3) ? (st.pocket ? 2 : 1) : 0;
       const p = pose(t);
       drive(fus.body, p.x, p.y, p.a, dt);
+      const ca = Math.cos(p.a), sa = Math.sin(p.a);
+      for (const c of carts) {
+        const lx = c.mid + c.amp * Math.sin(t * c.w + c.ph), ly = -1.95;
+        drive(c.mb.body, p.x + ca * lx - sa * ly, p.y + sa * lx + ca * ly, p.a, dt);
+      }
       for (const pr of props) {
         const l = fus.body.getLocalPoint(pr.body.getPosition());
         if (l.x > 46 || l.y < -6 || l.x < -41 || l.y > 4) {
@@ -684,9 +706,13 @@ function buildBau(sim, rnd) {
   sim.addBody({ fixtures: [rc(26, -8, 40, 0, 'beton'), rc(31, 0, 34, 1.0, 'beton'), rc(34, 0, 40, 2.0, 'beton')] });
   sim.addBody({ fixtures: [rc(46, 1.6, 50, 2.0, 'stahl'), rc(47.4, -8, 48.6, 1.6, 'stahl')] });
   sim.addBody({ fixtures: [rc(62, -8, 80, 2.0, 'beton')] });
-  sim.addBody({ fixtures: [rc(86, -8, 107, 0.6, 'beton')] });
+  sim.addBody({ fixtures: [rc(86, -8, 100, 0.6, 'beton')] });
+  // Verlängerung: zweite Abrissbirne, Lift über der letzten Grube, Ziel weiter hinten
+  sim.addBody({ fixtures: [rc(109, -8, 118, 1.2, 'beton'), rc(115.5, 1.2, 118, 1.9, 'beton')] });
+  sim.addBody({ fixtures: [rc(118, -8, 124, 2.6, 'beton')] });
+  sim.addBody({ fixtures: [rc(130.5, -8, 150, 1.0, 'beton')] });
   // Gruben (Deko)
-  for (const [a, b, top] of [[14, 26, 0], [40, 46, 0], [50, 62, 0], [80, 86, 0]]) sim.addDeco(pitDeco(b - a, 8), (a + b) / 2, -4.5, -2);
+  for (const [a, b, top] of [[14, 26, 0], [40, 46, 0], [50, 62, 0], [80, 86, 0], [100, 109, 0], [124, 130.5, 0]]) sim.addDeco(pitDeco(b - a, 8), (a + b) / 2, -4.5, -2);
   // Einsturz-Bretter
   const plank = (cx, y) => {
     sim.addDeco(scaffoldDeco(2.8, 6), cx, y - 3.2, -1);
@@ -695,12 +721,18 @@ function buildBau(sim, rnd) {
   for (const x of [15.5, 18.5, 21.5, 24.5]) plank(x, 0);
   for (const x of [41.5, 44.5]) plank(x, 2.0);
   for (const x of [81.5, 84.5]) plank(x, 2.0);
+  for (const x of [101.5, 104.5, 107.5]) plank(x, 0.6);
   // Kranträger über der grossen Grube
   const beam = sim.addBody({ type: 'kinematic', x: 56, y: 1.8, fixtures: [bx(4.2, 0.36, 0, 0, 'stahl')], friction: 0.9,
     paint: (g, P) => { RRo(g, P, -2.1, -0.18, 2.1, 0.18, '#c4532c', '#17121d'); RR(g, P, -2.05, 0.08, 2.05, 0.14, '#e07448'); for (let x = -1.8; x < 2; x += 0.6) { RR(g, P, x, -0.12, x + 0.08, 0.06, '#8e3a1f'); } } });
   // Abrissbirne
   const ball = sim.addBody({ type: 'kinematic', x: 46.5, y: 4.2, fixtures: [circ(0.75, 0, 0, 'dunkel')], friction: 0.3, restitution: 0.4,
     paint: (g, P) => { const [cx, cy] = P(0, 0); circlePx(g, cx, cy, 14, '#17121d'); circlePx(g, cx, cy, 12.5, '#3a3d44'); circlePx(g, cx - 4, cy - 4, 5, '#5f6673'); circlePx(g, cx - 5, cy - 6, 2, '#9aa3b2'); box(g, cx - 2, cy - 16, 4, 4, '#17121d'); } });
+  const ball2 = sim.addBody({ type: 'kinematic', x: 113, y: 3.4, fixtures: [circ(0.75, 0, 0, 'dunkel')], friction: 0.3, restitution: 0.4,
+    paint: (g, P) => { const [cx, cy] = P(0, 0); circlePx(g, cx, cy, 14, '#17121d'); circlePx(g, cx, cy, 12.5, '#3a3d44'); circlePx(g, cx - 4, cy - 4, 5, '#5f6673'); circlePx(g, cx - 5, cy - 6, 2, '#9aa3b2'); box(g, cx - 2, cy - 16, 4, 4, '#17121d'); } });
+  // Lift: fährt über der letzten Grube auf und ab
+  const lift = sim.addBody({ type: 'kinematic', x: 127.25, y: 1.0, fixtures: [bx(3.0, 0.3, 0, 0, 'stahl')], friction: 0.9,
+    paint: (g, P) => { RRo(g, P, -1.5, -0.15, 1.5, 0.15, '#e0a030', '#17121d'); for (let x = -1.3; x < 1.4; x += 0.5) RR(g, P, x, -0.1, x + 0.25, 0.1, '#17121d'); } });
   // Fallende Stahlträger (Pool)
   const girders = [0, 1].map(i => {
     const mb = sim.addBody({ type: 'kinematic', x: 300 + i * 10, y: 60, fixtures: [bx(3.2, 0.36, 0, 0, 'stahl')], friction: 0.7, density: 1.6,
@@ -709,7 +741,7 @@ function buildBau(sim, rnd) {
     return mb;
   });
   // Lose Zementsäcke / Paletten
-  for (const [x, y] of [[8, 0.35], [8.9, 0.35], [8.45, 1.0], [36.5, 2.35], [68, 2.35], [68.9, 2.35], [74, 2.35], [91, 0.95]]) {
+  for (const [x, y] of [[8, 0.35], [8.9, 0.35], [8.45, 1.0], [36.5, 2.35], [68, 2.35], [68.9, 2.35], [74, 2.35], [91, 0.95], [94, 0.95], [94, 1.6], [114.2, 1.55], [123.3, 2.95], [135, 1.35], [135.9, 1.35]]) {
     sim.addBody({ type: 'dynamic', x, y, cat: CAT.PROP, fixtures: [bx(0.85, 0.6, 0, 0, 'beton')], friction: 0.8, density: 1.4,
       paint: (g, P) => { RRo(g, P, -0.42, -0.3, 0.42, 0.3, '#d8cfb8', '#3a3020'); RR(g, P, -0.38, 0.12, 0.38, 0.2, '#b8ac90'); RR(g, P, -0.2, -0.1, 0.2, 0.05, '#c8432f'); } });
   }
@@ -724,14 +756,18 @@ function buildBau(sim, rnd) {
     box(cg, cg.canvas.width - 30, 14, 26, 14, '#3a3d44'); }
   sim.addDeco(crane, 59, 6.1, -2);
   const st = { gNext: 6 + rnd() * 3, warnX: 0, warnT: 0 };
-  const spots = [[6, 0.5], [11, 0.5], [29, 0.5], [37.5, 2.5], [48, 2.5], [65, 2.5], [71, 2.5], [77, 2.5], [90, 1.1], [94, 1.1]].map(([x, y]) => ({ x, y }));
-  const cps = [[0, 1.5, 1.0], [27, 28.5, 1.0], [46.5, 47.5, 2.8], [63, 64, 2.8], [86.5, 88, 1.5]].map(([x, sx, sy]) => ({ x, sx, sy }));
+  const spots = [[6, 0.5], [11, 0.5], [29, 0.5], [37.5, 2.5], [48, 2.5], [65, 2.5], [71, 2.5], [77, 2.5], [90, 1.1], [97, 1.1], [113, 1.7], [119.5, 3.1], [123, 3.1], [133, 1.5], [138, 1.5]].map(([x, y]) => ({ x, y }));
+  const cps = [[0, 1.5, 1.0], [27, 28.5, 1.0], [46.5, 47.5, 2.8], [63, 64, 2.8], [86.5, 88, 1.5], [109.5, 110, 2.1], [118.5, 119, 3.5]].map(([x, sx, sy]) => ({ x, sx, sy }));
   const map = {
-    minX: -3, maxX: 106, killY, camMinY: -6, camMaxY: 16, startX: 1.5, goalX: 97.5, cps, spots, maxPickups: 6,
+    minX: -3, maxX: 149, killY, camMinY: -6, camMaxY: 16, startX: 1.5, goalX: 143.5, cps, spots, maxPickups: 7,
     deathText: { sturz: 'in die Grube gestürzt', traeger: 'vom Stahlträger getroffen' },
     spawn(sim, cpi, idx) { const c = cps[clamp(cpi, 0, cps.length - 1)]; return { x: c.sx + idx * 0.9, y: c.sy }; },
-    goal() { return { x0: 96.4, x1: 98.6, y0: 0.6, y1: 3.2 }; },
+    goal() { return { x0: 142.4, x1: 144.6, y0: 1.0, y1: 3.6 }; },
     update(sim, t, dt) {
+      // zweite Abrissbirne (andere Geschwindigkeit) und Lift
+      const ang2 = 1.0 * Math.sin(t * Math.PI * 2 / 3.1 + 1.2);
+      drive(ball2.body, 113 + Math.sin(ang2) * 8.0, 11.4 - Math.cos(ang2) * 8.0, ang2, dt);
+      drive(lift.body, 127.25, 0.2 + 2.2 * (0.5 - 0.5 * Math.cos(t * Math.PI * 2 / 5.5)), 0, dt);
       // Kranträger: pendelt mit Pausen an den Enden
       const bxp = 56 + 3.75 * clamp(1.5 * Math.sin(t * Math.PI * 2 / 8), -1, 1);
       drive(beam.body, bxp, 1.8 + 0.04 * Math.sin(t * 2.3), 0.01 * Math.sin(t * 1.7), dt);
@@ -741,12 +777,12 @@ function buildBau(sim, rnd) {
       // Stahlträger
       if (sim.phase !== 'countdown') {
         st.gNext -= dt;
-        if (st.gNext <= 1.3 && st.warnT <= 0) { st.warnX = 64.5 + sim.rng() * 13.5; st.warnT = 1.3; }
+        if (st.gNext <= 1.3 && st.warnT <= 0) { st.warnX = sim.rng() < 0.5 ? 64.5 + sim.rng() * 13.5 : 109.5 + sim.rng() * 14; st.warnT = 1.3; }
         if (st.warnT > 0) st.warnT -= dt;
         if (st.gNext <= 0) {
           const gd = girders.find(gg => gg.state === 3);
           if (gd) { gd.body.setDynamic(); gd.body.setTransform(V2(st.warnX, 15), (sim.rng() - 0.5) * 0.3); gd.body.setLinearVelocity(V2(0, -6)); gd.body.setAwake(true); gd.state = 0; gd.gT = 0; gd.hurt = false; }
-          st.gNext = 5 + sim.rng() * 4; st.warnT = 0;
+          st.gNext = 4 + sim.rng() * 3.5; st.warnT = 0;
         }
       }
       for (const gd of girders) {
@@ -765,6 +801,7 @@ function buildBau(sim, rnd) {
     netState() { return st.warnT > 0 ? Math.round(st.warnX * 10) : 0; },
     hazards(sim) {
       return [{ circle: (tau) => { const a = 1.05 * Math.sin((sim.t + tau) * Math.PI * 2 / 3.8); return { x: 46.5 + Math.sin(a) * 8.2, y: 12.4 - Math.cos(a) * 8.2, r: 0.8 }; } },
+        { circle: (tau) => { const a = 1.0 * Math.sin((sim.t + tau) * Math.PI * 2 / 3.1 + 1.2); return { x: 113 + Math.sin(a) * 8.0, y: 11.4 - Math.cos(a) * 8.0, r: 0.8 }; } },
         ...(st.warnT > 0 ? [{ circle: () => ({ x: st.warnX, y: 3, r: 2.2 }) }] : [])];
     },
     drawBack(ctx, cam, view) {
@@ -790,6 +827,15 @@ function buildBau(sim, rnd) {
       ctx.strokeStyle = '#2a2d34'; ctx.beginPath(); ctx.moveTo(pxp, pyp); ctx.lineTo(ox, oy - 14); ctx.stroke();
       for (let k = 0; k < 1; k += 0.08) { ctx.fillStyle = '#5f6673'; ctx.fillRect(Math.round(lerp(pxp, ox, k)), Math.round(lerp(pyp, oy - 14, k)), 2, 2); }
       ctx.fillStyle = '#17121d'; ctx.fillRect(pxp - 6, pyp - 3, 12, 3);
+      { const o2 = M[ball2.mi];
+        const qx = Math.round(113 * PPM - cam.x), qy = Math.round(cam.y - 11.4 * PPM);
+        const ox2 = Math.round(o2[0] * PPM - cam.x), oy2 = Math.round(cam.y - o2[1] * PPM);
+        ctx.strokeStyle = '#2a2d34'; ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(ox2, oy2 - 14); ctx.stroke();
+        for (let k = 0; k < 1; k += 0.08) { ctx.fillStyle = '#5f6673'; ctx.fillRect(Math.round(lerp(qx, ox2, k)), Math.round(lerp(qy, oy2 - 14, k)), 2, 2); }
+        ctx.fillStyle = '#17121d'; ctx.fillRect(qx - 6, qy - 3, 12, 3);
+        // Liftseile
+        const lf = M[lift.mi], lx = Math.round(lf[0] * PPM - cam.x), ly = Math.round(cam.y - lf[1] * PPM), top = Math.round(cam.y - 9 * PPM);
+        ctx.fillStyle = '#17121d'; ctx.fillRect(lx - 22, top, 1, ly - top); ctx.fillRect(lx + 22, top, 1, ly - top); ctx.fillRect(lx - 26, top - 3, 53, 3); }
       // Warnung: fallender Träger
       if (view.H) {
         const wx = Math.round(view.H / 10 * PPM - cam.x), wy = Math.round(cam.y - 2.0 * PPM);
@@ -797,7 +843,7 @@ function buildBau(sim, rnd) {
         ctx.drawImage(WARN, wx - 5, wy - 30);
       }
       // Fluchtwagen
-      ctx.drawImage(VAN, Math.round(97 * PPM - cam.x), Math.round(cam.y - 0.6 * PPM) - 48);
+      ctx.drawImage(VAN, Math.round(143 * PPM - cam.x), Math.round(cam.y - 1.0 * PPM) - 48);
     },
     drawFront() {},
   };
@@ -839,11 +885,15 @@ function buildSchlucht(sim, rnd) {
   cliff([[-4, -22], [15.6, -22], [16, 0], [10, 0.2], [4, 0], [-4, 0.1]]);
   cliff([[31, -22], [37, -22], [38, 0.4], [30, 0.4]]);
   sim.addBody({ fixtures: [poly([[57, -22], [74, -22], [74, 0], [66, 0.15], [57, 0]], 'fels')] });
-  sim.addBody({ fixtures: [poly([[64, 3.4], [74, 3.4], [74, 9], [62, 9]], 'fels'), poly([[74, -22], [84, -22], [84, 1.2], [74, 0]], 'fels'), poly([[84, -22], [106, -22], [106, 1.2], [84, 1.2]], 'fels')] });
+  sim.addBody({ fixtures: [poly([[64, 3.4], [74, 3.4], [74, 9], [62, 9]], 'fels'), poly([[74, -22], [84, -22], [84, 1.2], [74, 0]], 'fels'), poly([[84, -22], [96, -22], [96, 1.2], [84, 1.2]], 'fels')] });
+  // Verlängerung: dritte Brücke, Felsinsel, bröckelnde Kante, dann erst der Jeep
+  cliff([[114, -22], [121, -22], [121, 0.8], [114, 0.8]]);
+  sim.addBody({ fixtures: [poly([[123.5, -22], [146, -22], [146, 1.0], [123.5, 0.8]], 'fels'), poly([[129, 1.0], [131, 1.0], [131, 1.9], [129.4, 1.9]], 'fels')] });
   // Bröckelnde Felskante
-  const chunk = (x0, x1) => sim.addBody({ type: 'kinematic', x: (x0 + x1) / 2, y: -0.6, crumble: true, delay: 0.7, respawn: 8, w: x1 - x0,
+  const chunk = (x0, x1, y = 0) => sim.addBody({ type: 'kinematic', x: (x0 + x1) / 2, y: y - 0.6, crumble: true, delay: 0.7, respawn: 6, w: x1 - x0,
     fixtures: [poly([[-(x1 - x0) / 2, -0.6], [(x1 - x0) / 2, -0.8], [(x1 - x0) / 2, 0.6], [-(x1 - x0) / 2, 0.6]], 'fels')], friction: 0.9, density: 2 });
   chunk(54, 55.5); chunk(55.5, 57);
+  chunk(121, 122.25, 0.8); chunk(122.25, 123.5, 0.8);
   // Hängebrücken
   const bridges = [];
   const makeBridge = (ax, ay, bx2, by, n, sag) => {
@@ -894,6 +944,7 @@ function buildSchlucht(sim, rnd) {
   };
   makeBridge(16, -0.05, 30, 0.3, 12, 0.85);
   makeBridge(38, 0.35, 54, -0.05, 14, 0.95);
+  makeBridge(96, 1.15, 114, 0.75, 16, 1.1);
   // Felsbrocken (Steinschlag)
   const rocks = [0, 1, 2].map(i => {
     const mb = sim.addBody({ type: 'kinematic', x: 300 + i * 5, y: 60, fixtures: [circ(0.5, 0, 0, 'fels')], friction: 0.6, density: 2.5, restitution: 0.2,
@@ -901,19 +952,20 @@ function buildSchlucht(sim, rnd) {
     mb.state = 3; mb.mover = true; mb.gT = 0; mb.hurt = false;
     return mb;
   });
-  const st = { rNext: 7 + rnd() * 4, warnX: 0, warnT: 0 };
-  const spots = [[5, 0.6], [11, 0.7], [34, 1.0], [60.5, 0.6], [66, 0.6], [70.5, 0.6], [79, 1.2], [88, 1.8], [91, 1.8]].map(([x, y]) => ({ x, y }));
-  const cps = [[0, 1.5, 1.0], [31, 33, 1.3], [58, 60, 0.9], [80, 86, 2.1]].map(([x, sx, sy]) => ({ x, sx, sy }));
+  // Steinschlag seltener als früher, damit die Brücken passierbar bleiben
+  const st = { rNext: 10 + rnd() * 4, warnX: 0, warnT: 0 };
+  const spots = [[5, 0.6], [11, 0.7], [34, 1.0], [60.5, 0.6], [66, 0.6], [70.5, 0.6], [79, 1.2], [88, 1.8], [92, 1.8], [117.5, 1.4], [127, 1.6], [134, 1.6]].map(([x, y]) => ({ x, y }));
+  const cps = [[0, 1.5, 1.0], [31, 33, 1.3], [58, 60, 0.9], [80, 86, 2.1], [114.5, 115.5, 1.7], [124, 125, 1.9]].map(([x, sx, sy]) => ({ x, sx, sy }));
   const map = {
-    minX: -4, maxX: 106, killY: -12, camMinY: -12, camMaxY: 13, startX: 1.5, goalX: 95, cps, spots, maxPickups: 6, bridges,
+    minX: -4, maxX: 146, killY: -12, camMinY: -12, camMaxY: 13, startX: 1.5, goalX: 138, cps, spots, maxPickups: 7, bridges,
     deathText: { sturz: 'in die Schlucht gestürzt', fels: 'vom Steinschlag getroffen' },
     spawn(sim, cpi, idx) { const c = cps[clamp(cpi, 0, cps.length - 1)]; return { x: c.sx + idx * 0.9, y: c.sy }; },
-    goal() { return { x0: 93.8, x1: 96.2, y0: 1.2, y1: 3.8 }; },
+    goal() { return { x0: 136.8, x1: 139.2, y0: 1.0, y1: 3.6 }; },
     update(sim, t, dt) {
       for (const br of bridges) {
         if (!br.broken) continue;
         br.timer += dt;
-        if (br.timer > 8) {
+        if (br.timer > 4.5) {
           br.broken = false;
           br.planks.forEach(m => { m.body.setTransform(V2(m.home.x, m.home.y), m.home.a); m.body.setLinearVelocity(V2(0, 0)); m.body.setAngularVelocity(0); m.state = 0; m.hp = 45; m.body.setAwake(true); });
           linkBridge(sim, br);
@@ -921,12 +973,16 @@ function buildSchlucht(sim, rnd) {
       }
       if (sim.phase !== 'countdown') {
         st.rNext -= dt;
-        if (st.rNext <= 1.4 && st.warnT <= 0) { st.warnX = 39 + sim.rng() * 14; st.warnT = 1.4; }
+        if (st.rNext <= 1.6 && st.warnT <= 0) {
+          // irgendwo über einer der drei Brücken (nicht immer dieselbe)
+          const zones = [[17, 29], [39, 53], [97, 113]], z = zones[sim.rng() * zones.length | 0];
+          st.warnX = z[0] + sim.rng() * (z[1] - z[0]); st.warnT = 1.6;
+        }
         if (st.warnT > 0) st.warnT -= dt;
         if (st.rNext <= 0) {
           const r = rocks.find(q => q.state === 3);
-          if (r) { r.body.setDynamic(); r.body.setTransform(V2(st.warnX, 13), 0); r.body.setLinearVelocity(V2((sim.rng() - 0.5) * 2, -4)); r.body.setAngularVelocity((sim.rng() - 0.5) * 6); r.body.setAwake(true); r.state = 0; r.gT = 0; r.hurt = false; }
-          st.rNext = 6 + sim.rng() * 5; st.warnT = 0;
+          if (r) { r.body.setDynamic(); r.body.setTransform(V2(st.warnX, 13), 0); r.body.setLinearVelocity(V2((sim.rng() - 0.5) * 2, -4)); r.body.setAngularVelocity((sim.rng() - 0.5) * 6); r.body.setAwake(true); r.state = 0; r.gT = 0; r.hurt = false; r.broke = false; }
+          st.rNext = 11 + sim.rng() * 7; st.warnT = 0;
         }
       }
       for (const r of rocks) {
@@ -936,7 +992,8 @@ function buildSchlucht(sim, rnd) {
           for (let ce = r.body.getContactList(); ce; ce = ce.next) {
             const ud = ce.other.getUserData();
             if (ce.contact.isTouching() && ud && ud.kind === 'player' && ud.p.alive) { sim.damage(ud.p, 55, -1, ud.p.body.getPosition(), 'fels'); r.hurt = true; }
-            if (ce.contact.isTouching() && ud && ud.kind === 'mb' && ud.mb.bridge && sim.rng() < 0.5) breakPlank(sim, ud.mb);
+            // Ein Stein zerstört höchstens ein Brett (früher oft die halbe Brücke)
+            if (ce.contact.isTouching() && ud && ud.kind === 'mb' && ud.mb.bridge && !r.broke) { r.broke = true; if (sim.rng() < 0.45) breakPlank(sim, ud.mb); }
           }
         }
         if (r.gT > 6 || r.body.getPosition().y < -14) { r.body.setKinematic(); r.body.setTransform(V2(300, 60), 0); r.body.setLinearVelocity(V2(0, 0)); r.body.setAngularVelocity(0); r.state = 3; }
@@ -997,7 +1054,7 @@ function buildSchlucht(sim, rnd) {
         ctx.drawImage(WARN, wx - 5, wy);
         if (Math.floor(view.t * 10) % 2) { ctx.fillStyle = '#a3836a'; for (let i = 0; i < 4; i++) ctx.fillRect(wx - 6 + i * 4, wy + 14 + (i * 7 + Math.floor(view.t * 20)) % 12, 2, 2); }
       }
-      ctx.drawImage(JEEP, Math.round(94 * PPM - cam.x), Math.round(cam.y - 1.2 * PPM) - 44);
+      ctx.drawImage(JEEP, Math.round(137 * PPM - cam.x), Math.round(cam.y - 1.0 * PPM) - 44);
     },
     drawFront() {},
   };
@@ -1008,5 +1065,5 @@ const MAPS = [
   { id: 'zug', name: 'Güterzug', desc: 'Über die Dächer eines rasenden Güterzugs. Achtung: Signalbrücken und Tunnel!', color: '#d52b1e', build: buildZug },
   { id: 'flug', name: 'Frachtflugzeug', desc: 'Das Flugzeug schwankt, Fracht rutscht. Hinten wartet der Fallschirm.', color: '#4f8ff7', build: buildFlug },
   { id: 'bau', name: 'Baustelle', desc: 'Bretter brechen ein, die Abrissbirne schwingt, Träger fallen vom Kran.', color: '#e0a030', build: buildBau },
-  { id: 'schlucht', name: 'Hängebrücke', desc: 'Wacklige Brücken über der Schlucht – zerschiess die Bretter!', color: '#52c06a', build: buildSchlucht },
+  { id: 'schlucht', name: 'Hängebrücke', desc: 'Drei wacklige Brücken über der Schlucht – zerschiess die Bretter!', color: '#52c06a', build: buildSchlucht },
 ];

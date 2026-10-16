@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#8ad845">
 <meta name="spiel-modi" content="Solo">
 <meta name="spiel-tags" content="Strategie">
+<meta name="spiel-typ" content="Strategie">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -51,7 +52,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 
 .stage{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:12px;align-items:start}
 .board-wrap{min-width:0;display:flex;flex-direction:column;gap:6px}
-.board{position:relative;width:min(100%,calc((100vh - 150px) * 31 / 19));min-width:min(100%,560px);margin-inline:auto;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--ink)}
+.board{position:relative;width:min(100%,calc((100vh - 190px) * 31 / 19));margin-inline:auto;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--ink)}
 #game{display:block;width:100%;height:auto;aspect-ratio:31/19;touch-action:none;cursor:crosshair}
 .hint{margin:0;font-size:13.5px;color:var(--muted);text-align:center;min-height:1.4em}
 .hint b{color:var(--fg);font-weight:600}
@@ -285,6 +286,17 @@ let DPR = 1;
 function fitCanvas(){ DPR = Math.min(2, window.devicePixelRatio || 1); canvas.width = W * DPR; canvas.height = H * DPR; }
 fitCanvas();
 addEventListener('resize', () => { if (Math.min(2, window.devicePixelRatio || 1) !== DPR) fitCanvas(); });
+// Fenstergrösse: Spielfeld so gross, dass es samt Hinweis ganz sichtbar ist; Seitenleiste scrollt für sich
+function fitLayout() {
+  const board = $('.board'), side = $('.side');
+  const top = board.getBoundingClientRect().top + scrollY;
+  board.style.width = 'min(100%,' + Math.max(240, Math.floor((innerHeight - top - 52) * COLS / ROWS)) + 'px)';
+  const nebeneinander = getComputedStyle($('.stage')).gridTemplateColumns.split(' ').length > 1;
+  side.style.maxHeight = nebeneinander ? Math.max(200, innerHeight - (side.getBoundingClientRect().top + scrollY) - 24) + 'px' : '';
+  side.style.overflowY = nebeneinander ? 'auto' : '';
+}
+addEventListener('resize', fitLayout);
+fitLayout();
 const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const mapCanvas = mk(W * 2, H * 2), mapCtx = mapCanvas.getContext('2d');
 const decalCanvas = mk(W * 2, H * 2), decalCtx = decalCanvas.getContext('2d');

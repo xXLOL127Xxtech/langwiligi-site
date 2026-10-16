@@ -36,12 +36,82 @@
     addEventListener('keydown', skip);
   }
 
-  // ---------- Filter + Sortierung ----------
-  var filter = load('lw-filter', 'alle'), sort = load('lw-sort', 'neu');
-  var filterBtns = document.querySelectorAll('.filters button[data-f]');
+  // ---------- Filter (Modus + Typ, je ein Ausklapp-Menü) + Sortierung ----------
+  // Typen: gleiche Liste wie in tools/spiel-pruefen.js. Schlüssel = Name klein geschrieben.
+  var TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau'];
+  var MODI = { alle: 'Alle', lokal: 'Lokal', online: 'Online', bots: 'Gegen Bots', solo: 'Solo' };
+  var filter = load('lw-filter', 'alle'), typ = load('lw-typ', 'alle'), sort = load('lw-sort', 'neu');
   var sortBtns = document.querySelectorAll('.sort button[data-s]');
-  if (!document.querySelector('.filters button[data-f="' + filter + '"]')) filter = 'alle';
+  var dds = Array.prototype.slice.call(document.querySelectorAll('.filters .dd'));
+  var ddMode = document.querySelector('.dd[data-key="f"]'), ddTyp = document.querySelector('.dd[data-key="t"]');
+  function typesOf(c) { return (c.dataset.typ || '').split(' ').filter(Boolean); }
+  function modeOk(c, f) { return c.dataset.filter.split(' ').indexOf(f) >= 0; }
+  function typOk(c, t) { return t === 'alle' || typesOf(c).indexOf(t) >= 0; }
+  // Typ-Menü aus den vorhandenen Spielen bauen (nur Typen, die es auch gibt)
+  (function () {
+    var menu = ddTyp.querySelector('.dd-menu'), have = {};
+    cards.forEach(function (c) { typesOf(c).forEach(function (t) { have[t] = 1; }); });
+    var html = '<button type="button" role="menuitemradio" data-v="alle">Alle Typen</button>';
+    TYPEN.forEach(function (name) { var k = name.toLowerCase(); if (have[k]) html += '<button type="button" role="menuitemradio" data-v="' + k + '">' + name + '</button>'; });
+    menu.innerHTML = html;
+  })();
+  function typName(k) { for (var i = 0; i < TYPEN.length; i++) if (TYPEN[i].toLowerCase() === k) return TYPEN[i]; return 'Alle'; }
+  if (!MODI[filter]) filter = 'alle';
+  if (typ !== 'alle' && !ddTyp.querySelector('[data-v="' + typ + '"]')) typ = 'alle';
   if (sort !== 'neu' && sort !== 'top') sort = 'neu';
+
+  // Menüs auf- und zuklappen
+  function openDd(dd, open, focus) {
+    var btn = dd.querySelector('.dd-btn'), menu = dd.querySelector('.dd-menu');
+    btn.setAttribute('aria-expanded', open);
+    menu.hidden = !open;
+    dd.classList.toggle('open', open);
+    if (open && focus) { var cur = menu.querySelector('[aria-checked="true"]') || menu.querySelector('button'); cur.focus(); }
+  }
+  function closeAll(except) { dds.forEach(function (d) { if (d !== except) openDd(d, false); }); }
+  dds.forEach(function (dd) {
+    var btn = dd.querySelector('.dd-btn'), menu = dd.querySelector('.dd-menu');
+    btn.addEventListener('click', function () { var o = menu.hidden; closeAll(dd); openDd(dd, o, false); });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeAll(dd); openDd(dd, true, true); }
+    });
+    menu.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-v]');
+      if (!b) return;
+      if (dd === ddMode) { filter = b.dataset.v; save('lw-filter', filter); } else { typ = b.dataset.v; save('lw-typ', typ); }
+      openDd(dd, false); btn.focus();
+      apply(true);
+    });
+    menu.addEventListener('keydown', function (e) {
+      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+      else if (e.key === 'Escape') { openDd(dd, false); btn.focus(); }
+      else if (e.key === 'Tab') openDd(dd, false);
+    });
+  });
+  document.addEventListener('click', function (e) { if (!e.target.closest('.dd')) closeAll(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
+  $('reset').addEventListener('click', function () { filter = 'alle'; typ = 'alle'; save('lw-filter', filter); save('lw-typ', typ); apply(true); });
+
+  // Häkchen, Anzahl pro Eintrag und Beschriftung der Menüknöpfe
+  function updateMenus() {
+    ddMode.querySelectorAll('.dd-menu button').forEach(function (b) {
+      var v = b.dataset.v, n = cards.filter(function (c) { return modeOk(c, v) && typOk(c, typ); }).length;
+      b.setAttribute('aria-checked', v === filter);
+      b.dataset.n = n; b.disabled = !n && v !== filter;
+    });
+    ddTyp.querySelectorAll('.dd-menu button').forEach(function (b) {
+      var v = b.dataset.v, n = cards.filter(function (c) { return modeOk(c, filter) && typOk(c, v); }).length;
+      b.setAttribute('aria-checked', v === typ);
+      b.dataset.n = n; b.disabled = !n && v !== typ;
+    });
+    ddMode.querySelector('.dd-v').textContent = MODI[filter];
+    ddTyp.querySelector('.dd-v').textContent = typ === 'alle' ? 'Alle' : typName(typ);
+    ddMode.classList.toggle('set', filter !== 'alle');
+    ddTyp.classList.toggle('set', typ !== 'alle');
+    $('reset').hidden = filter === 'alle' && typ === 'alle';
+  }
 
   function score(slug) {
     // Mittelwert mit "Vorschuss": wenige Bewertungen zählen weniger stark als viele
@@ -53,17 +123,19 @@
   function byTop(a, b) { return score(b.dataset.slug) - score(a.dataset.slug) || byNew(a, b); }
 
   function apply(animate) {
-    filterBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.f === filter); });
+    updateMenus();
     sortBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.s === sort); });
     // Positionen merken, umsortieren, dann sanft an den neuen Platz gleiten (FLIP)
     var before = animate ? cards.map(function (c) { return c.hidden ? null : c.getBoundingClientRect(); }) : null;
     var shown = 0;
     cards.forEach(function (c) {
-      c.hidden = c.dataset.filter.split(' ').indexOf(filter) < 0;
+      c.hidden = !modeOk(c, filter) || !typOk(c, typ);
       if (!c.hidden) shown++;
     });
     cards.slice().sort(sort === 'top' ? byTop : byNew).forEach(function (c) { grid.appendChild(c); });
-    $('count').textContent = '// ' + shown + (shown === 1 ? ' Spiel' : ' Spiele') + (sort === 'top' ? ' · nach Bewertung' : ' · neueste zuerst');
+    $('count').textContent = '// ' + shown + (shown === 1 ? ' Spiel' : ' Spiele') +
+      (filter !== 'alle' ? ' · ' + MODI[filter] : '') + (typ !== 'alle' ? ' · ' + typName(typ) : '') +
+      (sort === 'top' ? ' · nach Bewertung' : ' · neueste zuerst');
     if (!before || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     cards.forEach(function (c, i) {
       var r0 = before[i];
@@ -80,9 +152,6 @@
       });
     });
   }
-  filterBtns.forEach(function (b) {
-    b.addEventListener('click', function () { filter = b.dataset.f; save('lw-filter', filter); apply(true); });
-  });
   sortBtns.forEach(function (b) {
     b.addEventListener('click', function () { if (sort === b.dataset.s) return; sort = b.dataset.s; save('lw-sort', sort); apply(true); });
   });

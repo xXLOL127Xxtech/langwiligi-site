@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#ff6fb5">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Knobeln">
+<meta name="spiel-typ" content="Strategie,Denkspiel">
 <!--
   Farbfalle (früher Farben-Duell) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
@@ -119,6 +120,8 @@ button, input, select { font-family: inherit; }
 .msg.err { color: #ff8a80; }
 .code-big { font-size: 2.2rem; font-weight: 900; letter-spacing: .3em; color: var(--accent); text-align: center; }
 .start-row { display: flex; justify-content: center; }
+/* Start-Knopf bleibt unten im Fenster sichtbar, auch wenn das Menü länger ist */
+#startRow { position: sticky; bottom: 0; z-index: 20; padding: 14px 0 12px; background: linear-gradient(rgba(10, 12, 16, 0), rgba(10, 12, 16, .94) 45%); }
 .start-row .btn { min-width: 220px; padding: 14px 22px; font-size: 1.1rem; }
 
 /* ---------- Spielansicht ---------- */
@@ -155,6 +158,18 @@ button, input, select { font-family: inherit; }
 .toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 3100; background: rgba(20,24,32,.96); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
 .board-wrap .lw-board { color: var(--text); }
 .lb { margin-top: 8px; }
+@media (max-height: 760px) {
+  #app { padding-top: 6px; padding-bottom: 6px; }
+  #gameView .topbar { margin-bottom: 4px; }
+  #gameView .icon-btn { width: 34px; height: 34px; }
+  #gameView .topbar .btn.small { padding: 6px 12px; }
+  #gameView .scoreboard { margin-bottom: 4px; }
+  #gameView .pcard { padding: 4px 12px; flex-direction: row; align-items: baseline; justify-content: space-between; gap: 10px; }
+  #gameView .pcard.p2 { flex-direction: row-reverse; }
+  #gameView .turn { padding: 5px 12px; }
+  #gameView .status { margin: 2px 0 4px; font-size: .95rem; }
+  #gameView .board-wrap { margin-bottom: 8px; }
+}
 
 @media (max-width: 560px) {
   #app { padding: 10px 12px 24px; }
@@ -190,7 +205,8 @@ button, input, select { font-family: inherit; }
 .kam-wrap { width: 100%; display: flex; justify-content: center; }
 .kam-board {
   display: grid; grid-template-columns: repeat(8, 1fr);
-  width: min(94vw, 540px); aspect-ratio: 1/1;
+  /* passt immer ganz ins Fenster: Breite oder Höhe begrenzt (oben Anzeige, unten Knöpfe) */
+  width: max(240px, min(94vw, 600px, calc(100vh - 320px), calc(100dvh - 320px))); aspect-ratio: 1/1;
   border-radius: 12px; overflow: hidden; border: 6px solid #1c1f29;
   box-shadow: var(--shadow), 0 10px 26px rgba(0,0,0,0.5);
 }
@@ -535,15 +551,16 @@ window.Sound = (function () {
     
     let occ = Array.from({ length: N }, () => Array(N).fill(null));
     const pieces = [[], []];
-    
-    for (let c = 0; c < N; c++) {
-      pieces[1].push({ r: 0, c, color: BOARD_COLORS[0][c] });
-      occ[0][c] = { p: 1, idx: c };
-    }
-    
-    for (let c = 0; c < N; c++) {
-      pieces[0].push({ r: N - 1, c, color: BOARD_COLORS[N - 1][c] });
-      occ[N - 1][c] = { p: 0, idx: c };
+    // Zwei Turmreihen pro Seite (Standard): die hintere Reihe verteidigt, jede Farbe gibt es zweimal.
+    // So lässt sich ein Durchbruch fast immer abwehren und das Spiel bleibt ausgeglichen.
+    const ROWS = ctx.options && Number(ctx.options.reihen) === 1 ? 1 : 2;
+    for (let k = 0; k < ROWS; k++) {
+      for (let c = 0; c < N; c++) {
+        pieces[1].push({ r: k, c, color: BOARD_COLORS[k][c] });
+        occ[k][c] = { p: 1, idx: pieces[1].length - 1 };
+        pieces[0].push({ r: N - 1 - k, c, color: BOARD_COLORS[N - 1 - k][c] });
+        occ[N - 1 - k][c] = { p: 0, idx: pieces[0].length - 1 };
+      }
     }
 
     let turn = 0;
@@ -603,19 +620,24 @@ window.Sound = (function () {
     }
 
     
-    function forcedPiece(p) {
-      if (p < 0 || !pieces[p]) return -1;
-      if (forcedColor < 0) return -1;
-      return pieces[p].findIndex((pc) => pc.color === forcedColor);
+    // Türme in der Pflichtfarbe (bei zwei Reihen sind es zwei, der Spieler wählt)
+    function forcedPieces(p) {
+      if (p < 0 || !pieces[p] || forcedColor < 0) return [];
+      const out = [];
+      pieces[p].forEach((pc, i) => { if (pc.color === forcedColor) out.push(i); });
+      return out;
     }
 
     function canPlay() { return !over && (!ctx.isOnline || turn === ctx.mySeat); }
 
     function selectablePieces(p) {
       if (p < 0 || !pieces[p]) return [];
-      const fp = forcedPiece(p);
-      if (fp >= 0) return [fp];
-      
+      const fp = forcedPieces(p);
+      if (fp.length) {
+        // nur Türme, die auch ziehen können (falls einer blockiert ist)
+        const ok = fp.filter((i) => pieceMoves(p, i).length);
+        return ok.length ? ok : fp;
+      }
       return pieces[p].map((_, i) => i);
     }
 
@@ -631,7 +653,7 @@ window.Sound = (function () {
         } else if (forcedColor >= 0) {
           
           const cn = ctx.t(CNAME[forcedColor][0], CNAME[forcedColor][1]);
-          ctx.setStatus((`⛔ Diesen Zug MUSST du den ${cn}-Turm ziehen (der leuchtende) – ein anderer geht nicht.`));
+          ctx.setStatus((`⛔ Diesen Zug MUSST du ${ROWS > 1 ? 'einen' : 'den'} ${cn}-Turm ziehen (leuchtet) – ein anderer geht nicht.`));
         }
         return;
       }
@@ -686,10 +708,11 @@ window.Sound = (function () {
       
       let guard = 0;
       while (true) {
-        const fp = forcedPiece(next);
-        if (fp < 0) break; 
-        if (pieceMoves(next, fp).length > 0) break; 
-        
+        const fps = forcedPieces(next);
+        if (!fps.length) break;
+        if (fps.some((i) => pieceMoves(next, i).length > 0)) break;
+        // alle Türme dieser Farbe blockiert: der am weitesten vorne entscheidet die neue Farbe
+        const fp = fps.reduce((a, b) => (Math.abs(pieces[next][b].r - goalRow(next)) < Math.abs(pieces[next][a].r - goalRow(next)) ? b : a));
         const stuck = pieces[next][fp];
         forcedColor = BOARD_COLORS[stuck.r][stuck.c];
         next = 1 - next;
@@ -766,53 +789,102 @@ window.Sound = (function () {
         return;
       }
       const cn = ctx.t(CNAME[forcedColor][0], CNAME[forcedColor][1]);
-      ctx.setStatus((`Spieler ${turn + 1}: Du musst den ${cn}-Turm ziehen (schon ausgewählt) – tippe auf ein LEUCHTENDES Feld.`));
+      if (selectablePieces(turn).length > 1) ctx.setStatus((`Spieler ${turn + 1}: Zieh einen deiner ${cn}-Türme – wähle einen leuchtenden Turm, dann das Zielfeld.`));
+      else ctx.setStatus((`Spieler ${turn + 1}: Du musst den ${cn}-Turm ziehen (schon ausgewählt) – tippe auf ein LEUCHTENDES Feld.`));
     }
 
-    // ---------- AI ----------
-    
-    function evalMove(p, idx, to) {
-      const [tr] = to;
-      if (tr === goalRow(p)) return 1000;
-      
-      const dist = p === 0 ? tr : (N - 1 - tr);
-      let score = (N - 1 - dist) * 2;
-      
-      const fc = BOARD_COLORS[to[0]][to[1]];
-      const oppIdx = pieces[1 - p].findIndex((pc) => pc.color === fc);
-      if (oppIdx >= 0) {
-        const opc = pieces[1 - p][oppIdx];
-        
-        const odr = fwd(1 - p);
-        let r = opc.r + odr, c = opc.c, reach = false;
-        
-        
-        while (inB(r, c)) {
-          if (occ[r][c] && !(occ[r][c].p === p && occ[r][c].idx === idx)) break;
-          if (r === goalRow(1 - p)) { reach = true; break; }
-          r += odr;
-        }
-        if (reach) score -= 50;
+    // ---------- KI: Vorausschau mit Alpha-Beta-Suche ----------
+    // Spielt die Züge auf dem echten Brett durch und nimmt sie wieder zurück.
+    const WIN = 100000;
+    function colorPieces(p, fc) {
+      const out = [];
+      pieces[p].forEach((pc, i) => { if (fc < 0 || pc.color === fc) out.push(i); });
+      return out;
+    }
+    function genMoves(p, fc) {
+      const out = [];
+      for (const i of colorPieces(p, fc)) for (const to of pieceMoves(p, i)) out.push([i, to[0], to[1]]);
+      return out;
+    }
+    function lane(p, pc) {
+      // freie Bahn bis zur Zielreihe (gerade oder schräg)?
+      const dr = fwd(p);
+      for (const dc of [0, -1, 1]) {
+        let r = pc.r + dr, c = pc.c + dc;
+        while (inB(r, c) && !occ[r][c]) { if (r === goalRow(p)) return true; r += dr; c += dc; }
       }
-      return score;
+      return false;
+    }
+    function evaluate(p) {
+      let sc = 0;
+      for (const q of [0, 1]) {
+        let v = 0;
+        for (const pc of pieces[q]) {
+          const adv = q === 0 ? N - 1 - pc.r : pc.r;
+          v += adv * 1.5;
+          if (lane(q, pc)) v += 9;
+        }
+        sc += q === p ? v : -v;
+      }
+      return sc;
+    }
+    let nodes = 0, deadline = 0, timeUp = false;
+    function search(p, fc, depth, alpha, beta, ply, guard) {
+      if ((++nodes & 1023) === 0 && performance.now() > deadline) timeUp = true;
+      if (timeUp) return 0;
+      const ms = genMoves(p, fc);
+      if (!ms.length) {
+        if (guard > 3) return 0;
+        const st = colorPieces(p, fc).map((i) => pieces[p][i]).sort((a, b) => Math.abs(a.r - goalRow(p)) - Math.abs(b.r - goalRow(p)))[0];
+        return -search(1 - p, BOARD_COLORS[st.r][st.c], depth, -beta, -alpha, ply + 1, guard + 1);
+      }
+      for (const m of ms) if (m[1] === goalRow(p)) return WIN - ply;
+      if (depth <= 0) return evaluate(p);
+      // weit nach vorne zuerst probieren (bessere Schnitte)
+      ms.sort((a, b) => (p === 0 ? a[1] - b[1] : b[1] - a[1]));
+      let best = -Infinity;
+      for (const [i, r, c] of ms) {
+        const pc = pieces[p][i], fr = pc.r, fcn = pc.c;
+        occ[fr][fcn] = null; pc.r = r; pc.c = c; occ[r][c] = { p, idx: i };
+        const v = -search(1 - p, BOARD_COLORS[r][c], depth - 1, -beta, -alpha, ply + 1, 0);
+        occ[r][c] = null; pc.r = fr; pc.c = fcn; occ[fr][fcn] = { p, idx: i };
+        if (v > best) best = v;
+        if (v > alpha) alpha = v;
+        if (alpha >= beta || timeUp) break;
+      }
+      return best;
     }
     function aiMove(level) {
       if (over) return null;
       const p = turn;
-      const sel = selectablePieces(p);
       const cand = [];
-      for (const idx of sel) {
-        for (const to of pieceMoves(p, idx)) cand.push({ p, idx, to });
-      }
+      for (const idx of selectablePieces(p)) for (const to of pieceMoves(p, idx)) cand.push({ p, idx, to });
       if (!cand.length) return null;
-      if (level === "easy" && Math.random() < 0.5) return cand[Math.floor(Math.random() * cand.length)];
-      
       for (const m of cand) if (m.to[0] === goalRow(p)) return m;
-      let best = -Infinity, pick = cand[0];
-      for (const m of cand) {
-        let sc = evalMove(m.p, m.idx, m.to) + Math.random() * 0.5;
-        if (sc > best) { best = sc; pick = m; }
+      if (level === "easy" && Math.random() < 0.35) return cand[Math.floor(Math.random() * cand.length)];
+      const maxDepth = level === "easy" ? 1 : level === "medium" ? 3 : 7;
+      deadline = performance.now() + (level === "hard" ? 700 : 250);
+      timeUp = false; nodes = 0;
+      let pick = cand[0], scores = null;
+      for (let d = 1; d <= maxDepth; d++) {
+        const sc = [];
+        for (const m of cand) {
+          const pc = pieces[p][m.idx], fr = pc.r, fcn = pc.c, [r, c] = m.to;
+          occ[fr][fcn] = null; pc.r = r; pc.c = c; occ[r][c] = { p, idx: m.idx };
+          const v = -search(1 - p, BOARD_COLORS[r][c], d - 1, -Infinity, Infinity, 1, 0);
+          occ[r][c] = null; pc.r = fr; pc.c = fcn; occ[fr][fcn] = { p, idx: m.idx };
+          sc.push(v);
+          if (timeUp) break;
+        }
+        if (timeUp && d > 1) break;
+        scores = sc;
+        if (Math.max(...sc) >= WIN - 50) break;
       }
+      // Bester Zug, bei Gleichstand zufällig (damit der Bot nicht immer gleich spielt)
+      const top = Math.max(...scores);
+      const tol = level === "easy" ? 6 : level === "medium" ? 2 : 0.01;
+      const good = cand.filter((m, i) => scores[i] >= top - tol);
+      pick = good[Math.floor(Math.random() * good.length)];
       return pick;
     }
 
@@ -830,13 +902,16 @@ window.Sound = (function () {
     description: "Die Farbe des Feldes, auf dem du landest, bestimmt, welchen Turm der Gegner ziehen muss.",
     onlineReady: true,
     supportsAI: true,
+    options: [
+      { id: "reihen", label: "Aufstellung", default: 2, choices: [{ value: 2, label: "2 Reihen (ausgeglichen)" }, { value: 1, label: "1 Reihe (klassisch)" }] },
+    ],
     howTo: [
-      "8×8-Brett, jedes Feld hat eine von 8 Farben. Jede Seite hat 8 Türme in 8 Farben auf der Grundreihe. Spieler 1 startet unten (zieht nach OBEN), Spieler 2 oben (zieht nach UNTEN).",
+      "8×8-Brett, jedes Feld hat eine von 8 Farben. Jede Seite hat zwei Reihen mit Türmen in 8 Farben (klassisch: eine Reihe). Spieler 1 startet unten (zieht nach OBEN), Spieler 2 oben (zieht nach UNTEN).",
       "Türme ziehen GERADE oder SCHRÄG Richtung Gegner, beliebig weit – aber NIE zurück, NIE seitwärts und nie über andere Türme.",
-      "DIE GRUNDREGEL: Die FARBE des Feldes, auf dem du landest, ZWINGT den Gegner, seinen Turm in GENAU DIESER Farbe zu ziehen (er leuchtet).",
+      "DIE GRUNDREGEL: Die FARBE des Feldes, auf dem du landest, ZWINGT den Gegner, einen Turm in GENAU DIESER Farbe zu ziehen (er leuchtet). Mit zwei Reihen hat jeder zwei Türme pro Farbe und darf wählen.",
       "Nur beim ERSTEN Zug darfst du einen beliebigen Turm wählen. Danach bestimmen immer die Farben.",
       "Du GEWINNST, sobald ein Turm die LETZTE Reihe auf der Gegnerseite erreicht.",
-      "Kann der verlangte Turm nicht ziehen, ist er blockiert: Dann muss der Gegner den Turm in der Farbe des Feldes ziehen, auf dem der blockierte steht. Sind beide blockiert, ist es unentschieden.",
+      "Kann kein Turm der verlangten Farbe ziehen, ist er blockiert: Dann muss der Gegner einen Turm in der Farbe des Feldes ziehen, auf dem der blockierte steht. Sind beide blockiert, ist es unentschieden.",
     ],
     create,
   });
@@ -1025,6 +1100,7 @@ window.Sound = (function () {
     if (online) $('onlineInfo').textContent = '🌐 Online · Raum ' + room.code + ' · Runde ' + net.round + ' · ' + ((net.swap ? 1 - net.you : net.you) === 0 ? 'du beginnst' : 'Gegner beginnt');
     $('restartBtn').textContent = online ? '↻ Neue Runde anfragen' : '↻ Neue Runde';
     instance = game.create(makeContext(seed));
+    requestAnimationFrame(fitBoard);
     $('undoBtn').classList.toggle('hidden', mode !== 'local' || !instance || typeof instance.undo !== 'function');
     window.scrollTo({ top: 0 });
   }
@@ -1225,6 +1301,20 @@ window.Sound = (function () {
       setTimeout(() => { $('onlineMsg').textContent = 'Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.'; $('nameInput').focus(); }, 50);
     }
   }
+
+  // Spielbrett passt immer ins Fenster: lieber etwas kleiner als unten abgeschnitten
+  function fitBoard() {
+    const view = $('gameView'), wrap = $('boardWrap');
+    if (!view || view.classList.contains('hidden')) return;
+    wrap.style.zoom = '';
+    const free = window.innerHeight - $('app').getBoundingClientRect().height;
+    if (free >= 0) return;
+    const bh = wrap.getBoundingClientRect().height;
+    if (bh < 50) return;
+    wrap.style.zoom = Math.max(0.4, (bh + free - 4) / bh).toFixed(3);
+  }
+  window.addEventListener('resize', fitBoard);
+  if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(fitBoard)).observe($('gameView'));
 
   renderModes(); renderOptions(); renderHowto(); renderMute();
 })();

@@ -13,6 +13,8 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const GAMES = path.join(ROOT, 'games');
 const MODI = ['Lokal', 'Online', 'Bots', 'Solo'];
+// Spiel-Typen für den Typ-Filter auf der Startseite (gleiche Liste in startseite/start.js)
+const TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau'];
 const ALLOWED_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'langwiligi.site'];
 // Dateien, die nur der Besitzer der Webseite ändern sollte
 const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^startseite\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./, /^server-aktualisieren\./];
@@ -142,6 +144,12 @@ function check(slug) {
   else {
     const bad = modi.split(',').map(s => s.trim()).filter(m => m && !MODI.includes(m));
     if (bad.length) err(`Unbekannte Spielmodi: ${bad.map(b => `\`${b}\``).join(', ')}. Erlaubt: ${MODI.join(', ')}.`, file);
+  }
+  const typ = meta(html, 'spiel-typ');
+  if (!typ) warn(`\`<meta name="spiel-typ" content="Action,3D">\` fehlt (Typ-Filter auf der Startseite). Auswahl: ${TYPEN.join(', ')}.`, file);
+  else {
+    const bad = typ.split(',').map(s => s.trim()).filter(t => t && !TYPEN.includes(t));
+    if (bad.length) err(`Unbekannte Spiel-Typen: ${bad.map(b => `\`${b}\``).join(', ')}. Erlaubt: ${TYPEN.join(', ')}.`, file);
   }
   if (!meta(html, 'spiel-tags')) warn('`<meta name="spiel-tags" content="1 gegen 1,3D">` fehlt (Schildchen auf dem Bild).', file);
 

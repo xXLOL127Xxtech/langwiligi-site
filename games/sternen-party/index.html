@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#ff4fa3">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Party,Bis 4,Minispiele">
+<meta name="spiel-typ" content="Party">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -206,8 +207,9 @@ input.txt:focus{border-color:var(--gold)}
   <div class="panel">
     <div class="logo"><span>Sternen</span><span class="b">Party</span></div>
     <p class="sub">Würfeln, Münzen sammeln, Sterne kaufen und nach jeder Runde ein Minispiel!</p>
-    <button class="btn haupt" id="mLokal" data-start>Lokal spielen<small>1–4 Spieler an einer Tastatur, der Rest Computer</small></button>
-    <button class="btn" id="mOnline">Online spielen<small>Jeder am eigenen Laptop, mit extra Touchpad-Minispielen</small></button>
+    <button class="btn haupt" id="mBots" data-start>Gegen Computer<small>Du gegen 3 Computer · Tastatur und Touchpad</small></button>
+    <button class="btn" id="mLokal">Lokal zu zweit<small>2 Spieler an einer Tastatur, dazu 2 Computer · nur Tastatur</small></button>
+    <button class="btn" id="mOnline">Online spielen<small>Jeder am eigenen Laptop · Tastatur und Touchpad</small></button>
     <button class="btn" id="mAnleitung">Anleitung</button>
     <p class="hinweis">Menüs: Pfeiltasten oder WASD und Aktionstaste, oder einfach klicken.</p>
   </div>
@@ -216,8 +218,8 @@ input.txt:focus{border-color:var(--gold)}
 <!-- Lokal: Spieler beitreten -->
 <div id="sLokal" class="screen hidden">
   <div class="panel breit">
-    <div class="kopf"><h2>Wer spielt mit?</h2><button class="btn zurueck" data-zurueck>Zurück (Esc)</button></div>
-    <p class="sub">Jeder nimmt sich einen Tastenblock und drückt seine <b>Aktionstaste</b>. Freie Plätze spielt der Computer.</p>
+    <div class="kopf"><h2 id="lTitel">Wer spielt mit?</h2><button class="btn zurueck" data-zurueck>Zurück (Esc)</button></div>
+    <p class="sub" id="lText">Jeder nimmt sich einen Tastenblock und drückt seine <b>Aktionstaste</b>. Freie Plätze spielt der Computer.</p>
     <div class="plaetze" id="lPlaetze"></div>
     <div class="bloecke" id="lBloecke"></div>
     <div class="status" id="lStatus">Drückt eure Aktionstaste zum Mitmachen!</div>
@@ -288,9 +290,10 @@ input.txt:focus{border-color:var(--gold)}
     <h3>Items (höchstens 3)</h3>
     <p>Doppel- und Dreifachwürfel, Wunschwürfel, Turbo-Schuh (+3), Sternen-Kompass (direkt vor den Stern), Gusti-Glocke.</p>
     <h3>Minispiel-Teams</h3>
-    <p>Wer auf Blau landet, ist im blauen Team, wer auf Rot oder Grimm landet, im roten. Grüne Felder werden ausgelost. So entsteht <b>Jeder gegen jeden</b>, <b>2 gegen 2</b> oder <b>1 gegen 3</b>.</p>
+    <p>Wer auf Blau landet, ist im blauen Team, wer auf Rot oder Grimm landet, im roten. Grüne Felder werden ausgelost. So entsteht <b>Jeder gegen jeden</b>, <b>2 gegen 2</b> oder <b>1 gegen 3</b>. Bei 1 gegen 3 haben beide Seiten verschiedene Aufgaben (z.B. fangen und flüchten), damit es fair bleibt.</p>
     <h3>Steuerung</h3>
-    <p><b>Lokal</b> (eine Tastatur): Spieler 1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Q</kbd>, Spieler 2 <kbd>T</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd> + <kbd>R</kbd>, Spieler 3 <kbd>I</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> + <kbd>U</kbd>, Spieler 4 Pfeiltasten + <kbd>Enter</kbd>. Die Minispiele laufen nur mit Tasten.</p>
+    <p><b>Gegen Computer</b>: Du spielst mit allen Tasten (WASD oder Pfeile, Aktion Q/Enter/Leertaste) gegen drei Computer. Dazu kommen Minispiele, in denen du mit dem Touchpad zielst, klickst und nachfährst.</p>
+    <p><b>Lokal zu zweit</b> (eine Tastatur, dazu zwei Computer): jeder nimmt einen Tastenblock, z.B. Spieler 1 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> + <kbd>Q</kbd> und Spieler 2 Pfeiltasten + <kbd>Enter</kbd> (oder <kbd>T</kbd><kbd>F</kbd><kbd>G</kbd><kbd>H</kbd> + <kbd>R</kbd>, <kbd>I</kbd><kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> + <kbd>U</kbd>). Die Minispiele laufen nur mit Tasten.</p>
     <p><b>Online</b>: Jeder spielt am eigenen Laptop mit allen Tasten. Dazu kommen Minispiele, in denen du mit dem Touchpad zielst, klickst und nachfährst.</p>
   </div>
 </div>
@@ -318,6 +321,7 @@ input.txt:focus{border-color:var(--gold)}
 <script src="js/mini/pfeil-memo.js"></script>
 <script src="js/mini/bomben-tausch.js"></script>
 <script src="js/mini/fangen.js"></script>
+<script src="js/mini/sternbomben.js"></script>
 <script src="js/mini/zielscheiben.js"></script>
 <script src="js/mini/blitzklick.js"></script>
 <script src="js/mini/schneeballschlacht.js"></script>

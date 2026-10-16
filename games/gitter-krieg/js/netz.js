@@ -38,6 +38,7 @@ class ClientView {
       sh.alive = !!(f & 1); sh.inv = f & 2 ? 1 : 0; sh.firing = !!(f & 4); sh.gone = !!(f & 8);
       const x = s[o + 1], y = s[o + 2];
       sh.score = s[o + 5]; sh.mult = s[o + 6]; sh.lives = s[o + 7]; sh.bombs = s[o + 8];
+      sh.revT = d.rv ? d.rv[i] || 0 : 0;
       if (i === this.mySlot) {
         sh.sx = x; sh.sy = y;
         if ((sh.alive && !was) || !this.have || Math.hypot(sh.x - x, sh.y - y) > 260) { sh.x = x; sh.y = y; sh.vx = sh.vy = 0; }

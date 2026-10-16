@@ -7,7 +7,7 @@ Minis.reg({
   text: 'Triff die anderen mit Schneebällen und versteck dich hinter den Schneemauern! Jeder Treffer gibt Punkte, Getroffene frieren kurz ein.',
   steuerung: { tasten: 'WASD oder Pfeile laufen', zeiger: 'Zielen mit dem Touchpad, Linksklick wirft' },
   zeiger: true,
-  formate: ['ffa', '2v2', '1v3', 'duell'],
+  formate: ['ffa', '2v2', 'duell'],
   dauer: 40,
   TEMPO: 330,         // Laufgeschwindigkeit
   BALL_V: 900,        // Schneeball-Geschwindigkeit

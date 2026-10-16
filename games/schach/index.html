@@ -22,6 +22,7 @@
 <meta name="theme-color" content="#e8c078">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Strategie">
+<meta name="spiel-typ" content="Klassiker,Strategie">
 <!--
   Schach – angepasst für langwiligi.site.
   Original: „Chess“ aus github.com/mf4633/board-gaming von Michael Flynn (MIT-Lizenz).
@@ -415,6 +416,19 @@
     }
     .promo-choices button:hover { background: #e8c07a; }
     /* Mobile game nav */
+    /* Kleine Fenster: Kopfbereich kompakter */
+    @media (max-height: 820px) {
+      body { padding-top: 8px; padding-bottom: 8px; }
+      h1 { font-size: 1.35em; margin-bottom: 4px; }
+      .subtitle, .subtitle-cn { display: none; }
+      .mode-selector { margin-bottom: 6px; }
+      .game-info { margin-bottom: 4px; }
+      #turn-indicator { margin-bottom: 2px; }
+      #message { margin-bottom: 2px; }
+      .buttons { margin-bottom: 6px; }
+      .ai-config { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin-bottom: 6px; }
+      .ai-desc { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -2260,5 +2274,23 @@ window.OnlineKit = function (cfg) {
 </script>
 
 
+<script>
+/* Fenstergrösse: Brett so weit verkleinern, dass es ganz sichtbar ist */
+(function () {
+  var el = document.querySelector('.container'), q = 0;
+  if (!el) return;
+  function fit() {
+    el.style.zoom = '';
+    var r = el.getBoundingClientRect();
+    if (r.height < 50) return;
+    var z = Math.max(0.45, Math.min(1, (innerHeight - (r.top + scrollY) - 12) / r.height));
+    if (z < 0.995) el.style.zoom = z.toFixed(3);
+  }
+  function plan() { cancelAnimationFrame(q); q = requestAnimationFrame(fit); }
+  addEventListener('resize', plan);
+  if (window.ResizeObserver) new ResizeObserver(plan).observe(document.body);
+  plan();
+})();
+</script>
 </body>
 </html>

@@ -8,11 +8,12 @@
 <meta name="theme-color" content="#edc22e">
 <meta name="spiel-modi" content="Solo">
 <meta name="spiel-tags" content="Puzzle,Rangliste">
+<meta name="spiel-typ" content="Denkspiel,Klassiker">
 <link rel="stylesheet" href="style/main.css">
 <style>
   /* Dunkles Design passend zu langwiligi.site, Spielfeld im Original-Look */
   html, body { background: #0d0f13; color: #d9d3c7; }
-  body { margin: 40px 0; }
+  body { margin: 14px 0 40px; }
   h1.title { color: #edc22e; }
   a, .game-intro strong { color: #f2d77a; }
   .game-intro { color: #b8b1a5; }
@@ -118,5 +119,19 @@
     Rangliste.init({ game: GAME_ID, el: document.getElementById('rangliste'), einheit: 'Punkte' });
   </script>
   <script src="js/application.js"></script>
+  <script>
+  // Spielfeld passt immer ins Fenster: Überschrift + Brett werden kleiner gezoomt, statt unten abgeschnitten
+  (function () {
+    var box = document.querySelector('.container'), board = document.querySelector('.game-container');
+    function fit() {
+      box.style.zoom = 1;
+      var need = board.getBoundingClientRect().bottom + window.scrollY + 12;
+      var s = Math.max(0.5, Math.min(1, window.innerHeight / need));
+      box.style.zoom = s < 0.999 ? s.toFixed(3) : '';
+    }
+    window.addEventListener('resize', fit);
+    fit();
+  })();
+  </script>
 </body>
 </html>

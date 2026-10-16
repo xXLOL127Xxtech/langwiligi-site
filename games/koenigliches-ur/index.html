@@ -22,6 +22,7 @@
 <meta name="theme-color" content="#ffd23f">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Uralt,Würfel">
+<meta name="spiel-typ" content="Klassiker">
 <!--
   Ur (früher Das Königliche Spiel von Ur) – angepasst für langwiligi.site.
   Original: „Royal Game of Ur“ aus github.com/mf4633/board-gaming von Michael Flynn (MIT-Lizenz).
@@ -286,6 +287,18 @@
     .rules ul { padding-left: 18px; }
     .rules li { margin-bottom: 3px; }
     /* Mobile game nav */
+    /* Kleine Fenster: Kopfbereich kompakter */
+    @media (max-height: 820px) {
+      body { padding-top: 8px; padding-bottom: 8px; }
+      h1 { font-size: 1.35em; margin-bottom: 4px; }
+      .subtitle, .subtitle-cn { display: none; }
+      .mode-selector { margin-bottom: 6px; }
+      .game-info { margin-bottom: 4px; }
+      #turn-indicator { margin-bottom: 2px; }
+      #message { margin-bottom: 2px; }
+      .buttons { margin-bottom: 6px; }
+      .dice-container { margin: 2px 0; }
+    }
   </style>
 </head>
 <body>
@@ -1135,5 +1148,23 @@ window.OnlineKit = function (cfg) {
   if (kit.invite) setOnline();
 </script>
 
+<script>
+/* Fenstergrösse: Brett so weit verkleinern, dass es ganz sichtbar ist */
+(function () {
+  var el = document.querySelector('#ur-container'), q = 0;
+  if (!el) return;
+  function fit() {
+    el.style.zoom = '';
+    var r = el.getBoundingClientRect();
+    if (r.height < 50) return;
+    var z = Math.max(0.45, Math.min(1, (innerHeight - (r.top + scrollY) - 12) / r.height));
+    if (z < 0.995) el.style.zoom = z.toFixed(3);
+  }
+  function plan() { cancelAnimationFrame(q); q = requestAnimationFrame(fit); }
+  addEventListener('resize', plan);
+  if (window.ResizeObserver) new ResizeObserver(plan).observe(document.body);
+  plan();
+})();
+</script>
 </body>
 </html>

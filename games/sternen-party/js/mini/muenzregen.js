@@ -4,7 +4,7 @@ Minis.reg({
   id: 'muenzregen', name: 'Münzregen',
   text: 'Vom Himmel regnet es Münzen! Fang so viele wie möglich. Bomben betäuben dich und kosten 3 Münzen.',
   steuerung: { tasten: 'Links/Rechts laufen, Aktion springen' },
-  formate: ['ffa', '2v2', '1v3', 'duell'],
+  formate: ['ffa', '2v2', 'duell'],
   dauer: 30,
   BODEN: 790,
   start(S, info) {

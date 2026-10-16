@@ -122,6 +122,36 @@ h1 .site { display: block; margin-top: .16em; color: var(--cyan); text-shadow: 5
 .sort button[aria-pressed="true"] { background: var(--pink); border-color: var(--pink); }
 .seg button:focus-visible, .tip-btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
 .seg-label { margin-right: 6px; font: 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+/* Filter: zwei Ausklapp-Menüs (Modus, Typ) */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dd { position: relative; }
+.dd-btn { display: inline-flex; align-items: center; gap: 8px; font: 700 14px/1 var(--display); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text); background: rgba(15, 13, 26, .8); border: 1px solid var(--line); padding: 10px 14px 9px; cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%); transition: border-color .15s, background .15s; }
+.dd-btn:hover { border-color: var(--line-hi); }
+.dd-btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.dd-k { font: 12px/1 var(--mono); letter-spacing: .14em; color: var(--muted); }
+.dd-v { font-weight: 700; color: var(--cyan); }
+.dd.set .dd-btn { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 12%, var(--panel)); }
+.dd-c { width: 8px; height: 8px; margin: -3px 0 0 2px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); transition: transform .2s, margin .2s; }
+.dd.open .dd-c { transform: rotate(-135deg); margin-top: 4px; border-color: var(--cyan); }
+.dd-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; max-height: min(70vh, 460px); overflow-y: auto;
+  display: flex; flex-direction: column; padding: 6px; background: var(--panel); border: 1px solid var(--line-hi);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .8); animation: dd-in .18s var(--ease); }
+.dd-menu[hidden] { display: none; }
+@keyframes dd-in { from { opacity: 0; transform: translateY(-6px); } }
+.dd-menu button { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; padding: 9px 10px 8px 30px; position: relative;
+  font: 600 15px/1.2 var(--body); color: var(--text); background: transparent; border: 0; cursor: pointer; }
+.dd-menu button small { color: var(--muted); font-weight: 400; font-size: 12.5px; }
+.dd-menu button::after { content: attr(data-n); margin-left: auto; font: 13px/1 var(--mono); color: var(--muted); }
+.dd-menu button::before { content: ""; position: absolute; left: 10px; top: 50%; width: 10px; height: 10px; margin-top: -6px; border: 1px solid var(--line-hi); }
+.dd-menu button[aria-checked="true"] { color: var(--cyan); }
+.dd-menu button[aria-checked="true"]::before { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.dd-menu button:hover, .dd-menu button:focus-visible { background: var(--panel-2); outline: none; }
+.dd-menu button:disabled { opacity: .35; cursor: default; }
+.dd-reset { font: 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--pink); background: none; border: 0; padding: 8px 6px; cursor: pointer; }
+.dd-reset:hover { text-decoration: underline; }
+.dd-reset[hidden] { display: none; }
 .tip-btn { margin-left: auto; font: 700 14px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--bg); background: var(--yellow);
   border: 0; padding: 11px 16px 10px; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   transition: filter .15s; }

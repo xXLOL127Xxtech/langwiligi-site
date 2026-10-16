@@ -38,7 +38,7 @@
     id: 'farbklecks', name: 'Farbklecks',
     text: 'Lauf übers Feld und färbe die Kacheln in deiner Farbe. Die Farbbombe färbt alles rund um dich. Wer am Schluss die meisten Kacheln hat, gewinnt!',
     steuerung: { tasten: 'Richtungstasten laufen, Aktion Farbbombe (alle 4 s)' },
-    formate: ['ffa', '2v2', '1v3', 'duell'],
+    formate: ['ffa', '2v2', 'duell'],
     dauer: 30,
     start(S, info) {
       const n = info.teilnehmer.length;

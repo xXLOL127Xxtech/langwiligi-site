@@ -726,7 +726,9 @@ class Strecke {
       const dd = df * A.w;
       const m = new THREE.Mesh(new THREE.PlaneGeometry(4, 7), bmat);
       const p = this.punkt(s, dd); m.position.copy(p); m.position.y += 0.09;
-      m.quaternion.copy(this.lage(A)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)));
+      // flach hinlegen und um 180° drehen, damit die Pfeile in Fahrtrichtung zeigen
+      m.quaternion.copy(this.lage(A)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)))
+        .multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
       g.add(m);
       this.boosts.push({ s: ((s % L) + L) % L, d: dd, b: 2.2, l: 3.6 });
     }
@@ -757,6 +759,89 @@ class Strecke {
       g.add(m);
       this.rampen.push({ s: ((s % L) + L) % L, w: A.w });
     }
+    this.baueBremsen();
+  }
+  // Bremsfallen wie im echten Kart-Spiel: Pfützen (Matsch, Sand, Schnee, Öl …) und Pylonen, die man umfährt
+  baueBremsen() {
+    const g = this.gruppe, d = this.def, L = this.L;
+    this.bremsen = []; this.huetchen = [];
+    let h = 7; for (const ch of d.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const zufall = rng(h);
+    const belegt = [0, ...(d.items || []), ...(d.boost || []).map(b => b[0]), ...(d.rampen || [])];
+    const nah = (u, v, m) => { const x = Math.abs(u - v) % 1; return Math.min(x, 1 - x) < m; };
+    const frei = u => {
+      if (belegt.some(b => nah(u, b, 0.04))) return false;
+      for (let k = -4; k <= 4; k++) { const A = this.S[this.idx(u * L + this.startS + k * 2)]; if (A.fall || A.eis) return false; }
+      return true;
+    };
+    const kandidaten = [];
+    for (let u = 0.06; u < 0.95; u += 0.01) if (frei(u)) kandidaten.push(u);
+    const wahl = (n, abst) => {
+      const out = [];
+      for (let t = 0; t < 400 && out.length < n && kandidaten.length; t++) {
+        const u = kandidaten[(zufall() * kandidaten.length) | 0];
+        if (out.every(v => !nah(u, v, abst)) && belegt.every(v => !nah(u, v, 0.04))) { out.push(u); belegt.push(u); }
+      }
+      return out;
+    };
+    const art = { wiese: 'matsch', dschungel: 'matsch', strand: 'sand', wueste: 'sand', schnee: 'schnee', stadt: 'oel', lava: 'asche', all: 'glibber' }[d.thema] || 'matsch';
+    const farben = { matsch: ['#6b4a2b', '#4f3520', '#8a6440'], sand: ['#d9b46a', '#c49a50', '#f0d08e'], schnee: ['#f4f8ff', '#cfe0f2', '#ffffff'],
+      oel: ['#15161c', '#2a2440', '#4a3a7a'], asche: ['#3a3434', '#252020', '#5a4a44'], glibber: ['#b04ae0', '#7a2aa8', '#e6a0ff'] }[art];
+    const tex = Tex.holen('pfuetze-' + art, () => Tex.aus(Tex.canvas(128, 128, (c, W, H) => {
+      const z = rng(art.length * 977);
+      c.fillStyle = farben[0];
+      for (let i = 0; i < 9; i++) { c.beginPath(); c.ellipse(W / 2 + (z() - 0.5) * 50, H / 2 + (z() - 0.5) * 60, 22 + z() * 22, 18 + z() * 26, z() * 3, 0, TAU); c.fill(); }
+      c.fillStyle = farben[1];
+      for (let i = 0; i < 5; i++) { c.beginPath(); c.ellipse(W / 2 + (z() - 0.5) * 40, H / 2 + (z() - 0.5) * 50, 10 + z() * 14, 8 + z() * 12, z() * 3, 0, TAU); c.fill(); }
+      c.fillStyle = farben[2]; c.globalAlpha = 0.7;
+      for (let i = 0; i < 7; i++) { c.beginPath(); c.ellipse(W / 2 + (z() - 0.5) * 60, H / 2 + (z() - 0.5) * 70, 3 + z() * 5, 2 + z() * 3, z() * 3, 0, TAU); c.fill(); }
+    })));
+    const pmat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, polygonOffset: true, polygonOffsetFactor: -2, depthWrite: false });
+    for (const u of wahl(4, 0.1)) {
+      const s = u * L + this.startS, A = this.S[this.idx(s)];
+      // oft genau auf der Ideallinie: ausweichen kostet Zeit, durchfahren auch
+      const dd = clamp(A.ideal + (zufall() - 0.5) * 0.5 * A.w, -0.55 * A.w, 0.55 * A.w);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 6.4), pmat);
+      m.position.copy(this.punkt(s, dd)); m.position.y += 0.07;
+      m.quaternion.copy(this.lage(A)).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, zufall() * TAU)));
+      m.receiveShadow = true;
+      g.add(m);
+      this.bremsen.push({ s: ((s % L) + L) % L, d: dd, b: 2.4, l: 2.8, art });
+    }
+    // Pylonen-Reihen: umfahren kostet Tempo
+    const kegel = new THREE.MeshLambertMaterial({ color: '#ff6a10' }), streifen = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+    for (const u of wahl(2, 0.15)) {
+      const s = u * L + this.startS, A = this.S[this.idx(s)];
+      const seite = zufall() < 0.5 ? -1 : 1;
+      for (let k = 0; k < 4; k++) {
+        const dd = seite * (0.15 + k * 0.2) * A.w;
+        const grp = new THREE.Group();
+        grp.add(M(G.kegel(0.42, 1.0, 10), kegel, 0, 0.55, 0), M(G.zyl(0.3, 0.34, 0.16, 10), streifen, 0, 0.62, 0), M(G.box(1.0, 0.1, 1.0), kegel, 0, 0.05, 0));
+        const p = this.punkt(s + k * 1.5, dd);
+        grp.position.copy(p);
+        grp.traverse(o => { if (o.isMesh) o.castShadow = true; });
+        g.add(grp);
+        this.huetchen.push({ p: p.clone(), m: grp, weg: 0, vx: 0, vy: 0, vz: 0, s: (((s + k * 1.5) % L) + L) % L, d: dd, reihe: u });
+      }
+    }
+    if (this.huetchen.length) this.anim.push(() => {
+      const jetzt = performance.now() / 1000;
+      for (const h of this.huetchen) {
+        if (!h.weg) continue;
+        const a = jetzt - h.weg;
+        if (a > 6) { h.weg = 0; h.m.position.copy(h.p); h.m.rotation.set(0, 0, 0); h.m.visible = true; continue; }
+        if (a < 1.2) {
+          h.m.position.set(h.p.x + h.vx * a, h.p.y + h.vy * a - 15 * a * a, h.p.z + h.vz * a);
+          h.m.rotation.x = a * 9; h.m.rotation.z = a * 6;
+        } else h.m.visible = false;
+      }
+    });
+  }
+  // Pylone umgefahren: fliegt weg, Kart wird langsamer
+  huetchenTreffer(h, k) {
+    h.weg = performance.now() / 1000;
+    const sx = Math.sin(k.mYaw), sz = Math.cos(k.mYaw), v = Math.max(6, Math.abs(k.v));
+    h.vx = sx * v * 0.6 + (Math.random() - 0.5) * 4; h.vz = sz * v * 0.6 + (Math.random() - 0.5) * 4; h.vy = 5 + Math.random() * 3;
   }
   // Ausrichtung an Steigung und Neigung der Strecke
   lage(A) {

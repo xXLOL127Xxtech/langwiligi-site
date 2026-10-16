@@ -7,7 +7,7 @@
 ## Checkliste
 
 - [ ] Alles liegt in **einem** Ordner `games/<spiel-id>/` (klein, ohne Leerzeichen/Umlaute)
-- [ ] `index.html` mit `<title>`, `description`, `theme-color`, `spiel-modi`, `spiel-tags`
+- [ ] `index.html` mit `<title>`, `description`, `theme-color`, `spiel-modi`, `spiel-typ`, `spiel-tags`
 - [ ] `cover.webp` (16:10, ohne Text)
 - [ ] Startet per Doppelklick ohne Fehler, komplett mit Touchpad und Tastatur spielbar (ohne Maus)
 - [ ] Ordner höchstens 100 MB, keine Datei über 25 MB

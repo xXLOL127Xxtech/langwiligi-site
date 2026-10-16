@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#00e5ff">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Taktik,Knobeln">
+<meta name="spiel-typ" content="Denkspiel,Strategie">
 <!--
   Laserlabyrinth (früher Laser-Duell) – angepasst für langwiligi.site.
   Spiel-Logik aus „TwoPlayerGames“ von tridpt (MIT-Lizenz): https://github.com/tridpt/TwoPlayerGames
@@ -119,6 +120,8 @@ button, input, select { font-family: inherit; }
 .msg.err { color: #ff8a80; }
 .code-big { font-size: 2.2rem; font-weight: 900; letter-spacing: .3em; color: var(--accent); text-align: center; }
 .start-row { display: flex; justify-content: center; }
+/* Start-Knopf bleibt unten im Fenster sichtbar, auch wenn das Menü länger ist */
+#startRow { position: sticky; bottom: 0; z-index: 20; padding: 14px 0 12px; background: linear-gradient(rgba(10, 12, 16, 0), rgba(10, 12, 16, .94) 45%); }
 .start-row .btn { min-width: 220px; padding: 14px 22px; font-size: 1.1rem; }
 
 /* ---------- Spielansicht ---------- */
@@ -155,6 +158,18 @@ button, input, select { font-family: inherit; }
 .toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 3100; background: rgba(20,24,32,.96); border: 1px solid var(--line); padding: 10px 16px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
 .board-wrap .lw-board { color: var(--text); }
 .lb { margin-top: 8px; }
+@media (max-height: 760px) {
+  #app { padding-top: 6px; padding-bottom: 6px; }
+  #gameView .topbar { margin-bottom: 4px; }
+  #gameView .icon-btn { width: 34px; height: 34px; }
+  #gameView .topbar .btn.small { padding: 6px 12px; }
+  #gameView .scoreboard { margin-bottom: 4px; }
+  #gameView .pcard { padding: 4px 12px; flex-direction: row; align-items: baseline; justify-content: space-between; gap: 10px; }
+  #gameView .pcard.p2 { flex-direction: row-reverse; }
+  #gameView .turn { padding: 5px 12px; }
+  #gameView .status { margin: 2px 0 4px; font-size: .95rem; }
+  #gameView .board-wrap { margin-bottom: 8px; }
+}
 
 @media (max-width: 560px) {
   #app { padding: 10px 12px 24px; }
@@ -1736,6 +1751,7 @@ window.Sound = (function () {
     if (online) $('onlineInfo').textContent = '🌐 Online · Raum ' + room.code + ' · Runde ' + net.round + ' · ' + ((net.swap ? 1 - net.you : net.you) === 0 ? 'du beginnst' : 'Gegner beginnt');
     $('restartBtn').textContent = online ? '↻ Neue Runde anfragen' : '↻ Neue Runde';
     instance = game.create(makeContext(seed));
+    requestAnimationFrame(fitBoard);
     $('undoBtn').classList.toggle('hidden', mode !== 'local' || !instance || typeof instance.undo !== 'function');
     window.scrollTo({ top: 0 });
   }
@@ -1936,6 +1952,20 @@ window.Sound = (function () {
       setTimeout(() => { $('onlineMsg').textContent = 'Einladung erhalten! Name eingeben und auf „Beitreten“ tippen.'; $('nameInput').focus(); }, 50);
     }
   }
+
+  // Spielbrett passt immer ins Fenster: lieber etwas kleiner als unten abgeschnitten
+  function fitBoard() {
+    const view = $('gameView'), wrap = $('boardWrap');
+    if (!view || view.classList.contains('hidden')) return;
+    wrap.style.zoom = '';
+    const free = window.innerHeight - $('app').getBoundingClientRect().height;
+    if (free >= 0) return;
+    const bh = wrap.getBoundingClientRect().height;
+    if (bh < 50) return;
+    wrap.style.zoom = Math.max(0.4, (bh + free - 4) / bh).toFixed(3);
+  }
+  window.addEventListener('resize', fitBoard);
+  if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(fitBoard)).observe($('gameView'));
 
   renderModes(); renderOptions(); renderHowto(); renderMute();
 })();

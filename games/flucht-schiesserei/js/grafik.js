@@ -161,6 +161,7 @@ class Renderer {
     const ctx = this.ctx;
     const [x, y, a, aim, wc, , , fl] = p;
     const alive = fl & 1, ground = fl & 2, shield = fl & 4, flash = fl & 8;
+    if (fl & 64) return;   // ist ins Fluchtfahrzeug eingestiegen
     if (shield && Math.floor(performance.now() / 90) % 2) return;
     const F = FIG[slot.outfit];
     const face = Math.cos(aim) >= 0 ? 1 : -1;
@@ -282,7 +283,7 @@ class Renderer {
     sc.textAlign = 'center'; sc.textBaseline = 'bottom';
     view.P.forEach((p, i) => {
       const [x, y, , , , , hp, fl] = p;
-      if (!(fl & 1)) return;
+      if (!(fl & 1) || (fl & 64)) return;
       const [sx, sy] = this.W2S(x, y + 1.0);
       const X = sx * S, Y = sy * S;
       if (X < -50 || X > this.cv.width + 50 || Y < -50 || Y > this.cv.height + 50) return;

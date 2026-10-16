@@ -2,8 +2,9 @@
 //
 // Ein Minispiel meldet sich mit Minis.reg({...}) an. Felder:
 //   id, name, text (Anleitung, 1–2 Sätze), steuerung: { tasten: '…', zeiger: '…' (nur Online-Spiele) }
-//   zeiger: true      -> braucht Touchpad/Maus, nur im Online-Modus
+//   zeiger: true      -> braucht Touchpad/Maus, nur online und „Gegen Computer“ (nicht lokal zu zweit)
 //   formate: ['ffa','2v2','1v3','duell']   -> welche Aufteilungen das Spiel kann (ffa/duell: jeder für sich, 2–4 Teilnehmer)
+//                       '1v3' nur für Spiele mit verschiedenen Rollen (z.B. Fänger gegen Flüchtende), sonst ist es unfair
 //   dauer: Sekunden   -> optional, danach endet das Spiel automatisch (Zeitanzeige oben)
 //   start(S, info)          Anfangszustand in S schreiben (nur Host)
 //   schritt(S, ein, dt, info)  60× pro Sekunde (nur Host). S.fertig = true beendet das Spiel.

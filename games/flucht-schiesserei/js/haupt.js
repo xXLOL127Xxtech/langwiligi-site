@@ -31,7 +31,11 @@ function setStatus(id, txt, spin, err) { const el = $(id); el.className = 'statu
 const KEY_L = ['KeyA', 'ArrowLeft'], KEY_R = ['KeyD', 'ArrowRight'];
 addEventListener('keydown', e => {
   SFX.init();
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
+  const ae = document.activeElement;
+  if (ae && ae.tagName === 'INPUT') {
+    // Im Spiel ist kein Eingabefeld sichtbar: Fokus abgeben, sonst kann man sich nicht bewegen
+    if (G.running && document.body.classList.contains('ingame')) ae.blur(); else return;
+  }
   if (KEY_L.includes(e.code)) { if (!e.repeat) { input.lp++; G.inT = 0; } input.l = true; e.preventDefault(); }
   else if (KEY_R.includes(e.code)) { if (!e.repeat) { input.rp++; G.inT = 0; } input.r = true; e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') { input.keyFire = true; e.preventDefault(); }
@@ -88,13 +92,38 @@ function startMatch() {
 }
 function startRound() {
   G.round++;
+  if (G.mode === 'host' && G.round > 1) addLateJoiners();
   const mapId = nextMap(G.mapChoice);
   const seed = (Math.random() * 2 ** 31) >>> 0;
   buildRound(mapId, seed, false);
-  if (G.mode === 'host') netSend({ t: 'round', map: mapId, seed, slots: G.slots, scores: G.scores, kills: G.kills, round: G.round });
+  G.cur = { t: 'round', map: mapId, seed, slots: G.slots, scores: G.scores, kills: G.kills, round: G.round };
+  if (G.mode === 'host') netSend(G.cur);
+}
+// Wer während einer Runde beitritt, übernimmt ab der nächsten Runde einen Bot-Platz (oder einen freien Platz)
+function addLateJoiners() {
+  let added = false;
+  for (const h of humansInRoom()) {
+    if (G.slots.some(s => s.seat === h.seat)) continue;
+    let i = G.slots.findIndex(s => s.bot != null && s.seat == null);
+    if (i < 0 && G.slots.length < 4) { i = G.slots.length; G.scores.push(0); G.kills.push(0); }
+    if (i < 0) continue;
+    const used = G.slots.filter((s, k) => k !== i).map(s => s.outfit);
+    let outfit = G.slots[i] ? G.slots[i].outfit : 0;
+    while (used.includes(outfit)) outfit = (outfit + 1) % OUTFITS.length;
+    G.slots[i] = { name: h.name, outfit, bot: null, seat: h.seat };
+    G.scores[i] = 0; G.kills[i] = 0;
+    added = true;
+  }
+  if (added) {
+    const n = G.slots.filter(s => s.seat != null).length;
+    if (n >= 2 && G.humans < 2) G.room.roundStart();
+    G.humans = n;
+  }
 }
 function buildRound(mapId, seed, client) {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   G.inBase = { lp: input.lp, rp: input.rp };
+  G.seed = seed;
   G.sim = new Sim({ mapId, seed, slots: G.slots, scores: G.scores, client });
   G.sim.players.forEach((p, i) => (p.kills = G.kills[i] || 0));
   G.bots = client ? [] : G.slots.map((s, i) => (s.bot != null ? new Bot(G.sim, G.sim.players[i], s.bot) : null));
@@ -111,7 +140,8 @@ function buildRound(mapId, seed, client) {
 let lastT = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  // bis 10 Bilder/s darf ein langsamer Rechner aufholen, sonst läuft das Spiel (online für alle) in Zeitlupe
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
   if (!G.running || !G.sim) return;
   const sim = G.sim;
   input.fire = input.mouseFire || input.keyFire;
@@ -127,21 +157,21 @@ function frame(now) {
   else if (!G.paused) {
     G.acc += dt;
     let steps = 0;
-    while (G.acc >= STEP && steps < 4) {
+    while (G.acc >= STEP && steps < 6) {
       const me = sim.players[G.me];
       if (me) Object.assign(me.input, { l: input.l, r: input.r, fire: input.fire, aim: input.aim, lp: input.lp - G.inBase.lp, rp: input.rp - G.inBase.rp });
       for (const b of G.bots) if (b) b.update(STEP);
       sim.step(STEP);
       G.acc -= STEP; steps++;
     }
-    if (steps === 4) G.acc = 0;
+    if (steps === 6) G.acc = 0;
     G.view = sim.view();
     const evs = sim.events; sim.events = [];
     handleEvents(evs);
     if (G.mode === 'host') {
       G.netEv = (G.netEv || []).concat(evs);
       G.sendT -= dt;
-      if (G.sendT <= 0) { G.sendT = 0.05; netSend({ t: 's', v: packView(G.view), e: G.netEv }); G.netEv = []; }
+      if (G.sendT <= 0) { G.sendT = 1 / 30; netSend({ t: 's', v: packView(G.view), e: G.netEv }); G.netEv = []; }
     }
     if (sim.done && !G.ended) {
       G.scores = sim.players.map(p => p.escapes); G.kills = sim.players.map(p => p.kills);
@@ -272,7 +302,13 @@ function toMenu() {
 function netSend(m) { if (G.room) G.room.send(m); }
 function bindRoom(room) {
   room.on('msg', (d, from) => onNet(d, from));
-  room.on('peer-join', m => { if (G.mode === 'host') { if (!G.running) renderLobby(); sendLobby(); } });
+  room.on('peer-join', m => {
+    if (G.mode !== 'host') return;
+    if (!G.running) renderLobby();
+    sendLobby();
+    // Läuft schon eine Runde: Neuling schaut zu und ist ab der nächsten Runde dabei
+    if (G.running && G.cur) { netSend(G.cur); feed(esc(m.name || 'Jemand') + ' ist beigetreten und spielt ab der nächsten Runde mit'); }
+  });
   room.on('peer-left', m => {
     if (G.mode === 'host') {
       const s = G.slots.find(x => x.seat === m.idx);
@@ -360,9 +396,13 @@ function onNet(d, from) {
     if (d.t === 'in' && G.running && G.sim) {
       const i = G.slots.findIndex(s => s.seat === from);
       if (i < 0) return;
-      const inp = G.sim.players[i].input;
+      // Eingaben aus einer alten Runde ignorieren (sonst blieben Sprünge nach dem Rundenwechsel hängen)
+      if (d.rd != null && d.rd !== G.round) return;
+      const p = G.sim.players[i], inp = p.input, lp = d.lp | 0, rp = d.rp | 0;
       inp.l = !!d.l; inp.r = !!d.r; inp.fire = !!d.f; inp.aim = +d.a || 0;
-      inp.lp = Math.max(inp.lp, d.lp | 0); inp.rp = Math.max(inp.rp, d.rp | 0);
+      // Gäste zählen ihre Tastendrücke fortlaufend: die erste Meldung der Runde ist der Startwert
+      if (!inp.net) { inp.net = true; inp.lp = p.seenL = lp; inp.rp = p.seenR = rp; }
+      else { inp.lp = Math.max(inp.lp, lp); inp.rp = Math.max(inp.rp, rp); }
     }
     return;
   }
@@ -371,11 +411,20 @@ function onNet(d, from) {
     G.lobbySlots = d.slots; G.lobbyInfo = d;
     if (!G.running) { show('lobby'); renderLobby(d.slots); }
   } else if (d.t === 'round') {
+    if (G.running && G.sim && d.seed === G.seed && d.round === G.round) return;   // gleiche Runde nochmal (für Neulinge)
     G.slots = d.slots; G.scores = d.scores; G.kills = d.kills; G.round = d.round; G.mapChoice = d.map;
     G.me = G.slots.findIndex(s => s.seat === G.room.you);
     buildRound(d.map, d.seed, true);
+    if (G.me < 0) banner('Du schaust zu', 'Ab der nächsten Runde spielst du mit', 3);
   } else if (d.t === 's' && G.running && G.sim) {
-    G.snaps.push({ at: performance.now(), v: d.v });
+    const now = performance.now(), last = G.snaps[G.snaps.length - 1];
+    if (last) {
+      // Abstand und Schwankung der Pakete messen -> so wenig Verzögerung wie möglich
+      const gap = now - last.at;
+      G.gap = G.gap ? G.gap + (gap - G.gap) * 0.1 : gap;
+      G.jit = (G.jit || 0) + (Math.abs(gap - G.gap) - (G.jit || 0)) * 0.1;
+    }
+    G.snaps.push({ at: now, v: d.v });
     if (G.snaps.length > 30) G.snaps.shift();
     if (d.e && d.e.length) handleEvents(d.e);
   } else if (d.t === 'end' && G.sim) {
@@ -401,16 +450,25 @@ function clientFrame(dt) {
   G.inT -= dt;
   if (G.inT <= 0 && G.me >= 0) {
     G.inT = 1 / 30;
-    netSend({ t: 'in', l: input.l, r: input.r, f: input.fire, a: Math.round(input.aim * 100) / 100, lp: input.lp - G.inBase.lp, rp: input.rp - G.inBase.rp });
+    netSend({ t: 'in', l: input.l, r: input.r, f: input.fire, a: Math.round(input.aim * 100) / 100, lp: input.lp, rp: input.rp, rd: G.round });
   }
   if (!G.snaps.length) return;
-  const rt = performance.now() - 110;
+  const delay = clamp((G.gap || 40) * 1.5 + (G.jit || 10) * 2, 45, 160);
+  const rt = performance.now() - delay;
   let A = null, B = null;
   for (let i = G.snaps.length - 1; i >= 0; i--) { if (G.snaps[i].at <= rt) { A = G.snaps[i]; B = G.snaps[i + 1] || null; break; } }
   let v;
   if (!A) v = G.snaps[0].v;
   else if (!B) v = A.v;
   else v = interp(A.v, B.v, clamp((rt - A.at) / Math.max(1, B.at - A.at), 0, 1));
+  // Eigene Figur: neuester Stand plus kurze Vorausschau statt Verzögerung -> Steuerung fühlt sich direkter an
+  const L = G.snaps[G.snaps.length - 1];
+  if (G.me >= 0 && L.v.P[G.me]) {
+    const o = L.v.P[G.me].slice(), age = Math.min(0.1, (performance.now() - L.at) / 1000);
+    if ((o[7] & 1) && !(o[7] & 64)) { o[0] += o[8] * age; o[1] += o[9] * age - (o[7] & 2 ? 0 : 0.5 * GRAV * age * age); }
+    v = Object.assign({}, v, { P: v.P.slice() });
+    v.P[G.me] = o;
+  }
   G.view = v;
   // Kartenkörper auf den Stand des Hosts setzen (für Ziel, Seile usw.)
   sim.movers.forEach((mb, i) => { const m = v.M[i]; if (m) { mb.body.setTransform(V2(m[0], m[1]), m[2]); mb.state = m[3]; } });
