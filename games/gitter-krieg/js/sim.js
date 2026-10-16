@@ -3,6 +3,7 @@
 'use strict';
 
 const SHIP_R = 13, SHIP_SPEED = 430, BULLET_SPEED = 1150;
+const REVIVE_T = 10;   // Koop: Sekunden bis zur Wiederbelebung ohne Leben
 const MAX_ENEMIES = 260, MAX_GEOMS = 180, MAX_BULLETS = 700;
 const HCS = 64, HC = Math.ceil(AW / HCS), HR = Math.ceil(AH / HCS);
 
@@ -42,7 +43,7 @@ class Sim {
     const s = {
       slot, seat: seat == null ? -1 : seat, name, bot: null, remote: false, gone: false,
       x: AW / 2 + Math.cos(a) * r, y: AH / 2 + Math.sin(a) * r, vx: 0, vy: 0, ang: -Math.PI / 2, aim: -Math.PI / 2,
-      alive: true, deadT: 0, inv: 2.5, lives: 3, bombs: 3, score: 0, mult: 1, maxMult: 1, prog: 0, kills: 0, deaths: 0, pk: 0,
+      alive: true, deadT: 0, revT: 0, revWait: false, inv: 2.5, lives: 3, bombs: 3, score: 0, mult: 1, maxMult: 1, prog: 0, kills: 0, deaths: 0, pk: 0,
       fireCD: 0, firing: false, inp: { mx: 0, my: 0, aim: null, fire: false }, bombReq: 0, bombDone: 0,
       nextLife: 75000, nextBomb: 100000, netX: null, netY: null,
     };
@@ -88,6 +89,13 @@ class Sim {
       if (s.lives > 0 || this.versus || this.cfg.demo) {
         s.deadT -= dt;
         if (s.deadT <= 0) this.respawn(s);
+      } else if (s.revT > 0 || s.revWait) {
+        // Koop: ohne Leben nach 10 s wiederbeleben, solange ein Mitspieler noch lebt
+        s.revT = Math.max(0, s.revT - dt);
+        if (s.revT <= 0) {
+          s.revWait = true;
+          if (this.ships.some(o => o !== s && !o.bot && !o.gone && o.alive)) { s.revWait = false; this.respawn(s); }
+        }
       }
       return;
     }
@@ -171,6 +179,8 @@ class Sim {
     s.deadT = this.versus ? 2.2 : 2.0;
     this.emit(EV.SHIPDIE, s.x | 0, s.y | 0, s.slot);
     if (!this.versus && !this.cfg.demo) s.lives--;
+    s.revT = 0; s.revWait = false;
+    if (s.lives <= 0 && this.canRevive(s)) s.revT = REVIVE_T;
     if (killer != null && killer >= 0 && killer !== s.slot && this.ships[killer]) {
       const k = this.ships[killer];
       k.score += 1000 * k.mult; k.pk++;
@@ -185,6 +195,11 @@ class Sim {
       this.bullets.length = 0; this.geoms.length = 0;
       this.calm = 2.4; this.spawnAcc = 0; this.diffT = Math.max(0, this.diffT - 15);
     }
+  }
+
+  // Wiederbelebung gibt es im Koop mit mindestens 2 Menschen (online)
+  canRevive(s) {
+    return this.cfg.mode === 'coop' && !this.cfg.demo && !s.bot && this.ships.filter(o => !o.bot && !o.gone).length >= 2;
   }
 
   extras(s) {
@@ -656,6 +671,7 @@ class Sim {
   checkOver() {
     if (this.versus || this.cfg.demo) return;
     const humans = this.ships.filter(s => !s.bot && !s.gone);
+    // Vorbei, wenn alle Menschen gleichzeitig tot sind und keiner mehr Leben hat (auch wer gerade auf die Wiederbelebung wartet)
     if (humans.length && humans.every(s => !s.alive && s.lives <= 0)) this.over = true;
   }
 
@@ -777,7 +793,8 @@ class Sim {
     for (const bu of this.bullets) if (!bu.dead) b.push(bu.x | 0, bu.y | 0, (Math.atan2(bu.vy, bu.vx) * 100) | 0, bu.o);
     for (const ge of this.geoms) if (!ge.dead) g.push(ge.x | 0, ge.y | 0, ge.life < 1.5 ? 1 : 0);
     for (const bo of this.bombs) k.push(bo.x | 0, bo.y | 0, bo.r | 0);
-    return { s, e, b, g, k, tl: Math.ceil(this.timeLeft) };
+    const rv = this.ships.map(sh => (!sh.alive && (sh.revT > 0 || sh.revWait)) ? Math.max(1, Math.ceil(sh.revT)) : 0);
+    return { s, e, b, g, k, rv, tl: Math.ceil(this.timeLeft) };
   }
 }
 

@@ -624,7 +624,11 @@ function updateHud(dt) {
   const rs = $('respawn');
   if (me && !me.alive) {
     rs.style.display = 'block';
-    rs.textContent = mode === 'versus' || me.lives > 0 ? 'Gleich kommt dein nächstes Schiff …' : 'Keine Schiffe mehr. Du schaust den anderen zu.';
+    // Countdown nur für den, der wartet. Die anderen sehen davon nichts.
+    const rev = me.revT > 0 || me.revWait ? Math.max(1, Math.ceil(me.revT)) : 0;
+    rs.classList.toggle('rev', !!rev);
+    if (rev) rs.innerHTML = `Wiederbelebung in<b>${rev}</b>${me.revT > 0 ? 'Überlebt dein Team so lange, bist du wieder dabei.' : 'Sobald ein Mitspieler lebt …'}`;
+    else rs.textContent = mode === 'versus' || me.lives > 0 ? 'Gleich kommt dein nächstes Schiff …' : 'Keine Schiffe mehr. Du schaust den anderen zu.';
   } else rs.style.display = 'none';
   if (showFps) { $('fps').style.display = 'block'; $('fps').textContent = `${fpsVal | 0} FPS · ${R.stat.quads} Linien · ${Partikel.count} Partikel · ${v.enemies.length} Gegner · Qualität ${Math.round(quality * 100)}%${R.hdr ? ' · HDR' : ''}`; }
   else $('fps').style.display = 'none';

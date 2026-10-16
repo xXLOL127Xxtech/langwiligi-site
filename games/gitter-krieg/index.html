@@ -59,7 +59,10 @@
     text-shadow: 0 0 18px var(--nc, #3ae0ff), 0 0 4px var(--nc, #3ae0ff); }
   #notice .s { font-size: 15px; color: #dfe9f5; margin-top: 4px; text-shadow: 0 2px 8px #000; }
   #respawn { position: absolute; left: 50%; top: 60%; transform: translateX(-50%); font-size: 16px; font-weight: 700; color: #fff;
-    text-shadow: 0 2px 8px #000; display: none; }
+    text-shadow: 0 2px 8px #000; display: none; text-align: center; }
+  #respawn.rev { top: 38%; font-size: 15px; color: #dfe9f5; }
+  #respawn.rev b { display: block; margin: 4px 0 6px; font-size: 72px; line-height: 1; font-weight: 900; color: #fff;
+    text-shadow: 0 0 22px #3dffb0, 0 0 6px #3dffb0; font-variant-numeric: tabular-nums; }
   #roombox { position: absolute; right: 10px; bottom: 10px; padding: 6px 10px; font-size: 12px; color: var(--muted); display: none; }
   #roombox b { color: var(--gold); font: 800 14px ui-monospace, monospace; letter-spacing: .12em; }
   #fps { position: absolute; right: 10px; bottom: 10px; font: 11px ui-monospace, monospace; color: var(--muted); display: none; }
@@ -210,7 +213,7 @@
   <!-- Online -->
   <div class="panel" id="p-online">
     <h2>Online spielen</h2>
-    <p class="sub">Erstelle einen Raum und schick den Link an bis zu drei Freunde. Im Raum wählt der Host Koop oder Versus und kann Bots dazunehmen.</p>
+    <p class="sub">Erstelle einen Raum und schick den Link an bis zu drei Freunde. Im Raum wählt der Host Koop oder Versus und kann Bots dazunehmen. Im Koop kommt, wer keine Leben mehr hat, nach 10 Sekunden zurück, solange noch ein Mitspieler lebt.</p>
     <button class="big" id="btn-host">Raum erstellen</button>
     <div class="sep">oder beitreten</div>
     <div class="row"><input type="text" id="join-code" maxlength="40" placeholder="Code, z.B. K7QD" autocomplete="off"><button id="btn-join" style="flex:0 0 auto">Beitreten</button></div>
