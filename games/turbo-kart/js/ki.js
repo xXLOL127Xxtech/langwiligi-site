@@ -102,7 +102,7 @@ class Bot {
     // Wenn verkehrt herum: wenden
     if (Math.abs(diff) > 2.2 && k.v < 6) { inp.bremse = 1; inp.gas = 0; inp.lenk = diff > 0 ? 1 : -1; }
     // Feststecken
-    if (r.phase === 'rennen' && k.v < 2 && !k.treffer && k.rettung <= 0) this.steckT += dt; else this.steckT = 0;
+    if (r.phase === 'rennen' && Math.abs(k.v) < 2 && !k.treffer && k.rettung <= 0) this.steckT += dt; else this.steckT = 0;
     if (this.steckT > 1.2) { this.rueckT = 0.9; this.steckT = 0; }
     if (this.rueckT > 0) { this.rueckT -= dt; inp.gas = 0; inp.bremse = 1; inp.lenk = -inp.lenk; inp.drift = false; }
     this.items(dt, inp);
@@ -173,7 +173,7 @@ class Bot {
     const diff = wrapA(soll - k.yaw);
     inp.lenk = clamp(-diff * 2.5, -1, 1);
     if (Math.abs(diff) > 1.6 && k.v > 12) inp.gas = 0.6;
-    if (r.phase === 'rennen' && k.v < 2 && !k.treffer) this.steckT += dt; else this.steckT = 0;
+    if (r.phase === 'rennen' && Math.abs(k.v) < 2 && !k.treffer) this.steckT += dt; else this.steckT = 0;
     if (this.steckT > 1.0) { this.rueckT = 1.0; this.steckT = 0; }
     if (this.rueckT > 0) { this.rueckT -= dt; inp.gas = 0; inp.bremse = 1; inp.lenk = -inp.lenk; }
     this.items(dt, inp);
