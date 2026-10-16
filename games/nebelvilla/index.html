@@ -1,0 +1,3092 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Nebelvilla</title>
+<meta name="description" content="Mord in der Villa: Verdächtige befragen, Beweise notieren, Täter, Waffe und Tatort entlarven. Mit Tutorial.">
+<meta name="theme-color" content="#d4a843">
+<meta name="spiel-modi" content="Online,Bots">
+<meta name="spiel-tags" content="Krimi,Deduktion,Tutorial">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Playfair+Display:ital,wght@0,600;0,800;1,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a090c;
+  --panel: rgba(26, 20, 18, 0.9);
+  --panel-2: #241c19;
+  --panel-3: #2f2521;
+  --line: rgba(212, 168, 67, 0.2);
+  --line-2: rgba(255, 255, 255, 0.08);
+  --brass: #d4a843;
+  --brass-2: #f2d78f;
+  --blood: #c0303a;
+  --text: #efe7da;
+  --muted: #a89c8b;
+  --good: #6fcf8a;
+  --paper: #eadfc4;
+  --paper-2: #e0d2b2;
+  --ink: #2b2420;
+  --ink-red: #b02a2a;
+  --ink-green: #1f6b3d;
+  --ink-blue: #2a4f9e;
+  --ink-amber: #b86b12;
+  --head: "Playfair Display", Georgia, "Times New Roman", serif;
+  --hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--body); overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font-family: inherit; }
+.hidden { display: none !important; }
+kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line-2); background: #1a1513; font-size: .8em; font-family: var(--body); color: var(--brass-2); }
+
+/* ---------- Knöpfe ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 9px 15px; border-radius: 11px; border: 1px solid var(--line);
+  background: linear-gradient(180deg, #2f2622, #221b18); color: var(--text);
+  font-size: .95rem; font-weight: 650; cursor: pointer; white-space: nowrap;
+  transition: transform .1s, filter .15s, box-shadow .15s, border-color .15s;
+}
+.btn:hover { filter: brightness(1.18); border-color: rgba(212,168,67,.45); }
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .4; cursor: not-allowed; filter: none; }
+.btn.primary { background: linear-gradient(180deg, #e7c062, #b98d2c); color: #1b140b; border-color: transparent; font-weight: 800; box-shadow: 0 6px 20px rgba(212,168,67,.25); }
+.btn.danger { background: linear-gradient(180deg, #c43a42, #8d1f27); color: #fff; border-color: transparent; font-weight: 800; box-shadow: 0 6px 20px rgba(192,48,58,.3); }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 6px 10px; font-size: .84rem; border-radius: 9px; }
+.btn .k { opacity: .55; font-size: .78em; font-weight: 600; margin-left: 2px; }
+.icon-btn { width: 36px; height: 36px; padding: 0; font-size: 1.05rem; }
+
+/* ---------- Menü ---------- */
+#menuBg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }
+#menuView { position: fixed; inset: 0; overflow-y: auto; z-index: 1; padding: 22px 16px 40px 150px;
+  background: radial-gradient(900px 520px at 50% 0%, rgba(212,168,67,.10), transparent 70%), linear-gradient(180deg, rgba(8,7,10,.55), rgba(8,7,10,.88)); }
+.menu { max-width: 940px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.menu-head { text-align: center; padding: 6px 0 4px; }
+.menu-head h1 { margin: 0; font-family: var(--head); font-weight: 800; font-size: clamp(2.4rem, 5.5vw, 3.6rem); letter-spacing: .02em;
+  color: var(--brass-2); text-shadow: 0 0 28px rgba(242,215,143,.35), 0 3px 0 #3a2a10; }
+.menu-head p { margin: 4px auto 0; color: var(--muted); font-style: italic; font-family: var(--head); font-size: 1.05rem; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+.panel h2 { margin: 0 0 10px; font-family: var(--head); font-size: 1.15rem; color: var(--brass-2); font-weight: 600; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.mode-card { display: flex; flex-direction: column; gap: 5px; text-align: left; padding: 14px 15px; border-radius: 13px; cursor: pointer;
+  border: 1px solid var(--line-2); background: linear-gradient(180deg, #2a211d, #1d1714); color: var(--text); font-size: .95rem; transition: transform .12s, border-color .15s, box-shadow .15s; }
+.mode-card:hover { transform: translateY(-2px); border-color: rgba(212,168,67,.5); }
+.mode-card.selected { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass), 0 10px 30px rgba(212,168,67,.18); }
+.mode-card b { font-family: var(--head); font-size: 1.15rem; color: var(--brass-2); }
+.mode-card span { color: var(--muted); font-size: .86rem; line-height: 1.35; }
+.mode-card .ico { font-size: 1.5rem; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.opt { display: grid; grid-template-columns: 130px 1fr; gap: 6px 10px; align-items: center; margin-bottom: 9px; }
+.opt > label { color: var(--muted); font-size: .88rem; font-weight: 600; }
+.seg { display: flex; flex-wrap: wrap; gap: 5px; }
+.seg button { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); cursor: pointer; font-weight: 600; font-size: .86rem; }
+.seg button.on { background: var(--brass); color: #1b140b; border-color: transparent; }
+.figs { display: flex; gap: 8px; flex-wrap: wrap; }
+.fig-btn { width: 64px; padding: 4px 2px 5px; border-radius: 11px; border: 2px solid transparent; background: #1a1412; cursor: pointer; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .68rem; line-height: 1.1; }
+.fig-btn svg { width: 48px; height: 48px; }
+.fig-btn.on { border-color: var(--brass); background: #2a201b; }
+.fig-btn:hover { background: #2a201b; }
+.field { width: 100%; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line-2); background: #120e0d; color: var(--text); font-size: .98rem; }
+.field.code { text-transform: uppercase; letter-spacing: .25em; font-weight: 800; text-align: center; max-width: 130px; }
+.row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.msg { min-height: 1.3em; color: var(--muted); font-size: .9rem; }
+.msg.err { color: #ff8a80; }
+.code-big { font-size: 2rem; font-weight: 900; letter-spacing: .3em; color: var(--brass-2); }
+.lobby-list { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; }
+.lobby-item { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 9px; background: #1a1412; font-size: .92rem; }
+.lobby-item svg { width: 28px; height: 28px; }
+.lobby-item .tag { margin-left: auto; color: var(--muted); font-size: .8rem; }
+.start-row { display: flex; justify-content: center; gap: 12px; }
+.start-row .btn { min-width: 230px; padding: 13px 22px; font-size: 1.08rem; }
+.howto { color: #d9cfbf; font-size: .92rem; line-height: 1.5; }
+.howto ul { margin: 4px 0 0; padding-left: 20px; }
+.notice { font-size: .84rem; color: var(--muted); border-left: 3px solid var(--blood); padding: 4px 0 4px 10px; margin-top: 8px; }
+
+/* ---------- Spielansicht ---------- */
+#gameView { position: fixed; inset: 0; display: grid; grid-template-rows: 46px minmax(0, 1fr); z-index: 2;
+  background: radial-gradient(1200px 700px at 40% 40%, #15100e, #070608 75%); }
+.topbar { display: flex; align-items: center; gap: 8px; padding: 0 12px 0 150px; border-bottom: 1px solid var(--line-2); background: rgba(10,8,8,.6); }
+.topbar .title { font-family: var(--head); font-weight: 800; color: var(--brass-2); font-size: 1.2rem; letter-spacing: .03em; }
+.topbar .caseline { color: var(--muted); font-size: .86rem; font-style: italic; font-family: var(--head); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) clamp(390px, 34vw, 520px); gap: 10px; padding: 8px 10px 8px 16px; min-height: 0; }
+.left { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 7px; min-height: 0; min-width: 0; }
+.players { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; min-width: 0; }
+.players.many .pchip { padding-right: 7px; gap: 5px; }
+.players.many .pchip svg { width: 28px; height: 28px; }
+.players.many .pchip .nm { max-width: 92px; font-size: .8rem; }
+.players.many .pchip .sub { font-size: .66rem; }
+.pchip { display: flex; flex: 0 1 auto; align-items: center; gap: 7px; padding: 4px 10px 4px 4px; border-radius: 999px; background: rgba(30,24,21,.9); border: 1px solid var(--line-2); min-width: 0; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+.pchip svg { width: 34px; height: 34px; flex: none; }
+.pchip .nm { font-weight: 700; font-size: .86rem; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+.pchip .sub { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pchip.turn { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass), 0 0 18px rgba(212,168,67,.35); }
+.pchip.out { opacity: .5; }
+.pchip.out .nm { text-decoration: line-through; }
+.pchip.asked { border-color: #8fc4ff; box-shadow: 0 0 14px rgba(143,196,255,.35); }
+.board-box { position: relative; min-height: 0; min-width: 0; }
+#board { position: absolute; display: block; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.6), 0 0 0 1px rgba(212,168,67,.15); cursor: default; }
+#boardTip { position: absolute; pointer-events: none; padding: 5px 9px; border-radius: 8px; background: rgba(10,8,8,.92); border: 1px solid var(--line); font-size: .82rem; white-space: nowrap; z-index: 3; transform: translate(-50%, -130%); }
+.dice { position: absolute; display: flex; gap: 10px; z-index: 4; pointer-events: none; transform: translate(-50%, -50%); }
+.die { width: 46px; height: 46px; border-radius: 10px; background: linear-gradient(145deg, #f5ecd9, #cfc2a4); box-shadow: 0 8px 18px rgba(0,0,0,.55), inset 0 -3px 0 rgba(0,0,0,.18);
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); padding: 7px; }
+.die i { width: 8px; height: 8px; border-radius: 50%; background: #3a120f; place-self: center; visibility: hidden; }
+.die i.on { visibility: visible; }
+.die.roll { animation: tumble .12s linear infinite; }
+@keyframes tumble { 0% { transform: rotate(0) } 50% { transform: rotate(14deg) translateY(-3px) } 100% { transform: rotate(0) } }
+.actionbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px; border-radius: 13px; background: var(--panel); border: 1px solid var(--line); min-height: 58px; }
+.status { flex: 1 1 200px; min-width: 0; font-size: .93rem; line-height: 1.3; }
+.status b { color: var(--brass-2); }
+.status .sub { color: var(--muted); font-size: .8rem; }
+.actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+.actions .btn { padding: 8px 12px; }
+
+.right { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 7px; min-height: 0; }
+.hand { display: flex; gap: 5px; flex-wrap: wrap; padding: 7px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.hand .lbl { width: 100%; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border-radius: 8px; background: #2a211d; border: 1px solid var(--line-2); font-size: .8rem; cursor: pointer; white-space: nowrap; }
+.chip svg { width: 18px; height: 18px; flex: none; }
+.chip:hover { border-color: var(--brass); }
+.tabs { display: flex; gap: 4px; }
+.tab { flex: 1; padding: 7px 8px; border-radius: 10px 10px 0 0; border: 1px solid var(--line-2); border-bottom: 0; background: #17120f; color: var(--muted); cursor: pointer; font-weight: 700; font-size: .88rem; }
+.tab.on { background: var(--paper); color: var(--ink); }
+.tab .badge { display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--blood); color: #fff; font-size: .72rem; margin-left: 4px; }
+.pane { min-height: 0; overflow: auto; border-radius: 0 0 12px 12px; margin-top: -7px; }
+
+/* ---------- Notizblock ---------- */
+#paneNote { background: var(--paper); color: var(--ink);
+  background-image: linear-gradient(90deg, transparent 33px, rgba(176,42,42,.35) 33px, rgba(176,42,42,.35) 35px, transparent 35px), radial-gradient(circle at 20% 10%, rgba(255,255,255,.35), transparent 50%), radial-gradient(circle at 90% 90%, rgba(120,90,40,.18), transparent 60%);
+  box-shadow: inset 0 0 40px rgba(110,80,30,.25); }
+.note-tools { position: sticky; top: 0; z-index: 2; display: flex; gap: 4px; align-items: center; padding: 6px 8px; background: rgba(234,223,196,.96); border-bottom: 1px solid rgba(43,36,32,.15); flex-wrap: wrap; }
+.note-tools .lbl { font-size: .72rem; color: #6b5d4c; margin-right: 2px; }
+.tool { min-width: 30px; height: 28px; padding: 0 6px; border-radius: 7px; border: 1px solid rgba(43,36,32,.25); background: #f4ecd8; color: var(--ink); cursor: pointer; font-family: var(--hand); font-size: 1.15rem; font-weight: 700; line-height: 1; }
+.tool.on { background: var(--ink); color: var(--paper); }
+.tool.cycle { font-family: var(--body); font-size: .74rem; font-weight: 700; }
+.ntable { border-collapse: collapse; width: 100%; font-size: .84rem; table-layout: fixed; }
+.ntable th, .ntable td { border-bottom: 1px solid rgba(43,36,32,.13); padding: 0; height: 21px; }
+.ntable thead th { position: sticky; top: 41px; background: rgba(234,223,196,.97); z-index: 1; height: 38px; vertical-align: bottom; padding-bottom: 2px; cursor: pointer; }
+.ntable thead th:first-child { cursor: default; }
+.ntable thead th svg { width: 24px; height: 24px; display: block; margin: 0 auto; }
+.ntable thead th .cn { font-size: .62rem; font-weight: 700; display: block; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntable thead th:hover:not(:first-child) { background: #e2d4b3; }
+.ntable .cat td { font-family: var(--head); font-weight: 800; font-size: .82rem; color: #6b2d1d; padding: 6px 0 1px 40px; border-bottom: 1px solid rgba(107,45,29,.35); height: auto; letter-spacing: .04em; }
+.ntable .rn { padding-left: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; position: relative; }
+.ntable .rn svg { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
+.ntable .rn .mk { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-family: var(--hand); font-size: 1.1rem; color: var(--ink-red); }
+.ntable tr.star .rn { font-weight: 800; color: #6b2d1d; }
+.ntable tr.strike .rn .nmx { text-decoration: line-through; text-decoration-color: var(--ink-red); text-decoration-thickness: 2px; opacity: .55; }
+.ntable tr.known .rn .nmx { opacity: .55; }
+.ntable tr.cand { background: linear-gradient(90deg, rgba(212,168,67,.35), rgba(212,168,67,.08)); }
+.ntable tr.mine .rn { color: #5a4a3a; }
+.ntable tr.flash { animation: rowflash 1.6s ease-out; }
+@keyframes rowflash { 0%, 30% { background: rgba(192,48,58,.35); } 100% { background: transparent; } }
+.ntable td.c { text-align: center; cursor: pointer; font-family: var(--hand); font-size: 1.3rem; font-weight: 700; line-height: 1; border-left: 1px dashed rgba(43,36,32,.12); user-select: none; }
+.ntable td.c:hover { background: rgba(43,36,32,.08); }
+.ntable td.c.me { background: rgba(43,36,32,.05); }
+.ntable td.c.cur { outline: 2px solid var(--ink-blue); outline-offset: -2px; }
+.ntable td.c.v-x { color: var(--ink-red); }
+.ntable td.c.v-v { color: var(--ink-green); }
+.ntable td.c.v-q { color: var(--ink-amber); }
+.ntable td.c.v-a, .ntable td.c.v-b, .ntable td.c.v-c { color: var(--ink-blue); font-size: 1.05rem; }
+.ntable td.c.v-a span, .ntable td.c.v-b span, .ntable td.c.v-c span { display: inline-block; width: 19px; height: 19px; border: 2px solid currentColor; border-radius: 50%; line-height: 15px; }
+.ntable td.c.pop { animation: pop .35s ease-out; }
+@keyframes pop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+.notes-free { padding: 8px 10px 12px; }
+.notes-free label { font-family: var(--head); font-weight: 800; font-size: .82rem; color: #6b2d1d; }
+.notes-free textarea { width: 100%; min-height: 70px; margin-top: 4px; border: 1px solid rgba(43,36,32,.2); border-radius: 8px; background: rgba(255,255,255,.35); color: var(--ink); font-family: var(--hand); font-size: 1.2rem; padding: 6px 8px; resize: vertical;
+  background-image: repeating-linear-gradient(180deg, transparent 0 25px, rgba(42,79,158,.18) 25px 26px); line-height: 26px; }
+.note-help { font-size: .74rem; color: #6b5d4c; padding: 2px 10px 0 40px; }
+.colmenu { position: fixed; z-index: 60; background: #f4ecd8; color: var(--ink); border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.5); padding: 5px; display: flex; flex-direction: column; min-width: 220px; }
+.colmenu button { text-align: left; padding: 8px 10px; border: 0; background: transparent; border-radius: 7px; cursor: pointer; font-size: .88rem; color: var(--ink); }
+.colmenu button:hover { background: #e2d4b3; }
+.colmenu .t { font-size: .72rem; color: #6b5d4c; padding: 4px 10px; }
+
+/* ---------- Protokoll & Akte ---------- */
+#paneLog, #paneCase { background: #16110f; border: 1px solid var(--line-2); }
+.log { padding: 6px 8px 12px; display: flex; flex-direction: column; gap: 4px; }
+.log .turnh { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 8px 0 1px; display: flex; align-items: center; gap: 6px; }
+.log .turnh::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
+.log .ent { padding: 6px 8px; border-radius: 9px; background: #211a17; font-size: .84rem; line-height: 1.4; border-left: 3px solid transparent; }
+.log .ent.sug { cursor: pointer; border-left-color: var(--brass); }
+.log .ent.sug:hover { background: #2a211d; }
+.log .ent.mine { border-left-color: #8fc4ff; }
+.log .ent.acc { border-left-color: var(--blood); }
+.log .ent.minor { background: transparent; color: var(--muted); padding: 1px 8px; font-size: .78rem; }
+.log .ent.note { border-left-color: #b47ce6; }
+.log .res { display: block; margin-top: 3px; font-size: .8rem; color: #cfc4b2; }
+.log .res .ok { color: var(--good); font-weight: 700; }
+.log .res .seen { color: var(--brass-2); font-weight: 700; }
+.log .pn { font-weight: 700; }
+.case { padding: 12px 14px 18px; font-size: .9rem; line-height: 1.5; color: #ddd3c3; }
+.case h3 { font-family: var(--head); color: var(--brass-2); margin: 12px 0 6px; font-size: 1.05rem; }
+.case h3:first-child { margin-top: 0; }
+.case .story { font-family: var(--head); font-style: italic; color: #e9dfcd; }
+.case .verified { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 9px; background: rgba(111,207,138,.1); border: 1px solid rgba(111,207,138,.3); color: #bfe8c9; font-size: .84rem; }
+.case .cards { display: flex; flex-wrap: wrap; gap: 8px; }
+.case ul { padding-left: 18px; margin: 4px 0; }
+
+/* ---------- Karten ---------- */
+.card { position: relative; width: 92px; height: 128px; border-radius: 10px; padding: 6px; flex: none;
+  background: linear-gradient(160deg, #f6eedb, #ddcfae); color: #2a1f17; box-shadow: 0 6px 16px rgba(0,0,0,.45);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; border: 3px solid var(--cc, #8a6a2a); cursor: default; user-select: none; transition: transform .15s, box-shadow .15s; }
+.card .ct { font-size: .56rem; text-transform: uppercase; letter-spacing: .12em; color: #7a6650; font-weight: 700; }
+.card svg { width: 58px; height: 58px; }
+.card .cname { font-family: var(--head); font-weight: 800; font-size: .74rem; text-align: center; line-height: 1.1; min-height: 2.2em; display: flex; align-items: center; justify-content: center; max-width: 100%; overflow-wrap: anywhere; }
+.card.pickable { cursor: pointer; }
+.card.pickable:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,.5); }
+.card.sel { transform: translateY(-6px); box-shadow: 0 0 0 3px var(--brass-2), 0 0 26px rgba(242,215,143,.6); }
+.card.dim { opacity: .45; }
+.card .nb { position: absolute; top: 3px; right: 5px; font-family: var(--hand); font-size: 1.3rem; font-weight: 700; line-height: 1; }
+.card .nb.v-x { color: var(--ink-red); } .card .nb.v-v { color: var(--ink-green); } .card .nb.v-q { color: var(--ink-amber); }
+.card .nb.star { color: #b02a2a; }
+.compact .card { width: 74px; height: 102px; padding: 4px; border-width: 2px; }
+.compact .card svg { width: 44px; height: 44px; }
+.compact .card .cname { font-size: .66rem; }
+.compact .cardrow { gap: 6px; }
+#dlgAccuse .dlg, #dlgSuggest .dlg { width: min(780px, 100%); }
+.card.big { width: 150px; height: 208px; border-width: 4px; }
+.card.big svg { width: 100px; height: 100px; }
+.card.big .cname { font-size: 1.05rem; }
+.card.big .ct { font-size: .7rem; }
+.card.back { background: repeating-linear-gradient(45deg, #5a1c22 0 8px, #4a161b 8px 16px); border-color: #c9a24a; }
+.card.back::after { content: "?"; font-family: var(--head); font-size: 3rem; color: rgba(242,215,143,.7); position: absolute; inset: 0; display: grid; place-items: center; }
+.flip { animation: flipIn .7s cubic-bezier(.2,.8,.2,1); }
+@keyframes flipIn { 0% { transform: rotateY(90deg) scale(.8); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* ---------- Dialoge ---------- */
+.overlay { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(5,4,6,.62); backdrop-filter: blur(2px); padding: 12px; }
+.overlay.soft { background: rgba(5,4,6,.35); backdrop-filter: none; }
+.dlg { width: min(720px, 100%); max-height: calc(100vh - 24px); overflow: auto; background: linear-gradient(180deg, #241c19, #18120f); border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; box-shadow: 0 30px 70px rgba(0,0,0,.7); }
+.dlg h2 { margin: 0 0 4px; font-family: var(--head); color: var(--brass-2); font-size: 1.45rem; }
+.dlg .lead { color: #d9cfbf; margin: 0 0 10px; line-height: 1.45; }
+.dlg .sentence { font-family: var(--head); font-style: italic; font-size: 1.12rem; color: #f0e3c4; padding: 8px 12px; border-radius: 10px; background: rgba(0,0,0,.25); border: 1px solid var(--line-2); margin: 6px 0 10px; }
+.dlg .sentence u { text-decoration: none; color: var(--brass-2); border-bottom: 2px dotted var(--brass); font-style: normal; font-weight: 700; }
+.dlg .cat-lbl { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 8px 0 5px; }
+.cardrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.dlg .btns { display: flex; justify-content: flex-end; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+.dlg .warn { color: #ffb4a9; font-size: .88rem; background: rgba(192,48,58,.12); border: 1px solid rgba(192,48,58,.4); border-radius: 10px; padding: 8px 10px; }
+.dlg.center { text-align: center; }
+.dlg.center .cardrow { justify-content: center; }
+.dlg.center .btns { justify-content: center; }
+.dlg.reveal { width: min(440px, 100%); }
+.dlg.result { width: min(640px, 100%); }
+.envelope { display: flex; justify-content: center; gap: 12px; margin: 12px 0; perspective: 800px; }
+.helpgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: .9rem; line-height: 1.45; color: #ddd3c3; }
+.helpgrid h3 { font-family: var(--head); color: var(--brass-2); margin: 8px 0 2px; font-size: 1rem; grid-column: span 2; }
+
+.toast { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); z-index: 70; padding: 9px 16px; border-radius: 11px; background: rgba(16,12,11,.95); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: .92rem; max-width: min(560px, 90vw); text-align: center; }
+
+/* ---------- Tutorial-Coach ---------- */
+body.tut-on .overlay { padding-right: 340px; }
+.coach.side { width: 310px; }
+.coach { position: fixed; z-index: 55; width: min(430px, calc(100vw - 32px)); background: linear-gradient(180deg, #2c2118, #1d1611); border: 2px solid var(--brass); border-radius: 16px; padding: 12px 14px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.7), 0 0 30px rgba(212,168,67,.2); }
+.coach .step { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: var(--brass); font-weight: 800; }
+.coach h3 { margin: 2px 0 6px; font-family: var(--head); color: var(--brass-2); font-size: 1.15rem; }
+.coach p { margin: 0 0 6px; font-size: .9rem; line-height: 1.45; color: #e9dfcd; }
+.coach .task { margin-top: 6px; padding: 6px 9px; border-radius: 9px; background: rgba(212,168,67,.12); border: 1px dashed rgba(212,168,67,.55); font-size: .86rem; color: var(--brass-2); font-weight: 650; }
+.coach .cbtns { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; gap: 8px; }
+.coach .prog { display: flex; gap: 4px; }
+.coach .prog i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.12); }
+.coach .prog i.on { background: var(--brass); }
+.tut-hl { position: relative; z-index: 50; box-shadow: 0 0 0 3px var(--brass-2), 0 0 26px rgba(242,215,143,.75) !important; animation: hl 1.2s ease-in-out infinite; }
+@keyframes hl { 50% { box-shadow: 0 0 0 3px var(--brass-2), 0 0 8px rgba(242,215,143,.3) !important; } }
+td.tut-cell { background: rgba(212,168,67,.55) !important; animation: cellhl 1s ease-in-out infinite; }
+@keyframes cellhl { 50% { background: rgba(212,168,67,.18) !important; } }
+
+@media (max-width: 1180px) {
+  .main { grid-template-columns: minmax(0, 1fr) 380px; }
+  .card { width: 82px; height: 116px; }
+  .card svg { width: 50px; height: 50px; }
+}
+@media (max-height: 700px) {
+  .card { width: 78px; height: 108px; padding: 4px; }
+  .card svg { width: 44px; height: 44px; }
+  .dlg { padding: 12px 14px; }
+  .dlg h2 { font-size: 1.25rem; }
+}
+@media (max-width: 900px) {
+  .modes, .grid2 { grid-template-columns: 1fr; }
+  #menuView { padding-left: 16px; }
+}
+</style>
+</head>
+<body>
+<canvas id="menuBg"></canvas>
+
+<!-- ======================= Menü ======================= -->
+<div id="menuView">
+  <div class="menu">
+    <div class="menu-head">
+      <h1>Nebelvilla</h1>
+      <p>Ein Mord. Sechs Verdächtige. Ein versiegelter Umschlag.</p>
+    </div>
+
+    <div class="modes" id="modes"></div>
+
+    <div class="grid2" id="setupGrid">
+      <div class="panel" id="figPanel">
+        <h2>Deine Figur</h2>
+        <div class="figs" id="figs"></div>
+        <div class="msg" id="figInfo" style="margin-top:6px"></div>
+      </div>
+
+      <div class="panel" id="botPanel">
+        <h2>Gegner &amp; Regeln</h2>
+        <div class="opt"><label>Mitspieler</label><div class="seg" id="optBots"></div></div>
+        <div class="opt"><label>Bot-Stärke</label><div class="seg" id="optLevel"></div></div>
+        <div class="opt"><label>Bewegung</label><div class="seg" id="optDice"></div></div>
+        <div class="opt"><label>Notiz-Hilfe</label><div class="seg" id="optAuto"></div></div>
+      </div>
+
+      <div class="panel hidden" id="onlinePanel">
+        <h2>Online spielen</h2>
+        <div id="onlineSetup">
+          <div class="opt"><label>Dein Name</label><input class="field" id="nameInput" maxlength="16" placeholder="Name"></div>
+          <div class="row" style="margin-bottom:8px"><button class="btn primary" id="createBtn">Raum erstellen</button></div>
+          <div class="row"><input class="field code" id="codeInput" maxlength="4" placeholder="CODE"><button class="btn" id="joinBtn">Beitreten</button></div>
+          <div class="msg" id="onlineMsg"></div>
+          <div class="notice">Jede Person spielt an ihrem eigenen Bildschirm. Die Karten werden verschlüsselt verteilt, niemand sieht fremde Karten.</div>
+        </div>
+        <div id="onlineLobby" class="hidden">
+          <div class="row" style="justify-content:space-between">
+            <div><div class="msg">Raum-Code</div><div class="code-big" id="roomCode">----</div></div>
+            <button class="btn small" id="copyBtn">🔗 Link kopieren</button>
+          </div>
+          <div class="lobby-list" id="lobbyList"></div>
+          <div class="msg" id="lobbyMsg"></div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn primary" id="hostStartBtn">Spiel starten</button>
+            <button class="btn ghost" id="leaveBtn">Verlassen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="start-row" id="startRow">
+      <button class="btn primary" id="startBtn">▶ Fall eröffnen</button>
+    </div>
+
+    <div class="panel howto">
+      <h2>So wird ermittelt</h2>
+      <ul>
+        <li>Im <b>Umschlag</b> liegen drei Karten: der Täter, die Tatwaffe und der Tatort. Alle anderen Karten sind unter den Ermittlern verteilt.</li>
+        <li>Würfle und gehe in einen Raum. Dort sprichst du einen <b>Verdacht</b> aus: Person + Waffe + dieser Raum.</li>
+        <li>Reihum muss der erste Mitspieler, der eine der Karten hat, dir <b>genau eine davon heimlich zeigen</b>.</li>
+        <li>Halte alles im <b>Notizblock</b> fest und schliesse aus. Bist du sicher, erhebst du die <b>Anklage</b>. Liegst du falsch, scheidest du aus.</li>
+        <li>Steuerung mit Touchpad (Klicken) oder Tastatur: <kbd>W</kbd> würfeln, <kbd>G</kbd> Geheimgang, <kbd>V</kbd> Verdacht, <kbd>A</kbd> Anklage, <kbd>E</kbd> Zug beenden, <kbd>H</kbd> Hilfe.</li>
+      </ul>
+      <div class="notice">Kein Spiel an einem gemeinsamen Bildschirm: Wegen der geheimen Karten gibt es nur Bots und Online-Partien.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= Spiel ======================= -->
+<div id="gameView" class="hidden">
+  <div class="topbar">
+    <button class="btn small" id="menuBtn">☰ Menü</button>
+    <span class="title">Nebelvilla</span>
+    <span class="caseline" id="caseLine"></span>
+    <button class="btn icon-btn" id="helpBtn" title="Hilfe (H)">?</button>
+    <button class="btn icon-btn" id="muteBtn" title="Ton an/aus (M)">🔊</button>
+  </div>
+  <div class="main">
+    <section class="left">
+      <div class="players" id="players"></div>
+      <div class="board-box" id="boardBox">
+        <canvas id="board"></canvas>
+        <div id="boardTip" class="hidden"></div>
+        <div class="dice hidden" id="dice"><div class="die" id="die1"></div><div class="die" id="die2"></div></div>
+      </div>
+      <div class="actionbar">
+        <div class="status" id="status"></div>
+        <div class="actions" id="actions"></div>
+      </div>
+    </section>
+    <aside class="right">
+      <div class="hand" id="hand"></div>
+      <div class="tabs">
+        <button class="tab on" data-tab="Note" id="tabNote">📓 Notizblock</button>
+        <button class="tab" data-tab="Log" id="tabLog">📜 Protokoll<span class="badge hidden" id="logBadge">0</span></button>
+        <button class="tab" data-tab="Case" id="tabCase">🗂 Fallakte</button>
+      </div>
+      <div class="pane" id="paneNote" tabindex="0">
+        <div class="note-tools" id="noteTools"></div>
+        <table class="ntable" id="ntable"></table>
+        <div class="note-help">Klick auf ein Feld: ✗ → ✓ → ? → leer. Klick auf einen Namen: ★ / durchstreichen. Klick auf einen Spaltenkopf: ganze Spalte füllen. Tastatur: Pfeile, <kbd>X</kbd> <kbd>V</kbd> <kbd>?</kbd> <kbd>1</kbd>–<kbd>3</kbd>, <kbd>⌫</kbd>.</div>
+        <div class="notes-free"><label for="freeNotes">Eigene Notizen</label><textarea id="freeNotes" spellcheck="false" placeholder="z.B. Kessler zeigt mir immer den Salon …"></textarea></div>
+      </div>
+      <div class="pane hidden" id="paneLog"><div class="log" id="log"></div></div>
+      <div class="pane hidden" id="paneCase"><div class="case" id="case"></div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ======================= Dialoge ======================= -->
+<div class="overlay hidden" id="dlgSuggest">
+  <div class="dlg compact">
+    <h2 id="sugTitle">Verdacht aussprechen</h2>
+    <div class="sentence" id="sugSentence"></div>
+    <div class="cat-lbl">Wer?</div>
+    <div class="cardrow" id="sugSus"></div>
+    <div class="cat-lbl">Womit?</div>
+    <div class="cardrow" id="sugWea"></div>
+    <div class="btns">
+      <button class="btn ghost" id="sugSkip">Nicht verdächtigen</button>
+      <button class="btn primary" id="sugGo" disabled>Verdacht aussprechen <span class="k">Enter</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dlgShow">
+  <div class="dlg center">
+    <h2>Du musst widerlegen</h2>
+    <p class="lead" id="showLead"></p>
+    <div class="cardrow" id="showCards"></div>
+    <p class="lead" style="margin-top:10px;font-size:.86rem;color:var(--muted)">Nur <span id="showWho"></span> sieht die Karte, die du wählst. Tipp: Zeige möglichst eine Karte, die diese Person schon kennt.</p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dlgAccuse">
+  <div class="dlg compact">
+    <h2>⚖️ Anklage erheben</h2>
+    <div class="warn">Die Anklage ist <b>unumkehrbar</b>. Du schaust heimlich in den Umschlag: Stimmt alles, hast du gewonnen. Liegst du auch nur bei einer Karte falsch, scheidest du aus (deine Karten musst du aber weiter zeigen).</div>
+    <div class="sentence" id="accSentence"></div>
+    <div class="cat-lbl">Wer?</div>
+    <div class="cardrow" id="accSus"></div>
+    <div class="cat-lbl">Womit?</div>
+    <div class="cardrow" id="accWea"></div>
+    <div class="cat-lbl">Wo?</div>
+    <div class="cardrow" id="accRoom"></div>
+    <div class="btns">
+      <button class="btn ghost" id="accCancel">Abbrechen</button>
+      <button class="btn danger" id="accGo" disabled>Anklage erheben</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay soft hidden" id="dlgReveal">
+  <div class="dlg center reveal">
+    <h2 id="revTitle"></h2>
+    <div class="cardrow" id="revCard" style="margin:10px 0"></div>
+    <p class="lead" id="revText"></p>
+    <div class="btns"><button class="btn primary" id="revOk">Notiert <span class="k">Enter</span></button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dlgResult">
+  <div class="dlg center result">
+    <h2 id="resTitle"></h2>
+    <p class="lead" id="resText"></p>
+    <div class="envelope" id="resCards"></div>
+    <p class="lead" id="resStats" style="font-size:.86rem;color:var(--muted)"></p>
+    <div class="btns" id="resBtns">
+      <button class="btn" id="resNote">📓 Notizblock ansehen</button>
+      <button class="btn" id="resMenu">Menü</button>
+      <button class="btn primary" id="resAgain">Nochmal</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dlgHelp">
+  <div class="dlg">
+    <h2>Regeln &amp; Steuerung</h2>
+    <div class="helpgrid">
+      <h3>Ziel</h3>
+      <div style="grid-column:span 2">Finde heraus, <b>wer</b> den Hausherrn <b>womit</b> und <b>wo</b> ermordet hat. Diese drei Karten liegen im Umschlag. Die restlichen Karten sind verteilt: Jede Karte, die jemand besitzt, ist <i>nicht</i> die Lösung.</div>
+      <h3>Dein Zug</h3>
+      <div>1. <b>Würfeln</b> und einen Raum in Reichweite wählen (ein Nachbarraum kostet 3 Schritte). Aus Eckräumen führt ein <b>Geheimgang</b> in die gegenüberliegende Ecke, ohne Würfeln.</div>
+      <div>2. Im Raum einen <b>Verdacht</b> aussprechen: Person + Waffe + dieser Raum. Die genannte Figur wird in den Raum geholt. Wer so geholt wurde, darf in seinem nächsten Zug dort bleiben und verdächtigen.</div>
+      <div>3. Reihum muss der Erste, der eine der drei Karten hat, dir <b>genau eine</b> zeigen. Wer keine hat, passt.</div>
+      <div>4. Danach: <b>Anklage</b> erheben oder Zug beenden. Eine falsche Anklage bedeutet: ausgeschieden, du zeigst aber weiter Karten.</div>
+      <h3>Notizblock</h3>
+      <div>✗ = hat die Karte nicht, ✓ = hat sie, ? = vielleicht, Ⓐ Ⓑ Ⓒ = „eine dieser Karten“ (Gruppen markieren).</div>
+      <div>Passt jemand, bekommt er ✗ bei allen drei Karten. Zeigt jemand einer anderen Person eine Karte, hat er mindestens eine der drei. Sind alle anderen ausgeschlossen, ist es die übrige.</div>
+      <h3>Tastatur</h3>
+      <div><kbd>W</kbd> Würfeln · <kbd>G</kbd> Geheimgang · <kbd>B</kbd> Bleiben/hier verdächtigen · <kbd>1</kbd>–<kbd>9</kbd> Raum wählen</div>
+      <div><kbd>V</kbd> Verdacht · <kbd>A</kbd> Anklage · <kbd>E</kbd> Zug beenden · <kbd>N</kbd>/<kbd>P</kbd>/<kbd>F</kbd> Notizblock/Protokoll/Akte · <kbd>M</kbd> Ton</div>
+    </div>
+    <div class="btns"><button class="btn primary" id="helpClose">Schliessen</button></div>
+  </div>
+</div>
+
+<div class="coach hidden" id="coach">
+  <div class="step" id="coachStep"></div>
+  <h3 id="coachTitle"></h3>
+  <div id="coachText"></div>
+  <div class="cbtns">
+    <button class="btn small ghost" id="coachQuit">Tutorial beenden</button>
+    <div class="prog" id="coachProg"></div>
+    <button class="btn small primary" id="coachNext">Weiter →</button>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+<script src="../_shared/hub.js"></script>
+<script>
+/* ============================================================
+   Spiel-Logik (ohne Oberfläche): Karten, Regeln, Deduktion, Bots
+   ============================================================ */
+const NC = 21;
+const CAT = (c) => (c < 6 ? 0 : c < 12 ? 1 : 2);
+const CAT_RANGE = [[0, 6], [6, 12], [12, 21]];
+const CAT_NAME = ['Verdächtige', 'Waffen', 'Räume'];
+
+const SUSPECTS = [
+  { name: 'Gräfin Rubin', full: 'Gräfin Valérie Rubin', color: '#e0525a', role: 'verarmte Adlige mit teurem Geschmack' },
+  { name: 'Major Kessler', full: 'Major Anton Kessler', color: '#e2b33c', role: 'pensionierter Offizier mit Spielschulden' },
+  { name: 'Dr. Moos', full: 'Dr. Elena Moos', color: '#4fc184', role: 'Hausärztin, kennt jedes Rezept' },
+  { name: 'Pfarrer Blau', full: 'Pfarrer Ignaz Blau', color: '#5b8ff0', role: 'Seelsorger mit zu vielen Geheimnissen' },
+  { name: 'Madame Morel', full: 'Madame Lilas Morel', color: '#b47ce6', role: 'Sängerin aus Genf, frisch verlobt' },
+  { name: 'Gärtner Weiss', full: 'Gärtner Fritz Weiss', color: '#e6e1d3', role: 'wortkarg, hat einen Schlüssel für alles' },
+];
+const WEAPONS = [
+  { name: 'Kerzenleuchter', mit: 'mit dem Kerzenleuchter' },
+  { name: 'Dolch', mit: 'mit dem Dolch' },
+  { name: 'Revolver', mit: 'mit dem Revolver' },
+  { name: 'Seil', mit: 'mit dem Seil' },
+  { name: 'Giftfläschchen', mit: 'mit dem Giftfläschchen' },
+  { name: 'Eispickel', mit: 'mit dem Eispickel' },
+];
+const ROOMS = [
+  { name: 'Küche', im: 'in der Küche' },
+  { name: 'Speisesaal', im: 'im Speisesaal' },
+  { name: 'Wintergarten', im: 'im Wintergarten' },
+  { name: 'Bibliothek', im: 'in der Bibliothek' },
+  { name: 'Halle', im: 'in der Halle' },
+  { name: 'Salon', im: 'im Salon' },
+  { name: 'Arbeitszimmer', im: 'im Arbeitszimmer' },
+  { name: 'Billardzimmer', im: 'im Billardzimmer' },
+  { name: 'Weinkeller', im: 'im Weinkeller' },
+];
+function cardName(c) { return c < 6 ? SUSPECTS[c].name : c < 12 ? WEAPONS[c - 6].name : ROOMS[c - 12].name; }
+
+// Räume liegen in einem 3×3-Raster, Gänge kosten 3 Schritte pro Nachbarraum
+const ROOM_POS = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1], [0, 2], [1, 2], [2, 2]];
+const PASSAGE = { 0: 8, 8: 0, 2: 6, 6: 2 };   // Geheimgänge zwischen gegenüberliegenden Ecken
+const STEP = 3;
+const START_ROOM = 4;                          // alle beginnen in der Halle
+function roomDist(a, b) { return (Math.abs(ROOM_POS[a][0] - ROOM_POS[b][0]) + Math.abs(ROOM_POS[a][1] - ROOM_POS[b][1])) * STEP; }
+
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffle(arr, rng) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function pick(arr, rng) { return arr[Math.floor(rng() * arr.length)]; }
+
+/* ------------------------------------------------------------
+   Deduktions-Engine
+   Besitzer 0..n-1 = Spieler, n = Umschlag. Jede Karte hat genau
+   einen Besitzer, jeder Spieler genau so viele Karten wie er hält,
+   der Umschlag genau eine Karte pro Kategorie.
+   Fakten: hat(p,c), hatNicht(p,c), mindestensEine(p,[c..]).
+   solve() liefert pro Karte die Menge der noch möglichen Besitzer.
+   ------------------------------------------------------------ */
+function Knowledge(n, sizes, me, hand, level) {
+  this.n = n; this.sizes = sizes.slice(); this.me = me; this.level = level || 'hard';
+  this.has = []; this.not = []; this.one = [];
+  this.dirty = true; this.cache = null;
+  if (me >= 0) {
+    const set = new Set(hand);
+    for (let c = 0; c < NC; c++) { if (set.has(c)) this.has.push([me, c]); else this.not.push([me, c]); }
+  }
+}
+Knowledge.prototype.addHas = function (p, c) { this.has.push([p, c]); this.dirty = true; };
+Knowledge.prototype.addNot = function (p, c) { if (this.level === 'easy') return; this.not.push([p, c]); this.dirty = true; };
+Knowledge.prototype.addOne = function (p, cards) { if (this.level !== 'hard') return; this.one.push([p, cards.slice()]); this.dirty = true; };
+// Ein öffentliches Ereignis aus der Sicht dieses Spielers verarbeiten
+Knowledge.prototype.observe = function (ev) {
+  if (ev.e === 'pass') { for (const c of ev.cards) this.addNot(ev.p, c); }
+  else if (ev.e === 'show') {
+    if (ev.to === this.me && ev.card != null) this.addHas(ev.p, ev.card);
+    else if (ev.p !== this.me) this.addOne(ev.p, ev.cards);
+  }
+};
+Knowledge.prototype.solve = function () {
+  if (!this.dirty && this.cache) return this.cache;
+  this.cache = solveOwners(this.n, this.sizes, this.has, this.not, this.one, this.level === 'hard');
+  this.dirty = false;
+  return this.cache;
+};
+// Kandidaten für den Umschlag in einer Kategorie
+Knowledge.prototype.envCands = function (cat) {
+  const poss = this.solve().poss, env = 1 << this.n, out = [];
+  for (let c = CAT_RANGE[cat][0]; c < CAT_RANGE[cat][1]; c++) if (poss[c] & env) out.push(c);
+  return out;
+};
+Knowledge.prototype.solution = function () {
+  const r = [];
+  for (let k = 0; k < 3; k++) { const cs = this.envCands(k); if (cs.length !== 1) return null; r.push(cs[0]); }
+  return r;
+};
+Knowledge.prototype.owner = function (c) {   // eindeutiger Besitzer oder -1
+  const m = this.solve().poss[c];
+  return (m & (m - 1)) === 0 ? 31 - Math.clz32(m) : -1;
+};
+
+function popcount(x) { let n = 0; while (x) { x &= x - 1; n++; } return n; }
+
+function solveOwners(n, sizes, has, not, one, counts) {
+  const ALL = (1 << (n + 1)) - 1, ENV = 1 << n;
+  const dom = new Array(NC).fill(ALL);
+  for (const [p, c] of has) dom[c] &= (1 << p);
+  for (const [p, c] of not) dom[c] &= ~(1 << p);
+  const ctx = { n, sizes, one, ENV, counts: counts !== false, nodes: 0, limit: 60000 };
+  const poss = new Uint8Array(NC);
+  const base = dom.slice();
+  if (!propagate(base, ctx)) return { ok: false, poss };
+  const mark = (sol) => { for (let c = 0; c < NC; c++) poss[c] |= sol[c]; };
+  ctx.nodes = 0;
+  const first = search(base.slice(), ctx);
+  if (first === null) return { ok: false, poss };
+  if (first !== 'limit') mark(first);
+  for (let c = 0; c < NC; c++) {
+    let m = base[c];
+    while (m) {
+      const bit = m & -m; m ^= bit;
+      if (poss[c] & bit) continue;
+      const d = base.slice(); d[c] = bit;
+      ctx.nodes = 0;
+      if (!propagate(d, ctx)) continue;
+      const s = search(d, ctx);
+      if (s === 'limit') poss[c] |= bit;      // im Zweifel als möglich behalten
+      else if (s) mark(s);
+    }
+  }
+  return { ok: true, poss };
+}
+
+function propagate(dom, ctx) {
+  const { n, sizes, one, ENV, counts } = ctx;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let c = 0; c < NC; c++) if (!dom[c]) return false;
+    // Handgrössen der Spieler (nur „Schwer“ zählt Karten mit)
+    for (let p = 0; counts && p < n; p++) {
+      const bit = 1 << p;
+      let fixed = 0, poss = 0;
+      for (let c = 0; c < NC; c++) { if (dom[c] & bit) { poss++; if (dom[c] === bit) fixed++; } }
+      if (fixed > sizes[p] || poss < sizes[p]) return false;
+      if (fixed === sizes[p] && poss > fixed) {
+        for (let c = 0; c < NC; c++) if ((dom[c] & bit) && dom[c] !== bit) { dom[c] &= ~bit; changed = true; }
+      } else if (poss === sizes[p] && fixed < poss) {
+        for (let c = 0; c < NC; c++) if ((dom[c] & bit) && dom[c] !== bit) { dom[c] = bit; changed = true; }
+      }
+    }
+    // Umschlag: genau eine Karte pro Kategorie
+    for (let k = 0; k < 3; k++) {
+      let fixed = 0, poss = 0, last = -1;
+      for (let c = CAT_RANGE[k][0]; c < CAT_RANGE[k][1]; c++) { if (dom[c] & ENV) { poss++; last = c; if (dom[c] === ENV) fixed++; } }
+      if (fixed > 1 || poss < 1) return false;
+      if (fixed === 1 && poss > 1) {
+        for (let c = CAT_RANGE[k][0]; c < CAT_RANGE[k][1]; c++) if ((dom[c] & ENV) && dom[c] !== ENV) { dom[c] &= ~ENV; changed = true; }
+      } else if (poss === 1 && dom[last] !== ENV) { dom[last] = ENV; changed = true; }
+    }
+    // „hat mindestens eine dieser Karten“
+    for (const [p, cards] of one) {
+      const bit = 1 << p;
+      let cnt = 0, lastC = -1, done = false;
+      for (const c of cards) { if (dom[c] === bit) { done = true; break; } if (dom[c] & bit) { cnt++; lastC = c; } }
+      if (done) continue;
+      if (cnt === 0) return false;
+      if (cnt === 1) { dom[lastC] = bit; changed = true; }
+    }
+    for (let c = 0; c < NC; c++) if (!dom[c]) return false;
+  }
+  return true;
+}
+
+function search(dom, ctx) {
+  if (++ctx.nodes > ctx.limit) return 'limit';
+  let best = -1, bestN = 99;
+  for (let c = 0; c < NC; c++) {
+    const k = popcount(dom[c]);
+    if (k > 1 && k < bestN) { bestN = k; best = c; if (k === 2) break; }
+  }
+  if (best < 0) return dom;          // alles eindeutig, propagate hat alle Regeln geprüft
+  let m = dom[best];
+  while (m) {
+    const bit = m & -m; m ^= bit;
+    const d = dom.slice(); d[best] = bit;
+    if (!propagate(d, ctx)) continue;
+    const r = search(d, ctx);
+    if (r === 'limit') return 'limit';
+    if (r) return r;
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------
+   Fall erzeugen und prüfen
+   ------------------------------------------------------------ */
+function dealCase(rng, n) {
+  const sol = [Math.floor(rng() * 6), 6 + Math.floor(rng() * 6), 12 + Math.floor(rng() * 9)];
+  const rest = shuffle([...Array(NC).keys()].filter((c) => !sol.includes(c)), rng);
+  const hands = Array.from({ length: n }, () => []);
+  rest.forEach((c, i) => hands[i % n].push(c));
+  hands.forEach((h) => h.sort((a, b) => a - b));
+  return { sol, hands };
+}
+
+// Prüft einen Fall: (1) saubere Aufteilung, (2) mit allen Handkarten ist die Lösung
+// eindeutig bestimmt, (3) ein Probelauf mit Bots der Stufe „Schwer“ löst ihn
+// ausschliesslich durch logische Schlüsse (jede Anklage muss stimmen).
+function verifyCase(cs, n, seed) {
+  const seen = new Array(NC).fill(0);
+  cs.sol.forEach((c) => seen[c]++);
+  cs.hands.forEach((h) => h.forEach((c) => seen[c]++));
+  if (seen.some((x) => x !== 1)) return { ok: false, why: 'Aufteilung' };
+  if (CAT(cs.sol[0]) !== 0 || CAT(cs.sol[1]) !== 1 || CAT(cs.sol[2]) !== 2) return { ok: false, why: 'Umschlag' };
+  const sizes = cs.hands.map((h) => h.length);
+  const god = new Knowledge(n, sizes, -1, [], 'hard');
+  cs.hands.forEach((h, p) => h.forEach((c) => god.addHas(p, c)));
+  const s = god.solution();
+  if (!s || s.join() !== cs.sol.join()) return { ok: false, why: 'Eindeutigkeit' };
+  // Probelauf
+  const players = Array.from({ length: n }, (_, i) => ({ name: 'Bot ' + (i + 1), fig: i, kind: 'bot', level: 'hard' }));
+  const g = new Game({ players, seed: seed ^ 0x5bd1e995, dice: true, deal: cs, first: 0 });
+  const knows = players.map((_, i) => g.makeKnowledge(i, 'hard'));
+  g.on((ev) => { for (const k of knows) k.observe(ev); });
+  let guard = 0;
+  while (!g.over && guard++ < 6000) {
+    const p = g.waitingFor();
+    const a = botDecide(g, p, knows[p], makeRng(guard * 7919 + seed));
+    const r = g.act(p, a);
+    if (!r.ok) return { ok: false, why: 'Probelauf: ' + r.err };
+  }
+  if (!g.over || g.winner < 0) return { ok: false, why: 'Probelauf ohne Lösung' };
+  if (g.hist.some((e) => e.e === 'accuse' && !e.ok)) return { ok: false, why: 'falsche Anklage' };
+  return { ok: true, turns: g.turnCount, suggestions: g.hist.filter((e) => e.e === 'suggest').length };
+}
+
+function generateCase(seed, n) {
+  const rng = makeRng(seed);
+  for (let tries = 0; tries < 30; tries++) {
+    const cs = dealCase(rng, n);
+    const v = verifyCase(cs, n, seed + tries);
+    if (v.ok) return { cs, check: v };
+  }
+  throw new Error('Kein lösbarer Fall gefunden');
+}
+
+/* ------------------------------------------------------------
+   Spielregeln
+   Phasen des Spielers am Zug:
+   start   → würfeln | Geheimgang | hier verdächtigen (falls hergeholt) | Anklage | (ohne Würfel: direkt Raum wählen)
+   move    → Raum in Reichweite wählen | im Gang bleiben
+   suggest → Verdacht aussprechen | darauf verzichten
+   refute  → Mitspieler wählt eine Karte zum Zeigen
+   after   → Anklage | Zug beenden
+   ------------------------------------------------------------ */
+function Game(opt) {
+  this.n = opt.players.length;
+  this.rng = makeRng(opt.seed >>> 0);
+  this.diceMode = opt.dice !== false;
+  this.diceScript = opt.diceScript ? opt.diceScript.slice() : null;
+  const cs = opt.deal || dealCase(this.rng, this.n);
+  this.sol = cs.sol.slice();
+  this.players = opt.players.map((p, i) => ({
+    name: p.name, fig: p.fig, kind: p.kind, level: p.level || 'medium',
+    hand: cs.hands[i].slice(), out: false, room: START_ROOM, movedIn: false, sawSol: false,
+  }));
+  this.sRoom = new Array(6).fill(-1);       // Figuren ohne Spieler stehen verteilt in Räumen
+  this.wRoom = new Array(6).fill(-1);
+  const figs = new Set(this.players.map((p) => p.fig));
+  const spare = shuffle([0, 1, 2, 3, 5, 6, 7, 8], this.rng);
+  let si = 0;
+  for (let s = 0; s < 6; s++) this.sRoom[s] = figs.has(s) ? START_ROOM : spare[si++ % spare.length];
+  const wr = shuffle([0, 1, 2, 3, 4, 5, 6, 7, 8], this.rng);
+  for (let w = 0; w < 6; w++) this.wRoom[w] = wr[w];
+  this.turn = opt.first != null ? opt.first : Math.floor(this.rng() * this.n);
+  this.phase = 'start'; this.dice = null; this.reach = null; this.canStay = false;
+  this.ref = null; this.hist = []; this.over = false; this.winner = -1;
+  this.turnCount = 1; this.round = 1; this.listeners = [];
+  this.suggestedThisTurn = false;
+  this.lastId = 0;
+}
+Game.prototype.on = function (f) { this.listeners.push(f); };
+Game.prototype.emit = function (ev) {
+  ev.id = ++this.lastId; ev.turn = this.turnCount;
+  this.hist.push(ev);
+  for (const f of this.listeners) f(ev);
+};
+Game.prototype.makeKnowledge = function (p, level) {
+  const k = new Knowledge(this.n, this.players.map((x) => x.hand.length), p, this.players[p].hand, level);
+  for (const ev of this.hist) k.observe(ev);
+  return k;
+};
+// Wer muss gerade etwas tun?
+Game.prototype.waitingFor = function () {
+  if (this.over) return -1;
+  if (this.phase === 'refute') return this.ref.shower;
+  return this.turn;
+};
+Game.prototype.rollDie = function () {
+  if (this.diceScript && this.diceScript.length) return this.diceScript.shift();
+  return 1 + Math.floor(this.rng() * 6);
+};
+Game.prototype.reachable = function (p, total) {
+  const from = this.players[p].room, out = [];
+  for (let r = 0; r < 9; r++) if (r !== from && roomDist(from, r) <= total) out.push(r);
+  return out;
+};
+Game.prototype.options = function (p) {
+  // Was darf Spieler p gerade tun? (für Knöpfe und Bots)
+  const o = { roll: false, passage: -1, stay: false, move: [], noMove: false, suggest: false, skip: false, show: [], accuse: false, end: false };
+  if (this.over) return o;
+  const pl = this.players[p];
+  if (this.phase === 'refute') {
+    if (this.ref.shower === p) o.show = pl.hand.filter((c) => this.ref.cards.includes(c));
+    return o;
+  }
+  if (p !== this.turn) return o;
+  if (this.phase === 'start') {
+    if (this.diceMode) o.roll = true; else o.move = this.reachable(p, 99);
+    if (PASSAGE[pl.room] != null) o.passage = PASSAGE[pl.room];
+    o.stay = this.canStay;
+    o.accuse = true;
+  } else if (this.phase === 'move') {
+    o.move = this.reach.slice(); o.noMove = true;
+  } else if (this.phase === 'suggest') {
+    o.suggest = true; o.skip = true;
+  } else if (this.phase === 'after') {
+    o.accuse = true; o.end = true;
+  }
+  return o;
+};
+Game.prototype.act = function (p, a) {
+  if (this.over) return { ok: false, err: 'Das Spiel ist vorbei.' };
+  const o = this.options(p);
+  const pl = this.players[p];
+  switch (a.k) {
+    case 'roll': {
+      if (!o.roll) return { ok: false, err: 'Würfeln geht gerade nicht.' };
+      const d = [this.rollDie(), this.rollDie()];
+      this.dice = d;
+      this.reach = this.reachable(p, d[0] + d[1]);
+      this.phase = 'move';
+      this.emit({ e: 'roll', p, d, reach: this.reach.slice() });
+      return { ok: true };
+    }
+    case 'passage': {
+      if (o.passage < 0) return { ok: false, err: 'Hier gibt es keinen Geheimgang.' };
+      this.enterRoom(p, o.passage, 'passage');
+      return { ok: true };
+    }
+    case 'stay': {
+      if (!o.stay) return { ok: false, err: 'Du musst zuerst in einen Raum gehen.' };
+      this.phase = 'suggest';
+      this.emit({ e: 'stay', p, room: pl.room });
+      return { ok: true };
+    }
+    case 'move': {
+      if (!o.move.includes(a.room)) return { ok: false, err: 'Dieser Raum ist zu weit weg.' };
+      this.enterRoom(p, a.room, this.diceMode ? 'walk' : 'free');
+      return { ok: true };
+    }
+    case 'nomove': {
+      if (!o.noMove) return { ok: false, err: 'Geht gerade nicht.' };
+      this.emit({ e: 'nomove', p });
+      this.phase = 'after';
+      return { ok: true };
+    }
+    case 'suggest': {
+      if (!o.suggest) return { ok: false, err: 'Du kannst gerade nicht verdächtigen.' };
+      const s = a.s | 0, w = a.w | 0, r = 12 + pl.room;
+      if (CAT(s) !== 0 || CAT(w) !== 1) return { ok: false, err: 'Ungültiger Verdacht.' };
+      const cards = [s, w, r];
+      // Figur und Waffe in den Raum holen
+      this.sRoom[s] = pl.room; this.wRoom[w - 6] = pl.room;
+      this.players.forEach((q, i) => { if (i !== p && q.fig === s && q.room !== pl.room) { q.room = pl.room; q.movedIn = true; } });
+      this.emit({ e: 'suggest', p, cards });
+      this.ref = { p, cards, order: [], step: 0, shower: -1 };
+      for (let i = 1; i < this.n; i++) this.ref.order.push((p + i) % this.n);
+      this.advanceRefute();
+      return { ok: true };
+    }
+    case 'skip': {
+      if (!o.skip) return { ok: false, err: 'Geht gerade nicht.' };
+      this.phase = 'after';
+      this.emit({ e: 'skip', p });
+      return { ok: true };
+    }
+    case 'show': {
+      if (!o.show.length || !o.show.includes(a.card)) return { ok: false, err: 'Diese Karte kannst du nicht zeigen.' };
+      const ref = this.ref;
+      this.emit({ e: 'show', p, to: ref.p, card: a.card, cards: ref.cards.slice() });
+      this.ref = null;
+      this.phase = 'after';
+      return { ok: true };
+    }
+    case 'accuse': {
+      if (!o.accuse) return { ok: false, err: 'Anklagen geht nur, wenn du am Zug bist.' };
+      const cards = [a.s | 0, a.w | 0, a.r | 0];
+      if (CAT(cards[0]) !== 0 || CAT(cards[1]) !== 1 || CAT(cards[2]) !== 2) return { ok: false, err: 'Ungültige Anklage.' };
+      const ok = cards.join() === this.sol.join();
+      this.emit({ e: 'accuse', p, cards, ok });
+      if (ok) { this.finish(p, 'solved'); return { ok: true }; }
+      pl.out = true; pl.sawSol = true;
+      const active = this.players.map((q, i) => (q.out ? -1 : i)).filter((i) => i >= 0);
+      if (active.length === 0) { this.finish(-1, 'allout'); return { ok: true }; }
+      if (active.length === 1) { this.finish(active[0], 'lastone'); return { ok: true }; }
+      this.nextTurn();
+      return { ok: true };
+    }
+    case 'end': {
+      if (!o.end) return { ok: false, err: 'Du kannst den Zug noch nicht beenden.' };
+      this.nextTurn();
+      return { ok: true };
+    }
+  }
+  return { ok: false, err: 'Unbekannte Aktion.' };
+};
+Game.prototype.enterRoom = function (p, room, via) {
+  const pl = this.players[p];
+  pl.room = room; this.sRoom[pl.fig] = room;
+  this.phase = 'suggest';
+  this.emit({ e: 'move', p, room, via });
+};
+Game.prototype.advanceRefute = function () {
+  const ref = this.ref;
+  while (ref.step < ref.order.length) {
+    const q = ref.order[ref.step++];
+    const match = this.players[q].hand.filter((c) => ref.cards.includes(c));
+    if (match.length) { ref.shower = q; this.phase = 'refute'; this.emit({ e: 'ask', p: q, to: ref.p }); return; }
+    this.emit({ e: 'pass', p: q, cards: ref.cards.slice(), by: ref.p });
+  }
+  this.emit({ e: 'norefute', p: ref.p, cards: ref.cards.slice() });
+  this.ref = null;
+  this.phase = 'after';
+};
+Game.prototype.nextTurn = function () {
+  const cur = this.players[this.turn];
+  cur.movedIn = false;
+  let t = this.turn;
+  for (let i = 0; i < this.n; i++) {
+    t = (t + 1) % this.n;
+    if (!this.players[t].out) break;
+  }
+  if (t <= this.turn) this.round++;
+  this.turn = t;
+  this.turnCount++;
+  this.phase = 'start'; this.dice = null; this.reach = null;
+  this.canStay = this.players[t].movedIn;
+  if (this.turnCount > 900) { this.finish(-1, 'timeout'); return; }
+  this.emit({ e: 'turn', p: t, canStay: this.canStay });
+};
+Game.prototype.finish = function (winner, why) {
+  this.over = true; this.winner = winner; this.phase = 'over';
+  this.emit({ e: 'over', winner, why, sol: this.sol.slice() });
+};
+// Was Spieler `seat` sehen darf (-1 = Zuschauer). Wird lokal und für Online-Mitspieler benutzt.
+Game.prototype.publicView = function () {
+  return {
+    n: this.n, turn: this.turn, phase: this.phase, dice: this.dice, reach: this.reach, canStay: this.canStay,
+    diceMode: this.diceMode, round: this.round, turnCount: this.turnCount,
+    players: this.players.map((p) => ({ name: p.name, fig: p.fig, kind: p.kind, level: p.level, out: p.out, room: p.room, nCards: p.hand.length })),
+    sRoom: this.sRoom.slice(), wRoom: this.wRoom.slice(),
+    ref: this.ref ? { p: this.ref.p, cards: this.ref.cards.slice(), shower: this.ref.shower } : null,
+    over: this.over, winner: this.winner, sol: this.over ? this.sol.slice() : null,
+  };
+};
+Game.prototype.privateView = function (seat) {
+  const pl = this.players[seat];
+  const seen = {};
+  for (const ev of this.hist) if (ev.e === 'show' && (ev.to === seat || ev.p === seat)) seen[ev.id] = ev.card;
+  return { seat, hand: pl.hand.slice(), seen, sol: pl.sawSol || this.over ? this.sol.slice() : null };
+};
+// Öffentliche Fassung eines Ereignisses (ohne geheime Karte)
+function publicEvent(ev) {
+  if (ev.e !== 'show') return ev;
+  const c = Object.assign({}, ev); delete c.card; return c;
+}
+
+/* ------------------------------------------------------------
+   Bots
+   ------------------------------------------------------------ */
+function botDecide(g, p, K, rng) {
+  const o = g.options(p);
+  const pl = g.players[p];
+  const level = K.level;
+  if (o.show.length) return { k: 'show', card: botShow(g, p, o.show, level, rng) };
+  const sol = K.solution();
+  if (o.accuse && sol) return { k: 'accuse', s: sol[0], w: sol[1], r: sol[2] };
+  if (g.phase === 'start') {
+    const useful = usefulRooms(K, level);
+    if (o.stay && useful.has(pl.room)) return { k: 'stay' };
+    if (o.passage >= 0 && useful.has(o.passage) && !useful.has(pl.room)) return { k: 'passage' };
+    if (o.passage >= 0 && useful.has(o.passage) && rng() < 0.5) return { k: 'passage' };
+    if (o.roll) return { k: 'roll' };
+    if (o.move.length) return { k: 'move', room: chooseRoom(o.move, pl.room, useful, rng) };
+    if (o.stay) return { k: 'stay' };
+  }
+  if (g.phase === 'move') {
+    if (!o.move.length) return { k: 'nomove' };
+    return { k: 'move', room: chooseRoom(o.move, pl.room, usefulRooms(K, level), rng) };
+  }
+  if (g.phase === 'suggest') {
+    const s = botPick(K, 0, level, rng), w = botPick(K, 1, level, rng);
+    return { k: 'suggest', s, w };
+  }
+  if (o.end) return { k: 'end' };
+  return { k: 'end' };
+}
+function usefulRooms(K, level) {
+  const set = new Set();
+  const env = 1 << K.n, poss = K.solve().poss;
+  const cands = [];
+  for (let r = 0; r < 9; r++) {
+    const c = 12 + r;
+    if (level === 'easy') { if (K.owner(c) < 0 || K.owner(c) === K.n) set.add(r); }
+    else if (poss[c] & env) { cands.push(r); set.add(r); }
+  }
+  // Raum schon klar: jeder Raum taugt, am besten einer aus der eigenen Hand oder der Tatort
+  if (level !== 'easy' && cands.length === 1) {
+    for (let r = 0; r < 9; r++) { const ow = K.owner(12 + r); if (ow === K.me || ow === K.n) set.add(r); }
+  }
+  return set;
+}
+function chooseRoom(list, from, useful, rng) {
+  const good = list.filter((r) => useful.has(r));
+  if (good.length) return pick(good, rng);
+  // keiner erreichbar: dem nächsten nützlichen Raum näherkommen
+  let best = list[0], bestD = 99;
+  for (const r of list) {
+    let d = 99;
+    useful.forEach((u) => { d = Math.min(d, roomDist(r, u)); });
+    if (d < bestD || (d === bestD && rng() < 0.5)) { bestD = d; best = r; }
+  }
+  return best;
+}
+function botPick(K, cat, level, rng) {
+  const [a, b] = CAT_RANGE[cat];
+  const poss = K.solve().poss, env = 1 << K.n;
+  const all = []; for (let c = a; c < b; c++) all.push(c);
+  if (level === 'easy') {
+    const unknown = all.filter((c) => K.owner(c) < 0);
+    if (!unknown.length || rng() < 0.25) return pick(all, rng);
+    return pick(unknown, rng);
+  }
+  const envPoss = all.filter((c) => poss[c] & env);
+  if (envPoss.length === 1) {
+    // Kategorie gelöst: Umschlag-Karte (widerlegt niemand) oder eigene Karte nennen
+    const own = all.filter((c) => K.owner(c) === K.me);
+    if (level === 'hard' || !own.length) return envPoss[0];
+    return rng() < 0.5 ? envPoss[0] : pick(own, rng);
+  }
+  if (level === 'medium') return pick(envPoss, rng);
+  // Schwer: die unsicherste Karte (meiste mögliche Besitzer)
+  let best = [], bestN = -1;
+  for (const c of envPoss) {
+    const k = popcount(poss[c]);
+    if (k > bestN) { bestN = k; best = [c]; } else if (k === bestN) best.push(c);
+  }
+  return pick(best, rng);
+}
+function botShow(g, p, options, level, rng) {
+  if (options.length === 1 || level === 'easy') return pick(options, rng);
+  // Bereits gezeigte Karten bevorzugen, damit der Gegner möglichst wenig Neues erfährt
+  const to = g.ref.p;
+  const shownTo = new Set(g.hist.filter((e) => e.e === 'show' && e.p === p && e.to === to).map((e) => e.card));
+  const again = options.filter((c) => shownTo.has(c));
+  if (again.length) return pick(again, rng);
+  if (level === 'hard') {
+    const shownAny = new Set(g.hist.filter((e) => e.e === 'show' && e.p === p).map((e) => e.card));
+    const known = options.filter((c) => shownAny.has(c));
+    if (known.length) return pick(known, rng);
+  }
+  return pick(options, rng);
+}
+
+/* ============================================================
+   Grafik: Symbole, Porträts, Karten und der beleuchtete Spielplan
+   ============================================================ */
+const ICON_W = [
+  'M12 1.5c1 1.3 1.7 2.2 1.7 3.2a1.7 1.7 0 0 1-3.4 0c0-1 .7-1.9 1.7-3.2zM10.3 7h3.4v8h-3.4zM6.5 15h11v1.8h-11zM11 16.8h2v3.7h-2zM8 20.5h8V22H8z',
+  'M12 1l1.8 2.5V14h-3.6V3.5zM7 14h10v1.8H7zM11 15.8h2v4.4h-2zM12 19.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2z',
+  'M2 6.5h15.5l.8-1.5h1.7v1.5H22v3.6h-7.3l-1.3 1.6h-2.2l-.6 1.8 2 .2-.3 1.3-2-.2-1.4 5.7H4.6l2.2-8.4H2z',
+  'M12 2.5a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm0 2.6a5.4 5.4 0 1 0 0 10.8 5.4 5.4 0 0 0 0-10.8zm0 2.4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM16.6 16.8l4 5h-2.4l-3.4-4.1z',
+  'M10 2h4v1.6h-.6v3.1c2.9.9 5 3.5 5 6.6 0 4-3.1 7.2-6.4 7.2S5.6 17.3 5.6 13.3c0-3.1 2.1-5.7 5-6.6V3.6H10zm2 8.3a2.3 2.3 0 0 0-2.3 2.3c0 .9.5 1.5 1.1 1.8v1h2.4v-1c.6-.3 1.1-.9 1.1-1.8a2.3 2.3 0 0 0-2.3-2.3z',
+  'M2.5 6.2C6.6 3.6 12.8 3.3 18.6 5.6l2.9 1.5-.5 1.1-3-1C14 6 9.4 6.1 5.5 7.6zM11.1 5h1.9l-.3 14.6-.6 3h-.4l-.6-3zM12.9 6.5l2.6-.2.1 1.8-2.6.3z',
+];
+const ICON_R = [
+  'M4 9h16v2h-1v6.5A2.5 2.5 0 0 1 16.5 20h-9A2.5 2.5 0 0 1 5 17.5V11H4zM8 6h8v2H8zM11 3.5h2V6h-2z',
+  'M5.5 2h1v5h1V2h1v5h1V2h1v6a2.5 2.5 0 0 1-2 2.4V22H7.5V10.4A2.5 2.5 0 0 1 5.5 8zM16 2c2 1 3 4 3 8h-2v12h-2V2z',
+  'M20 3c0 9-4.5 15-12.5 15-1 0-2-.1-3-.4L3 21l-1-1 3.3-3.4C4.1 9.7 9.6 3.6 20 3zM7 15.5c3-1.3 6-4 8.5-8-3.3 2.6-6.2 5.2-8.5 8z',
+  'M3 4h4v16H3zM8 6h4v14H8zM13.2 5.3l3.8-1 4 15.4-3.8 1zM2 20.5h20V22H2z',
+  'M2 20v-3h5v-4h5V9h5V5h5v15z',
+  'M4 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2.2a2.4 2.4 0 0 0-2 2.3V14H6v-.5A2.4 2.4 0 0 0 4 11.2zM2 13a1.8 1.8 0 0 1 3.6 0v2.5h12.8V13A1.8 1.8 0 0 1 22 13v5h-1.6v2h-1.8v-2H5.4v2H3.6v-2H2z',
+  'M20.5 2c-6 1-10.6 5-12.6 11l-.9 3 2-1.8C11.4 11 14.4 7.5 20.5 2zM3 19h11v2H3zM15 14.5h5.5v6.5H15zm1.5 1.5v1.5h2.5V16z',
+  'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm0 4.6a5.4 5.4 0 1 0 0 10.8 5.4 5.4 0 0 0 0-10.8zm0 1.6a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2zm0 4.2a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8z',
+  'M7 2h2.4v4.2c1.7.8 2.6 2.3 2.6 4V22H4.4V10.2c0-1.7.9-3.2 2.6-4zM14 8h6c0 3.2-1.2 5.4-2.3 5.8V19h2v2h-5.4v-2h2v-5.2C15.2 13.4 14 11.2 14 8z',
+];
+const CARD_COL = ['', '#8c6a2a', '#3f6f63'];
+function lighten(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = (x) => Math.round(x + (255 - x) * f);
+  return `rgb(${m(r)},${m(g)},${m(b)})`;
+}
+const ACC = [
+  // Gräfin Rubin: Haarknoten, Diadem, Perlen
+  '<circle cx="32" cy="15" r="6"/><path d="M23.5 19.5l3-5 2 4 3.5-6.5 3.5 6.5 2-4 3 5z" fill="#f2d78f"/><g fill="#fff8e6"><circle cx="24" cy="45" r="1.4"/><circle cx="28" cy="47" r="1.4"/><circle cx="32" cy="47.6" r="1.4"/><circle cx="36" cy="47" r="1.4"/><circle cx="40" cy="45" r="1.4"/></g>',
+  // Major Kessler: Schirmmütze, Epauletten
+  '<path d="M20.5 22c0-8 5-12.5 11.5-12.5S43.5 14 43.5 22z"/><path d="M19 21.5h26l-3.2 3.3H22.2z" fill="#3a2a14"/><circle cx="32" cy="16.5" r="2.2" fill="#f2d78f"/><rect x="11" y="46" width="13" height="4" rx="2" fill="#f2d78f"/><rect x="40" y="46" width="13" height="4" rx="2" fill="#f2d78f"/>',
+  // Dr. Moos: Bob-Frisur, Brille
+  '<path d="M19.5 31c-1.4-11.5 5-17 12.5-17s13.9 5.5 12.5 17l-3.2 3c0-6.5-2.3-10.5-9.3-11.4-7 .9-9.3 4.9-9.3 11.4z"/><g fill="none" stroke="#f3e6c8" stroke-width="1.6"><circle cx="27.6" cy="27.5" r="3.6"/><circle cx="36.4" cy="27.5" r="3.6"/><path d="M31.2 27.5h1.6"/></g>',
+  // Pfarrer Blau: Priesterhut, Kollar
+  '<ellipse cx="32" cy="18.5" rx="16.5" ry="3.6"/><path d="M24 18.5c0-6.5 4-8.8 8-8.8s8 2.3 8 8.8z"/><rect x="28.8" y="40.2" width="6.4" height="4.2" rx="1" fill="#fff"/>',
+  // Madame Morel: Federhut, langes Haar
+  '<path d="M21 26c0 8-2 13-4.5 16.5 5.5 0 8.5-3.5 9.5-7.5z"/><ellipse cx="30" cy="18" rx="19.5" ry="4.6"/><path d="M21.5 18c0-6.5 4-9.5 9-9.5s9 3 9 9.5z"/><path d="M39 13.5c6-6.5 13.5-6.5 16.5-4.3-5.3 0-10.4 2.2-14.6 6.3z" fill="#f3e6c8"/>',
+  // Gärtner Weiss: Schiebermütze, Schnauz
+  '<path d="M21 23.5c0-7.5 5-11.5 11-11.5 7 0 12 4 13 9.3l4.3 2.2c-6.3 1-18.6 1-28.3 0z"/><path d="M26.8 31.6c2-1.6 3.6-1.6 5.2 0 1.6-1.6 3.2-1.6 5.2 0-2 1.7-8.4 1.7-10.4 0z" fill="#f3e6c8"/>',
+];
+let svgUid = 0;
+function portrait(i, extra) {
+  const s = SUSPECTS[i], u = 'p' + (++svgUid);
+  return `<svg viewBox="0 0 64 64" ${extra || ''} aria-hidden="true"><defs><radialGradient id="g${u}" cx="35%" cy="28%" r="85%"><stop offset="0" stop-color="${lighten(s.color, 0.35)}"/><stop offset="1" stop-color="${s.color}"/></radialGradient><clipPath id="c${u}"><circle cx="32" cy="32" r="30"/></clipPath></defs>` +
+    `<circle cx="32" cy="32" r="31" fill="#120c0a"/><circle cx="32" cy="32" r="29.5" fill="url(#g${u})"/>` +
+    `<g clip-path="url(#c${u})" fill="#1a1210"><path d="M8 68C8 50 19 41.5 32 41.5S56 50 56 68z"/><rect x="28" y="33" width="8" height="9"/><circle cx="32" cy="27" r="10.5"/>${ACC[i]}</g></svg>`;
+}
+function iconSVG(c, extra) {
+  if (c < 6) return portrait(c, extra);
+  const d = c < 12 ? ICON_W[c - 6] : ICON_R[c - 12];
+  return `<svg viewBox="0 0 24 24" ${extra || ''} aria-hidden="true"><path d="${d}" fill="currentColor" fill-rule="evenodd"/></svg>`;
+}
+function cardColor(c) { return c < 6 ? SUSPECTS[c].color : CARD_COL[CAT(c)]; }
+function cardHTML(c, o) {
+  o = o || {};
+  const cls = ['card'];
+  if (o.big) cls.push('big');
+  if (o.pick) cls.push('pickable');
+  if (o.sel) cls.push('sel');
+  if (o.dim) cls.push('dim');
+  if (o.flip) cls.push('flip');
+  const col = c < 12 && c >= 6 ? '#3a2a1c' : '#2d4d45';
+  const badge = o.badge ? `<span class="nb ${o.badgeCls || ''}">${o.badge}</span>` : '';
+  return `<div class="${cls.join(' ')}" data-card="${c}" style="--cc:${cardColor(c)};${o.style || ''}">${badge}<span class="ct">${['Person', 'Waffe', 'Raum'][CAT(c)]}</span>` +
+    `<span style="color:${col};display:flex">${iconSVG(c)}</span><span class="cname">${esc(cardName(c)).replace(/(Kerzen|Gift|Arbeits|Billard|Winter|Speise)/, '$1&shy;')}</span></div>`;
+}
+function chipHTML(c) {
+  const col = c < 6 ? '' : c < 12 ? 'color:#e2c27a' : 'color:#9fd3c5';
+  return `<span class="chip" data-card="${c}"><span style="display:flex;${col}">${iconSVG(c)}</span>${esc(cardName(c))}</span>`;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
+
+/* ---------------- Spielplan ---------------- */
+const BW = 1400, BH = 1000;
+const RR = ROOM_POS.map(([cx, cy]) => ({ x: 30 + cx * 462, y: 30 + cy * 328, w: 416, h: 282 }));
+const PATH_W = ICON_W.map((d) => (typeof Path2D !== 'undefined' ? new Path2D(d) : null));
+const ROOM_LIGHTS = [
+  [{ x: .5, y: .5, r: 230, c: [255, 200, 130] }, { x: .8, y: .2, r: 110, c: [255, 120, 40], f: 1.6 }],
+  [{ x: .36, y: .5, r: 160, c: [255, 196, 110], f: 1.2 }, { x: .64, y: .5, r: 160, c: [255, 196, 110], f: 1.2 }],
+  [{ x: .7, y: .3, r: 260, c: [150, 180, 255] }, { x: .25, y: .7, r: 120, c: [255, 210, 140], f: 1 }],
+  [{ x: .7, y: .55, r: 170, c: [255, 190, 110], f: .8 }, { x: .35, y: .5, r: 150, c: [255, 190, 120] }],
+  [{ x: .5, y: .5, r: 280, c: [255, 220, 160], f: .4 }],
+  [{ x: .9, y: .5, r: 190, c: [255, 120, 40], f: 2 }, { x: .35, y: .4, r: 150, c: [255, 200, 130] }],
+  [{ x: .35, y: .45, r: 175, c: [210, 255, 170], f: .3 }, { x: .8, y: .7, r: 110, c: [255, 200, 130] }],
+  [{ x: .5, y: .5, r: 230, c: [255, 220, 150], f: .3 }],
+  [{ x: .5, y: .4, r: 150, c: [255, 150, 60], f: 1.8 }, { x: .2, y: .8, r: 90, c: [255, 150, 60], f: 1.5 }],
+];
+const HALL_LIGHTS = [[469, 335], [931, 335], [469, 663], [931, 663], [469, 171], [931, 829], [700, 335], [700, 663], [469, 829], [931, 171], [240, 335], [1160, 663]];
+function windowsOf(r) {
+  const [cx, cy] = ROOM_POS[r], R = RR[r], out = [];
+  if (cy === 0) out.push([R.x + R.w * .3, R.y - 4, 'h'], [R.x + R.w * .7, R.y - 4, 'h']);
+  if (cy === 2) out.push([R.x + R.w * .3, R.y + R.h + 4, 'h'], [R.x + R.w * .7, R.y + R.h + 4, 'h']);
+  if (cx === 0) out.push([R.x - 4, R.y + R.h * .5, 'v']);
+  if (cx === 2) out.push([R.x + R.w + 4, R.y + R.h * .5, 'v']);
+  return out;
+}
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function seeded(n) { let s = n; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; }
+
+function drawStatic(ctx) {
+  const rnd = seeded(12345);
+  // Garten in der Nacht
+  ctx.fillStyle = '#0b1210'; ctx.fillRect(0, 0, BW, BH);
+  for (let i = 0; i < 500; i++) { ctx.fillStyle = `rgba(${30 + rnd() * 30},${50 + rnd() * 40},${35 + rnd() * 20},.5)`; ctx.fillRect(rnd() * BW, rnd() * BH, 2, 4); }
+  // Gangboden: dunkle Dielen
+  ctx.fillStyle = '#2a1c14'; ctx.fillRect(20, 20, BW - 40, BH - 40);
+  ctx.save(); ctx.beginPath(); ctx.rect(20, 20, BW - 40, BH - 40); ctx.clip();
+  for (let y = 20; y < BH; y += 14) {
+    ctx.fillStyle = `rgba(${55 + rnd() * 20},${36 + rnd() * 10},${24 + rnd() * 8},1)`; ctx.fillRect(20, y, BW, 13);
+    for (let x = 20 + rnd() * 120; x < BW; x += 120 + rnd() * 90) { ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(x, y, 2, 13); }
+  }
+  // Läufer in den Gängen
+  const runner = (x, y, w, h) => {
+    ctx.fillStyle = '#5a1a1e'; ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(212,168,67,.55)'; ctx.lineWidth = 2; ctx.strokeRect(x + 4, y + 4, w - 8, h - 8);
+  };
+  runner(453, 24, 32, BH - 48); runner(915, 24, 32, BH - 48);
+  runner(24, 319, BW - 48, 32); runner(24, 647, BW - 48, 32);
+  ctx.restore();
+  // Räume
+  for (let r = 0; r < 9; r++) drawRoom(ctx, r, rnd);
+  // Aussenmauer
+  ctx.strokeStyle = '#120d0b'; ctx.lineWidth = 14; ctx.strokeRect(17, 17, BW - 34, BH - 34);
+  ctx.strokeStyle = 'rgba(212,168,67,.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(25, 25, BW - 50, BH - 50);
+}
+
+function drawRoom(ctx, r, rnd) {
+  const R = RR[r];
+  ctx.save();
+  ctx.beginPath(); ctx.rect(R.x, R.y, R.w, R.h); ctx.clip();
+  FLOORS[r](ctx, R, rnd);
+  ctx.shadowColor = 'rgba(0,0,0,.65)'; ctx.shadowBlur = 14; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 6;
+  FURN[r](ctx, R, rnd);
+  ctx.shadowColor = 'transparent';
+  // Innenschatten an den Wänden
+  const g = ctx.createLinearGradient(R.x, 0, R.x + 30, 0);
+  g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.fillRect(R.x, R.y, 30, R.h);
+  const g2 = ctx.createLinearGradient(0, R.y, 0, R.y + 30);
+  g2.addColorStop(0, 'rgba(0,0,0,.45)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g2; ctx.fillRect(R.x, R.y, R.w, 30);
+  ctx.restore();
+  // Wände mit Türen
+  const [cx, cy] = ROOM_POS[r];
+  const doors = { t: cy > 0, b: cy < 2, l: cx > 0, rr: cx < 2 };
+  ctx.strokeStyle = '#140e0c'; ctx.lineWidth = 10; ctx.lineCap = 'square';
+  const D = 64;
+  const side = (x1, y1, x2, y2, door) => {
+    ctx.beginPath();
+    if (!door) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }
+    else {
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, hor = y1 === y2;
+      ctx.moveTo(x1, y1); ctx.lineTo(hor ? mx - D / 2 : x1, hor ? y1 : my - D / 2);
+      ctx.moveTo(hor ? mx + D / 2 : x1, hor ? y1 : my + D / 2); ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+  };
+  side(R.x, R.y, R.x + R.w, R.y, doors.t);
+  side(R.x, R.y + R.h, R.x + R.w, R.y + R.h, doors.b);
+  side(R.x, R.y, R.x, R.y + R.h, doors.l);
+  side(R.x + R.w, R.y, R.x + R.w, R.y + R.h, doors.rr);
+  // Türflügel
+  ctx.strokeStyle = 'rgba(160,110,60,.7)'; ctx.lineWidth = 3;
+  const swing = (x, y, a0, a1) => { ctx.beginPath(); ctx.arc(x, y, D - 4, a0, a1); ctx.stroke(); };
+  ctx.setLineDash([4, 5]);
+  if (doors.t) swing(R.x + R.w / 2 - D / 2, R.y, 0, Math.PI / 2 * 0.6);
+  if (doors.b) swing(R.x + R.w / 2 + D / 2, R.y + R.h, Math.PI, Math.PI * 1.3);
+  if (doors.l) swing(R.x, R.y + R.h / 2 + D / 2, -Math.PI / 2, -Math.PI / 2 + 0.95);
+  if (doors.rr) swing(R.x + R.w, R.y + R.h / 2 - D / 2, Math.PI / 2, Math.PI / 2 + 0.95);
+  ctx.setLineDash([]);
+  // Geheimgang-Falltür
+  if (PASSAGE[r] != null) {
+    const px = cx === 0 ? R.x + 26 : R.x + R.w - 70, py = cy === 0 ? R.y + R.h - 64 : R.y + 34;
+    ctx.fillStyle = '#1c130e'; rrect(ctx, px, py, 44, 32, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(212,168,67,.6)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px + 8, py + 16); ctx.lineTo(px + 36, py + 16); ctx.stroke();
+    ctx.fillStyle = 'rgba(212,168,67,.8)'; ctx.beginPath(); ctx.arc(px + 22, py + 16, 3, 0, 7); ctx.fill();
+  }
+  // Fenster in der Aussenmauer
+  for (const [wx, wy, o] of windowsOf(r)) {
+    ctx.fillStyle = '#16233a';
+    if (o === 'h') ctx.fillRect(wx - 40, wy - 5, 80, 10); else ctx.fillRect(wx - 5, wy - 40, 10, 80);
+  }
+}
+
+const FLOORS = [
+  (ctx, R) => { // Küche: Schachbrett-Fliesen
+    for (let y = R.y; y < R.y + R.h; y += 34) for (let x = R.x; x < R.x + R.w; x += 34) {
+      ctx.fillStyle = ((x - R.x) / 34 + (y - R.y) / 34) % 2 < 1 ? '#57514a' : '#2a2622'; ctx.fillRect(x, y, 34, 34);
+    }
+  },
+  (ctx, R, rnd) => { // Speisesaal: Parkett
+    for (let x = R.x; x < R.x + R.w; x += 22) for (let y = R.y + ((x / 22) % 2) * 30; y < R.y + R.h; y += 60) {
+      ctx.fillStyle = `rgb(${92 + rnd() * 18},${56 + rnd() * 10},${32 + rnd() * 6})`; ctx.fillRect(x + 1, y + 1, 20, 58);
+    }
+  },
+  (ctx, R, rnd) => { // Wintergarten: Steinplatten
+    ctx.fillStyle = '#2c3a33'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    for (let y = R.y; y < R.y + R.h; y += 52) for (let x = R.x + (((y - R.y) / 52) % 2) * 35; x < R.x + R.w; x += 70) {
+      ctx.fillStyle = `rgb(${58 + rnd() * 16},${70 + rnd() * 16},${62 + rnd() * 12})`; ctx.fillRect(x + 2, y + 2, 66, 48);
+    }
+  },
+  (ctx, R, rnd) => { // Bibliothek: dunkles Holz und Teppich
+    for (let y = R.y; y < R.y + R.h; y += 16) { ctx.fillStyle = `rgb(${50 + rnd() * 12},${32 + rnd() * 8},${22 + rnd() * 6})`; ctx.fillRect(R.x, y, R.w, 15); }
+    ctx.fillStyle = '#3d2236'; ctx.fillRect(R.x + 110, R.y + 70, 200, 150);
+    ctx.strokeStyle = 'rgba(212,168,67,.5)'; ctx.lineWidth = 3; ctx.strokeRect(R.x + 120, R.y + 80, 180, 130);
+  },
+  (ctx, R, rnd) => { // Halle: Marmor
+    ctx.fillStyle = '#6b6862'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    for (let y = R.y; y < R.y + R.h; y += 47) for (let x = R.x; x < R.x + R.w; x += 52) {
+      ctx.fillStyle = ((x - R.x) / 52 + (y - R.y) / 47) % 2 < 1 ? '#77736b' : '#5d5a54'; ctx.fillRect(x, y, 52, 47);
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 14; i++) { ctx.beginPath(); let x = R.x + rnd() * R.w, y = R.y + rnd() * R.h; ctx.moveTo(x, y); for (let k = 0; k < 5; k++) { x += rnd() * 50 - 20; y += rnd() * 40 - 20; ctx.lineTo(x, y); } ctx.stroke(); }
+    ctx.fillStyle = '#4d1418'; ctx.beginPath(); ctx.ellipse(R.x + R.w / 2, R.y + R.h / 2 + 20, 120, 80, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(212,168,67,.6)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(R.x + R.w / 2, R.y + R.h / 2 + 20, 108, 70, 0, 0, 7); ctx.stroke();
+  },
+  (ctx, R) => { // Salon: roter Teppich
+    ctx.fillStyle = '#3c1416'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    ctx.fillStyle = '#5c1d20'; ctx.fillRect(R.x + 30, R.y + 30, R.w - 60, R.h - 60);
+    ctx.strokeStyle = 'rgba(212,168,67,.45)'; ctx.lineWidth = 3; ctx.strokeRect(R.x + 40, R.y + 40, R.w - 80, R.h - 80);
+    ctx.fillStyle = 'rgba(212,168,67,.12)';
+    for (let x = R.x + 60; x < R.x + R.w - 50; x += 40) for (let y = R.y + 60; y < R.y + R.h - 50; y += 40) { ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x + 8, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 8, y); ctx.fill(); }
+  },
+  (ctx, R) => { // Arbeitszimmer: grüner Teppich
+    ctx.fillStyle = '#2a2015'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    ctx.fillStyle = '#1f3b2c'; ctx.fillRect(R.x + 24, R.y + 24, R.w - 48, R.h - 48);
+    ctx.strokeStyle = 'rgba(212,168,67,.35)'; ctx.lineWidth = 2; ctx.strokeRect(R.x + 34, R.y + 34, R.w - 68, R.h - 68);
+  },
+  (ctx, R, rnd) => { // Billardzimmer: helle Dielen
+    for (let x = R.x; x < R.x + R.w; x += 18) { ctx.fillStyle = `rgb(${96 + rnd() * 16},${66 + rnd() * 10},${40 + rnd() * 8})`; ctx.fillRect(x, R.y, 17, R.h); }
+  },
+  (ctx, R, rnd) => { // Weinkeller: Bruchsteine
+    ctx.fillStyle = '#1e1a17'; ctx.fillRect(R.x, R.y, R.w, R.h);
+    for (let y = R.y; y < R.y + R.h; y += 26) for (let x = R.x - rnd() * 30; x < R.x + R.w; x += 40 + rnd() * 26) {
+      ctx.fillStyle = `rgb(${52 + rnd() * 18},${46 + rnd() * 14},${40 + rnd() * 10})`; rrect(ctx, x + 2, y + 2, 38 + rnd() * 10, 22, 6); ctx.fill();
+    }
+  },
+];
+
+function box(ctx, x, y, w, h, fill, r) { ctx.fillStyle = fill; rrect(ctx, x, y, w, h, r || 4); ctx.fill(); }
+function disc(ctx, x, y, r, fill) { ctx.fillStyle = fill; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+const FURN = [
+  (ctx, R) => { // Küche
+    box(ctx, R.x + 10, R.y + 10, R.w - 20, 40, '#6d5a48');
+    box(ctx, R.x + R.w - 140, R.y + 12, 110, 46, '#1d1b1a', 6);
+    ctx.shadowColor = 'transparent';
+    for (let i = 0; i < 4; i++) { ctx.strokeStyle = '#555'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(R.x + R.w - 118 + i * 26, R.y + 35, 9, 0, 7); ctx.stroke(); }
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 140, R.y + 110, 150, 80, '#7a5434', 6);
+    for (const [dx, dy] of [[-22, 20], [-22, 60], [172, 20], [172, 60]]) box(ctx, R.x + 140 + dx, R.y + 110 + dy - 6, 20, 20, '#4e3420', 3);
+    disc(ctx, R.x + 215, R.y + 150, 16, '#b8b0a2');
+  },
+  (ctx, R) => { // Speisesaal
+    box(ctx, R.x + 70, R.y + 105, R.w - 140, 72, '#5b3420', 10);
+    box(ctx, R.x + 80, R.y + 132, R.w - 160, 18, '#e9e0cc', 3);
+    for (let i = 0; i < 6; i++) { box(ctx, R.x + 95 + i * 42, R.y + 82, 26, 22, '#3e2416', 4); box(ctx, R.x + 95 + i * 42, R.y + 179, 26, 22, '#3e2416', 4); }
+    box(ctx, R.x + 42, R.y + 128, 22, 26, '#3e2416', 4); box(ctx, R.x + R.w - 64, R.y + 128, 22, 26, '#3e2416', 4);
+    ctx.shadowColor = 'transparent';
+    for (const fx of [.36, .64]) { disc(ctx, R.x + R.w * fx, R.y + 141, 9, '#c9a24a'); disc(ctx, R.x + R.w * fx, R.y + 141, 4, '#fff1c4'); }
+    box(ctx, R.x + R.w - 90, R.y + 14, 70, 26, '#2e1a10');
+  },
+  (ctx, R) => { // Wintergarten
+    const plant = (x, y, s) => { disc(ctx, x, y, s, '#1f4a2c'); ctx.shadowColor = 'transparent'; for (let i = 0; i < 7; i++) { const a = i * 0.9; disc(ctx, x + Math.cos(a) * s * .6, y + Math.sin(a) * s * .6, s * .45, i % 2 ? '#2f6e40' : '#3d8a52'); } ctx.shadowColor = 'rgba(0,0,0,.65)'; };
+    plant(R.x + 50, R.y + 50, 34); plant(R.x + R.w - 50, R.y + R.h - 50, 38); plant(R.x + R.w - 60, R.y + 55, 30); plant(R.x + 55, R.y + R.h - 55, 28);
+    disc(ctx, R.x + R.w / 2, R.y + R.h / 2, 46, '#4b5a55'); ctx.shadowColor = 'transparent';
+    disc(ctx, R.x + R.w / 2, R.y + R.h / 2, 38, '#203a4a'); disc(ctx, R.x + R.w / 2, R.y + R.h / 2, 8, '#8fb4c8');
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 120, R.y + 190, 40, 40, '#8a6a3a', 14); box(ctx, R.x + 260, R.y + 60, 40, 40, '#8a6a3a', 14);
+  },
+  (ctx, R, rnd) => { // Bibliothek
+    const shelf = (x, y, w, h, vertical) => {
+      box(ctx, x, y, w, h, '#2a170d', 2);
+      ctx.shadowColor = 'transparent';
+      const n = Math.floor((vertical ? h : w) / 9);
+      for (let i = 0; i < n; i++) {
+        ctx.fillStyle = ['#7a2a2a', '#2a4a7a', '#3d6a3a', '#8a6a2a', '#5a3a6a', '#6a4a2a'][Math.floor(rnd() * 6)];
+        if (vertical) ctx.fillRect(x + 3, y + 3 + i * 9, w - 6, 7); else ctx.fillRect(x + 3 + i * 9, y + 3, 7, h - 6);
+      }
+      ctx.shadowColor = 'rgba(0,0,0,.65)';
+    };
+    shelf(R.x + 8, R.y + 8, R.w - 16, 30, false); shelf(R.x + 8, R.y + 44, 30, R.h - 52, true); shelf(R.x + 8, R.y + R.h - 38, R.w - 140, 30, false);
+    box(ctx, R.x + R.w - 130, R.y + 120, 76, 56, '#5a3420', 8);
+    box(ctx, R.x + R.w - 120, R.y + 190, 54, 48, '#6b1f24', 14);
+    disc(ctx, R.x + R.w - 92, R.y + 148, 7, '#e8d9a8');
+  },
+  (ctx, R) => { // Halle: Treppe und Kronleuchter
+    ctx.shadowColor = 'transparent';
+    for (let i = 0; i < 7; i++) { ctx.fillStyle = i % 2 ? '#3d2a1c' : '#4a3322'; ctx.fillRect(R.x + R.w / 2 - 90 + i * 2, R.y + 6 + i * 9, 180 - i * 4, 9); }
+    ctx.fillStyle = '#5c1d20'; ctx.fillRect(R.x + R.w / 2 - 30, R.y + 6, 60, 63);
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 16, R.y + 100, 34, 90, '#3a2416', 4); box(ctx, R.x + R.w - 50, R.y + 100, 34, 90, '#3a2416', 4);
+    disc(ctx, R.x + 33, R.y + 210, 14, '#22441f'); disc(ctx, R.x + R.w - 33, R.y + 210, 14, '#22441f');
+  },
+  (ctx, R) => { // Salon
+    box(ctx, R.x + R.w - 34, R.y + R.h / 2 - 55, 26, 110, '#3a3430', 3);
+    ctx.shadowColor = 'transparent'; box(ctx, R.x + R.w - 30, R.y + R.h / 2 - 32, 14, 64, '#1a0f0a', 2); ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 80, R.y + 54, 190, 46, '#7a2c3a', 14);
+    box(ctx, R.x + 52, R.y + 104, 40, 90, '#7a2c3a', 14);
+    box(ctx, R.x + 130, R.y + 125, 110, 56, '#4a2a18', 8);
+    ctx.fillStyle = '#0f0c0c'; ctx.beginPath(); ctx.moveTo(R.x + 250, R.y + R.h - 20); ctx.quadraticCurveTo(R.x + 250, R.y + 150, R.x + 330, R.y + 160); ctx.lineTo(R.x + 340, R.y + R.h - 20); ctx.fill();
+  },
+  (ctx, R) => { // Arbeitszimmer
+    box(ctx, R.x + 70, R.y + 70, 170, 84, '#4a2c18', 6);
+    ctx.shadowColor = 'transparent';
+    box(ctx, R.x + 90, R.y + 86, 44, 32, '#e8dcc0', 2); box(ctx, R.x + 140, R.y + 96, 34, 26, '#ddd0b0', 2);
+    disc(ctx, R.x + 210, R.y + 90, 10, '#2a5a3a');
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 132, R.y + 162, 46, 40, '#5a2020', 12);
+    disc(ctx, R.x + R.w - 70, R.y + 70, 30, '#7a5a2a'); ctx.shadowColor = 'transparent'; disc(ctx, R.x + R.w - 70, R.y + 70, 24, '#2a5a7a');
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(R.x + R.w - 70, R.y + 70, 10, 24, 0, 0, 7); ctx.stroke();
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + R.w - 60, R.y + 140, 44, 120, '#3a2416', 4);
+  },
+  (ctx, R) => { // Billardzimmer
+    const x = R.x + R.w / 2 - 120, y = R.y + R.h / 2 - 66;
+    box(ctx, x, y, 240, 132, '#4a2a14', 12);
+    ctx.shadowColor = 'transparent';
+    box(ctx, x + 14, y + 14, 212, 104, '#1f6b3a', 4);
+    for (const [px, py] of [[0, 0], [.5, 0], [1, 0], [0, 1], [.5, 1], [1, 1]]) disc(ctx, x + 14 + px * 212, y + 14 + py * 104, 7, '#0a0a0a');
+    disc(ctx, x + 70, y + 66, 6, '#f2efe6'); disc(ctx, x + 160, y + 58, 6, '#c03030'); disc(ctx, x + 172, y + 72, 6, '#e0b030'); disc(ctx, x + 184, y + 60, 6, '#111');
+    ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x - 40, y + 150); ctx.lineTo(x + 60, y + 80); ctx.stroke();
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + 14, R.y + 60, 22, 130, '#3a2416', 3);
+  },
+  (ctx, R) => { // Weinkeller
+    const barrel = (x, y) => { disc(ctx, x, y, 28, '#5a3418'); ctx.shadowColor = 'transparent'; ctx.strokeStyle = '#2a1a0c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 20, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, 10, 0, 7); ctx.stroke(); ctx.shadowColor = 'rgba(0,0,0,.65)'; };
+    barrel(R.x + 50, R.y + 60); barrel(R.x + 50, R.y + 125); barrel(R.x + 50, R.y + 190); barrel(R.x + 112, R.y + 220);
+    box(ctx, R.x + R.w - 150, R.y + 14, 136, 46, '#2a1a0e', 3);
+    ctx.shadowColor = 'transparent';
+    for (let i = 0; i < 9; i++) for (let j = 0; j < 2; j++) disc(ctx, R.x + R.w - 140 + i * 15, R.y + 27 + j * 20, 5, j ? '#3a0f18' : '#24361a');
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    box(ctx, R.x + R.w - 50, R.y + 100, 34, 160, '#2a1a0e', 3);
+    box(ctx, R.x + 200, R.y + 120, 70, 70, '#4a2e18', 35);
+  },
+];
+
+/* Bewegliche Teile und Licht */
+const Board = {
+  cv: null, ctx: null, stat: null, light: null, scale: 1, dpr: 1, w: 0, h: 0,
+  tokS: [], tokW: [], hover: -1, hoverTok: null, flash: 0, nextFlash: 0, raf: 0, last: 0, running: false,
+  hiRooms: [], spot: -1, spotT: 0, tutRoom: -1, keyNums: false, curFig: -1, ownFig: -1,
+  init(cv) {
+    this.cv = cv; this.ctx = cv.getContext('2d');
+    for (let i = 0; i < 6; i++) { this.tokS.push({ x: 700, y: 500, tx: 700, ty: 500 }); this.tokW.push({ x: 700, y: 500, tx: 700, ty: 500 }); }
+    this.nextFlash = performance.now() + 8000;
+  },
+  resize(boxW, boxH) {
+    const s = Math.max(0.2, Math.min(boxW / BW, boxH / BH));
+    const w = Math.floor(BW * s), h = Math.floor(BH * s);
+    this.dpr = Math.min(2, window.devicePixelRatio || 1);
+    this.scale = s; this.w = w; this.h = h;
+    this.cv.style.width = w + 'px'; this.cv.style.height = h + 'px';
+    this.cv.style.left = Math.max(0, boxW - w) + 'px';
+    this.cv.style.top = Math.max(0, (boxH - h) / 2) + 'px';
+    this.cv.width = Math.round(w * this.dpr); this.cv.height = Math.round(h * this.dpr);
+    this.stat = makeStaticLayer(this.cv.width, this.cv.height);
+    this.light = document.createElement('canvas'); this.light.width = this.cv.width; this.light.height = this.cv.height;
+  },
+  // Spielzustand -> Zielpositionen der Figuren
+  setPositions(pub) {
+    const inRoom = Array.from({ length: 9 }, () => []);
+    pub.sRoom.forEach((r, s) => { if (r >= 0) inRoom[r].push(s); });
+    inRoom.forEach((list, r) => {
+      const R = RR[r];
+      list.forEach((s, i) => {
+        const t = this.tokS[s];
+        t.tx = R.x + R.w / 2 + (i - (list.length - 1) / 2) * 56; t.ty = R.y + R.h - 48;
+      });
+    });
+    const wIn = Array.from({ length: 9 }, () => []);
+    pub.wRoom.forEach((r, w) => { if (r >= 0) wIn[r].push(w); });
+    wIn.forEach((list, r) => {
+      const R = RR[r];
+      list.forEach((w, i) => { const t = this.tokW[w]; t.tx = R.x + R.w - 44 - i * 46; t.ty = R.y + 92; });
+    });
+  },
+  snap() { for (const t of this.tokS.concat(this.tokW)) { t.x = t.tx; t.y = t.ty; } },
+  start() { if (this.running) return; this.running = true; const loop = (t) => { if (!this.running) return; this.raf = requestAnimationFrame(loop); if (t - this.last < 32) return; this.last = t; this.draw(t); }; this.raf = requestAnimationFrame(loop); },
+  stop() { this.running = false; cancelAnimationFrame(this.raf); },
+  toLogical(ev) { const r = this.cv.getBoundingClientRect(); return [(ev.clientX - r.left) / this.scale, (ev.clientY - r.top) / this.scale]; },
+  roomAt(x, y) { for (let r = 0; r < 9; r++) { const R = RR[r]; if (x >= R.x && x <= R.x + R.w && y >= R.y && y <= R.y + R.h) return r; } return -1; },
+  tokenAt(x, y) {
+    for (let s = 0; s < 6; s++) { const t = this.tokS[s]; if ((t.x - x) ** 2 + (t.y - y) ** 2 < 26 * 26) return { k: 's', i: s }; }
+    for (let w = 0; w < 6; w++) { const t = this.tokW[w]; if ((t.x - x) ** 2 + (t.y - y) ** 2 < 21 * 21) return { k: 'w', i: w }; }
+    return null;
+  },
+  draw(now) {
+    const ctx = this.ctx, k = this.dpr * this.scale;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.stat, 0, 0);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    const T = now / 1000;
+    // Figuren gleiten zum Ziel
+    for (const t of this.tokS.concat(this.tokW)) { t.x += (t.tx - t.x) * 0.16; t.y += (t.ty - t.y) * 0.16; }
+    // Blitz
+    if (now > this.nextFlash) { this.flash = 1; this.nextFlash = now + 14000 + Math.random() * 26000; if (window.Snd) setTimeout(() => Snd.thunder(), 600 + Math.random() * 900); }
+    this.flash *= 0.9; if (this.flash < 0.01) this.flash = 0;
+    const fl = this.flash > 0.02 ? (Math.sin(now / 23) > -0.2 ? this.flash : this.flash * 0.3) : 0;
+    // Licht berechnen
+    const L = this.light.getContext('2d');
+    L.setTransform(1, 0, 0, 1, 0, 0);
+    L.globalCompositeOperation = 'source-over';
+    L.clearRect(0, 0, this.light.width, this.light.height);
+    L.fillStyle = `rgba(6,5,12,${0.8 - fl * 0.5})`; L.fillRect(0, 0, this.light.width, this.light.height);
+    L.setTransform(k, 0, 0, k, 0, 0);
+    L.globalCompositeOperation = 'destination-out';
+    const hole = (x, y, r, a) => { const g = L.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(0.55, `rgba(0,0,0,${a * 0.55})`); g.addColorStop(1, 'rgba(0,0,0,0)'); L.fillStyle = g; L.fillRect(x - r, y - r, r * 2, r * 2); };
+    const lights = [];
+    for (let r = 0; r < 9; r++) {
+      const R = RR[r];
+      for (const li of ROOM_LIGHTS[r]) {
+        const f = li.f || 0;
+        const flick = f ? 1 + (Math.sin(T * 9 * f + r * 3) * 0.04 + Math.sin(T * 23 * f + r) * 0.03) * f : 1;
+        const x = R.x + R.w * li.x, y = R.y + R.h * li.y;
+        hole(x, y, li.r * flick, 0.95);
+        lights.push([x, y, li.r * flick, li.c]);
+      }
+    }
+    for (const [x, y] of HALL_LIGHTS) hole(x, y, 95, 0.75);
+    // hervorgehobene Räume heller
+    const pulse = 0.5 + 0.5 * Math.sin(T * 4);
+    const hi = new Set(this.hiRooms);
+    if (this.tutRoom >= 0) hi.add(this.tutRoom);
+    for (const r of hi) { const R = RR[r]; L.fillStyle = `rgba(0,0,0,${0.45 + pulse * 0.2})`; L.fillRect(R.x, R.y, R.w, R.h); }
+    if (this.spot >= 0) { const R = RR[this.spot]; const a = Math.max(0, Math.min(1, (this.spotT - now) / 1500)); if (a > 0) { L.fillStyle = `rgba(0,0,0,${0.6 * a})`; L.fillRect(R.x, R.y, R.w, R.h); } }
+    if (this.hover >= 0 && hi.has(this.hover)) { const R = RR[this.hover]; L.fillStyle = 'rgba(0,0,0,.5)'; L.fillRect(R.x, R.y, R.w, R.h); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(this.light, 0, 0);
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    // warmes Glühen
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x, y, r, c] of lights) { const g = ctx.createRadialGradient(x, y, 0, x, y, r * 0.8); g.addColorStop(0, `rgba(${c[0]},${c[1]},${c[2]},.13)`); g.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
+    ctx.globalCompositeOperation = 'source-over';
+    // Fenster mit Regen
+    for (let r = 0; r < 9; r++) for (const [wx, wy, o] of windowsOf(r)) {
+      const a = 0.35 + fl * 0.65;
+      ctx.fillStyle = `rgba(${90 + fl * 160},${120 + fl * 130},${190 + fl * 65},${a})`;
+      if (o === 'h') ctx.fillRect(wx - 40, wy - 5, 80, 10); else ctx.fillRect(wx - 5, wy - 40, 10, 80);
+      ctx.strokeStyle = 'rgba(200,220,255,.35)'; ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {
+        const p = ((T * 1.7 + i * 0.27 + r * 0.13) % 1);
+        ctx.beginPath();
+        if (o === 'h') { const x = wx - 38 + ((i * 23 + r * 11) % 76); ctx.moveTo(x, wy - 5 + p * 6); ctx.lineTo(x - 1, wy - 1 + p * 6); }
+        else { const y = wy - 38 + p * 70; ctx.moveTo(wx - 4 + i * 2, y); ctx.lineTo(wx - 4 + i * 2, y + 6); }
+        ctx.stroke();
+      }
+    }
+    // Rahmen um wählbare Räume
+    for (const r of hi) {
+      const R = RR[r];
+      ctx.strokeStyle = `rgba(242,215,143,${0.55 + pulse * 0.45})`; ctx.lineWidth = r === this.hover ? 6 : 4;
+      ctx.shadowColor = 'rgba(242,215,143,.8)'; ctx.shadowBlur = 18;
+      rrect(ctx, R.x + 4, R.y + 4, R.w - 8, R.h - 8, 8); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    }
+    // Namensschilder
+    for (let r = 0; r < 9; r++) this.plaque(r, hi.has(r));
+    // Waffen
+    for (let w = 0; w < 6; w++) {
+      const t = this.tokW[w];
+      ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.ellipse(t.x + 3, t.y + 6, 18, 9, 0, 0, 7); ctx.fill();
+      const g = ctx.createRadialGradient(t.x - 6, t.y - 6, 2, t.x, t.y, 20); g.addColorStop(0, '#f6dc94'); g.addColorStop(1, '#8a6420');
+      disc(ctx, t.x, t.y, 18, g); ctx.strokeStyle = '#3a2a10'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (PATH_W[w]) { ctx.save(); ctx.translate(t.x - 12 * 1.1, t.y - 12 * 1.1); ctx.scale(1.1, 1.1); ctx.fillStyle = '#2a1c0c'; ctx.fill(PATH_W[w], 'evenodd'); ctx.restore(); }
+    }
+    // Personen
+    for (let s = 0; s < 6; s++) {
+      const t = this.tokS[s], col = SUSPECTS[s].color;
+      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.ellipse(t.x + 4, t.y + 10, 24, 11, 0, 0, 7); ctx.fill();
+      if (s === this.curFig) { ctx.strokeStyle = `rgba(242,215,143,${0.5 + pulse * 0.5})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(t.x, t.y, 30 + pulse * 3, 0, 7); ctx.stroke(); }
+      const g = ctx.createRadialGradient(t.x - 8, t.y - 10, 3, t.x, t.y, 26); g.addColorStop(0, lighten(col, 0.55)); g.addColorStop(1, col);
+      disc(ctx, t.x, t.y, 23, g);
+      ctx.strokeStyle = s === this.ownFig ? '#fff' : 'rgba(20,12,10,.9)'; ctx.lineWidth = s === this.ownFig ? 3 : 2; ctx.beginPath(); ctx.arc(t.x, t.y, 23, 0, 7); ctx.stroke();
+      ctx.fillStyle = '#1a1210'; ctx.beginPath(); ctx.arc(t.x, t.y - 5, 7.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(t.x - 14, t.y + 15); ctx.quadraticCurveTo(t.x, t.y - 2, t.x + 14, t.y + 15); ctx.closePath(); ctx.fill();
+    }
+    // Blitz über allem
+    if (fl > 0) { ctx.fillStyle = `rgba(190,210,255,${fl * 0.18})`; ctx.fillRect(0, 0, BW, BH); }
+    // Vignette
+    const vg = ctx.createRadialGradient(BW / 2, BH / 2, BH * 0.35, BW / 2, BH / 2, BW * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, BW, BH);
+  },
+  plaque(r, on) {
+    const ctx = this.ctx, R = RR[r];
+    ctx.font = '700 25px "Playfair Display", Georgia, serif';
+    const name = ROOMS[r].name;
+    const w = ctx.measureText(name).width + 28 + (this.keyNums && on ? 34 : 0);
+    const x = R.x + 14, y = R.y + 14;
+    const g = ctx.createLinearGradient(0, y, 0, y + 36);
+    g.addColorStop(0, on ? '#f6dc94' : '#c9a24a'); g.addColorStop(1, on ? '#b98d2c' : '#7a5c1e');
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; rrect(ctx, x + 2, y + 3, w, 36, 6); ctx.fill();
+    ctx.fillStyle = g; rrect(ctx, x, y, w, 36, 6); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,25,8,.7)'; ctx.lineWidth = 1.5; rrect(ctx, x + 3, y + 3, w - 6, 30, 4); ctx.stroke();
+    ctx.fillStyle = '#2a1a08'; ctx.textBaseline = 'middle'; ctx.fillText(name, x + 14, y + 19);
+    if (this.keyNums && on) {
+      ctx.fillStyle = '#2a1a08'; rrect(ctx, x + w - 36, y + 7, 24, 22, 5); ctx.fill();
+      ctx.fillStyle = '#f6dc94'; ctx.font = '700 17px system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(r + 1), x + w - 24, y + 19); ctx.textAlign = 'left';
+    }
+  },
+};
+function makeStaticLayer(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.setTransform(w / BW, 0, 0, h / BH, 0, 0);
+  drawStatic(ctx);
+  return c;
+}
+</script>
+<script>
+/* ============================================================
+   Oberfläche, Spielleitung, Notizblock, Online und Tutorial
+   ============================================================ */
+(function () {
+  'use strict';
+  const GAME_ID = 'nebelvilla';
+  const HUB = window.GameHub || null;
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(GAME_ID + '-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(GAME_ID + '-' + k, JSON.stringify(v)); } catch (e) { /* egal */ } },
+  };
+  const LV = { easy: 'Leicht', medium: 'Mittel', hard: 'Schwer', mixed: 'Gemischt' };
+
+  const cfg = Object.assign({ mode: 'bots', fig: 3, bots: 3, level: 'medium', dice: true, auto: 'seen', onlineBots: 1 }, store.get('cfg', {}));
+  if (!['bots', 'online', 'tutorial'].includes(cfg.mode)) cfg.mode = 'bots';
+  if (cfg.mode === 'online' && !HUB) cfg.mode = 'bots';
+  function saveCfg() { store.set('cfg', cfg); }
+
+  /* ======================= Ton ======================= */
+  const Snd = (function () {
+    let ac = null, master = null, rain = null, on = store.get('sound', true);
+    function init() {
+      if (ac || !on) return;
+      try {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        master = ac.createGain(); master.gain.value = 0.55; master.connect(ac.destination);
+        startRain();
+      } catch (e) { ac = null; }
+    }
+    function noiseBuf(sec) {
+      const b = ac.createBuffer(1, ac.sampleRate * sec, ac.sampleRate), d = b.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
+      return b;
+    }
+    function startRain() {
+      const src = ac.createBufferSource(); src.buffer = noiseBuf(4); src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.4;
+      const g = ac.createGain(); g.gain.value = 0.11;
+      src.connect(f); f.connect(g); g.connect(master); src.start();
+      rain = g;
+    }
+    function tone(freq, dur, type, vol, when) {
+      if (!ac) return;
+      const t = ac.currentTime + (when || 0);
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol || 0.15, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function burst(dur, freq, vol, when) {
+      if (!ac) return;
+      const t = ac.currentTime + (when || 0);
+      const src = ac.createBufferSource(); src.buffer = noiseBuf(Math.max(0.2, dur));
+      const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq;
+      const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(f); f.connect(g); g.connect(master); src.start(t); src.stop(t + dur + 0.05);
+    }
+    return {
+      init, get on() { return on; },
+      toggle() { on = !on; store.set('sound', on); if (!on && ac) { ac.close(); ac = null; } else init(); return on; },
+      suspend(x) { if (!ac) return; if (x) ac.suspend(); else ac.resume(); },
+      click() { tone(660, 0.06, 'triangle', 0.07); },
+      dice() { for (let i = 0; i < 6; i++) burst(0.05, 2500, 0.25, i * 0.08 + Math.random() * 0.03); },
+      step() { burst(0.12, 500, 0.3); },
+      turn() { tone(523, 0.18, 'sine', 0.08); tone(784, 0.25, 'sine', 0.06, 0.1); },
+      suggest() { tone(196, 0.5, 'sawtooth', 0.05); tone(233, 0.5, 'sawtooth', 0.04, 0.05); },
+      pass() { tone(150, 0.2, 'sine', 0.1); },
+      show() { tone(880, 0.12, 'triangle', 0.08); tone(1175, 0.3, 'triangle', 0.07, 0.08); },
+      card() { burst(0.08, 4000, 0.18); },
+      none() { tone(110, 1.2, 'sawtooth', 0.06); tone(116.5, 1.2, 'sawtooth', 0.05); tone(55, 1.4, 'sine', 0.15); },
+      accuse() { [98, 123, 147].forEach((f, i) => tone(f, 1.6, 'sawtooth', 0.05, i * 0.02)); burst(1.2, 180, 0.6); },
+      win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.5, 'triangle', 0.09, i * 0.13)); },
+      lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.6, 'sine', 0.09, i * 0.18)); },
+      thunder() { if (!ac) return; burst(2.6, 160, 0.9); burst(1.4, 420, 0.25, 0.05); },
+    };
+  })();
+  window.Snd = Snd;
+  ['pointerdown', 'keydown'].forEach((t) => window.addEventListener(t, () => Snd.init(), { once: false, passive: true }));
+
+  /* ======================= Fall-Geschichte ======================= */
+  function makeStory(seed) {
+    const r = makeRng(seed ^ 0xabc123);
+    const p = (a) => a[Math.floor(r() * a.length)];
+    const h = 22 + Math.floor(r() * 4), m = Math.floor(r() * 12) * 5;
+    const time = `${String(h % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const finder = p(['das Hausmädchen Rosa', 'Butler Gaston', 'der Chauffeur Beni', 'die Köchin Vreni']);
+    const weather = p(['Draussen tobt ein Gewitter über dem Thunersee.', 'Dichter Nebel liegt über dem See, kein Boot fährt mehr.', 'Regen peitscht gegen die Fenster, die Strasse ist verschüttet.', 'Ein Föhnsturm heult um das Haus, der Strom flackert.']);
+    const detail = p(['Die Standuhr in der Halle ist stehen geblieben.', 'Auf dem Teppich liegt ein abgerissener Knopf.', 'Jemand hat das Testament aus dem Tresor genommen.', 'Im Kamin glimmen die Reste eines Briefes.']);
+    return {
+      no: 1000 + (seed % 9000), time,
+      text: `Um ${time} Uhr findet ${finder} Konsul Albrecht Nebel tot in seiner Villa. ${weather} Die Telefonleitung ist tot, niemand kann das Haus verlassen: Der Mörder ist noch hier. ${detail}`,
+    };
+  }
+
+  /* ======================= Zustand ======================= */
+  let S = null;   // was die Oberfläche zeigt
+  let H = null;   // Spielleitung (lokal oder Online-Host)
+  let NET = null; // Online-Verbindung
+  let TUT = null; // laufendes Tutorial
+
+  const EV_DUR = { turn: 450, roll: 1050, move: 650, stay: 500, nomove: 500, suggest: 1500, pass: 800, ask: 350, show: 1300, norefute: 1700, skip: 400, accuse: 2200, over: 0, left: 900, note: 0 };
+  function evDur(ev) {
+    let d = EV_DUR[ev.e] || 300;
+    if (S && S.fast) d *= 0.35;
+    if (TUT) d *= 1.15;
+    return d;
+  }
+
+  /* ======================= Spielleitung ======================= */
+  function hostCreate(players, opts) {
+    const seed = opts.seed != null ? opts.seed : (Math.random() * 4294967295) >>> 0;
+    let deal, check;
+    if (opts.deal) { deal = opts.deal; check = verifyCase(deal, players.length, seed); }
+    else { const gc = generateCase(seed, players.length); deal = gc.cs; check = gc.check; }
+    const game = new Game({ players, seed, dice: opts.dice, deal, first: opts.first, diceScript: opts.diceScript });
+    H = { game, seed, check, knows: [], batch: [], timer: 0, pending: false, story: makeStory(seed) };
+    players.forEach((p, i) => { if (p.kind === 'bot') H.knows[i] = game.makeKnowledge(i, p.level); });
+    game.on((ev) => { H.batch.push(ev); for (const k of H.knows) if (k) k.observe(ev); });
+    return H;
+  }
+  function hostAct(seat, a) {
+    const g = H.game;
+    if (g.waitingFor() !== seat) return { ok: false, err: 'Du bist gerade nicht an der Reihe.' };
+    H.batch = [];
+    const r = g.act(seat, a);
+    if (r.ok) hostFlush();
+    return r;
+  }
+  function hostFlush() {
+    const g = H.game, batch = H.batch;
+    H.batch = [];
+    const pub = g.publicView();
+    let total = 0;
+    for (const ev of batch) {
+      total += evDur(ev);
+      if (S && S.local) uiPush(evFor(ev, S.seat), pub);
+      if (NET && NET.isHost) netEvent(ev, pub);
+    }
+    hostSchedule(total);
+  }
+  function evFor(ev, seat) { return ev.e === 'show' && ev.to !== seat && ev.p !== seat ? publicEvent(ev) : ev; }
+  function botThink(g) {
+    const base = { start: 700, move: 650, suggest: 1250, refute: 1100, after: 800 }[g.phase] || 700;
+    return (S && S.fast ? base * 0.4 : base) + (TUT ? 500 : 0) + Math.random() * 300;
+  }
+  function hostSchedule(delay) {
+    if (!H) return;
+    clearTimeout(H.timer);
+    const g = H.game;
+    if (g.over) return;
+    const w = g.waitingFor();
+    if (w < 0 || g.players[w].kind !== 'bot') return;
+    H.timer = setTimeout(hostPump, delay + botThink(g));
+  }
+  function hostPump() {
+    if (!H) return;
+    const g = H.game;
+    if (g.over) return;
+    if ((!NET && document.hidden) || (TUT && TUT.holdBots())) { H.pending = true; return; }
+    const w = g.waitingFor();
+    if (w < 0 || g.players[w].kind !== 'bot') return;
+    let a = TUT ? TUT.botAction(w, g) : null;
+    if (!a) a = botDecide(g, w, H.knows[w], Math.random);
+    const r = hostAct(w, a);
+    if (!r.ok) {
+      console.error('Bot-Fehler', r.err, a);
+      const o = g.options(w);
+      const fb = o.show.length ? { k: 'show', card: o.show[0] } : o.end ? { k: 'end' } : o.skip ? { k: 'skip' } : o.noMove ? { k: 'nomove' } : o.roll ? { k: 'roll' } : null;
+      if (fb) hostAct(w, fb);
+    }
+  }
+  function hostResume(delay) { if (H && H.pending) { H.pending = false; hostSchedule(delay || 400); } }
+
+  /* ======================= Sitzung (Anzeige) ======================= */
+  function newSession(o) {
+    const n = o.pub.n;
+    S = {
+      local: !!o.local, seat: o.seat, n, pub: o.pub, hand: o.hand || [], seen: {}, sol: null,
+      log: [], q: [], busy: false, lock: false, fast: false, story: o.story, check: o.check, seed: o.seed,
+      notes: Array.from({ length: NC }, () => new Array(n).fill('')), rowMark: new Array(NC).fill(0),
+      tool: 'cycle', cur: { r: 0, c: 0 }, auto: o.auto || 'seen', askShown: -1, revealQ: [], resultShown: false,
+      unread: 0, lastSug: null, tutorial: !!o.tutorial, cols: [],
+    };
+    S.cols = [o.seat];
+    for (let i = 1; i < n; i++) S.cols.push((o.seat + i) % n);
+    if (S.hand.length) autoOwn();
+    $('log').innerHTML = '';
+    $('freeNotes').value = '';
+    closeAllDialogs();
+    buildNotes();
+    buildTools();
+    showGame();
+    Board.setPositions(S.pub); Board.snap();
+    renderAll();
+    renderCase();
+    switchTab('Note');
+  }
+  function me() { return S && S.seat >= 0 ? S.pub.players[S.seat] : null; }
+  function pname(p, cap) {
+    if (!S) return '';
+    if (p === S.seat) return cap ? 'Du' : 'du';
+    return S.pub.players[p].name;
+  }
+  function pcol(p) { return SUSPECTS[S.pub.players[p].fig].color; }
+  function pspan(p, cap) { return `<span class="pn" style="color:${pcol(p)}">${esc(pname(p, cap))}</span>`; }
+
+  function uiPush(ev, pub) {
+    S.q.push({ ev, pub });
+    S.lock = false;
+    if (!S.busy) uiNext();
+  }
+  function uiNext() {
+    if (!S) return;
+    clearTimeout(S.qTimer);
+    const it = S.q.shift();
+    if (!it) { S.busy = false; renderAll(); if (TUT) TUT.check(); return; }
+    S.busy = true;
+    S.pub = it.pub;
+    try { handleEvent(it.ev); } catch (e) { console.error(e); }
+    renderAll();
+    S.qTimer = setTimeout(uiNext, evDur(it.ev));
+  }
+
+  function handleEvent(ev) {
+    S.log.push(ev);
+    if (ev.e === 'show' && ev.card != null && (ev.to === S.seat || ev.p === S.seat)) S.seen[ev.id] = ev.card;
+    if (ev.e === 'show' && ev.p === S.seat && S.seen[ev.id] == null && S.myShow != null) S.seen[ev.id] = S.myShow;
+    appendLog(ev);
+    const mine = ev.p === S.seat;
+    switch (ev.e) {
+      case 'turn':
+        if (mine) { Snd.turn(); toast('🕯️ Du bist am Zug'); }
+        break;
+      case 'roll':
+        rollDice(ev.d); Snd.dice();
+        break;
+      case 'move':
+        Snd.step();
+        if (ev.via === 'passage') toast(`${pname(ev.p, true)} ${mine ? 'nimmst' : 'nimmt'} den Geheimgang ${ROOMS[ev.room].im.replace(/^in der /, 'in die ').replace(/^im /, 'in den ')}.`);
+        break;
+      case 'suggest': {
+        Snd.suggest();
+        Board.spot = S.pub.players[ev.p].room; Board.spotT = performance.now() + 2600;
+        const [s, w, r] = ev.cards;
+        toast(`${mine ? '🗣 Du' : '🗣 ' + esc(pname(ev.p))}: «Ich verdächtige ${SUSPECTS[s].name} ${WEAPONS[w - 6].mit} ${ROOMS[r - 12].im}.»`, 2600, true);
+        if (TUT || !mine) flashRows(ev.cards);
+        break;
+      }
+      case 'pass':
+        Snd.pass();
+        if (ev.p !== S.seat) toast(`${esc(pname(ev.p, true))} kann nicht widerlegen.`, 1200, true);
+        else toast('Du hast keine der Karten und passt.', 1200);
+        break;
+      case 'show':
+        Snd.card();
+        if (ev.to === S.seat) { const c = ev.card != null ? ev.card : S.seen[ev.id]; queueReveal(ev, c); }
+        else if (ev.p === S.seat) toast(`Du zeigst ${esc(pname(ev.to))}: ${S.seen[ev.id] != null ? esc(cardName(S.seen[ev.id])) : 'eine Karte'}`);
+        else toast(`🂠 ${esc(pname(ev.p, true))} zeigt ${esc(pname(ev.to))} heimlich eine Karte.`, 1600, true);
+        break;
+      case 'norefute':
+        Snd.none();
+        toast(`😶 Niemand konnte ${ev.p === S.seat ? 'deinen' : esc(pname(ev.p)) + 's'} Verdacht widerlegen!`, 2400, true);
+        break;
+      case 'accuse':
+        Snd.accuse();
+        if (mine && !ev.ok && S.local && H) S.sol = H.game.sol.slice();
+        toast(`⚖️ ${esc(pname(ev.p, true))} ${mine ? 'erhebst' : 'erhebt'} Anklage …`, 2000, true);
+        if (!ev.ok) setTimeout(() => {
+          if (!S) return;
+          if (mine) { Snd.lose(); openWrong(); }
+          else toast(`❌ ${esc(pname(ev.p, true))} lag falsch und scheidet aus.`, 2600, true);
+        }, 1200);
+        break;
+      case 'over':
+        S.pub.sol = ev.sol;
+        setTimeout(() => { if (S) openResult(); }, 400);
+        if (window.LW) { try { LW.rundeFertig(); } catch (e) { /* egal */ } }
+        if (NET && NET.isHost && NET.room) { const idx = NET.idxOfSeat[ev.winner]; try { NET.room.result(idx != null ? idx : -1); } catch (e) { /* egal */ } }
+        break;
+      case 'left':
+        toast(`👋 ${esc(pname(ev.p, true))} hat das Spiel verlassen. Ein Bot übernimmt.`, 2600, true);
+        break;
+    }
+  }
+
+  /* ======================= Aktionen ======================= */
+  function myOpts() {
+    const o = { roll: false, passage: -1, stay: false, move: [], noMove: false, suggest: false, skip: false, show: [], accuse: false, end: false };
+    if (!S || !S.pub || S.pub.over || S.seat < 0) return o;
+    const p = S.pub, pl = p.players[S.seat];
+    if (p.phase === 'refute') { if (p.ref && p.ref.shower === S.seat) o.show = S.hand.filter((c) => p.ref.cards.includes(c)); return o; }
+    if (p.turn !== S.seat) return o;
+    if (p.phase === 'start') {
+      if (p.diceMode) o.roll = true; else for (let r = 0; r < 9; r++) if (r !== pl.room) o.move.push(r);
+      if (PASSAGE[pl.room] != null) o.passage = PASSAGE[pl.room];
+      o.stay = p.canStay; o.accuse = true;
+    } else if (p.phase === 'move') { o.move = (p.reach || []).slice(); o.noMove = true; }
+    else if (p.phase === 'suggest') { o.suggest = true; o.skip = true; }
+    else if (p.phase === 'after') { o.accuse = true; o.end = true; }
+    return o;
+  }
+  function act(a) {
+    if (!S || S.busy || S.lock) return false;
+    if (TUT && !TUT.allow(a)) return false;
+    Snd.click();
+    if (a.k === 'show') S.myShow = a.card;
+    if (!S.local) { S.lock = true; netAct(a); renderActions(); return true; }
+    const r = hostAct(S.seat, a);
+    if (!r.ok) { toast(r.err); return false; }
+    if (TUT) TUT.after(a);
+    return true;
+  }
+
+  /* ======================= Anzeige ======================= */
+  function renderAll() {
+    if (!S) return;
+    renderPlayers(); renderActions(); renderHand(); renderBoardState();
+  }
+  function renderPlayers() {
+    const p = S.pub;
+    const asked = p.ref ? p.ref.shower : -1;
+    $('players').classList.toggle('many', p.n >= 5);
+    $('players').innerHTML = p.players.map((pl, i) => {
+      const cls = ['pchip'];
+      if (i === p.turn && !p.over) cls.push('turn');
+      if (pl.out) cls.push('out');
+      if (i === asked) cls.push('asked');
+      const who = i === S.seat ? 'Du' : esc(pl.name);
+      const kind = pl.kind === 'bot' ? `Bot · ${LV[pl.level] || ''}` : (i === S.seat ? 'du' : 'online');
+      const figName = SUSPECTS[pl.fig].name;
+      const sub = (pl.name === figName ? '' : esc(figName) + ' · ') + `🂠 ${pl.nCards} · ${kind}` + (pl.out ? ' · raus' : '');
+      return `<div class="${cls.join(' ')}" data-p="${i}">${portrait(pl.fig)}<div style="min-width:0"><div class="nm">${who}</div><div class="sub">${sub}</div></div></div>`;
+    }).join('');
+  }
+  function btn(id, label, key, cls) { return `<button class="btn ${cls || ''}" id="${id}">${label}${key ? ` <span class="k">${key}</span>` : ''}</button>`; }
+  function renderActions() {
+    const p = S.pub, o = myOpts(), meP = me();
+    const st = $('status'), ac = $('actions');
+    let html = '', status = '';
+    const turnName = p.over ? '' : pname(p.turn, true);
+    if (p.over) {
+      status = '<b>Der Fall ist abgeschlossen.</b>';
+      html = btn('btnResult', '📜 Ergebnis', '');
+    } else if (S.busy || S.lock) {
+      status = p.turn === S.seat ? '<b>Du bist am Zug</b> <span class="sub">…</span>' : `<b>${esc(turnName)}</b> ist am Zug …`;
+    } else if (p.phase === 'refute') {
+      if (o.show.length) { status = '<b>Du musst widerlegen!</b> Wähle eine Karte.'; html = btn('btnShowDlg', '🂠 Karte zeigen', ''); }
+      else status = `${pspan(p.ref.shower, true)} überlegt, welche Karte ${p.ref.p === S.seat ? 'dir' : esc(pname(p.ref.p)) } gezeigt wird …`;
+    } else if (p.turn === S.seat) {
+      const room = ROOMS[meP.room];
+      if (p.phase === 'start') {
+        if (p.canStay) status = `<b>Du wurdest ${room.im.replace(/^in der /, 'in die ').replace(/^im /, 'in den ')} geholt</b> und darfst bleiben.`;
+        else status = p.diceMode ? '<b>Du bist am Zug.</b> Würfle, um in einen Raum zu gehen.' : '<b>Du bist am Zug.</b> Klicke einen Raum auf dem Plan an.';
+        if (o.roll) html += btn('btnRoll', '🎲 Würfeln', 'W', 'primary');
+        if (o.passage >= 0) html += btn('btnPassage', `🕳 Geheimgang → ${ROOMS[o.passage].name}`, 'G');
+        if (o.stay) html += btn('btnStay', 'Bleiben', 'B');
+        html += btn('btnAccuse', '⚖️ Anklage', 'A');
+      } else if (p.phase === 'move') {
+        const sum = p.dice ? p.dice[0] + p.dice[1] : 0;
+        status = o.move.length ? `Gewürfelt: <b>${p.dice[0]} + ${p.dice[1]} = ${sum}</b>. Klicke einen leuchtenden Raum an (oder Taste 1–9).` : `Gewürfelt: <b>${sum}</b>. Das reicht für keinen anderen Raum.`;
+        html += btn('btnNoMove', o.move.length ? 'Im Gang bleiben' : 'Zug beenden', o.move.length ? '' : 'E');
+      } else if (p.phase === 'suggest') {
+        status = `Du bist ${room.im}. Sprich einen <b>Verdacht</b> aus.`;
+        html += btn('btnSuggest', '🗣 Verdacht aussprechen', 'V', 'primary') + btn('btnSkip', 'Nicht verdächtigen', '');
+      } else if (p.phase === 'after') {
+        status = 'Erhebe die <b>Anklage</b>, wenn du sicher bist, oder beende deinen Zug.';
+        html += btn('btnAccuse', '⚖️ Anklage', 'A') + btn('btnEnd', 'Zug beenden', 'E', 'primary');
+      }
+    } else {
+      const tp = p.players[p.turn];
+      status = `${pspan(p.turn, true)} ist am Zug <span class="sub">· ${ROOMS[tp.room].im}${tp.kind === 'bot' ? ' · Bot überlegt' : ''}</span>`;
+      if (meP && meP.out) status += '<div class="sub">Du bist ausgeschieden und zeigst nur noch Karten.</div>';
+    }
+    if (st.innerHTML !== status) st.innerHTML = status;
+    if (ac.dataset.h !== html) { ac.innerHTML = html; ac.dataset.h = html; }
+    if (TUT) TUT.decorate();
+    // Dialoge automatisch öffnen
+    if (!S.busy && !S.lock && !p.over) {
+      if (o.show.length && S.askShown !== p.ref.p * 1000 + S.log.length && $('dlgShow').classList.contains('hidden')) { S.askShown = p.ref.p * 1000 + S.log.length; openShow(); }
+      if (o.suggest && S.sugAuto !== S.log.length && $('dlgSuggest').classList.contains('hidden')) { S.sugAuto = S.log.length; openSuggest(); }
+    }
+    if (!o.show.length) hide('dlgShow');
+    if (!o.suggest) hide('dlgSuggest');
+  }
+  $('actions').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    const id = b.id;
+    if (id === 'btnRoll') act({ k: 'roll' });
+    else if (id === 'btnPassage') act({ k: 'passage' });
+    else if (id === 'btnStay') act({ k: 'stay' });
+    else if (id === 'btnNoMove') act({ k: 'nomove' });
+    else if (id === 'btnSuggest') openSuggest();
+    else if (id === 'btnSkip') act({ k: 'skip' });
+    else if (id === 'btnEnd') act({ k: 'end' });
+    else if (id === 'btnAccuse') openAccuse();
+    else if (id === 'btnShowDlg') openShow();
+    else if (id === 'btnResult') openResult();
+  });
+
+  function renderHand() {
+    const h = S.hand;
+    const html = `<div class="lbl">Deine Karten (${h.length}) – sie liegen sicher nicht im Umschlag</div>` + (h.length ? h.map(chipHTML).join('') : '<span class="msg">Karten werden verteilt …</span>');
+    const key = h.join(',');
+    if ($('hand').dataset.h !== key) { $('hand').innerHTML = html; $('hand').dataset.h = key; }
+  }
+  $('hand').addEventListener('click', (e) => { const c = e.target.closest('[data-card]'); if (c) { switchTab('Note'); flashRows([+c.dataset.card]); } });
+
+  function renderBoardState() {
+    const p = S.pub;
+    Board.setPositions(p);
+    Board.curFig = p.over ? -1 : p.players[p.turn].fig;
+    Board.ownFig = S.seat >= 0 ? p.players[S.seat].fig : -1;
+    const o = myOpts();
+    const sel = !S.busy && !S.lock ? o.move : [];
+    Board.hiRooms = sel;
+    Board.keyNums = sel.length > 0;
+    $('board').style.cursor = sel.length ? 'pointer' : 'default';
+  }
+
+  /* ---------- Würfel ---------- */
+  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  function setDie(el, v) { el.innerHTML = Array.from({ length: 9 }, (_, i) => `<i class="${PIPS[v].includes(i) ? 'on' : ''}"></i>`).join(''); }
+  let diceTimer = 0;
+  function rollDice(d) {
+    const box = $('dice'), d1 = $('die1'), d2 = $('die2');
+    const cv = $('board');
+    box.style.left = (cv.offsetLeft + cv.offsetWidth / 2) + 'px';
+    box.style.top = (cv.offsetTop + cv.offsetHeight / 2) + 'px';
+    box.classList.remove('hidden');
+    d1.classList.add('roll'); d2.classList.add('roll');
+    let n = 0;
+    clearInterval(diceTimer);
+    diceTimer = setInterval(() => {
+      setDie(d1, 1 + Math.floor(Math.random() * 6)); setDie(d2, 1 + Math.floor(Math.random() * 6));
+      if (++n > 7) {
+        clearInterval(diceTimer); setDie(d1, d[0]); setDie(d2, d[1]);
+        d1.classList.remove('roll'); d2.classList.remove('roll');
+        setTimeout(() => box.classList.add('hidden'), 1500);
+      }
+    }, 80);
+  }
+
+  /* ---------- Spielplan-Interaktion ---------- */
+  const cv = $('board');
+  Board.init(cv);
+  function layoutBoard() { const b = $('boardBox'); Board.resize(b.clientWidth, b.clientHeight); }
+  window.addEventListener('resize', () => { drawMenuBg(); });
+  let lastBox = '';
+  if (window.ResizeObserver) new ResizeObserver(() => {
+    if ($('gameView').classList.contains('hidden')) return;
+    const b = $('boardBox'), key = b.clientWidth + 'x' + b.clientHeight;
+    if (key !== lastBox) { lastBox = key; layoutBoard(); }
+  }).observe($('boardBox'));
+  else window.addEventListener('resize', () => { if (!$('gameView').classList.contains('hidden')) layoutBoard(); });
+  cv.addEventListener('mousemove', (e) => {
+    const [x, y] = Board.toLogical(e);
+    const r = Board.roomAt(x, y);
+    Board.hover = r;
+    const tok = Board.tokenAt(x, y);
+    const tip = $('boardTip');
+    let text = '';
+    if (tok) text = tok.k === 's' ? SUSPECTS[tok.i].full + figOwner(tok.i) : WEAPONS[tok.i].name;
+    else if (r >= 0 && S) {
+      const o = myOpts();
+      if (o.move.includes(r)) text = `${ROOMS[r].name} betreten · Taste ${r + 1}`;
+      else if (S.pub.phase === 'move' && S.pub.turn === S.seat && r !== me().room) text = `${ROOMS[r].name}: ${roomDist(me().room, r)} Schritte, zu weit`;
+      else text = ROOMS[r].name + (PASSAGE[r] != null ? ` · Geheimgang zum ${ROOMS[PASSAGE[r]].name}` : '');
+    }
+    if (text) {
+      tip.textContent = text; tip.classList.remove('hidden');
+      const rect = cv.getBoundingClientRect(), br = $('boardBox').getBoundingClientRect();
+      tip.style.left = (e.clientX - br.left) + 'px'; tip.style.top = (e.clientY - br.top) + 'px';
+    } else tip.classList.add('hidden');
+  });
+  cv.addEventListener('mouseleave', () => { Board.hover = -1; $('boardTip').classList.add('hidden'); });
+  cv.addEventListener('click', (e) => {
+    if (!S) return;
+    const [x, y] = Board.toLogical(e);
+    const r = Board.roomAt(x, y);
+    if (r < 0) return;
+    const o = myOpts();
+    if (o.move.includes(r) && !S.busy) act({ k: 'move', room: r });
+    else if (o.roll && !S.busy && S.pub.turn === S.seat) toast('Würfle zuerst (Taste W).');
+  });
+  function figOwner(f) {
+    if (!S) return '';
+    const i = S.pub.players.findIndex((p) => p.fig === f);
+    if (i < 0) return ' (keine Spielfigur)';
+    return i === S.seat ? ' (du)' : S.pub.players[i].name === SUSPECTS[f].name ? ' (Bot)' : ` (${S.pub.players[i].name})`;
+  }
+
+  /* ======================= Notizblock ======================= */
+  const CYCLE = { '': 'x', x: 'v', v: 'q', q: '' };
+  const SHOWV = { '': '', x: '✗', v: '✓', q: '?', a: '<span>A</span>', b: '<span>B</span>', c: '<span>C</span>' };
+  function autoOwn() {
+    for (let c = 0; c < NC; c++) {
+      if (S.hand.includes(c)) { for (let p = 0; p < S.n; p++) S.notes[c][p] = p === S.seat ? 'v' : 'x'; }
+      else S.notes[c][S.seat] = 'x';
+    }
+  }
+  function buildTools() {
+    const tools = [['cycle', 'Klick-Zyklus'], ['x', '✗'], ['v', '✓'], ['q', '?'], ['a', 'Ⓐ'], ['b', 'Ⓑ'], ['c', 'Ⓒ'], ['clear', '⌫']];
+    $('noteTools').innerHTML = '<span class="lbl">Stift:</span>' + tools.map(([k, l]) => `<button class="tool ${k === 'cycle' ? 'cycle' : ''} ${S.tool === k ? 'on' : ''}" data-tool="${k}" title="${k === 'cycle' ? 'Jeder Klick: ✗ → ✓ → ? → leer' : k === 'clear' ? 'Radierer' : 'Stift: ' + l}">${l}</button>`).join('');
+  }
+  $('noteTools').addEventListener('click', (e) => { const b = e.target.closest('[data-tool]'); if (!b) return; S.tool = b.dataset.tool; buildTools(); });
+  function buildNotes() {
+    const cols = S.cols;
+    let h = '<colgroup><col>' + cols.map(() => `<col style="width:${Math.max(40, Math.min(58, 260 / cols.length))}px">`).join('') + '</colgroup>';
+    h += '<thead><tr><th></th>' + cols.map((p) => {
+      const pl = S.pub.players[p];
+      return `<th data-col="${p}" title="${esc(p === S.seat ? 'Du' : pl.name)}: ${pl.nCards} Karten">${portrait(pl.fig)}<span class="cn">${esc(p === S.seat ? 'Du' : shortName(pl.name))}</span></th>`;
+    }).join('') + '</tr></thead><tbody>';
+    for (let k = 0; k < 3; k++) {
+      h += `<tr class="cat"><td colspan="${cols.length + 1}">${['Wer?', 'Womit?', 'Wo?'][k]}</td></tr>`;
+      for (let c = CAT_RANGE[k][0]; c < CAT_RANGE[k][1]; c++) {
+        h += `<tr data-row="${c}"><td class="rn" data-name="${c}"><span class="mk"></span><span style="display:inline-flex;vertical-align:middle;${c >= 6 ? (c < 12 ? 'color:#5a3e1c' : 'color:#2d4d45') : ''}">${iconSVG(c)}</span><span class="nmx">${esc(cardName(c))}</span></td>` +
+          cols.map((p) => `<td class="c ${p === S.seat ? 'me' : ''}" data-c="${c}" data-p="${p}"></td>`).join('') + '</tr>';
+      }
+    }
+    $('ntable').innerHTML = h + '</tbody>';
+    for (let c = 0; c < NC; c++) { for (const p of cols) paintCell(c, p); paintRow(c); }
+  }
+  function shortName(n) { const parts = n.split(' '); return parts.length > 1 && /^(Gräfin|Major|Dr\.|Pfarrer|Madame|Gärtner)$/.test(parts[0]) ? parts.slice(1).join(' ') : n; }
+  function cellEl(c, p) { return $('ntable').querySelector(`td[data-c="${c}"][data-p="${p}"]`); }
+  function paintCell(c, p, anim) {
+    const el = cellEl(c, p); if (!el) return;
+    const v = S.notes[c][p];
+    el.className = `c ${p === S.seat ? 'me' : ''} v-${v || 'e'}` + (S.cur.r === c && S.cur.c === p && S.cursorOn ? ' cur' : '');
+    el.innerHTML = SHOWV[v];
+    if (anim) { void el.offsetWidth; el.classList.add('pop'); }
+  }
+  function paintRow(c) {
+    const tr = $('ntable').querySelector(`tr[data-row="${c}"]`); if (!tr) return;
+    const row = S.notes[c];
+    const known = row.includes('v');
+    const allX = row.every((v) => v === 'x');
+    tr.classList.toggle('known', known);
+    tr.classList.toggle('cand', !known && allX);
+    tr.classList.toggle('mine', S.hand.includes(c));
+    tr.classList.toggle('star', S.rowMark[c] === 1);
+    tr.classList.toggle('strike', S.rowMark[c] === 2);
+    tr.querySelector('.mk').textContent = S.rowMark[c] === 1 ? '★' : (!known && allX ? '!' : '');
+  }
+  function setNote(c, p, v, anim) {
+    if (S.notes[c][p] === v) return;
+    S.notes[c][p] = v; paintCell(c, p, anim); paintRow(c);
+    if (TUT) TUT.check();
+  }
+  function applyTool(c, p) {
+    const v = S.notes[c][p];
+    let nv;
+    if (S.tool === 'cycle') nv = CYCLE[v] != null ? CYCLE[v] : '';
+    else if (S.tool === 'clear') nv = '';
+    else nv = v === S.tool ? '' : S.tool;
+    setNote(c, p, nv, true);
+  }
+  $('ntable').addEventListener('click', (e) => {
+    if (!S) return;
+    const td = e.target.closest('td.c');
+    if (td) { const c = +td.dataset.c, p = +td.dataset.p, old = S.cur; S.cur = { r: c, c: p }; paintCell(old.r, old.c); applyTool(c, p); paintCell(c, p); return; }
+    const rn = e.target.closest('td.rn');
+    if (rn) { const c = +rn.dataset.name; S.rowMark[c] = (S.rowMark[c] + 1) % 3; paintRow(c); if (TUT) TUT.check(); return; }
+    const th = e.target.closest('th[data-col]');
+    if (th) openColMenu(th, +th.dataset.col);
+  });
+  function openColMenu(th, p) {
+    closeColMenu();
+    const pl = S.pub.players[p];
+    const m = document.createElement('div');
+    m.className = 'colmenu'; m.id = 'colMenu';
+    const cntV = S.notes.filter((r) => r[p] === 'v').length;
+    m.innerHTML = `<div class="t">${esc(p === S.seat ? 'Deine Spalte' : pl.name)} · ${pl.nCards} Karten · ${cntV} mit ✓</div>` +
+      `<button data-a="fillx">Leere Felder mit ✗ füllen</button><button data-a="clear">Spalte leeren</button>`;
+    document.body.appendChild(m);
+    const r = th.getBoundingClientRect();
+    m.style.left = Math.min(window.innerWidth - 240, r.left - 80) + 'px'; m.style.top = (r.bottom + 4) + 'px';
+    m.addEventListener('click', (e) => {
+      const a = e.target.dataset.a; if (!a) return;
+      for (let c = 0; c < NC; c++) {
+        if (a === 'fillx' && !S.notes[c][p]) setNote(c, p, 'x', true);
+        if (a === 'clear') setNote(c, p, '', false);
+      }
+      closeColMenu();
+    });
+    setTimeout(() => document.addEventListener('click', closeColMenuOutside), 0);
+  }
+  function closeColMenuOutside(e) { if (!e.target.closest('#colMenu')) closeColMenu(); }
+  function closeColMenu() { const m = $('colMenu'); if (m) m.remove(); document.removeEventListener('click', closeColMenuOutside); }
+  function flashRows(cards) {
+    for (const c of cards) {
+      const tr = $('ntable').querySelector(`tr[data-row="${c}"]`); if (!tr) continue;
+      tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash');
+    }
+    const first = $('ntable').querySelector(`tr[data-row="${cards[0]}"]`);
+    if (first && !$('paneNote').classList.contains('hidden')) {
+      const pane = $('paneNote'), pr = pane.getBoundingClientRect(), fr = first.getBoundingClientRect();
+      if (fr.top < pr.top + 80 || fr.bottom > pr.bottom - 10) pane.scrollTop += fr.top - pr.top - 120;
+    }
+  }
+  // Tastatur im Notizblock
+  $('paneNote').addEventListener('focus', () => { if (!S) return; S.cursorOn = true; paintCell(S.cur.r, S.cur.c); });
+  $('paneNote').addEventListener('blur', () => { if (!S) return; S.cursorOn = false; paintCell(S.cur.r, S.cur.c); });
+  function noteKey(e) {
+    const k = e.key;
+    const ci = S.cols.indexOf(S.cur.c);
+    let { r } = S.cur, c = S.cur.c;
+    if (k === 'ArrowUp') r = Math.max(0, r - 1);
+    else if (k === 'ArrowDown') r = Math.min(NC - 1, r + 1);
+    else if (k === 'ArrowLeft') c = S.cols[Math.max(0, ci - 1)];
+    else if (k === 'ArrowRight') c = S.cols[Math.min(S.cols.length - 1, ci + 1)];
+    else if (k === 'x' || k === 'X') { setNote(r, c, S.notes[r][c] === 'x' ? '' : 'x', true); return true; }
+    else if (k === 'v' || k === 'V') { setNote(r, c, S.notes[r][c] === 'v' ? '' : 'v', true); return true; }
+    else if (k === '?' || k === 'q' || k === 'Q') { setNote(r, c, S.notes[r][c] === 'q' ? '' : 'q', true); return true; }
+    else if (k === '1' || k === '2' || k === '3') { const t = 'abc'[+k - 1]; setNote(r, c, S.notes[r][c] === t ? '' : t, true); return true; }
+    else if (k === 'Backspace' || k === 'Delete') { setNote(r, c, '', true); return true; }
+    else if (k === ' ' || k === 'Enter') { applyTool(r, c); return true; }
+    else if (k === '*') { S.rowMark[r] = (S.rowMark[r] + 1) % 3; paintRow(r); return true; }
+    else return false;
+    const old = S.cur; S.cur = { r, c }; paintCell(old.r, old.c); paintCell(r, c);
+    const el = cellEl(r, c); if (el) el.scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+  function noteBadge(c) {
+    if (!S) return {};
+    const row = S.notes[c];
+    if (row.includes('v')) return { badge: '✓', badgeCls: 'v-v', dim: true };
+    if (S.rowMark[c] === 1) return { badge: '★', badgeCls: 'star' };
+    if (row.every((v) => v === 'x')) return { badge: '!', badgeCls: 'star' };
+    if (row.includes('q')) return { badge: '?', badgeCls: 'v-q' };
+    return {};
+  }
+
+  /* ======================= Protokoll ======================= */
+  let logCurSug = null;
+  function appendLog(ev) {
+    const box = $('log');
+    const add = (cls, html, data) => {
+      const d = document.createElement('div'); d.className = 'ent ' + cls; d.innerHTML = html;
+      if (data) Object.assign(d.dataset, data);
+      box.appendChild(d); return d;
+    };
+    switch (ev.e) {
+      case 'turn': {
+        const h = document.createElement('div'); h.className = 'turnh';
+        h.innerHTML = `Zug ${ev.turn} · ${pspan(ev.p, true)}`; box.appendChild(h); break;
+      }
+      case 'roll': add('minor', `🎲 ${esc(pname(ev.p, true))} ${ev.p === S.seat ? 'würfelst' : 'würfelt'} ${ev.d[0]} + ${ev.d[1]}`); break;
+      case 'move': add('minor', `${ev.via === 'passage' ? '🕳 durch den Geheimgang' : '🚪'} → ${ROOMS[ev.room].name}`); break;
+      case 'stay': add('minor', `bleibt ${ROOMS[ev.room].im}`); break;
+      case 'nomove': add('minor', 'bleibt im Gang'); break;
+      case 'skip': add('minor', 'verzichtet auf einen Verdacht'); break;
+      case 'suggest': {
+        const [s, w, r] = ev.cards;
+        logCurSug = add('sug' + (ev.p === S.seat ? ' mine' : ''), `${pspan(ev.p, true)} ${ev.p === S.seat ? 'verdächtigst' : 'verdächtigt'} <b>${SUSPECTS[s].name}</b> ${WEAPONS[w - 6].mit.replace(/(\S+)$/, '<b>$1</b>')} ${ROOMS[r - 12].im.replace(/(\S+)$/, '<b>$1</b>')}.<span class="res"></span>`, { cards: ev.cards.join(',') });
+        if ($('paneLog').classList.contains('hidden')) { S.unread++; updateBadge(); }
+        break;
+      }
+      case 'pass': if (logCurSug) addRes(`${esc(pname(ev.p, true))} passt · `); break;
+      case 'show': {
+        if (!logCurSug) break;
+        const sp = document.createElement('span');
+        sp.dataset.show = ev.id;
+        logCurSug.querySelector('.res').appendChild(sp);
+        paintShow(sp, ev);
+        break;
+      }
+      case 'norefute': if (logCurSug) addRes('<span class="ok">Niemand konnte widerlegen!</span>'); break;
+      case 'accuse': {
+        const [s, w, r] = ev.cards;
+        add('acc', `⚖️ ${pspan(ev.p, true)} ${ev.p === S.seat ? 'klagst' : 'klagt'} an: <b>${SUSPECTS[s].name}</b>, <b>${WEAPONS[w - 6].name}</b>, <b>${ROOMS[r - 12].name}</b> → ${ev.ok ? '<b style="color:var(--good)">richtig!</b>' : '<b style="color:#ff8a80">falsch, ausgeschieden</b>'}`);
+        break;
+      }
+      case 'left': add('minor', `👋 ${esc(pname(ev.p, true))} hat das Spiel verlassen, ein Bot übernimmt.`); break;
+      case 'note': add('note', ev.html); break;
+      case 'over': add('acc', ev.winner >= 0 ? `🏆 ${pspan(ev.winner, true)} ${ev.winner === S.seat ? 'löst' : 'löst'} den Fall.` : '🌫 Der Fall bleibt ungelöst.'); break;
+    }
+    if (!$('paneLog').classList.contains('hidden')) $('paneLog').scrollTop = $('paneLog').scrollHeight;
+    function addRes(h) { logCurSug.querySelector('.res').insertAdjacentHTML('beforeend', h); }
+  }
+  function paintShow(sp, ev) {
+    const c = S.seen[ev.id];
+    if (ev.to === S.seat) sp.innerHTML = `${esc(pname(ev.p, true))} zeigt dir: <span class="seen">${c != null ? esc(cardName(c)) : '…'}</span>`;
+    else if (ev.p === S.seat) sp.innerHTML = `Du zeigst: <span class="seen">${c != null ? esc(cardName(c)) : '…'}</span>`;
+    else sp.innerHTML = `${esc(pname(ev.p, true))} zeigt ${esc(pname(ev.to))} eine Karte`;
+  }
+  function refreshShow(id) {
+    const sp = $('log').querySelector(`[data-show="${id}"]`);
+    const ev = S.log.find((e) => e.id === +id);
+    if (sp && ev) paintShow(sp, ev);
+  }
+  $('log').addEventListener('click', (e) => {
+    const ent = e.target.closest('.ent.sug'); if (!ent) return;
+    const cards = ent.dataset.cards.split(',').map(Number);
+    switchTab('Note'); flashRows(cards);
+  });
+  function updateBadge() { const b = $('logBadge'); b.textContent = S.unread; b.classList.toggle('hidden', !S.unread); }
+
+  /* ======================= Fallakte ======================= */
+  function renderCase() {
+    const st = S.story, ck = S.check;
+    $('caseLine').textContent = `Fall Nr. ${st.no} · Konsul Nebel, † ${st.time} Uhr${ck ? ' · ✔ eindeutig lösbar' : ''}`;
+    const pl = S.pub.players;
+    $('case').innerHTML = `<h3>Fall Nr. ${st.no}</h3><div class="story">${esc(st.text)}</div>` +
+      (ck ? `<h3>Fallprüfung</h3><div class="verified">✔<div>Dieser Fall wurde vor dem Spiel von der Logik-Engine geprüft: Die Karten sind sauber verteilt, die Lösung ist mit allen Hinweisen <b>eindeutig bestimmt</b>, und ein Probelauf hat ihn ausschliesslich durch logische Schlüsse gelöst (${ck.suggestions} Verdachtsmomente, keine falsche Anklage).</div></div>` : '') +
+      `<h3>Deine Karten</h3><div class="cards">${S.hand.map((c) => cardHTML(c)).join('') || '<span class="msg">…</span>'}</div>` +
+      `<h3>Die Verdächtigen</h3><ul>${SUSPECTS.map((s, i) => { const who = pl.findIndex((p) => p.fig === i); return `<li><b style="color:${s.color}">${s.full}</b>, ${s.role}${who >= 0 ? ` · gespielt von ${who === S.seat ? '<b>dir</b>' : esc(pl[who].name)}` : ''}</li>`; }).join('')}</ul>` +
+      `<h3>Kartenverteilung</h3><ul>${pl.map((p, i) => `<li>${i === S.seat ? 'Du' : esc(p.name)}: ${p.nCards} Karten</li>`).join('')}<li>Umschlag: 3 Karten (eine pro Kategorie)</li></ul>`;
+  }
+
+  /* ======================= Dialoge ======================= */
+  function show(id) { $(id).classList.remove('hidden'); }
+  function hide(id) { $(id).classList.add('hidden'); }
+  function closeAllDialogs() { ['dlgSuggest', 'dlgShow', 'dlgAccuse', 'dlgReveal', 'dlgResult', 'dlgHelp'].forEach(hide); closeColMenu(); }
+  function anyDialog() { return ['dlgSuggest', 'dlgShow', 'dlgAccuse', 'dlgReveal', 'dlgResult', 'dlgHelp'].some((id) => !$(id).classList.contains('hidden')); }
+
+  // Verdacht
+  let sug = { s: -1, w: -1 };
+  function openSuggest() {
+    const o = myOpts(); if (!o.suggest) return;
+    sug = { s: -1, w: -1 };
+    show('dlgSuggest'); renderSuggest();
+  }
+  function renderSuggest() {
+    const room = me().room;
+    $('sugTitle').textContent = `Verdacht ${ROOMS[room].im}`;
+    const u = (x, ph) => x >= 0 ? `<u>${esc(cardName(x))}</u>` : `<u>${ph}</u>`;
+    $('sugSentence').innerHTML = `«Ich verdächtige ${u(sug.s, '…wen?')} mit ${sug.w >= 0 ? 'dem ' + u(sug.w) : u(-1, '…womit?')} ${ROOMS[room].im}.»`;
+    const row = (a, b, sel) => { let h = ''; for (let c = a; c < b; c++) h += cardHTML(c, Object.assign({ pick: true, sel: sel === c }, noteBadge(c), { dim: false })); return h; };
+    $('sugSus').innerHTML = row(0, 6, sug.s);
+    $('sugWea').innerHTML = row(6, 12, sug.w);
+    $('sugGo').disabled = sug.s < 0 || sug.w < 0;
+  }
+  $('sugSus').addEventListener('click', (e) => { const c = e.target.closest('[data-card]'); if (c) { sug.s = +c.dataset.card; Snd.click(); renderSuggest(); } });
+  $('sugWea').addEventListener('click', (e) => { const c = e.target.closest('[data-card]'); if (c) { sug.w = +c.dataset.card; Snd.click(); renderSuggest(); } });
+  $('sugGo').addEventListener('click', submitSuggest);
+  $('sugSkip').addEventListener('click', () => { if (act({ k: 'skip' })) hide('dlgSuggest'); });
+  function submitSuggest() {
+    if (sug.s < 0 || sug.w < 0) return;
+    if (act({ k: 'suggest', s: sug.s, w: sug.w })) hide('dlgSuggest');
+  }
+
+  // Karte zeigen
+  function openShow() {
+    const o = myOpts(); if (!o.show.length) return;
+    const ref = S.pub.ref, [s, w, r] = ref.cards;
+    $('showLead').innerHTML = `${pspan(ref.p, true)} verdächtigt <b>${SUSPECTS[s].name}</b> ${WEAPONS[w - 6].mit} ${ROOMS[r - 12].im}. Du hast ${o.show.length === 1 ? 'genau eine dieser Karten' : o.show.length + ' davon'}. Wähle die Karte, die du zeigst:`;
+    $('showWho').textContent = pname(ref.p, true);
+    const shownBefore = new Set(S.log.filter((e) => e.e === 'show' && e.p === S.seat && e.to === ref.p).map((e) => S.seen[e.id]));
+    $('showCards').innerHTML = o.show.map((c, i) => cardHTML(c, { big: true, pick: true, badge: shownBefore.has(c) ? '👁' : String(i + 1), badgeCls: 'star' })).join('');
+    show('dlgShow');
+  }
+  $('showCards').addEventListener('click', (e) => { const c = e.target.closest('[data-card]'); if (c && act({ k: 'show', card: +c.dataset.card })) hide('dlgShow'); });
+
+  // Anklage
+  let acc = { s: -1, w: -1, r: -1, armed: false };
+  function openAccuse() {
+    const o = myOpts(); if (!o.accuse) { toast('Anklagen kannst du nur in deinem eigenen Zug.'); return; }
+    acc = { s: -1, w: -1, r: -1, armed: false };
+    // Vorschlag aus dem Notizblock: Zeilen mit ★ oder komplett ausgeschlossen
+    for (let k = 0; k < 3; k++) {
+      const cands = [];
+      for (let c = CAT_RANGE[k][0]; c < CAT_RANGE[k][1]; c++) { const b = noteBadge(c); if (b.badge === '★' || b.badge === '!') cands.push(c); }
+      if (cands.length === 1) acc['swr'[k]] = cands[0];
+    }
+    show('dlgAccuse'); renderAccuse();
+  }
+  function renderAccuse() {
+    const u = (x, ph) => x >= 0 ? `<u>${esc(cardName(x))}</u>` : `<u>${ph}</u>`;
+    $('accSentence').innerHTML = `«${u(acc.s, '…wer?')} war es, mit ${acc.w >= 0 ? 'dem ' + u(acc.w) : u(-1, '…womit?')}, ${acc.r >= 0 ? ROOMS[acc.r - 12].im.replace(/(\S+)$/, '<u>$1</u>') : u(-1, '…wo?')}.»`;
+    const row = (a, b, sel) => { let h = ''; for (let c = a; c < b; c++) h += cardHTML(c, Object.assign({ pick: true, sel: sel === c }, noteBadge(c))); return h; };
+    $('accSus').innerHTML = row(0, 6, acc.s);
+    $('accWea').innerHTML = row(6, 12, acc.w);
+    $('accRoom').innerHTML = row(12, 21, acc.r);
+    const ready = acc.s >= 0 && acc.w >= 0 && acc.r >= 0;
+    $('accGo').disabled = !ready;
+    $('accGo').textContent = acc.armed ? '⚠️ Ja, endgültig anklagen!' : 'Anklage erheben';
+  }
+  ['accSus', 'accWea', 'accRoom'].forEach((id, k) => $(id).addEventListener('click', (e) => {
+    const c = e.target.closest('[data-card]'); if (!c) return;
+    acc['swr'[k]] = +c.dataset.card; acc.armed = false; Snd.click(); renderAccuse();
+  }));
+  let armTimer = 0;
+  $('accGo').addEventListener('click', () => {
+    if (!acc.armed) { acc.armed = true; renderAccuse(); clearTimeout(armTimer); armTimer = setTimeout(() => { acc.armed = false; if (!$('dlgAccuse').classList.contains('hidden')) renderAccuse(); }, 5000); return; }
+    if (act({ k: 'accuse', s: acc.s, w: acc.w, r: acc.r })) hide('dlgAccuse');
+  });
+  $('accCancel').addEventListener('click', () => hide('dlgAccuse'));
+
+  // Gezeigte Karte
+  function queueReveal(ev, c) {
+    if (c == null) { S.pendingReveal = ev; return; }
+    if (S.auto === 'seen') {
+      setNote(c, ev.p, 'v', true);
+      for (let p = 0; p < S.n; p++) if (p !== ev.p && !S.notes[c][p]) setNote(c, p, 'x', true);
+    }
+    $('revTitle').innerHTML = `${pspan(ev.p, true)} zeigt dir:`;
+    $('revCard').innerHTML = cardHTML(c, { big: true, flip: true });
+    $('revText').innerHTML = S.auto === 'seen'
+      ? `Im Notizblock eingetragen: ${esc(pname(ev.p, true))} hat <b>${esc(cardName(c))}</b> ✓.`
+      : `Notiere dir: ${esc(pname(ev.p, true))} besitzt <b>${esc(cardName(c))}</b>. Damit ist diese Karte nicht im Umschlag.`;
+    show('dlgReveal'); Snd.show();
+  }
+  $('revOk').addEventListener('click', () => { hide('dlgReveal'); if (TUT) TUT.check(); });
+  $('dlgReveal').addEventListener('click', (e) => { if (e.target === $('dlgReveal')) hide('dlgReveal'); });
+
+  // Ergebnis
+  function openResult() {
+    const p = S.pub, sol = p.sol || S.sol;
+    if (!sol) return;
+    const w = p.winner;
+    let title, text;
+    if (TUT) { title = '🎓 Testspiel bestanden!'; text = 'Hervorragend ermittelt! Du kennst jetzt alles, was ein Meisterdetektiv braucht: Verdacht aussprechen, Karten zeigen, auf dem Notizblock ausschliessen und im richtigen Moment anklagen.'; }
+    else if (w === S.seat) { title = '🎉 Fall gelöst!'; text = 'Brillant kombiniert! Deine Anklage war in allen drei Punkten richtig.'; Snd.win(); }
+    else if (w >= 0) { title = `🕵️ ${esc(pname(w, true))} hat den Fall gelöst`; text = (me() && me().out ? 'Du warst bereits ausgeschieden. ' : '') + 'Das war die Lösung:'; Snd.lose(); }
+    else { title = '🌫 Der Mörder entkommt'; text = 'Alle Anklagen waren falsch. So hätte die Lösung gelautet:'; Snd.lose(); }
+    $('resTitle').innerHTML = title;
+    $('resText').innerHTML = text;
+    $('resCards').innerHTML = sol.map((c, i) => cardHTML(c, { big: true, flip: true, style: `animation-delay:${i * 0.35}s;animation-fill-mode:both` })).join('');
+    const sugs = S.log.filter((e) => e.e === 'suggest').length;
+    const [s, wp, r] = sol;
+    $('resStats').innerHTML = `<i>${SUSPECTS[s].full} ${WEAPONS[wp - 6].mit} ${ROOMS[r - 12].im}.</i><br>${p.round} Runden · ${sugs} Verdachtsmomente${S.check ? ' · Fall geprüft: eindeutig lösbar' : ''}`;
+    const isClient = NET && !NET.isHost;
+    $('resAgain').textContent = TUT ? '▶ Echten Fall starten' : isClient ? 'Warte auf die Spielleitung …' : NET ? '▶ Neuer Fall' : '▶ Neuer Fall';
+    $('resAgain').disabled = !!isClient;
+    show('dlgResult');
+    S.resultShown = true;
+  }
+  function openWrong() {
+    const sol = S.sol;
+    $('resTitle').innerHTML = '❌ Falsche Anklage';
+    $('resText').innerHTML = 'Du hast heimlich in den Umschlag geschaut, deine Anklage stimmt nicht. Du scheidest aus, musst aber weiterhin Karten zeigen. Verrate niemandem, was im Umschlag liegt!';
+    $('resCards').innerHTML = sol ? sol.map((c, i) => cardHTML(c, { big: true, flip: true, style: `animation-delay:${i * 0.35}s;animation-fill-mode:both` })).join('') : '';
+    $('resStats').textContent = '';
+    $('resAgain').textContent = 'Weiter zuschauen'; $('resAgain').disabled = false;
+    $('resAgain').dataset.watch = '1';
+    show('dlgResult');
+    S.fast = !NET;
+  }
+  $('resAgain').addEventListener('click', () => {
+    if ($('resAgain').dataset.watch) { delete $('resAgain').dataset.watch; hide('dlgResult'); return; }
+    hide('dlgResult');
+    if (TUT) { endTutorial(); cfg.mode = 'bots'; saveCfg(); startBots(); return; }
+    if (NET && NET.isHost) { netStartGame(); return; }
+    if (!NET) startBots();
+  });
+  $('resMenu').addEventListener('click', () => { delete $('resAgain').dataset.watch; toMenu(); });
+  $('resNote').addEventListener('click', () => { delete $('resAgain').dataset.watch; hide('dlgResult'); switchTab('Note'); });
+
+  // Hilfe
+  $('helpBtn').addEventListener('click', () => show('dlgHelp'));
+  $('helpClose').addEventListener('click', () => hide('dlgHelp'));
+  $('dlgHelp').addEventListener('click', (e) => { if (e.target === $('dlgHelp')) hide('dlgHelp'); });
+  function renderMute() { $('muteBtn').textContent = Snd.on ? '🔊' : '🔇'; }
+  $('muteBtn').addEventListener('click', () => { Snd.toggle(); renderMute(); });
+
+  // Tabs
+  function switchTab(t) {
+    ['Note', 'Log', 'Case'].forEach((x) => { $('tab' + x).classList.toggle('on', x === t); $('pane' + x).classList.toggle('hidden', x !== t); });
+    if (t === 'Log' && S) { S.unread = 0; updateBadge(); $('paneLog').scrollTop = $('paneLog').scrollHeight; }
+    if (t === 'Case' && S) renderCase();
+  }
+  document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  // Meldungen
+  let toastTimer = 0;
+  function toast(html, ms, isHtml) {
+    const el = $('toast');
+    if (isHtml) el.innerHTML = html; else el.textContent = html.replace(/&amp;/g, '&');
+    el.classList.remove('hidden');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.add('hidden'), ms || 2200);
+  }
+
+  /* ======================= Tastatur ======================= */
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k === 'Escape') { hide('dlgHelp'); hide('dlgAccuse'); hide('dlgReveal'); closeColMenu(); if (!$('dlgSuggest').classList.contains('hidden')) hide('dlgSuggest'); return; }
+    if ($('gameView').classList.contains('hidden') || !S) return;
+    if (!$('dlgReveal').classList.contains('hidden') && (k === 'Enter' || k === ' ')) { e.preventDefault(); $('revOk').click(); return; }
+    if (!$('dlgSuggest').classList.contains('hidden')) { if (k === 'Enter') { e.preventDefault(); submitSuggest(); } return; }
+    if (!$('dlgShow').classList.contains('hidden')) {
+      const o = myOpts(); const i = +k - 1;
+      if (i >= 0 && i < o.show.length) { if (act({ k: 'show', card: o.show[i] })) hide('dlgShow'); }
+      return;
+    }
+    if (!$('dlgAccuse').classList.contains('hidden') || !$('dlgResult').classList.contains('hidden')) return;
+    if (document.activeElement === $('paneNote') && noteKey(e)) { e.preventDefault(); return; }
+    const o = myOpts();
+    const kl = k.toLowerCase();
+    if (kl === 'h') show('dlgHelp');
+    else if (kl === 'm') { Snd.toggle(); renderMute(); }
+    else if (kl === 'n') { switchTab('Note'); $('paneNote').focus(); }
+    else if (kl === 'p') switchTab('Log');
+    else if (kl === 'f') switchTab('Case');
+    else if (kl === 'w' && o.roll) act({ k: 'roll' });
+    else if (k === ' ' && o.roll) { e.preventDefault(); act({ k: 'roll' }); }
+    else if (kl === 'g' && o.passage >= 0) act({ k: 'passage' });
+    else if (kl === 'b' && o.stay) act({ k: 'stay' });
+    else if (kl === 'v' && o.suggest) openSuggest();
+    else if (kl === 'a' && o.accuse) openAccuse();
+    else if (kl === 'e' && o.end) act({ k: 'end' });
+    else if (kl === 'e' && o.noMove && !o.move.length) act({ k: 'nomove' });
+    else if (/^[1-9]$/.test(k) && o.move.includes(+k - 1)) act({ k: 'move', room: +k - 1 });
+  });
+  document.addEventListener('visibilitychange', () => {
+    Snd.suspend(document.hidden);
+    if (document.hidden) { Board.stop(); }
+    else { if (!$('gameView').classList.contains('hidden')) Board.start(); hostResume(600); }
+  });
+
+  /* ======================= Ansichten ======================= */
+  function showGame() {
+    $('menuView').classList.add('hidden'); $('menuBg').classList.add('hidden');
+    $('gameView').classList.remove('hidden');
+    requestAnimationFrame(() => { layoutBoard(); Board.snap(); Board.start(); });
+  }
+  function toMenu() {
+    if (TUT) endTutorial();
+    if (H) clearTimeout(H.timer);
+    if (S) clearTimeout(S.qTimer);
+    if (NET) netLeave();
+    H = null; S = null;
+    closeAllDialogs();
+    Board.stop();
+    $('gameView').classList.add('hidden');
+    $('menuView').classList.remove('hidden'); $('menuBg').classList.remove('hidden');
+    drawMenuBg();
+    renderMenu();
+  }
+  $('menuBtn').addEventListener('click', toMenu);
+
+  /* ======================= Bots-Spiel ======================= */
+  const BOT_ORDER = [0, 1, 2, 3, 4, 5];
+  function botLevels(n) {
+    if (cfg.level !== 'mixed') return new Array(n).fill(cfg.level);
+    const arr = ['easy', 'medium', 'hard'];
+    return Array.from({ length: n }, (_, i) => arr[i % 3]);
+  }
+  function startBots() {
+    const myName = (HUB && HUB.getName()) || 'Du';
+    const figs = BOT_ORDER.filter((f) => f !== cfg.fig);
+    shuffle(figs, Math.random);
+    const lv = botLevels(cfg.bots);
+    const players = [{ name: myName, fig: cfg.fig, kind: 'human' }];
+    for (let i = 0; i < cfg.bots; i++) players.push({ name: SUSPECTS[figs[i]].name, fig: figs[i], kind: 'bot', level: lv[i] });
+    // Sitzordnung mischen, damit man nicht immer beginnt
+    const order = shuffle(players.map((_, i) => i), Math.random);
+    const seated = order.map((i) => players[i]);
+    const seat = seated.findIndex((p) => p.kind === 'human');
+    hostCreate(seated, { dice: cfg.dice });
+    newSession({ local: true, seat, pub: H.game.publicView(), hand: H.game.players[seat].hand, story: H.story, check: H.check, seed: H.seed, auto: cfg.auto });
+    $('log').insertAdjacentHTML('beforeend', `<div class="ent note">🗂 Fall Nr. ${H.story.no} eröffnet. ${esc(seated[H.game.turn].kind === 'human' ? 'Du beginnst.' : seated[H.game.turn].name + ' beginnt.')}</div>`);
+    hostSchedule(900);
+  }
+
+  /* ======================= Online ======================= */
+  const CRYPTO = !!(window.crypto && window.crypto.subtle && window.isSecureContext !== false);
+  const b64 = (u8) => { let s = ''; u8.forEach((x) => { s += String.fromCharCode(x); }); return btoa(s); };
+  const unb64 = (s) => Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+  async function genKeys() { if (!CRYPTO) return null; try { return await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']); } catch (e) { return null; } }
+  async function pubJwk(kp) { if (!kp) return null; try { return await crypto.subtle.exportKey('jwk', kp.publicKey); } catch (e) { return null; } }
+  async function derive(kp, jwk) {
+    if (!kp || !jwk) return null;
+    try {
+      const pub = await crypto.subtle.importKey('jwk', jwk, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+      return await crypto.subtle.deriveKey({ name: 'ECDH', public: pub }, kp.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    } catch (e) { return null; }
+  }
+  async function seal(key, obj) {
+    if (!key) return { plain: obj };
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+    return { iv: b64(iv), ct: b64(new Uint8Array(ct)) };
+  }
+  async function unseal(key, box) {
+    if (!box) return null;
+    if (box.plain !== undefined) return box.plain;
+    if (!key) return null;
+    try { const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(box.iv) }, key, unb64(box.ct)); return JSON.parse(new TextDecoder().decode(pt)); } catch (e) { return null; }
+  }
+  function onlineMsg(t, err) { $('onlineMsg').textContent = t; $('onlineMsg').classList.toggle('err', !!err); }
+  function playerName(p) { return p == null ? '' : typeof p === 'string' ? p : (p.name || ''); }
+  function takeName() { const n = HUB.setName($('nameInput').value) || 'Gast'; $('nameInput').value = n; return n; }
+
+  function netNew() {
+    const room = HUB.connect(GAME_ID);
+    NET = { room, isHost: false, you: -1, kp: null, hostKey: null, keys: {}, hello: {}, started: false, gid: 0, seatOfIdx: {}, idxOfSeat: [], lobby: null };
+    room.on('msg', (d, from) => { netMsg(d, from).catch((e) => console.error(e)); });
+    room.on('peer-join', (m) => { if (NET && NET.isHost) { if (NET.started) netSendBusy(m.idx); netLobby(); } });
+    room.on('peer-left', (m) => netPeerLeft(m.idx));
+    room.on('close', () => { if (NET) { const was = NET.started; netCleanup(); if (was || S) { toMenu(); } onlineMsg('Die Verbindung zum Spiel-Server ist abgebrochen.', true); } });
+    room.on('leaderboard', () => { /* Rangliste wird im Menü geladen */ });
+    return NET;
+  }
+  async function netCreate() {
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true; onlineMsg('Verbinde …');
+    try {
+      netNew();
+      NET.kp = await genKeys();
+      const res = await NET.room.create(name, 6);
+      NET.isHost = true; NET.you = res.you;
+      NET.hello[res.you] = { name, fig: cfg.fig, ready: true };
+      $('roomCode').textContent = res.code;
+      showLobby();
+      netLobby();
+    } catch (e) { netCleanup(); onlineMsg(HUB.errorText(e), true); $('createBtn').disabled = false; $('joinBtn').disabled = false; }
+  }
+  async function netJoin() {
+    const code = HUB.cleanCode($('codeInput').value);
+    if (code.length !== 4) { onlineMsg('Bitte den 4-stelligen Code eingeben.', true); return; }
+    const name = takeName();
+    $('createBtn').disabled = true; $('joinBtn').disabled = true; onlineMsg('Trete bei …');
+    try {
+      netNew();
+      NET.kp = await genKeys();
+      const res = await NET.room.join(code, name);
+      NET.you = res.you;
+      $('roomCode').textContent = code;
+      showLobby();
+      $('lobbyMsg').textContent = 'Beigetreten! Warte, bis die Spielleitung startet …';
+      NET.room.send({ t: 'hi', pub: await pubJwk(NET.kp), fig: cfg.fig, name });
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* egal */ }
+    } catch (e) { netCleanup(); onlineMsg(HUB.errorText(e), true); $('createBtn').disabled = false; $('joinBtn').disabled = false; }
+  }
+  function showLobby() { $('onlineSetup').classList.add('hidden'); $('onlineLobby').classList.remove('hidden'); $('hostStartBtn').classList.toggle('hidden', !NET.isHost); renderMenu(); }
+  function netCleanup() {
+    if (NET) { try { NET.room.close(); } catch (e) { /* egal */ } }
+    NET = null;
+    $('onlineSetup').classList.remove('hidden'); $('onlineLobby').classList.add('hidden');
+    $('createBtn').disabled = false; $('joinBtn').disabled = false;
+  }
+  function netLeave() { if (NET) { try { NET.room.send({ t: 'bye' }); } catch (e) { /* egal */ } } netCleanup(); onlineMsg(''); }
+  function netHumans() {
+    const players = NET.room.players || [];
+    const out = [];
+    players.forEach((p, idx) => { if (p) out.push({ idx, name: playerName(p) || 'Gast', fig: NET.hello[idx] ? NET.hello[idx].fig : 0, ready: !!NET.hello[idx] }); });
+    return out;
+  }
+  function netLobby() {
+    if (!NET || !NET.isHost) return;
+    const humans = netHumans();
+    const maxBots = Math.max(0, 6 - humans.length);
+    const bots = Math.min(cfg.onlineBots, maxBots);
+    NET.lobby = { list: humans, bots, level: cfg.level, dice: cfg.dice };
+    NET.room.send({ t: 'lobby', lobby: NET.lobby });
+    renderLobby();
+  }
+  function renderLobby() {
+    if (!NET || !NET.lobby) return;
+    const L = NET.lobby;
+    let h = L.list.map((p) => `<div class="lobby-item">${portrait(p.fig)}<b>${esc(p.name)}</b>${p.idx === NET.you ? ' (du)' : ''}<span class="tag">${p.idx === 0 ? 'Spielleitung' : p.ready ? 'bereit' : 'verbindet …'}</span></div>`).join('');
+    for (let i = 0; i < L.bots; i++) h += `<div class="lobby-item">🤖 <b>Bot ${i + 1}</b><span class="tag">${LV[L.level]}</span></div>`;
+    $('lobbyList').innerHTML = h;
+    const total = L.list.length + L.bots;
+    if (NET.isHost) {
+      const ready = L.list.every((p) => p.ready);
+      $('hostStartBtn').disabled = total < 2 || !ready;
+      $('lobbyMsg').textContent = total < 2 ? 'Warte auf Mitspieler oder füge Bots hinzu (links bei „Gegner & Regeln“).' : `${total} Ermittler · ${L.dice ? 'mit Würfeln' : 'freie Bewegung'}. Bereit zum Start!`;
+    } else $('lobbyMsg').textContent = `${total} Ermittler · ${L.bots} Bot${L.bots === 1 ? '' : 's'} (${LV[L.level]}) · ${L.dice ? 'mit Würfeln' : 'freie Bewegung'}. Warte auf den Start …`;
+  }
+  function netSendBusy(idx) { NET.room.send({ t: 'busy', to: idx }); }
+  async function netStartGame() {
+    if (!NET || !NET.isHost) return;
+    const humans = netHumans().filter((p) => p.ready);
+    const L = NET.lobby || { bots: 0 };
+    const taken = new Set();
+    const players = [];
+    for (const h of humans) {
+      let f = h.fig;
+      if (taken.has(f)) f = BOT_ORDER.find((x) => !taken.has(x));
+      taken.add(f);
+      players.push({ name: h.name, fig: f, kind: h.idx === NET.you ? 'human' : 'remote', roomIdx: h.idx });
+    }
+    const lv = botLevels(L.bots);
+    for (let i = 0; i < L.bots && players.length < 6; i++) {
+      const f = BOT_ORDER.find((x) => !taken.has(x)); taken.add(f);
+      players.push({ name: SUSPECTS[f].name, fig: f, kind: 'bot', level: lv[i], roomIdx: -1 });
+    }
+    if (players.length < 2) return;
+    const seated = shuffle(players.slice(), Math.random);
+    NET.gid = (NET.gid || 0) + 1;
+    NET.started = true;
+    NET.seatOfIdx = {}; NET.idxOfSeat = [];
+    seated.forEach((p, i) => { if (p.roomIdx >= 0) { NET.seatOfIdx[p.roomIdx] = i; NET.idxOfSeat[i] = p.roomIdx; } });
+    if (TUT) endTutorial();
+    hostCreate(seated, { dice: L.dice !== false });
+    const pub = H.game.publicView();
+    NET.room.send({ t: 'start', gid: NET.gid, pub, seats: NET.idxOfSeat, story: H.story, check: H.check, seed: H.seed, starter: H.game.turn });
+    try { NET.room.roundStart(); } catch (e) { /* egal */ }
+    const mySeat = NET.seatOfIdx[NET.you];
+    newSession({ local: true, seat: mySeat, pub, hand: H.game.players[mySeat].hand, story: H.story, check: H.check, seed: H.seed, auto: cfg.auto });
+    for (const idx in NET.seatOfIdx) {
+      const i = +idx; if (i === NET.you) continue;
+      netPriv(i, { hand: H.game.players[NET.seatOfIdx[i]].hand });
+    }
+    hostSchedule(1200);
+  }
+  async function netPriv(idx, data) {
+    if (!NET) return;
+    const gid = NET.gid;
+    const box = await seal(NET.keys[idx], data);
+    if (NET && NET.gid === gid) NET.room.send({ t: 'pv', to: idx, gid, box });
+  }
+  function netEvent(ev, pub) {
+    NET.room.send({ t: 'ev', gid: NET.gid, ev: publicEvent(ev), pub });
+    if (ev.e === 'show') {
+      for (const seat of [ev.to, ev.p]) { const idx = NET.idxOfSeat[seat]; if (idx != null && idx !== NET.you) netPriv(idx, { seen: { [ev.id]: ev.card } }); }
+    }
+    if (ev.e === 'accuse' && !ev.ok) { const idx = NET.idxOfSeat[ev.p]; if (idx != null && idx !== NET.you) netPriv(idx, { sol: H.game.sol.slice() }); else if (ev.p === S.seat) S.sol = H.game.sol.slice(); }
+  }
+  async function netAct(a) {
+    const box = await seal(NET.hostKey, a);
+    NET.room.send({ t: 'act', gid: NET.gid, box });
+    setTimeout(() => { if (S && S.lock) { S.lock = false; renderActions(); } }, 4000);
+  }
+  async function netMsg(d, from) {
+    if (!d || !NET) return;
+    if (d.to != null && d.to !== NET.you) return;
+    if (NET.isHost) {
+      if (d.t === 'hi') {
+        NET.hello[from] = { name: d.name, fig: d.fig, ready: true };
+        NET.keys[from] = await derive(NET.kp, d.pub);
+        NET.room.send({ t: 'hk', to: from, pub: await pubJwk(NET.kp) });
+        if (NET.started) netSendBusy(from); else netLobby();
+      } else if (d.t === 'act' && d.gid === NET.gid && H) {
+        const a = await unseal(NET.keys[from], d.box);
+        const seat = NET.seatOfIdx[from];
+        if (!a || seat == null) return;
+        const r = hostAct(seat, a);
+        if (!r.ok) NET.room.send({ t: 'err', to: from, msg: r.err });
+      } else if (d.t === 'bye') netPeerLeft(from);
+      return;
+    }
+    // Mitspieler
+    if (from !== 0) return;
+    if (d.t === 'hk') NET.hostKey = await derive(NET.kp, d.pub);
+    else if (d.t === 'lobby') { NET.lobby = d.lobby; renderLobby(); }
+    else if (d.t === 'busy') { onlineMsg('In diesem Raum läuft schon ein Fall. Warte auf die nächste Runde.', true); }
+    else if (d.t === 'start') {
+      NET.gid = d.gid; NET.started = true; NET.idxOfSeat = d.seats || [];
+      NET.seatOfIdx = {}; NET.idxOfSeat.forEach((idx, seat) => { if (idx != null) NET.seatOfIdx[idx] = seat; });
+      if (TUT) endTutorial();
+      H = null;
+      newSession({ local: false, seat: NET.seatOfIdx[NET.you], pub: d.pub, hand: [], story: d.story, check: d.check, seed: d.seed, auto: cfg.auto });
+      $('log').insertAdjacentHTML('beforeend', `<div class="ent note">🗂 Fall Nr. ${d.story.no} eröffnet.</div>`);
+    } else if (d.t === 'ev' && S && d.gid === NET.gid) uiPush(d.ev, d.pub);
+    else if (d.t === 'pv' && S && d.gid === NET.gid) {
+      const data = await unseal(NET.hostKey, d.box);
+      if (!data || !S) return;
+      if (data.hand) { S.hand = data.hand.slice().sort((a, b) => a - b); autoOwn(); for (let c = 0; c < NC; c++) { for (const p of S.cols) paintCell(c, p); paintRow(c); } renderHand(); renderCase(); }
+      if (data.seen) for (const id in data.seen) {
+        S.seen[id] = data.seen[id]; refreshShow(id);
+        if (S.pendingReveal && S.pendingReveal.id === +id) { const ev = S.pendingReveal; S.pendingReveal = null; queueReveal(ev, data.seen[id]); }
+      }
+      if (data.sol) S.sol = data.sol;
+    } else if (d.t === 'err') { if (S) { S.lock = false; renderActions(); } toast(d.msg); }
+  }
+  function netPeerLeft(idx) {
+    if (!NET) return;
+    if (!NET.isHost) {
+      if (idx === 0) { const inGame = !!S; netCleanup(); if (inGame) { toMenu(); } onlineMsg('Die Spielleitung hat den Raum verlassen.', true); }
+      return;
+    }
+    delete NET.hello[idx]; delete NET.keys[idx];
+    if (NET.started && H && !H.game.over) {
+      const seat = NET.seatOfIdx[idx];
+      if (seat != null && H.game.players[seat].kind === 'remote') {
+        H.game.players[seat].kind = 'bot'; H.game.players[seat].level = 'medium';
+        H.knows[seat] = H.game.makeKnowledge(seat, 'medium');
+        delete NET.seatOfIdx[idx]; NET.idxOfSeat[seat] = undefined;
+        H.batch = []; H.game.emit({ e: 'left', p: seat }); hostFlush();
+      }
+    }
+    setTimeout(netLobby, 50);
+  }
+
+  /* ======================= Tutorial ======================= */
+  const TUT_DEAL = {
+    sol: [4, 11, 20],
+    hands: [[5, 6, 8, 12, 13, 16], [2, 3, 9, 10, 17, 18], [0, 1, 7, 14, 15, 19]],
+  };
+  function startTutorial() {
+    const myName = (HUB && HUB.getName()) || 'Du';
+    const players = [
+      { name: myName, fig: 3, kind: 'human' },
+      { name: 'Major Kessler', fig: 1, kind: 'bot', level: 'medium' },
+      { name: 'Dr. Moos', fig: 2, kind: 'bot', level: 'medium' },
+    ];
+    hostCreate(players, { dice: true, deal: TUT_DEAL, first: 0, seed: 4711, diceScript: [3, 4, 2, 4, 1, 3] });
+    TUT = makeTutorial();
+    document.body.classList.add('tut-on');
+    newSession({ local: true, seat: 0, pub: H.game.publicView(), hand: H.game.players[0].hand, story: H.story, check: H.check, seed: H.seed, auto: 'own', tutorial: true });
+    $('log').insertAdjacentHTML('beforeend', '<div class="ent note">🎓 Testspiel: eine geführte Beispiel-Runde.</div>');
+    TUT.start();
+  }
+  function endTutorial() {
+    if (!TUT) return;
+    TUT.clear();
+    hide('coach');
+    document.body.classList.remove('tut-on');
+    TUT = null;
+    Board.tutRoom = -1;
+  }
+  function makeTutorial() {
+    const script = {
+      1: [{ k: 'roll' }, { k: 'move', room: 0 }, { k: 'suggest', s: 3, w: 8 }, { k: 'end' }],
+      2: [{ k: 'roll' }, { k: 'move', room: 3 }, { k: 'suggest', s: 0, w: 9 }, { k: 'end' }],
+    };
+    const showPick = { 2: 7, 1: 9 };
+    const note = (c, p) => (S ? S.notes[c][p] : '');
+    const idle = () => S && !S.busy && $('dlgReveal').classList.contains('hidden');
+    const steps = [
+      { lesson: 0, t: 'Willkommen, Ermittler!', place: 'center', next: true,
+        html: '<p>Konsul Nebel liegt tot in seiner Villa. Im versiegelten Umschlag liegen drei Karten: <b>wer</b>, <b>womit</b> und <b>wo</b>. Die übrigen 18 Karten sind unter euch drei Ermittlern verteilt.</p><p>In diesem Testspiel bist du <b>Pfarrer Blau</b> und spielst gegen <b>Major Kessler</b> und <b>Dr. Moos</b>. Die Runde ist vorbereitet, damit du jeden Schritt einmal übst.</p>' },
+      { lesson: 0, t: 'Deine Karten', hl: ['#hand'], next: true,
+        html: '<p>Das sind deine 6 Karten. Was du selbst in der Hand hältst, <b>kann nicht im Umschlag liegen</b>. Gärtner Weiss, Kerzenleuchter, Revolver, Küche, Speisesaal und Halle scheiden also schon aus.</p>' },
+      { lesson: 0, t: 'Der Notizblock', hl: ['#paneNote'], next: true,
+        html: '<p>Hier hältst du alle Beweise fest. Jede <b>Zeile</b> ist eine Karte, jede <b>Spalte</b> ein Ermittler. Deine Karten sind schon eingetragen: ✓ bei dir und ✗ bei den anderen, denn jede Karte hat nur eine Person.</p><p>Eine Zeile, in der irgendwo ✓ steht, ist erledigt. Steht in einer Zeile <b>überall ✗</b>, liegt die Karte im Umschlag.</p>' },
+      { lesson: 1, t: 'Lektion 1: Würfeln', hl: ['#btnRoll'], act: (a) => a.k === 'roll',
+        html: '<p>Einen Verdacht sprichst du immer in einem <b>Raum</b> aus. Du stehst in der Halle und musst dich zuerst bewegen. Ein Nachbarraum kostet 3 Schritte.</p>',
+        task: 'Klicke auf „Würfeln“ (oder drücke W).' },
+      { lesson: 1, t: 'Lektion 1: In die Bibliothek', room: 3, place: 'boardRight', act: (a) => a.k === 'move' && a.room === 3,
+        html: '<p>3 + 4 = 7 Schritte: Alle leuchtenden Räume sind erreichbar.</p>', task: 'Klicke auf dem Plan die <b>Bibliothek</b> an (links in der Mitte, Taste 4).', block: 'Geh für dieses Beispiel in die Bibliothek.' },
+      { lesson: 1, t: 'Lektion 1: Der Verdacht', place: 'panel', act: (a) => a.k === 'suggest' && a.s === 0 && a.w === 7,
+        html: '<p>Ein Verdacht ist immer <b>Person + Waffe + der Raum, in dem du stehst</b>. Die genannte Figur und die Waffe werden in den Raum geholt.</p><p>Du darfst jede Karte nennen, auch eigene. Am meisten lernst du aber mit Karten, über die du noch nichts weisst.</p>',
+        task: 'Wähle <b>Gräfin Rubin</b> und den <b>Dolch</b>, dann „Verdacht aussprechen“.', block: 'Wähle für dieses Beispiel Gräfin Rubin und den Dolch.' },
+      { lesson: 2, t: 'Lektion 2: Reihum widerlegen', when: () => idle() && S.pub.phase === 'after', hold: true, next: true,
+        html: '<p>Nun wird im Uhrzeigersinn ab dir geprüft:</p><p>• <b>Major Kessler</b> hat keine der drei Karten. Er <b>passt</b>.<br>• <b>Dr. Moos</b> hat mindestens eine. Sie muss dir <b>genau eine</b> davon zeigen, hier den <b>Dolch</b>. Danach ist Schluss, weitere Spieler werden nicht mehr gefragt.</p><p>Nur du hast den Dolch gesehen. Kessler weiss lediglich, <i>dass</i> Moos dir eine Karte gezeigt hat.</p>' },
+      { lesson: 3, t: 'Lektion 3: Beweis notieren', cells: [[7, 2]], hold: true, done: () => note(7, 2) === 'v',
+        html: '<p>Halte den Beweis fest: <b>Dr. Moos besitzt den Dolch</b>. Damit ist er nicht die Tatwaffe.</p><p>Ein Klick auf ein Feld setzt ✗, ein zweiter Klick ✓, ein dritter ?.</p>',
+        task: 'Klicke im Notizblock in der Zeile <b>Dolch</b> bei <b>Moos</b> zweimal, bis ✓ erscheint.' },
+      { lesson: 3, t: 'Lektion 3: Passen ist auch ein Beweis', cells: [[0, 1], [7, 1], [15, 1]], hold: true, done: () => note(0, 1) === 'x' && note(7, 1) === 'x' && note(15, 1) === 'x',
+        html: '<p>Kessler hat gepasst. Das heisst: Er hat <b>weder</b> Gräfin Rubin <b>noch</b> den Dolch <b>noch</b> die Bibliothek.</p>',
+        task: 'Setze bei <b>Kessler</b> ein ✗ (einmal klicken) in den Zeilen Gräfin Rubin, Dolch und Bibliothek.' },
+      { lesson: 1, t: 'Zug beenden', hl: ['#btnEnd'], act: (a) => a.k === 'end',
+        html: '<p>Jetzt könntest du anklagen, aber dafür weisst du noch viel zu wenig. Die anderen sind dran.</p>', task: 'Klicke „Zug beenden“ (oder drücke E).', block: 'Beende für dieses Beispiel deinen Zug.' },
+      { lesson: 2, t: 'Lektion 2: Du bist gefragt!', place: 'panel', when: () => idle() && S.pub.phase === 'refute' && S.pub.ref.shower === 0, act: (a) => a.k === 'show',
+        html: '<p>Major Kessler ist in die Küche gegangen und verdächtigt <b>Pfarrer Blau</b> (dich!) mit dem <b>Revolver</b> in der <b>Küche</b>. Deine Figur wurde dafür in die Küche geholt.</p><p>Dr. Moos hat gepasst, also bist du dran. Du hast zwei passende Karten, musst aber nur <b>eine</b> zeigen.</p><p>Tipp für später: Zeige möglichst Karten, die diese Person schon kennt. So verrätst du nichts Neues.</p>',
+        task: 'Klicke den <b>Revolver</b> oder die <b>Küche</b> an.' },
+      { lesson: 3, t: 'Lektion 3: Auch Moos hat gepasst', cells: [[3, 2]], when: () => idle(), hold: true, done: () => note(3, 2) === 'x',
+        html: '<p>Dr. Moos hatte keine der Karten Pfarrer Blau, Revolver und Küche. Revolver und Küche sind deine, dort steht schon ✗. Neu ist: <b>Moos hat Pfarrer Blau nicht.</b></p>',
+        task: 'Setze bei <b>Moos</b> ein ✗ in der Zeile Pfarrer Blau.' },
+      { lesson: 3, t: 'Lektion 3: Kombinieren!', cells: [[9, 1]], when: () => idle() && S.pub.turn === 0 && S.pub.turnCount >= 4, hold: true, done: () => note(9, 1) === 'v',
+        html: '<p>Dr. Moos hat <b>Gräfin Rubin, Seil, Bibliothek</b> verdächtigt. Du hattest nichts davon und hast gepasst. Dann hat Kessler Moos eine Karte gezeigt. Welche, siehst du nicht.</p><p>Aber: In Kesslers Spalte stehen bereits ✗ bei <b>Gräfin Rubin</b> und <b>Bibliothek</b>. Von den drei Karten bleibt nur eine übrig: das <b>Seil</b>!</p><p>Geht so ein Schluss noch nicht auf, markiere die drei Karten mit Ⓐ („eine davon“) und komm später darauf zurück.</p>',
+        task: 'Trage bei <b>Kessler</b> ein ✓ in der Zeile Seil ein.' },
+      { lesson: 3, t: 'Zeitsprung', hold: true, next: true, enter: applySkip,
+        html: '<p>Ein paar Runden später … Du hast weiter ermittelt und dabei diese Karten gezeigt bekommen. Sie sind jetzt eingetragen:</p><p>• Kessler: Dr. Moos, Pfarrer Blau, Giftfläschchen, Salon, Arbeitszimmer<br>• Moos: Major Kessler, Wintergarten, Billardzimmer</p><p>Du stehst wieder in der Küche, denn Kessler hat dich dorthin geholt.</p>' },
+      { lesson: 3, t: 'Lektion 3: Die Spalte ist voll', hlCol: 1, hold: true, done: () => S.notes.every((r) => r[1] !== ''),
+        html: '<p>Kessler hat <b>6 Karten</b> (siehe Spielerleiste oben), und alle 6 kennst du jetzt. Er kann also <b>keine weitere</b> Karte haben.</p>',
+        task: 'Klicke auf Kesslers <b>Spaltenkopf</b> und wähle „Leere Felder mit ✗ füllen“.' },
+      { lesson: 3, t: 'Lektion 3: Ausschlussverfahren', hold: true, cells: [[11, 2]], done: () => S.rowMark[11] === 1,
+        html: '<p>Schau dir die <b>Waffen</b> an: Kerzenleuchter, Dolch, Revolver, Seil und Giftfläschchen haben je ein ✓, sie gehören jemandem. Im Umschlag liegt aber <b>genau eine Waffe</b>. Also muss es der <b>Eispickel</b> sein, auch wenn bei Moos noch nichts steht!</p>',
+        task: 'Klicke auf den Namen <b>Eispickel</b> (ganz links in der Zeile), um ihn mit ★ als Lösung zu markieren.' },
+      { lesson: 1, t: 'Was ist noch offen?', hl: ['#btnPassage'], act: (a) => a.k === 'passage',
+        html: '<p><b>Wer?</b> Ohne ✓ sind nur noch Gräfin Rubin und Madame Morel.<br><b>Wo?</b> Offen sind die Bibliothek und der Weinkeller.</p><p>Teste Madame Morel im Weinkeller! Aus der Küche führt ein <b>Geheimgang</b> direkt in die gegenüberliegende Ecke, ganz ohne Würfeln.</p>',
+        task: 'Klicke „Geheimgang → Weinkeller“ (oder drücke G).', block: 'Nimm für dieses Beispiel den Geheimgang in den Weinkeller.' },
+      { lesson: 1, t: 'Der entscheidende Verdacht', place: 'panel', act: (a) => a.k === 'suggest' && a.s === 4 && a.w === 11,
+        html: '<p>Du bist im Weinkeller. Nenne die beiden offenen Kandidaten.</p>', task: 'Verdächtige <b>Madame Morel</b> mit dem <b>Eispickel</b>.', block: 'Verdächtige für dieses Beispiel Madame Morel mit dem Eispickel.' },
+      { lesson: 3, t: 'Niemand kann widerlegen!', when: () => idle() && S.pub.phase === 'after', hold: true, next: true,
+        html: '<p>Weder Kessler noch Moos konnten widerlegen, und du hast selbst keine der drei Karten. Das beweist: <b>Madame Morel, Eispickel und Weinkeller liegen im Umschlag.</b></p><p>Achtung: Hättest du eine der Karten selbst, wäre nur der Rest bewiesen. Erfahrene Ermittler nennen absichtlich eigene Karten, um gezielt eine einzelne Karte zu testen.</p>' },
+      { lesson: 4, t: 'Lektion 4: Die Anklage', hl: ['#btnAccuse'], place: 'panel', act: (a) => a.k === 'accuse' && a.s === 4 && a.w === 11 && a.r === 20,
+        html: '<p>Bist du dir sicher, erhebst du in deinem Zug die <b>Anklage</b>. Sie ist <b>unumkehrbar</b>: Du schaust heimlich in den Umschlag. Stimmt alles, gewinnst du sofort. Liegst du auch nur bei einer Karte falsch, scheidest du aus und darfst nur noch Karten zeigen.</p><p>Klage also erst an, wenn dein Notizblock keinen Zweifel mehr lässt. Wer ungeduldig rät, verliert.</p>',
+        task: 'Klicke „Anklage“, wähle <b>Madame Morel, Eispickel, Weinkeller</b> und bestätige zweimal.', block: 'Fast! Schau nochmals in deinen Notizblock: Wer, womit und wo ist bewiesen?' },
+    ];
+    const T = {
+      i: 0, active: false, done: false,
+      start() { this.i = 0; this.activate(); },
+      cur() { return steps[this.i]; },
+      holdBots() { const s = this.cur(); return !!(s && this.active && s.hold); },
+      activate() {
+        const s = this.cur();
+        if (!s) { this.active = false; hide('coach'); return; }
+        if (s.when && !s.when()) { this.active = false; hide('coach'); this.clear(); return; }
+        if (!this.active) {
+          this.active = true;
+          if (s.enter) s.enter();
+          this.render();
+        }
+      },
+      render() {
+        const s = this.cur();
+        $('coachStep').textContent = s.lesson ? `Lektion ${s.lesson} von 4` : 'Testspiel';
+        $('coachTitle').textContent = s.t;
+        $('coachText').innerHTML = s.html + (s.task ? `<div class="task">👉 ${s.task}</div>` : '');
+        $('coachNext').classList.toggle('hidden', !s.next);
+        $('coachNext').textContent = this.i === steps.length - 1 ? 'Fertig' : 'Weiter →';
+        $('coachProg').innerHTML = [1, 2, 3, 4].map((l) => `<i class="${s.lesson >= l ? 'on' : ''}"></i>`).join('');
+        show('coach');
+        this.decorate();
+        this.place();
+      },
+      place() {
+        const s = this.cur(), el = $('coach');
+        const bb = $('boardBox').getBoundingClientRect(), right = document.querySelector('.right').getBoundingClientRect();
+        el.style.left = el.style.top = el.style.right = el.style.bottom = '';
+        el.classList.toggle('side', s.place === 'panel');
+        if (s.place === 'center') { el.style.left = Math.max(16, (window.innerWidth - el.offsetWidth) / 2) + 'px'; el.style.top = Math.max(60, (window.innerHeight - el.offsetHeight) / 2) + 'px'; }
+        else if (s.place === 'panel') { el.style.left = Math.max(16, window.innerWidth - el.offsetWidth - 14) + 'px'; el.style.top = '56px'; }
+        else if (s.place === 'boardRight') { el.style.left = Math.max(16, bb.right - el.offsetWidth - 10) + 'px'; el.style.top = (bb.top + 8) + 'px'; }
+        else { el.style.left = Math.max(150, bb.left + 10) + 'px'; el.style.top = (bb.top + 8) + 'px'; }
+      },
+      clear() {
+        document.querySelectorAll('.tut-hl').forEach((e) => e.classList.remove('tut-hl'));
+        document.querySelectorAll('.tut-cell').forEach((e) => e.classList.remove('tut-cell'));
+        Board.tutRoom = -1;
+      },
+      decorate() {
+        this.clear();
+        const s = this.cur();
+        if (!s || !this.active) return;
+        (s.hl || []).forEach((q) => { const e = document.querySelector(q); if (e) e.classList.add('tut-hl'); });
+        (s.cells || []).forEach(([c, p]) => { const e = cellEl(c, p); if (e) e.classList.add('tut-cell'); });
+        if (s.hlCol != null) { const th = document.querySelector(`th[data-col="${s.hlCol}"]`); if (th) th.classList.add('tut-hl'); }
+        if (s.room != null) Board.tutRoom = s.room;
+      },
+      // Darf der Spieler diese Aktion jetzt ausführen?
+      allow(a) {
+        const s = this.cur();
+        if (s && this.active && s.act && s.act(a)) return true;
+        toast(s && this.active ? (s.block || 'Folge zuerst der Anleitung im Kasten.') : 'Einen Moment, die Mitspieler sind dran.', 2600);
+        return false;
+      },
+      after(a) { const s = this.cur(); if (s && this.active && s.act && s.act(a)) this.advance(); },
+      advance() {
+        this.active = false; this.clear(); hide('coach');
+        this.i++;
+        if (this.i >= steps.length) return;
+        this.activate();
+        hostResume(500);
+      },
+      check() {
+        const s = this.cur();
+        if (!s) return;
+        if (!this.active) { this.activate(); return; }
+        if (s.done && s.done()) { Snd.show(); this.advance(); }
+      },
+      botAction(seat, g) {
+        const o = g.options(seat);
+        if (o.show.length) return { k: 'show', card: o.show.includes(showPick[seat]) ? showPick[seat] : o.show[0] };
+        const q = script[seat];
+        return q && q.length ? q.shift() : { k: 'end' };
+      },
+    };
+    $('coachNext').onclick = () => { const s = T.cur(); if (s && s.next) T.advance(); };
+    $('coachQuit').onclick = () => toMenu();
+    window.addEventListener('resize', () => { if (TUT && TUT.active) TUT.place(); });
+    return T;
+
+    function applySkip() {
+      const facts = [[2, 1], [3, 1], [10, 1], [17, 1], [18, 1], [1, 2], [14, 2], [19, 2]];
+      let delay = 0;
+      for (const [c, p] of facts) {
+        setTimeout(() => {
+          if (!S) return;
+          setNote(c, p, 'v', true);
+          for (let q = 0; q < S.n; q++) if (q !== p && !S.notes[c][q]) setNote(c, q, 'x', true);
+        }, delay += 160);
+      }
+      const html = '🕰 <b>Zeitsprung.</b> In den folgenden Runden wurden dir gezeigt: ' +
+        'Kessler: Dr. Moos, Pfarrer Blau, Giftfläschchen, Salon, Arbeitszimmer · Moos: Major Kessler, Wintergarten, Billardzimmer.';
+      appendLog({ e: 'note', html });
+    }
+  }
+
+  /* ======================= Menü ======================= */
+  const MODES = [
+    { id: 'bots', ico: '🤖', title: 'Gegen Bots', text: 'Ein neuer, geprüfter Fall gegen 2 bis 5 Computer-Ermittler in drei Stärken.' },
+    { id: 'online', ico: '🌐', title: 'Online', text: 'Mit Freunden, jeder am eigenen Bildschirm. Freie Plätze füllen Bots.', need: () => !!HUB },
+    { id: 'tutorial', ico: '🎓', title: 'Testspiel', text: 'Interaktives Tutorial: eine geführte Beispiel-Runde, Schritt für Schritt erklärt.' },
+  ];
+  function renderMenu() {
+    $('modes').innerHTML = MODES.map((m) => {
+      const ok = !m.need || m.need();
+      return `<button class="mode-card ${cfg.mode === m.id ? 'selected' : ''}" data-mode="${m.id}" ${ok ? '' : 'disabled style="opacity:.45;cursor:not-allowed"'}><span class="ico">${m.ico}</span><b>${m.title}</b><span>${ok ? m.text : 'Nur auf langwiligi.site verfügbar.'}</span></button>`;
+    }).join('');
+    const online = cfg.mode === 'online', tut = cfg.mode === 'tutorial';
+    $('figs').innerHTML = SUSPECTS.map((s, i) => `<button class="fig-btn ${cfg.fig === i ? 'on' : ''}" data-fig="${i}" ${tut ? 'disabled' : ''}>${portrait(i)}<span>${esc(s.name)}</span></button>`).join('');
+    $('figInfo').innerHTML = tut ? 'Im Testspiel bist du <b>Pfarrer Blau</b>.' : `<b style="color:${SUSPECTS[cfg.fig].color}">${SUSPECTS[cfg.fig].full}</b>, ${SUSPECTS[cfg.fig].role}.`;
+    $('figPanel').style.opacity = tut ? '.6' : '';
+    $('botPanel').classList.toggle('hidden', tut);
+    $('onlinePanel').classList.toggle('hidden', !online);
+    $('onlinePanel').style.order = online ? '-1' : '';
+    $('startRow').classList.toggle('hidden', online);
+    $('startBtn').textContent = tut ? '▶ Testspiel starten' : '▶ Fall eröffnen';
+    const segs = (id, items, cur, key) => {
+      $(id).innerHTML = items.map(([v, l]) => `<button data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('');
+      $(id).dataset.key = key;
+    };
+    if (online) segs('optBots', [[0, '0'], [1, '1'], [2, '2'], [3, '3'], [4, '4']], cfg.onlineBots, 'onlineBots');
+    else segs('optBots', [[2, '2'], [3, '3'], [4, '4'], [5, '5']], cfg.bots, 'bots');
+    document.querySelector('#botPanel .opt label').textContent = online ? 'Bots dazu' : 'Gegner';
+    segs('optLevel', [['easy', 'Leicht'], ['medium', 'Mittel'], ['hard', 'Schwer'], ['mixed', 'Gemischt']], cfg.level, 'level');
+    segs('optDice', [['1', '🎲 Würfeln'], ['0', 'Frei wählen']], cfg.dice ? '1' : '0', 'dice');
+    segs('optAuto', [['seen', 'Gezeigte Karten eintragen'], ['own', 'Nur eigene Karten']], cfg.auto, 'auto');
+    if (NET && NET.lobby) renderLobby();
+  }
+  $('modes').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mode]'); if (!b || b.disabled) return;
+    if (NET && b.dataset.mode !== 'online') netLeave();
+    cfg.mode = b.dataset.mode; saveCfg(); renderMenu();
+  });
+  $('figs').addEventListener('click', (e) => { const b = e.target.closest('[data-fig]'); if (!b || b.disabled) return; cfg.fig = +b.dataset.fig; saveCfg(); renderMenu(); });
+  ['optBots', 'optLevel', 'optDice', 'optAuto'].forEach((id) => $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('[data-v]'); if (!b) return;
+    const key = $(id).dataset.key, v = b.dataset.v;
+    if (key === 'bots' || key === 'onlineBots') cfg[key] = +v;
+    else if (key === 'dice') cfg.dice = v === '1';
+    else cfg[key] = v;
+    saveCfg(); renderMenu();
+    if (NET && NET.isHost && !NET.started) netLobby();
+  }));
+  $('startBtn').addEventListener('click', () => {
+    Snd.init();
+    if (cfg.mode === 'tutorial') startTutorial(); else startBots();
+  });
+  if (HUB) {
+    $('nameInput').value = HUB.getName();
+    $('createBtn').addEventListener('click', netCreate);
+    $('joinBtn').addEventListener('click', netJoin);
+    $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') netJoin(); });
+    $('hostStartBtn').addEventListener('click', () => { Snd.init(); netStartGame(); });
+    $('leaveBtn').addEventListener('click', () => netLeave());
+    $('copyBtn').addEventListener('click', async () => {
+      const link = 'https://langwiligi.site/' + GAME_ID + '/#' + $('roomCode').textContent;
+      try { await navigator.clipboard.writeText(link); toast('✅ Link kopiert!'); } catch (e) { toast(link, 5000); }
+    });
+    const code = HUB.cleanCode(location.hash);
+    if (code.length === 4) {
+      cfg.mode = 'online';
+      $('codeInput').value = code;
+      setTimeout(() => { onlineMsg('Einladung erhalten! Name eingeben und auf „Beitreten“ klicken.'); $('nameInput').focus(); }, 60);
+    }
+  }
+
+  function drawMenuBg() {
+    const c = $('menuBg');
+    if (c.classList.contains('hidden')) return;
+    const w = window.innerWidth, h = window.innerHeight, dpr = Math.min(1.5, window.devicePixelRatio || 1);
+    c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+    const ctx = c.getContext('2d');
+    const s = Math.max(w / BW, h / BH) * dpr;
+    const lay = makeStaticLayer(Math.round(BW * s), Math.round(BH * s));
+    ctx.drawImage(lay, (c.width - lay.width) / 2, (c.height - lay.height) / 2);
+    const g = ctx.createRadialGradient(c.width / 2, c.height * 0.45, 0, c.width / 2, c.height * 0.45, c.width * 0.7);
+    g.addColorStop(0, 'rgba(8,6,10,.55)'); g.addColorStop(1, 'rgba(4,3,6,.92)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, c.width, c.height);
+  }
+
+  renderMenu(); renderMute(); drawMenuBg();
+  // Für Tests und das Titelbild
+  window.__nebel = { get S() { return S; }, get H() { return H; }, startBots, startTutorial, toMenu, act };
+})();
+</script>
+</body>
+</html>
