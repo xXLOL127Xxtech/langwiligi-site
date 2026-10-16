@@ -375,6 +375,7 @@ const App = {
   },
   // ---------- Ende ----------
   rennEnde(erg) {
+    Ton.tempo(1);
     if (window.LW) try { LW.rundeFertig(); } catch (e) { }
     if (this.online) { Netz.rennEnde(erg); return; }
     setTimeout(() => this.ergebnisZeigen(erg), 800);

@@ -204,8 +204,8 @@ details.help summary{cursor:pointer;font-weight:700}
 .h-falsch{position:absolute;left:50%;top:44%;transform:translateX(-50%);font:400 calc(34px*var(--s)) var(--fn);color:#ff6a5a;text-shadow:0 3px 0 #000;display:none}
 .h-falsch.an{display:block;animation:blink .6s infinite}
 @keyframes blink{50%{opacity:.3}}
-.h-speed{position:absolute;inset:-10%;background-size:cover;background-position:center;opacity:0;transition:opacity .25s;pointer-events:none;mix-blend-mode:screen}
-.h-speed.an{opacity:.55;animation:speed .18s linear infinite}
+.h-speed{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .25s;pointer-events:none}
+.h-speed.an{opacity:.4}
 @keyframes speed{0%{transform:scale(1) rotate(0)}50%{transform:scale(1.06) rotate(1deg)}100%{transform:scale(1) rotate(0)}}
 .h-tinte{position:absolute;inset:0;pointer-events:none;opacity:0}
 .h-tinte i{position:absolute;background-size:contain;background-repeat:no-repeat;background-position:center;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4))}

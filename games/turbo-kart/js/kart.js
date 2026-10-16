@@ -9,7 +9,7 @@ const CC = {
 };
 const SCHWERKRAFT = 30;
 const DRIFT_STUFEN = [0.8, 1.85, 3.1];          // Ladezeit für Blau, Orange, Lila
-const DRIFT_BOOST = [0, 0.75, 1.35, 2.1];       // Turbodauer je Stufe
+const DRIFT_BOOST = [0, 0.85, 1.5, 2.3];       // Turbodauer je Stufe
 const FUNKEN_FARBEN = [null, new THREE.Color('#4fc8ff'), new THREE.Color('#ffa21f'), new THREE.Color('#d86bff')];
 const TEAMFARBEN = ['#e8352f', '#2f6fe8'];
 const TEAMNAMEN = ['Rot', 'Blau'];
@@ -114,7 +114,9 @@ class Kart {
     const lenkbar = !this.treffer && !this.tot && r.phase === 'rennen' && this.abgewuergt <= 0;
     let gas = lenkbar ? inp.gas || 0 : 0, bremse = lenkbar ? inp.bremse || 0 : 0, lenk = lenkbar ? inp.lenk || 0 : 0;
     if (this.raketeT > 0) { gas = 1; bremse = 0; }
-    this.lenk = damp(this.lenk, lenk, 12, dt);
+    this.lenk = damp(this.lenk, lenk, 16, dt);
+    // Beim Driften wird die Lenkung geglättet, damit Tastatur-Lenken nicht ruckelt
+    this.driftLenk = damp(this.driftLenk || 0, lenk, 6, dt);
     // Höchstgeschwindigkeit
     const P = this.P;
     let vmax = cc.max * (0.93 + this.w.tempo * 0.02) * (1 + Math.min(this.muenzen, 10) * 0.005);
@@ -124,9 +126,9 @@ class Kart {
     if (gelaende && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0) vmax *= clamp(0.5 + this.w.gelaende * 0.12, 0.4, 0.66);
     let vZiel = vmax;
     if (this.sternT > 0) vZiel = vmax * 1.16;
-    if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * 1.3);
+    if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * 1.36);
     if (this.raketeT > 0) vZiel = cc.max * 1.55;
-    const beschl = (7 + this.w.beschl * 2.4) * cc.acc;
+    const beschl = (9.5 + this.w.beschl * 2.9) * cc.acc;
     if (this.treffer) {
       this.v *= Math.exp(-2.6 * dt);
     } else if (this.boostT > 0 || this.raketeT > 0 || (this.sternT > 0 && gas)) {
@@ -144,13 +146,13 @@ class Kart {
     }
     if (this.luft && !this.treffer) this.v *= Math.exp(-0.04 * dt);
     // Lenken & Driften
-    const handl = 1.2 + this.w.handling * 0.12;
+    const handl = 1.35 + this.w.handling * 0.13;
     const va = Math.abs(this.v);
     const vf = clamp(va / 7, 0, 1) * (1 - 0.22 * clamp((va - cc.max * 0.55) / cc.max, 0, 1));
     let dreh = 0;
     const d = this.drift;
     if (inp.driftDruck && lenkbar && !this.luft && this.raketeT <= 0) {
-      this.vy = 4.6; this.luft = true; this.hop = true;
+      this.vy = 5.2; this.luft = true; this.hop = true;
       if (this.lokal >= 0) Ton.sfx('hop', 0.7);
     }
     if (d.an) {
@@ -159,8 +161,8 @@ class Kart {
       d.an = true; d.dir = Math.sign(lenk); d.t = 0; d.stufe = 0;
     }
     if (d.an) {
-      const eng = (lenk * d.dir + 1) / 2;
-      dreh = -d.dir * handl * (0.5 + 0.78 * eng) * vf;
+      const eng = clamp((this.driftLenk * d.dir + 1) / 2, 0, 1);
+      dreh = -d.dir * handl * (0.36 + 0.84 * eng) * vf;
       d.t += dt * (0.65 + 0.85 * eng) * (this.luft ? 0.3 : 1);
       const st = d.t > DRIFT_STUFEN[2] ? 3 : d.t > DRIFT_STUFEN[1] ? 2 : d.t > DRIFT_STUFEN[0] ? 1 : 0;
       if (st > d.stufe) { d.stufe = st; if (this.lokal >= 0) Ton.sfx('funke' + st, 0.8); }
@@ -171,9 +173,9 @@ class Kart {
     if (P.eis && !this.luft) dreh *= 0.75;
     if (this.luft) dreh *= 0.6;
     this.yaw = wrapA(this.yaw + dreh * dt);
-    this.driftVis = damp(this.driftVis, d.an ? -d.dir * 0.42 : 0, 8, dt);
+    this.driftVis = damp(this.driftVis, d.an ? -d.dir * 0.36 : 0, 8, dt);
     // Bewegungsrichtung folgt der Nase mit Haftung
-    const haft = this.luft ? 1.2 : P.eis ? 2.2 : d.an ? 6 : 16;
+    const haft = this.luft ? 1.2 : P.eis ? 2.4 : d.an ? 9 : 18;
     this.mYaw = wrapA(this.yaw + wrapA(this.mYaw - this.yaw) * Math.exp(-haft * dt));
     if (d.an && !this.luft) {
       // leichtes Rutschen nach aussen

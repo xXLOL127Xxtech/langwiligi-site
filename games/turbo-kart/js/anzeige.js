@@ -9,7 +9,7 @@ class Kamera {
   }
   folge(k, dt, rueck, r) {
     const fertigSicht = k.fertig && !r.welt.istArena;
-    let yawZiel = k.yaw + k.driftVis * 0.45;
+    let yawZiel = k.yaw + k.driftVis * 0.25;
     if (k.raketeT > 0) yawZiel = k.yaw;
     if (!this.init) { this.yaw = yawZiel; }
     this.yaw = wrapA(this.yaw + wrapA(yawZiel - this.yaw) * (1 - Math.exp(-(k.treffer ? 2 : 6.5) * dt)));
@@ -28,6 +28,12 @@ class Kamera {
     const w = r.welt;
     if (!w.istArena && this.P) {
       w.proj(this.P, this.pos.x, this.pos.y, this.pos.z);
+      // Kamera bleibt innerhalb der Wände (sonst wird das Bild beim Driften schwarz)
+      const grenze = this.P.lim - 0.8;
+      if (!this.P.fall && Math.abs(this.P.d) > grenze) {
+        const zu = Math.abs(this.P.d) - grenze, sg = Math.sign(this.P.d);
+        this.pos.x -= this.P.hx * sg * zu; this.pos.z -= this.P.hz * sg * zu;
+      }
       if (Math.abs(this.P.d) < this.P.lim + 2 && this.pos.y < this.P.bodenY + 1.2) this.pos.y = this.P.bodenY + 1.2;
     } else this.P = {};
     this.blick.set(k.pos.x + Math.sin(yaw) * 3, k.pos.y + 1.25 * groesse, k.pos.z + Math.cos(yaw) * 3);
@@ -82,6 +88,7 @@ const Anzeige = {
   init() {
     const c = $('c');
     this.renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, powerPreference: 'high-performance' });
+    c.addEventListener('webglcontextlost', e => e.preventDefault());
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.autoClear = false;

@@ -248,9 +248,9 @@ const Ton = {
     const base = 48 + spd01 * 95 + (boost ? 30 : 0);
     m.o1.frequency.setTargetAtTime(base, t, 0.06);
     m.o2.frequency.setTargetAtTime(base * 0.502, t, 0.06);
-    m.f.frequency.setTargetAtTime(380 + spd01 * 1100 + (boost ? 900 : 0), t, 0.08);
-    m.g.gain.setTargetAtTime(an ? (0.05 + spd01 * 0.06) / Math.sqrt(this.motoren.length) : 0, t, 0.1);
-    m.ng.gain.setTargetAtTime(an && drift ? 0.07 : 0, t, 0.05);
+    m.f.frequency.setTargetAtTime(300 + spd01 * 700 + (boost ? 500 : 0), t, 0.08);
+    m.g.gain.setTargetAtTime(an ? (0.014 + spd01 * 0.018) / Math.sqrt(this.motoren.length) : 0, t, 0.1);
+    m.ng.gain.setTargetAtTime(an && drift ? 0.03 : 0, t, 0.05);
     m.nf.frequency.setTargetAtTime(2000 + spd01 * 800, t, 0.1);
   },
   motorStop() {
@@ -324,7 +324,7 @@ const Musik = {
         mel[b * 16 + i] = { n: note(deg) + 12, d: dauer };
       }
     }
-    return { bpm: l.bpm, len, akk, mel, stil: l.stil || 'pop', R, tempoF: 1, lead: l.lead || 'square', bass: l.bass || 'triangle' };
+    return { bpm: Math.round(l.bpm * 0.9), len, akk, mel, stil: l.stil || 'pop', R, tempoF: 1, lead: l.lead || 'square', bass: l.bass || 'triangle' };
   },
   spieleSchritt(m, s, t) {
     const c = Ton.ctx, out = Ton.musikG;
