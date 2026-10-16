@@ -66,8 +66,8 @@ function nextMap(choice) {
   if (!G.mapQueue.length) { G.mapQueue = shuffle(MAPS.map(m => m.id)); if (G.lastMap && G.mapQueue[0] === G.lastMap) G.mapQueue.push(G.mapQueue.shift()); }
   return (G.lastMap = G.mapQueue.shift());
 }
-function botSlots(n, level, start) {
-  const names = shuffle(BOT_NAMES.slice());
+function botSlots(n, level, start, names) {
+  names = names || shuffle(BOT_NAMES.slice());
   const out = [];
   for (let i = 0; i < n; i++) out.push({ name: names[i] + ' 🤖', outfit: start + i, bot: level });
   return out;
@@ -300,7 +300,7 @@ async function createRoom() {
   try {
     const info = await room.create(myName(), 4);
     G.room = room; G.mode = 'host'; bindRoom(room);
-    G.lobby = { bots: SET.bots >= 1 ? Math.min(2, SET.bots) : 0, level: SET.level, map: SET.map };
+    G.lobby = { bots: SET.bots >= 1 ? Math.min(2, SET.bots) : 0, level: SET.level, map: SET.map, names: shuffle(BOT_NAMES.slice()) };
     setStatus('online-status', '');
     openLobby(info.code);
   } catch (e) { setStatus('online-status', HUB.errorText(e), false, true); }
@@ -333,7 +333,7 @@ function lobbySlots() {
   const hum = humansInRoom().slice(0, 4);
   const slots = hum.map((h, i) => ({ name: h.name, outfit: i, bot: null, seat: h.seat }));
   const nb = Math.min(G.lobby.bots, 4 - slots.length);
-  return slots.concat(botSlots(nb, G.lobby.level, slots.length));
+  return slots.concat(botSlots(nb, G.lobby.level, slots.length, G.lobby.names));
 }
 function renderLobby(slots) {
   slots = slots || (G.mode === 'host' ? lobbySlots() : G.lobbySlots || []);

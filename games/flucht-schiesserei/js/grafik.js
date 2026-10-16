@@ -127,12 +127,12 @@ class Renderer {
     if (!s) return;
     const ctx = this.ctx, cam = this.cam;
     let [sx, sy] = this.W2S(tf[0], tf[1]);
-    if (Math.abs(tf[2]) < 0.002) {
+    if (Math.abs(tf[2]) < 0.02) {
       if (sx - s.ox > cam.w || sx - s.ox + s.img.width < 0 || sy - s.oy > cam.h || sy - s.oy + s.img.height < 0) return;
     } else { const R = s.rad; if (sx + R < 0 || sx - R > cam.w || sy + R < 0 || sy - R > cam.h) return; }
     if (tf[3] === 1) { sx += Math.random() < 0.5 ? -1 : 1; }
     sx = Math.round(sx); sy = Math.round(sy);
-    if (Math.abs(tf[2]) < 0.002) ctx.drawImage(s.img, sx - s.ox, sy - s.oy);
+    if (Math.abs(tf[2]) < 0.02) ctx.drawImage(s.img, sx - s.ox, sy - s.oy);
     else { ctx.save(); ctx.translate(sx, sy); ctx.rotate(-tf[2]); ctx.drawImage(s.img, -s.ox, -s.oy); ctx.restore(); }
   }
   drawDecos(sim, M, layer) {
@@ -272,7 +272,7 @@ class Renderer {
     const sc = this.sc;
     sc.imageSmoothingEnabled = false;
     sc.drawImage(this.lo, 0, 0, this.lo.width * this.scale, this.lo.height * this.scale);
-    this.overlay(sim, view, slots, meIdx);
+    if (!this.noOverlay) this.overlay(sim, view, slots, meIdx);
   }
   // Namen, Lebensbalken, Fortschritt, Fadenkreuz (scharf in voller Auflösung)
   overlay(sim, view, slots, meIdx) {
