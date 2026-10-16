@@ -167,8 +167,11 @@ else
   icon_v="$(version "$START/favicon.svg")"
   icons="<link rel=\"icon\" href=\"favicon.svg?v=$icon_v\" type=\"image/svg+xml\"><link rel=\"alternate icon\" href=\"favicon.ico\" sizes=\"48x48\"><link rel=\"apple-touch-icon\" href=\"apple-touch-icon.png?v=$icon_v\">"
 fi
+# Vorschaubild für geteilte Links (og:image); neu bauen mit: node tools/vorschaubild/bauen.js
+cp "$START/vorschau.jpg" "$BUILD/"
+bild_v="$(version "$START/vorschau.jpg")"
 ver="$(cat "$START/start.css" "$START/start.js" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" awk '
+CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -176,7 +179,7 @@ CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" awk '
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat
