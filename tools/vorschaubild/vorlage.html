@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #07060d; color: #ecebf5; }
+  body { position: relative; font-family: "Chakra Petch", sans-serif; }
+  .bg { position: absolute; inset: 0;
+    background:
+      radial-gradient(620px 380px at 6% 0%, rgba(255, 46, 136, .32), transparent 62%),
+      radial-gradient(640px 420px at 100% 30%, rgba(34, 228, 255, .22), transparent 62%),
+      radial-gradient(700px 300px at 45% 115%, rgba(157, 92, 255, .30), transparent 60%),
+      linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px) 0 0 / 100% 42px,
+      linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px) 0 0 / 42px 100%; }
+  /* Schräge Cover-Wand rechts */
+  .wall { position: absolute; left: 610px; top: -170px; width: 900px; display: grid; grid-template-columns: repeat(4, 200px); gap: 16px;
+    transform: rotate(-12deg); }
+  .wall .col { display: flex; flex-direction: column; gap: 16px; }
+  .wall .col:nth-child(2) { margin-top: -70px; }
+  .wall .col:nth-child(4) { margin-top: -110px; }
+  .wall img { width: 200px; height: 125px; object-fit: cover; display: block; border: 2px solid rgba(255, 255, 255, .14);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .55); }
+  .wall img.hi { border-color: #22e4ff; box-shadow: 0 0 0 2px #22e4ff, 0 0 26px rgba(34, 228, 255, .7); }
+  .wall img.hi2 { border-color: #ff2e88; box-shadow: 0 0 0 2px #ff2e88, 0 0 26px rgba(255, 46, 136, .7); }
+  .fade { position: absolute; inset: 0; background: linear-gradient(90deg, #07060d 0 520px, rgba(7, 6, 13, .85) 630px, rgba(7, 6, 13, .1) 790px, transparent); }
+  .scan { position: absolute; inset: 0; background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .18) 2px 3px); }
+
+  .text { position: absolute; left: 64px; top: 70px; width: 640px; }
+  .kicker { font: 22px/1 "Share Tech Mono", monospace; letter-spacing: .14em; color: #22e4ff; text-transform: uppercase; margin: 0 0 22px; }
+  h1 { margin: 0; font: 700 92px/.9 "Chakra Petch"; text-transform: uppercase; letter-spacing: -.01em; }
+  .kei { display: inline-block; padding: 8px 14px 0; margin-right: 10px; color: #07060d; background: #ffe14d; transform: skewX(-8deg);
+    box-shadow: 7px 7px 0 #ff2e88; }
+  .lw { position: relative; z-index: 0; display: inline-block; }
+  .lw::before, .lw::after { content: "LANGWILIGI"; position: absolute; inset: 0; z-index: -1; opacity: .9; }
+  .lw::before { color: #ff2e88; transform: translate(-4px, 2px); clip-path: inset(10% 0 55% 0); }
+  .lw::after { color: #22e4ff; transform: translate(4px, -2px); clip-path: inset(62% 0 8% 0); }
+  .site { display: block; margin-top: 10px; color: #22e4ff; text-shadow: 6px 6px 0 rgba(255, 46, 136, .55); }
+
+  .claim { display: inline-block; margin-top: 40px; padding: 14px 26px 10px; font: 700 50px/1 "Chakra Petch"; text-transform: uppercase;
+    color: #07060d; background: #8cff5a; transform: skewX(-8deg); box-shadow: 7px 7px 0 #9d5cff; }
+  .claim span { display: inline-block; transform: skewX(8deg); }
+
+  .chips { display: flex; gap: 12px; margin-top: 40px; }
+  .chips span { padding: 10px 16px; border: 1px solid #3d3660; background: rgba(15, 13, 26, .85); font: 21px/1 "Share Tech Mono", monospace;
+    letter-spacing: .08em; text-transform: uppercase; color: #ecebf5; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+  .chips b { color: #ffe14d; font-weight: 400; }
+
+  .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #ffe14d; color: #07060d; overflow: hidden; white-space: nowrap;
+    font: 20px/40px "Share Tech Mono", monospace; letter-spacing: .1em; text-transform: uppercase; }
+  .ticker span { padding: 0 18px; }
+  .ticker span::before { content: "◢ "; }
+</style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="wall" id="wall"></div>
+  <div class="fade"></div>
+  <div class="scan"></div>
+  <div class="text">
+    <p class="kicker">// langwiligi.site</p>
+    <h1><span class="kei">KEI</span><span class="lw">LANGWILIGI</span><span class="site">site</span></h1>
+    <div class="claim"><span>Best Browser Games!</span></div>
+    <div class="chips"><span><b>ANZAHL</b> Spiele</span><span>1 gegen 1</span><span>Online · Bots</span></div>
+  </div>
+  <div class="ticker">TICKER</div>
+</body>
+</html>
