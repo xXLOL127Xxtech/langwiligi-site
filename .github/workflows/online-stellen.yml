@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: langwiligi.site
-      url: http://46.224.94.231/
+      url: https://langwiligi.site/
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,9 +64,9 @@ jobs:
 
       - name: Zusammenfassung
         run: |
-          echo "### ✅ Online: http://46.224.94.231/" >> "$GITHUB_STEP_SUMMARY"
+          echo "### ✅ Online: https://langwiligi.site/" >> "$GITHUB_STEP_SUMMARY"
           for d in games/*/; do
-            s="$(basename "$d")"; [ "$s" = "_shared" ] || [ ! -f "$d/index.html" ] || echo "- [$s](http://46.224.94.231/$s/)" >> "$GITHUB_STEP_SUMMARY"
+            s="$(basename "$d")"; [ "$s" = "_shared" ] || [ ! -f "$d/index.html" ] || echo "- [$s](https://langwiligi.site/$s/)" >> "$GITHUB_STEP_SUMMARY"
           done
 
       - name: Schlüssel entfernen

@@ -1,6 +1,6 @@
 # Vorgaben für neue Spiele – KEI Langwiligi site
 
-Diese Datei beschreibt alles, was ein HTML-Spiel braucht, damit es auf **http://46.224.94.231/** läuft.
+Diese Datei beschreibt alles, was ein HTML-Spiel braucht, damit es auf **https://langwiligi.site/** läuft.
 Du brauchst keinen Zugriff auf die Webseite. Halte dich an diese Regeln und liefere am Ende einen Ordner ab (siehe Abschnitt 9).
 
 ---
@@ -9,7 +9,7 @@ Du brauchst keinen Zugriff auf die Webseite. Halte dich an diese Regeln und lief
 
 | Regel | Details |
 |---|---|
-| **Ein Ordner pro Spiel** | Der Ordnername ist die **Spiel-ID** und wird Teil des Links: `http://46.224.94.231/<spiel-id>/`. Nur Kleinbuchstaben, Ziffern und Bindestriche, keine Umlaute oder Leerzeichen, höchstens 40 Zeichen. Beispiel: `panzer-pong`. |
+| **Ein Ordner pro Spiel** | Der Ordnername ist die **Spiel-ID** und wird Teil des Links: `https://langwiligi.site/<spiel-id>/`. Nur Kleinbuchstaben, Ziffern und Bindestriche, keine Umlaute oder Leerzeichen, höchstens 40 Zeichen. Beispiel: `panzer-pong`. |
 | **Startdatei `index.html`** | Das Spiel startet mit `<spiel-id>/index.html`. Am besten steckt alles in dieser einen Datei (HTML, CSS, JS). |
 | **Nur relative Pfade** | Bilder und Sounds liegen im selben Ordner und werden relativ eingebunden (`sprite.png`, nicht `/sprite.png` oder `C:\...`). |
 | **Reines Frontend** | Kein eigener Server, kein PHP, kein Node, kein Build-Schritt (kein npm, Vite, Webpack). Die Datei muss direkt im Browser laufen, auch per Doppelklick lokal. Ausnahme: Fertig gebaute Open-Source-Spiele (z.B. die Formenfabrik). Dann liegt nur das gebaute Ergebnis im Spielordner und das Bauskript in `tools/<spiel-id>/`. Das richtet der Besitzer der Seite ein. |
@@ -113,7 +113,7 @@ room.send({ type: 'input', x: 1 });   // an alle anderen im Raum (JSON, max. 256
 room.close();
 ```
 
-- **Einladungslink**: `GameHub.SEITE + '/<spiel-id>/#' + code` (ergibt z.B. `http://46.224.94.231/<spiel-id>/#K7QD`). Die Adresse nie fest eintippen. Beim Laden prüft das Spiel `location.hash`, setzt den Code mit `GameHub.cleanCode(location.hash)` ins Beitreten-Feld und fragt nach dem Namen. Biete einen Knopf „Link kopieren“ an.
+- **Einladungslink**: `GameHub.SEITE + '/<spiel-id>/#' + code` (ergibt z.B. `https://langwiligi.site/<spiel-id>/#K7QD`). Die Adresse nie fest eintippen. Beim Laden prüft das Spiel `location.hash`, setzt den Code mit `GameHub.cleanCode(location.hash)` ins Beitreten-Feld und fragt nach dem Namen. Biete einen Knopf „Link kopieren“ an.
 - Mögliche Fehler beim Beitreten: `not-found`, `full`, `wrong-game`, `timeout`. Zeig sie mit `GameHub.errorText(e)` an.
 - Räume werden gelöscht, sobald alle draussen sind, spätestens nach 6 Stunden.
 
