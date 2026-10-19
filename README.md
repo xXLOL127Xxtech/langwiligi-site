@@ -45,6 +45,7 @@
 | [SBB Runner](http://46.224.94.231/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
 | [Schach](http://46.224.94.231/schach/) | Lokal · Online · Bots | Gegen einen Bot mit vier Stärken und drei Stilen. |
 | [Snake](http://46.224.94.231/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
+| [Strassenbaron](http://46.224.94.231/strassenbaron/) | Lokal · Online · Bots | Kaufen, bauen, abkassieren: der Brettspiel-Klassiker in 3D mit Schweizer Strassen, für 2 bis 6 Spieler. |
 | [Tic-Tac-Turbo](http://46.224.94.231/ultimate-tic-tac-toe/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
 | [Ur](http://46.224.94.231/koenigliches-ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
 | [Vier gewinnt](http://46.224.94.231/vier-gewinnt/) | Lokal · Online · Bots | Steine fallen lassen, vier in eine Reihe bringen. |

@@ -1,0 +1,3319 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Strassenbaron</title>
+<meta name="description" content="Kaufen, bauen, abkassieren: der Brettspiel-Klassiker in 3D mit Schweizer Strassen, Bots und Online-Modus.">
+<meta name="theme-color" content="#e8402f">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
+<meta name="spiel-tags" content="Brettspiel,2–6 Spieler,3D">
+<meta name="spiel-typ" content="Klassiker,Strategie,3D">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg: #0d0f13; --panel: rgba(18, 22, 30, .86); --line: rgba(255, 255, 255, .1);
+  --acc: #e8402f; --gold: #ffcf4a; --txt: #eef1f6; --dim: #9aa3b2; --ok: #3ccf6e; --bad: #ef5350;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--txt);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+canvas#fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; }
+button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.hidden { display: none !important; }
+#flash { position: fixed; inset: 0; pointer-events: none; z-index: 29; opacity: 0; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#hud > * { pointer-events: auto; }
+#topbar { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; }
+.ibtn { width: 42px; height: 42px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line);
+  font-size: 19px; display: grid; place-items: center; backdrop-filter: blur(6px); transition: transform .15s, background .15s; }
+.ibtn:hover { background: rgba(40, 46, 60, .95); transform: translateY(-1px); }
+#round { position: absolute; top: 12px; left: 50%; transform: translateX(calc(-50% - 130px)); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 12px; padding: 8px 16px; font-size: 14px; color: var(--dim); white-space: nowrap; }
+#round b { color: var(--txt); }
+
+#players { position: absolute; top: 12px; right: 12px; width: 248px; display: flex; flex-direction: column; gap: 7px;
+  max-height: calc(100% - 24px); overflow-y: auto; scrollbar-width: none; }
+#players::-webkit-scrollbar { display: none; }
+.pc { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 9px 11px 8px 14px;
+  backdrop-filter: blur(6px); transition: transform .35s cubic-bezier(.2, 1.4, .4, 1), box-shadow .35s, opacity .4s; overflow: hidden; }
+.pc::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--pcol); }
+.pc.active { transform: translateX(-8px) scale(1.03); box-shadow: 0 0 0 2px var(--pcol), 0 0 26px -2px var(--pcol); }
+.pc.active::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.09) 50%, transparent 70%);
+  background-size: 250% 100%; animation: shine 2.4s linear infinite; pointer-events: none; }
+@keyframes shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.pc.out { opacity: .38; filter: grayscale(1); }
+.pc .row1 { display: flex; align-items: center; gap: 8px; }
+.pc .tok { width: 26px; height: 26px; border-radius: 50%; background: var(--pcol); display: grid; place-items: center; font-size: 14px;
+  box-shadow: inset 0 -3px 6px rgba(0,0,0,.35), 0 0 10px -2px var(--pcol); flex: none; }
+.pc .nm { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc .nm small { font-weight: 500; color: var(--dim); font-size: 11px; margin-left: 4px; }
+.pc .st { font-size: 13px; }
+.pc .money { font-size: 21px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; margin: 3px 0 4px; letter-spacing: .01em; transition: color .3s; }
+.pc .money.up { color: var(--ok); } .pc .money.down { color: var(--bad); }
+.pc .props { display: flex; gap: 3px; flex-wrap: wrap; }
+.pc .pg { display: flex; gap: 1px; }
+.pc .pp { width: 8px; height: 12px; border-radius: 2px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); }
+.pc .pp.on { background: var(--c); border-color: rgba(0,0,0,.3); }
+.pc .pp.mo { background: repeating-linear-gradient(45deg, var(--c) 0 2px, #222 2px 4px); }
+.pc .delta { position: absolute; right: 12px; top: 30px; font-weight: 800; font-size: 17px; pointer-events: none; animation: delta 1.5s ease-out forwards; }
+@keyframes delta { 0% { opacity: 0; transform: translateY(8px) scale(.6); } 15% { opacity: 1; transform: translateY(0) scale(1.15); } 30% { transform: scale(1); } 100% { opacity: 0; transform: translateY(-22px); } }
+
+#actions { position: absolute; left: calc(50% - 130px); transform: translateX(-50%); bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  max-width: calc(100vw - 290px); }
+#ainfo { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 7px 16px; font-size: 15px; text-align: center; backdrop-filter: blur(6px); max-width: 640px; }
+#ainfo:empty { display: none; }
+#abtns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.btn { padding: 11px 18px; border-radius: 12px; background: rgba(40, 46, 60, .92); border: 1px solid var(--line); font-weight: 650; font-size: 15px;
+  transition: transform .12s, filter .15s, background .15s; white-space: nowrap; backdrop-filter: blur(6px); }
+.btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .4; cursor: default; filter: grayscale(.85); }
+.btn.main { background: linear-gradient(180deg, #ff5a45, #c92a1b); border-color: rgba(255,255,255,.25); font-size: 17px; padding: 13px 26px;
+  box-shadow: 0 6px 22px -6px rgba(232, 64, 47, .9); animation: pulse 1.8s ease-in-out infinite; }
+.btn.gold { background: linear-gradient(180deg, #ffd86a, #d99a12); color: #2b1d00; border-color: rgba(255,255,255,.4); }
+.btn.green { background: linear-gradient(180deg, #4fdc7f, #1f9a4a); color: #032611; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 6px 22px -6px rgba(232,64,47,.9); } 50% { box-shadow: 0 6px 30px 0 rgba(255,110,80,.95); } }
+.kbd { display: inline-block; font-size: 11px; padding: 1px 5px; border-radius: 4px; background: rgba(255,255,255,.14); margin-left: 6px; font-weight: 600; vertical-align: 1px; }
+.btn.gold .kbd, .btn.green .kbd { background: rgba(0,0,0,.15); }
+
+#log { position: absolute; left: 12px; bottom: 12px; width: 300px; max-height: 26vh; overflow: hidden; font-size: 12.5px; line-height: 1.4;
+  display: flex; flex-direction: column-reverse; mask-image: linear-gradient(to top, #000 65%, transparent); -webkit-mask-image: linear-gradient(to top, #000 65%, transparent); pointer-events: none; }
+#log div { background: rgba(10, 12, 18, .6); padding: 3px 9px; border-radius: 7px; margin-top: 3px; color: #c9d0db; animation: logIn .4s ease-out; }
+@keyframes logIn { from { opacity: 0; transform: translateX(-20px); } }
+
+#banner { position: fixed; left: calc(50% - 130px); top: 38%; transform: translate(-50%, -50%); z-index: 25; pointer-events: none; text-align: center; white-space: nowrap; }
+#banner .b { font-size: 54px; font-weight: 900; letter-spacing: .02em; text-shadow: 0 4px 0 rgba(0,0,0,.45), 0 0 40px var(--bc, #e8402f);
+  -webkit-text-stroke: 1.5px rgba(0,0,0,.35); color: #fff; animation: bannerIn 1.6s cubic-bezier(.2, 1.3, .3, 1) forwards; }
+#banner .s { font-size: 19px; font-weight: 700; color: #dfe6f0; margin-top: 4px; animation: bannerSub 1.6s ease forwards; text-shadow: 0 2px 6px #000; }
+@keyframes bannerIn { 0% { opacity: 0; transform: scale(2.6) rotate(-6deg); filter: blur(10px); } 18% { opacity: 1; transform: scale(.92) rotate(1deg); filter: blur(0); }
+  28% { transform: scale(1.04); } 36%, 78% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.85) translateY(-30px); } }
+@keyframes bannerSub { 0%, 15% { opacity: 0; transform: translateY(12px); } 30%, 78% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* ---------- Karten ---------- */
+#cardWrap { position: fixed; inset: 0; z-index: 26; pointer-events: none; }
+#ecardO { position: absolute; inset: 0; perspective: 1400px; opacity: 0; }
+#ecard { position: absolute; width: 380px; height: 230px; left: 0; top: 0; transform-style: preserve-3d; }
+#ecard .face { position: absolute; inset: 0; border-radius: 16px; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+#ecard .back { display: grid; place-items: center; font-size: 110px; font-weight: 900; color: #fff; text-shadow: 0 5px 0 rgba(0,0,0,.25); }
+#ecard .front { transform: rotateY(180deg); background: #fffaf0; color: #1b1b1b; padding: 20px 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; }
+#ecard .front h3 { margin: 0; font-size: 15px; letter-spacing: .25em; text-transform: uppercase; }
+#ecard .front p { margin: 0; font-size: 20px; font-weight: 650; line-height: 1.35; }
+#ecard .front .ic { font-size: 40px; line-height: 1; }
+#ecard.chance .back { background: radial-gradient(circle at 30% 25%, #ffb347, #f7941d 55%, #c96a00); }
+#ecard.chance .front { border: 6px solid #f7941d; } #ecard.chance h3 { color: #d97800; }
+#ecard.chest .back { background: radial-gradient(circle at 30% 25%, #9fe0ff, #3aa6dd 55%, #1569a0); font-size: 90px; }
+#ecard.chest .front { border: 6px solid #3aa6dd; } #ecard.chest h3 { color: #1b7fb8; }
+
+.deed { width: 250px; background: #fffdf6; color: #1a1a1a; border-radius: 12px; padding: 10px; box-shadow: 0 14px 40px rgba(0,0,0,.5); font-size: 13.5px; flex: none; }
+.deed .hd { background: var(--dc, #888); color: var(--dt, #fff); border-radius: 6px; padding: 8px 6px 9px; text-align: center; margin-bottom: 8px; border: 2px solid rgba(0,0,0,.6); }
+.deed .hd small { display: block; font-size: 10px; letter-spacing: .2em; font-weight: 700; opacity: .85; }
+.deed .hd b { display: block; font-size: 19px; line-height: 1.15; margin-top: 3px; }
+.deed .hd i { font-style: normal; font-size: 12px; opacity: .85; }
+.deed .ico { font-size: 44px; text-align: center; margin: 4px 0; }
+.deed table { width: 100%; border-collapse: collapse; }
+.deed td { padding: 2px 4px; } .deed td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.deed tr.cur td { background: #ffe58a; border-radius: 4px; }
+.deed .ft { border-top: 1px solid #ccc; margin-top: 6px; padding-top: 5px; font-size: 12.5px; }
+.deed .own { margin-top: 7px; text-align: center; font-weight: 700; padding: 4px; border-radius: 6px; color: #fff; }
+.deed .mort { color: #b3261e; text-align: center; font-weight: 800; letter-spacing: .1em; margin-top: 4px; }
+
+/* ---------- Fenster ---------- */
+.ovl { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(5, 7, 10, .5); backdrop-filter: blur(3px); animation: fadeIn .25s; padding: 14px; }
+@keyframes fadeIn { from { opacity: 0; } }
+.win { background: rgba(20, 24, 33, .97); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; width: min(860px, 100%); max-height: calc(100vh - 28px);
+  overflow-y: auto; box-shadow: 0 30px 80px rgba(0,0,0,.6); animation: popIn .35s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes popIn { from { opacity: 0; transform: scale(.85) translateY(20px); } }
+.win h2 { margin: 0 0 12px; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+.win h2 .x { margin-left: auto; width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,.08); font-size: 16px; }
+.win .foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; flex-wrap: wrap; }
+.mrow { display: grid; grid-template-columns: 14px 1fr 90px auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 10px; }
+.mrow:nth-child(odd) { background: rgba(255,255,255,.035); }
+.mrow .chip { width: 14px; height: 26px; border-radius: 4px; }
+.mrow .n { font-weight: 650; } .mrow .n small { color: var(--dim); font-weight: 500; margin-left: 6px; }
+.mrow .lv { font-size: 15px; letter-spacing: 1px; }
+.mrow .bs { display: flex; gap: 5px; }
+.mrow .bs .btn { padding: 6px 10px; font-size: 13px; }
+.mgrp { margin: 10px 0 3px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); }
+.tcols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tcol { background: rgba(255,255,255,.035); border-radius: 12px; padding: 10px; }
+.tcol h3 { margin: 0 0 8px; font-size: 15px; }
+.titem { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 8px; cursor: pointer; font-size: 14px; border: 1px solid transparent; }
+.titem:hover { background: rgba(255,255,255,.06); }
+.titem.sel { background: rgba(255, 207, 74, .15); border-color: rgba(255, 207, 74, .5); }
+.titem.dis { opacity: .35; cursor: default; }
+.titem .chip { width: 10px; height: 18px; border-radius: 3px; flex: none; }
+.mny { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.mny input { width: 90px; }
+input[type=text], input[type=number], select { font: inherit; color: var(--txt); background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 9px; padding: 7px 10px; outline: none; }
+input:focus, select:focus { border-color: var(--gold); }
+.ptabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.ptab { padding: 7px 12px; border-radius: 10px; background: rgba(255,255,255,.06); border: 2px solid transparent; font-weight: 650; }
+.ptab.sel { border-color: var(--pcol); background: rgba(255,255,255,.12); }
+.auc { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.auc .big { font-size: 46px; font-weight: 900; color: var(--gold); font-variant-numeric: tabular-nums; text-shadow: 0 0 20px rgba(255, 207, 74, .5); }
+.auc .big.bump { animation: bump .35s; }
+@keyframes bump { 40% { transform: scale(1.25); color: #fff; } }
+.bidders { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.bidder { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 650; border: 2px solid var(--pcol); }
+.bidder.gone { opacity: .3; text-decoration: line-through; }
+.bidder.now { background: var(--pcol); color: #000; }
+
+/* ---------- Menü ---------- */
+#menu { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: radial-gradient(ellipse at center, rgba(13,15,19,.35), rgba(13,15,19,.88)); padding: 14px; }
+.mpanel { width: min(560px, 100%); background: rgba(16, 19, 26, .9); border: 1px solid var(--line); border-radius: 22px; padding: 26px 28px; backdrop-filter: blur(10px);
+  box-shadow: 0 40px 100px rgba(0,0,0,.6); max-height: calc(100vh - 28px); overflow-y: auto; animation: popIn .45s cubic-bezier(.2, 1.3, .4, 1); }
+.mpanel.wide { width: min(780px, 100%); }
+.logo { text-align: center; margin-bottom: 18px; }
+.logo .t { display: inline-block; background: linear-gradient(180deg, #ff5a45, #b8200f); color: #fff; font-weight: 900; font-size: 44px; letter-spacing: .06em;
+  padding: 6px 26px 8px; border-radius: 6px; border: 3px solid #fff; box-shadow: 0 0 0 3px #b8200f, 0 14px 40px rgba(232, 64, 47, .45); transform: rotate(-3deg);
+  text-shadow: 0 3px 0 rgba(0,0,0,.3); animation: logoWob 4s ease-in-out infinite; }
+@keyframes logoWob { 0%, 100% { transform: rotate(-3deg) scale(1); } 50% { transform: rotate(-1.5deg) scale(1.03); } }
+.logo .sub { color: var(--dim); margin-top: 12px; font-size: 15px; }
+.mbtns { display: grid; gap: 10px; }
+.mbtns .btn { padding: 15px; font-size: 17px; text-align: left; display: flex; align-items: center; gap: 12px; }
+.mbtns .btn span.e { font-size: 24px; } .mbtns .btn small { display: block; font-weight: 500; color: var(--dim); font-size: 13px; }
+.mbtns .btn.main small { color: rgba(255,255,255,.8); }
+.seat { display: grid; grid-template-columns: 34px 1fr 150px 34px; gap: 8px; align-items: center; margin-bottom: 7px; }
+.seat .tok { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; cursor: pointer; box-shadow: inset 0 -3px 6px rgba(0,0,0,.35); }
+.seat .rm { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,.07); }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.opts label { font-size: 13px; color: var(--dim); display: flex; flex-direction: column; gap: 4px; }
+.help { font-size: 14px; line-height: 1.55; color: #cfd6e0; }
+.help h3 { margin: 14px 0 4px; font-size: 15px; color: var(--txt); }
+.help ul { margin: 4px 0; padding-left: 20px; }
+.code { font-size: 38px; font-weight: 900; letter-spacing: .2em; text-align: center; color: var(--gold); margin: 6px 0; }
+.err { color: #ff8a80; font-size: 14px; min-height: 18px; margin-top: 6px; }
+.rank { display: grid; grid-template-columns: 30px 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; font-size: 16px; }
+.rank:first-child { background: rgba(255, 207, 74, .14); font-weight: 800; }
+.board-wrap { margin-top: 14px; }
+#toast { position: fixed; left: calc(50% - 130px); top: 70px; transform: translateX(-50%); z-index: 60; background: rgba(30, 34, 44, .96); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 18px; font-size: 15px; pointer-events: none; transition: opacity .3s, transform .3s; opacity: 0; }
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(6px); }
+#info { position: fixed; z-index: 35; pointer-events: auto; animation: popIn .25s cubic-bezier(.2, 1.4, .4, 1); }
+@media (max-height: 700px) { .pc .money { font-size: 18px; margin: 1px 0 2px; } .pc { padding: 6px 10px 6px 14px; } #log { max-height: 18vh; } }
+</style>
+</head>
+<body>
+<canvas id="gl" tabindex="0"></canvas>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <button class="ibtn" id="bMenu" title="Menü (Esc)">☰</button>
+    <button class="ibtn" id="bSound" title="Ton an/aus (M)">🔊</button>
+    <button class="ibtn" id="bCam" title="Kamera zurücksetzen (C)">🎥</button>
+    <button class="ibtn" id="bHelp" title="Anleitung">?</button>
+  </div>
+  <div id="round"></div>
+  <div id="players"></div>
+  <div id="actions"><div id="ainfo"></div><div id="abtns"></div></div>
+  <div id="log"></div>
+</div>
+<div id="banner"></div>
+<div id="cardWrap"><div id="ecardO"><div id="ecard" class="hidden"><div class="face back">?</div><div class="face front"><h3>Ereignis</h3><div class="ic"></div><p></p></div></div></div></div>
+<div id="modal"></div>
+<div id="menu"></div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../_shared/hub.js"></script>
+<script>
+'use strict';
+const GAME_ID = 'strassenbaron';
+const HUB = window.GameHub || null;
+const TEST = /[?&]test\b/.test(location.search);
+const COVER = /[?&]cover\b/.test(location.search);
+
+// ======================================================================
+//  Spieldaten
+// ======================================================================
+const GROUPS = [
+  { n: 'Braun', c: '#8b4a2b', h: 50 }, { n: 'Hellblau', c: '#8fd3f4', h: 50 }, { n: 'Pink', c: '#d6399a', h: 100 }, { n: 'Orange', c: '#f39200', h: 100 },
+  { n: 'Rot', c: '#e2231a', h: 150 }, { n: 'Gelb', c: '#ffe100', h: 150 }, { n: 'Grün', c: '#1fa955', h: 200 }, { n: 'Dunkelblau', c: '#0a5cb0', h: 200 },
+];
+const S = (n, c, g, p, r) => ({ t: 'street', n, c, g, p, r });
+const F = [
+  { t: 'go', n: 'Los' },
+  S('Hauptgasse', 'Solothurn', 0, 60, [2, 10, 30, 90, 160, 250]),
+  { t: 'chest', n: 'Gemeinschaft' },
+  S('Rathausgasse', 'Aarau', 0, 60, [4, 20, 60, 180, 320, 450]),
+  { t: 'tax', n: 'Einkommens-steuer', a: 200 },
+  { t: 'rail', n: 'Bahnhof Genf', p: 200 },
+  S('Marktgasse', 'Biel', 1, 100, [6, 30, 90, 270, 400, 550]),
+  { t: 'chance', n: 'Ereignis' },
+  S('Bälliz', 'Thun', 1, 100, [6, 30, 90, 270, 400, 550]),
+  S('Vordergasse', 'Schaffhausen', 1, 120, [8, 40, 100, 300, 450, 600]),
+  { t: 'jail', n: 'Gefängnis' },
+  S('Pilatusstrasse', 'Luzern', 2, 140, [10, 50, 150, 450, 625, 750]),
+  { t: 'util', n: 'Elektrizitäts-werk', p: 150 },
+  S('Schwanenplatz', 'Luzern', 2, 140, [10, 50, 150, 450, 625, 750]),
+  S('Kapellplatz', 'Luzern', 2, 160, [12, 60, 180, 500, 700, 900]),
+  { t: 'rail', n: 'Bahnhof Bern', p: 200 },
+  S('Spalenberg', 'Basel', 3, 180, [14, 70, 200, 550, 750, 950]),
+  { t: 'chest', n: 'Gemeinschaft' },
+  S('Freie Strasse', 'Basel', 3, 180, [14, 70, 200, 550, 750, 950]),
+  S('Marktplatz', 'Basel', 3, 200, [16, 80, 220, 600, 800, 1000]),
+  { t: 'parking', n: 'Freier Parkplatz' },
+  S('Rue de Bourg', 'Lausanne', 4, 220, [18, 90, 250, 700, 875, 1050]),
+  { t: 'chance', n: 'Ereignis' },
+  S('Place St-François', 'Lausanne', 4, 220, [18, 90, 250, 700, 875, 1050]),
+  S('Avenue de la Gare', 'Lausanne', 4, 240, [20, 100, 300, 750, 925, 1100]),
+  { t: 'rail', n: 'Bahnhof Basel SBB', p: 200 },
+  S('Marktgasse', 'Bern', 5, 260, [22, 110, 330, 800, 975, 1150]),
+  S('Kramgasse', 'Bern', 5, 260, [22, 110, 330, 800, 975, 1150]),
+  { t: 'util', n: 'Wasserwerk', p: 150 },
+  S('Bundesplatz', 'Bern', 5, 280, [24, 120, 360, 850, 1025, 1200]),
+  { t: 'gotojail', n: 'Gehe ins Gefängnis' },
+  S('Rue du Rhône', 'Genf', 6, 300, [26, 130, 390, 900, 1100, 1275]),
+  S('Quai du Mont-Blanc', 'Genf', 6, 300, [26, 130, 390, 900, 1100, 1275]),
+  { t: 'chest', n: 'Gemeinschaft' },
+  S('Rue du Marché', 'Genf', 6, 320, [28, 150, 450, 1000, 1200, 1400]),
+  { t: 'rail', n: 'Zürich HB', p: 200 },
+  { t: 'chance', n: 'Ereignis' },
+  S('Bahnhofstrasse', 'Zürich', 7, 350, [35, 175, 500, 1100, 1300, 1500]),
+  { t: 'tax', n: 'Luxussteuer', a: 100 },
+  S('Paradeplatz', 'Zürich', 7, 400, [50, 200, 600, 1400, 1700, 2000]),
+];
+GROUPS.forEach((g, i) => { g.f = F.map((f, j) => f.g === i && f.t === 'street' ? j : -1).filter(j => j >= 0); });
+const RAILS = [5, 15, 25, 35], UTILS = [12, 28];
+const BUYABLE = F.map((f, i) => (f.p ? i : -1)).filter(i => i >= 0);
+const fname = i => F[i].t === 'street' ? F[i].n + ' ' + F[i].c : F[i].n.replace('-', '');
+const fr = n => n.toLocaleString('de-CH').replace(/,/g, "'") + ' Fr.';
+const fieldColor = i => F[i].t === 'street' ? GROUPS[F[i].g].c : F[i].t === 'rail' ? '#3a3a3a' : F[i].t === 'util' ? '#7d8a99' : '#999';
+const mortVal = i => F[i].p / 2;
+const unmortCost = i => Math.ceil(F[i].p / 2 * 1.1);
+
+const CHANCE = [
+  { t: 'Rücke vor bis auf Los und ziehe 200 Fr. ein.', a: 'goto', f: 0, i: '🏁' },
+  { t: 'Rücke vor bis zur Avenue de la Gare in Lausanne. Kommst du über Los, ziehe 200 Fr. ein.', a: 'goto', f: 24, i: '🚶' },
+  { t: 'Rücke vor bis zur Pilatusstrasse in Luzern. Kommst du über Los, ziehe 200 Fr. ein.', a: 'goto', f: 11, i: '🚶' },
+  { t: 'Rücke vor bis zum Paradeplatz in Zürich.', a: 'goto', f: 39, i: '💎' },
+  { t: 'Mach einen Ausflug zum Bahnhof Genf. Kommst du über Los, ziehe 200 Fr. ein.', a: 'goto', f: 5, i: '🚆' },
+  { t: 'Rücke vor bis zum nächsten Bahnhof. Gehört er jemandem, zahle die doppelte Miete.', a: 'rail', i: '🚆' },
+  { t: 'Rücke vor bis zum nächsten Bahnhof. Gehört er jemandem, zahle die doppelte Miete.', a: 'rail', i: '🚆' },
+  { t: 'Rücke vor bis zum nächsten Werk. Gehört es jemandem, würfle und zahle das Zehnfache der Augen.', a: 'util', i: '⚡' },
+  { t: 'Die Bank zahlt dir eine Dividende von 50 Fr.', a: 'get', n: 50, i: '📈' },
+  { t: 'Du kommst aus dem Gefängnis frei! Behalte diese Karte, bis du sie brauchst oder verkaufst.', a: 'free', i: '🗝️' },
+  { t: 'Gehe 3 Felder zurück.', a: 'back', n: 3, i: '↩️' },
+  { t: 'Gehe direkt ins Gefängnis. Gehe nicht über Los und ziehe keine 200 Fr. ein.', a: 'jail', i: '🚓' },
+  { t: 'Renoviere deine Gebäude: Zahle 25 Fr. pro Haus und 100 Fr. pro Hotel.', a: 'repair', h: 25, H: 100, i: '🔨' },
+  { t: 'Busse wegen zu schnellem Fahren: Zahle 15 Fr.', a: 'pay', n: 15, i: '📸' },
+  { t: 'Du wirst Präsident des Quartiervereins. Zahle jedem Spieler 50 Fr.', a: 'payall', n: 50, i: '🎩' },
+  { t: 'Dein Bausparvertrag wird fällig. Ziehe 150 Fr. ein.', a: 'get', n: 150, i: '🏦' },
+];
+const CHEST = [
+  { t: 'Rücke vor bis auf Los und ziehe 200 Fr. ein.', a: 'goto', f: 0, i: '🏁' },
+  { t: 'Bankirrtum zu deinen Gunsten! Ziehe 200 Fr. ein.', a: 'get', n: 200, i: '🤑' },
+  { t: 'Arztrechnung. Zahle 50 Fr.', a: 'pay', n: 50, i: '🩺' },
+  { t: 'Du verkaufst Aktien und erhältst 50 Fr.', a: 'get', n: 50, i: '📊' },
+  { t: 'Du kommst aus dem Gefängnis frei! Behalte diese Karte, bis du sie brauchst oder verkaufst.', a: 'free', i: '🗝️' },
+  { t: 'Gehe direkt ins Gefängnis. Gehe nicht über Los und ziehe keine 200 Fr. ein.', a: 'jail', i: '🚓' },
+  { t: 'Dein Ferienfonds wird ausbezahlt. Ziehe 100 Fr. ein.', a: 'get', n: 100, i: '🏖️' },
+  { t: 'Steuerrückzahlung. Ziehe 20 Fr. ein.', a: 'get', n: 20, i: '🧾' },
+  { t: 'Du hast Geburtstag! Jeder Spieler schenkt dir 10 Fr.', a: 'collect', n: 10, i: '🎂' },
+  { t: 'Deine Lebensversicherung wird fällig. Ziehe 100 Fr. ein.', a: 'get', n: 100, i: '📜' },
+  { t: 'Spitalrechnung. Zahle 100 Fr.', a: 'pay', n: 100, i: '🏥' },
+  { t: 'Schulgeld. Zahle 50 Fr.', a: 'pay', n: 50, i: '🎒' },
+  { t: 'Du erhältst 25 Fr. Beratungshonorar.', a: 'get', n: 25, i: '💼' },
+  { t: 'Strassenreparaturen: Zahle 40 Fr. pro Haus und 115 Fr. pro Hotel.', a: 'repair', h: 40, H: 115, i: '🚧' },
+  { t: 'Du hast den zweiten Preis im Schönheitswettbewerb gewonnen. Ziehe 10 Fr. ein.', a: 'get', n: 10, i: '🌹' },
+  { t: 'Du erbst 100 Fr.', a: 'get', n: 100, i: '👵' },
+];
+const DECKS = { chance: CHANCE, chest: CHEST };
+
+const PCOLS = ['#4f8ff7', '#ef5350', '#3ccf6e', '#ffc93c', '#b26cf0', '#ff8a3d'];
+const TOKENS = [
+  { n: 'Zylinder', e: '🎩' }, { n: 'Rakete', e: '🚀' }, { n: 'Krone', e: '👑' },
+  { n: 'Diamant', e: '💎' }, { n: 'Pokal', e: '🏆' }, { n: 'Figur', e: '♟️' },
+];
+const BOTN = ['', 'Leicht', 'Mittel', 'Schwer'];
+const BOTNAMES = ['Bot Heidi', 'Bot Ueli', 'Bot Vreni', 'Bot Sepp', 'Bot Trudi', 'Bot Fritz'];
+
+// ======================================================================
+//  Spiellogik (läuft beim Host bzw. lokal)
+// ======================================================================
+let G = null;          // massgeblicher Spielzustand
+let E = [];            // Ereignisse der aktuellen Aktion (für Animationen)
+const rnd = n => Math.floor(Math.random() * n);
+const r6 = () => 1 + rnd(6);
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const clone = o => JSON.parse(JSON.stringify(o));
+
+function newGame(seats, opts) {
+  return {
+    v: 1,
+    players: seats.map((s, i) => ({ name: s.name, col: s.col, tok: s.tok, bot: s.bot || 0, seat: s.seat == null ? -1 : s.seat,
+      money: opts.start, pos: 0, jail: false, tries: 0, cards: [], out: false, dbl: 0, lastTrade: -9, idx: i })),
+    own: F.map(() => -1), houses: F.map(() => 0), mort: F.map(() => false),
+    bankHouses: 32, bankHotels: 12,
+    decks: { chance: shuffle([...CHANCE.keys()]), chest: shuffle([...CHEST.keys()]) },
+    cur: 0, round: 1, phase: 'roll', dice: [3, 4], lastSum: 7,
+    auction: null, debts: [], after: 'post', trade: null, ret: null,
+    opts, pot: 0, log: [], winner: -1, seq: 0,
+  };
+}
+
+function emit(k, d) { G.seq++; E.push(Object.assign({ k }, d || {}, { s: clone(G) })); }
+function log(t) { G.log.push(t.replace(/Fr\.\./g, 'Fr.')); if (G.log.length > 40) G.log.shift(); }
+const P = i => G.players[i];
+const alive = () => G.players.filter(p => !p.out);
+const pname = i => (i < 0 ? 'Bank' : P(i).name);
+
+function actorOf(g) {
+  switch (g.phase) {
+    case 'auction': return g.auction.order[g.auction.i];
+    case 'debt': return g.debts[0].p;
+    case 'trade': return g.trade.to;
+    case 'over': return -1;
+    default: return g.cur;
+  }
+}
+function ownsGroup(g, p, gi) { return GROUPS[gi].f.every(f => g.own[f] === p); }
+function groupHasBuildings(g, gi) { return GROUPS[gi].f.some(f => g.houses[f] > 0); }
+function countOwned(g, p, list) { return list.filter(f => g.own[f] === p).length; }
+
+function rentOf(g, f, sum, mult) {
+  const o = g.own[f], fd = F[f];
+  if (o < 0 || g.mort[f]) return 0;
+  let r = 0;
+  if (fd.t === 'street') {
+    const lv = g.houses[f];
+    r = lv ? fd.r[lv] : fd.r[0] * (ownsGroup(g, o, fd.g) ? 2 : 1);
+  } else if (fd.t === 'rail') {
+    r = 25 * Math.pow(2, countOwned(g, o, RAILS) - 1);
+  } else if (fd.t === 'util') {
+    r = sum * (countOwned(g, o, UTILS) === 2 ? 10 : 4);
+  }
+  return r * (mult || 1);
+}
+function worth(g, p) {
+  let w = g.players[p].money;
+  for (const f of BUYABLE) if (g.own[f] === p) {
+    w += g.mort[f] ? F[f].p / 2 : F[f].p;
+    if (F[f].t === 'street') w += g.houses[f] * GROUPS[F[f].g].h;
+  }
+  return w;
+}
+// Geld, das ein Spieler höchstens auftreiben kann (Häuser verkaufen + Hypotheken)
+function liquid(g, p) {
+  let w = g.players[p].money;
+  for (const f of BUYABLE) if (g.own[f] === p) {
+    if (F[f].t === 'street') w += g.houses[f] * GROUPS[F[f].g].h / 2;
+    if (!g.mort[f]) w += F[f].p / 2;
+  }
+  return w;
+}
+
+// ---------- Geld ----------
+function transfer(from, to, amt, why) {
+  if (amt <= 0) return;
+  if (from >= 0) P(from).money -= amt;
+  if (to >= 0) P(to).money += amt;
+  else if (to === -2) G.pot += amt;
+  emit('money', { from, to, amt, why });
+}
+// Bank/Topf-Zahlung: Steuern landen bei der Hausregel im Topf
+const bankOrPot = () => (G.opts.parking ? -2 : -1);
+function charge(p, amt, to, why) {
+  if (amt <= 0) return true;
+  if (P(p).money >= amt) { transfer(p, to, amt, why); return true; }
+  G.debts.push({ p, amt, to, why });
+  return false;
+}
+
+// ---------- Bewegung ----------
+function moveSteps(p, steps) {
+  const pl = P(p), path = [];
+  let pos = pl.pos, go = false;
+  const dir = steps < 0 ? -1 : 1;
+  for (let i = 0; i < Math.abs(steps); i++) {
+    pos = (pos + dir + 40) % 40;
+    path.push(pos);
+    if (pos === 0 && dir > 0) go = true;
+  }
+  pl.pos = pos;
+  emit('move', { p, path });
+  if (go) { log(pl.name + ' kommt über Los und zieht 200 Fr. ein.'); transfer(-1, p, 200, 'go'); }
+}
+function moveTo(p, target) {
+  const d = (target - P(p).pos + 40) % 40;
+  moveSteps(p, d === 0 ? 40 : d);
+}
+function sendToJail(p) {
+  const pl = P(p);
+  pl.pos = 10; pl.jail = true; pl.tries = 0; pl.dbl = 0;
+  log(pl.name + ' muss ins Gefängnis!');
+  emit('jail', { p });
+}
+function release(p) { P(p).jail = false; P(p).tries = 0; emit('free', { p }); }
+
+// ---------- Landen ----------
+function land(p, sum, mult) {
+  const pl = P(p), f = pl.pos, fd = F[f];
+  G.lastSum = sum;
+  switch (fd.t) {
+    case 'street': case 'rail': case 'util': {
+      const o = G.own[f];
+      if (o < 0) { G.phase = 'buy'; emit('offer', { p, f }); return; }
+      if (o === p) { log(pl.name + ' ist auf dem eigenen Feld ' + fname(f) + '.'); break; }
+      if (G.mort[f]) { log(fname(f) + ' hat eine Hypothek, keine Miete.'); break; }
+      let r;
+      if (fd.t === 'util' && mult === 10) {
+        const d = [r6(), r6()]; G.dice = d; emit('dice', { p, d, extra: true });
+        r = (d[0] + d[1]) * 10;
+      } else r = rentOf(G, f, sum, fd.t === 'rail' ? mult : 1);
+      log(pl.name + ' zahlt ' + fr(r) + ' Miete an ' + P(o).name + '.');
+      emit('rent', { p, o, f, amt: r });
+      charge(p, r, o, 'rent');
+      break;
+    }
+    case 'tax':
+      log(pl.name + ' zahlt ' + fr(fd.a) + ' ' + fd.n.replace('-', '') + '.');
+      charge(p, fd.a, bankOrPot(), 'tax');
+      break;
+    case 'chance': case 'chest':
+      drawCard(p, fd.t);
+      return;
+    case 'gotojail':
+      sendToJail(p);
+      break;
+    case 'parking':
+      if (G.opts.parking && G.pot > 0) {
+        log(pl.name + ' räumt den Parkplatz-Topf ab: ' + fr(G.pot) + '!');
+        const a = G.pot; G.pot = 0; pl.money += a;
+        emit('jackpot', { p, amt: a });
+      }
+      break;
+  }
+  settle('post');
+}
+
+function drawCard(p, deck) {
+  const d = G.decks[deck];
+  const ci = d.shift();
+  const c = DECKS[deck][ci];
+  const pl = P(p);
+  emit('card', { p, deck, ci });
+  log(pl.name + ' zieht eine ' + (deck === 'chance' ? 'Ereigniskarte' : 'Gemeinschaftskarte') + ': ' + c.t);
+  if (c.a === 'free') pl.cards.push(deck + ':' + ci); else d.push(ci);
+  switch (c.a) {
+    case 'goto':
+      moveTo(p, c.f); land(p, G.lastSum); return;
+    case 'rail': {
+      let t = pl.pos; do t = (t + 1) % 40; while (!RAILS.includes(t));
+      moveTo(p, t); land(p, G.lastSum, 2); return;
+    }
+    case 'util': {
+      let t = pl.pos; do t = (t + 1) % 40; while (!UTILS.includes(t));
+      moveTo(p, t); land(p, G.lastSum, 10); return;
+    }
+    case 'back':
+      moveSteps(p, -c.n); land(p, G.lastSum); return;
+    case 'jail': sendToJail(p); break;
+    case 'get': transfer(-1, p, c.n, 'card'); break;
+    case 'pay': charge(p, c.n, bankOrPot(), 'card'); break;
+    case 'repair': {
+      let h = 0, H = 0;
+      for (const f of BUYABLE) if (G.own[f] === p) { if (G.houses[f] === 5) H++; else h += G.houses[f]; }
+      charge(p, h * c.h + H * c.H, bankOrPot(), 'card');
+      break;
+    }
+    case 'payall':
+      for (const q of G.players) if (!q.out && q.idx !== p) charge(p, c.n, q.idx, 'card');
+      break;
+    case 'collect':
+      for (const q of G.players) if (!q.out && q.idx !== p) charge(q.idx, c.n, p, 'card');
+      break;
+  }
+  settle('post');
+}
+
+// Nach einer Aktion: offene Schulden zuerst, sonst weiter
+function settle(after) {
+  if (G.phase === 'over') return;
+  if (G.debts.length) { G.after = after; G.phase = 'debt'; emit('debt', { d: G.debts[0] }); return; }
+  resume(after);
+}
+function resume(after) {
+  if (after === 'jailmove' && !P(G.cur).out) {
+    const p = G.cur;
+    moveSteps(p, G.dice[0] + G.dice[1]);
+    land(p, G.dice[0] + G.dice[1]);
+    return;
+  }
+  post();
+}
+function post() {
+  if (G.phase === 'over') return;
+  const pl = P(G.cur);
+  if (pl.out) return nextTurn();
+  if (pl.dbl > 0 && !pl.jail) { G.phase = 'roll'; emit('again', { p: G.cur }); }
+  else { G.phase = 'end'; emit('phase'); }
+}
+function nextTurn() {
+  if (alive().length <= 1) return finish(alive()[0] ? alive()[0].idx : 0);
+  let n = G.cur;
+  do {
+    n = (n + 1) % G.players.length;
+    if (n === 0) G.round++;
+  } while (P(n).out);
+  if (G.opts.rounds && G.round > G.opts.rounds) {
+    G.round = G.opts.rounds;
+    let best = -1, bw = -1;
+    for (const q of alive()) { const w = worth(G, q.idx); if (w > bw) { bw = w; best = q.idx; } }
+    log('Die letzte Runde ist gespielt.');
+    return finish(best);
+  }
+  G.cur = n;
+  const pl = P(n);
+  pl.dbl = 0;
+  G.phase = pl.jail ? 'jail' : 'roll';
+  emit('turn', { p: n });
+}
+function finish(w) {
+  G.phase = 'over'; G.winner = w;
+  log('🏆 ' + P(w).name + ' gewinnt das Spiel!');
+  emit('win', { p: w });
+}
+
+function doRoll(p) {
+  const pl = P(p);
+  const d = [r6(), r6()];
+  G.dice = d;
+  emit('dice', { p, d });
+  const dbl = d[0] === d[1];
+  pl.dbl = dbl ? pl.dbl + 1 : 0;
+  if (pl.dbl >= 3) {
+    log(pl.name + ' würfelt zum dritten Mal einen Pasch.');
+    sendToJail(p);
+    return settle('post');
+  }
+  if (dbl) log(pl.name + ' würfelt einen Pasch (' + d[0] + '+' + d[1] + ')!');
+  moveSteps(p, d[0] + d[1]);
+  land(p, d[0] + d[1]);
+}
+
+// ---------- Bauen und Hypotheken ----------
+function canBuild(g, p, f) {
+  const fd = F[f];
+  if (fd.t !== 'street' || g.own[f] !== p) return false;
+  const lv = g.houses[f];
+  if (lv >= 5 || !ownsGroup(g, p, fd.g)) return false;
+  const grp = GROUPS[fd.g].f;
+  if (grp.some(x => g.mort[x])) return false;
+  if (grp.some(x => g.houses[x] < lv)) return false;
+  if (g.players[p].money < GROUPS[fd.g].h) return false;
+  if (lv === 4 ? g.bankHotels < 1 : g.bankHouses < 1) return false;
+  return true;
+}
+function canSell(g, p, f) {
+  const fd = F[f];
+  if (fd.t !== 'street' || g.own[f] !== p || g.houses[f] === 0) return false;
+  const lv = g.houses[f];
+  return !GROUPS[fd.g].f.some(x => g.houses[x] > lv);
+}
+function canMort(g, p, f) { return g.own[f] === p && !g.mort[f] && (F[f].t !== 'street' || !groupHasBuildings(g, F[f].g)); }
+function canUnmort(g, p, f) { return g.own[f] === p && g.mort[f] && g.players[p].money >= unmortCost(f); }
+
+function doBuild(p, f) {
+  const cost = GROUPS[F[f].g].h;
+  if (G.houses[f] === 4) { G.bankHotels--; G.bankHouses += 4; } else G.bankHouses--;
+  G.houses[f]++;
+  P(p).money -= cost;
+  log(P(p).name + ' baut ' + (G.houses[f] === 5 ? 'ein Hotel' : 'ein Haus') + ' an der ' + fname(f) + '.');
+  emit('build', { p, f, lv: G.houses[f], cost });
+}
+function doSell(p, f) {
+  const cost = GROUPS[F[f].g].h;
+  let back;
+  if (G.houses[f] === 5) {
+    G.bankHotels++;
+    const keep = Math.min(4, G.bankHouses);
+    G.bankHouses -= keep;
+    back = (5 - keep) * cost / 2;
+    G.houses[f] = keep;
+  } else { G.houses[f]--; G.bankHouses++; back = cost / 2; }
+  P(p).money += back;
+  log(P(p).name + ' verkauft ein Gebäude an der ' + fname(f) + ' für ' + fr(back) + '.');
+  emit('sell', { p, f, lv: G.houses[f], amt: back });
+}
+function doMort(p, f) {
+  G.mort[f] = true; P(p).money += mortVal(f);
+  log(P(p).name + ' nimmt eine Hypothek auf ' + fname(f) + ' auf (+' + fr(mortVal(f)) + ').');
+  emit('mort', { p, f, on: true, amt: mortVal(f) });
+}
+function doUnmort(p, f) {
+  G.mort[f] = false; P(p).money -= unmortCost(f);
+  log(P(p).name + ' löst die Hypothek auf ' + fname(f) + ' ab (−' + fr(unmortCost(f)) + ').');
+  emit('mort', { p, f, on: false, amt: unmortCost(f) });
+}
+
+// ---------- Versteigerung ----------
+function startAuction(f) {
+  const order = [];
+  for (let k = 1; k <= G.players.length; k++) { const q = (G.cur + k) % G.players.length; if (!P(q).out) order.push(q); }
+  G.auction = { f, bid: 0, high: -1, order, i: 0 };
+  G.phase = 'auction';
+  log(fname(f) + ' wird versteigert!');
+  emit('auction', { f });
+  auctionCheck();
+}
+function auctionCheck() {
+  const a = G.auction;
+  if (a.order.length === 0 || (a.order.length === 1 && a.high === a.order[0])) return auctionEnd();
+  a.i = a.i % a.order.length;
+  if (a.order[a.i] === a.high) a.i = (a.i + 1) % a.order.length;
+}
+function auctionEnd() {
+  const a = G.auction;
+  if (a.high >= 0) {
+    G.own[a.f] = a.high;
+    log(P(a.high).name + ' ersteigert ' + fname(a.f) + ' für ' + fr(a.bid) + '.');
+    transfer(a.high, -1, a.bid, 'auction');
+    emit('buy', { p: a.high, f: a.f, price: a.bid, auction: true });
+  } else { log('Niemand bietet. ' + fname(a.f) + ' bleibt bei der Bank.'); emit('nobid', { f: a.f }); }
+  G.auction = null;
+  G.phase = 'x';
+  post();
+}
+
+// ---------- Handel ----------
+function tradeOk(g, t) {
+  const A = g.players[t.from], B = g.players[t.to];
+  if (!A || !B || A.out || B.out || t.from === t.to) return false;
+  const chk = (side, who) => {
+    if (!Array.isArray(side.props) || side.money < 0 || side.money % 1 || side.cards < 0) return false;
+    for (const f of side.props) {
+      if (!F[f] || !F[f].p || g.own[f] !== who) return false;
+      if (F[f].t === 'street' && groupHasBuildings(g, F[f].g)) return false;
+    }
+    return side.cards <= g.players[who].cards.length;
+  };
+  if (!chk(t.give, t.from) || !chk(t.get, t.to)) return false;
+  if (!t.give.props.length && !t.get.props.length && !t.give.money && !t.get.money && !t.give.cards && !t.get.cards) return false;
+  // Zinsen für übernommene Hypotheken
+  const feeA = t.get.props.filter(f => g.mort[f]).reduce((s, f) => s + Math.ceil(F[f].p / 20), 0);
+  const feeB = t.give.props.filter(f => g.mort[f]).reduce((s, f) => s + Math.ceil(F[f].p / 20), 0);
+  if (A.money + t.get.money - t.give.money - feeA < 0) return false;
+  if (B.money + t.give.money - t.get.money - feeB < 0) return false;
+  return true;
+}
+function doTrade(t) {
+  const sides = [[t.give, t.from, t.to], [t.get, t.to, t.from]];
+  for (const [side, from, to] of sides) {
+    for (const f of side.props) {
+      G.own[f] = to;
+      if (G.mort[f]) { P(to).money -= Math.ceil(F[f].p / 20); }
+    }
+    for (let k = 0; k < side.cards; k++) P(to).cards.push(P(from).cards.pop());
+  }
+  P(t.from).money += t.get.money - t.give.money;
+  P(t.to).money += t.give.money - t.get.money;
+  log('🤝 ' + P(t.from).name + ' und ' + P(t.to).name + ' handeln miteinander.');
+  emit('traded', { t });
+}
+
+// ---------- Bankrott ----------
+function bankrupt(p, to) {
+  const pl = P(p);
+  for (const f of BUYABLE) if (G.own[f] === p && G.houses[f] > 0) {
+    const h = G.houses[f], cost = GROUPS[F[f].g].h;
+    if (h === 5) G.bankHotels++; else G.bankHouses += h;
+    pl.money += h * cost / 2;
+    G.houses[f] = 0;
+  }
+  if (to >= 0 && !P(to).out) {
+    const cr = P(to);
+    cr.money += Math.max(0, pl.money);
+    for (const f of BUYABLE) if (G.own[f] === p) {
+      G.own[f] = to;
+      if (G.mort[f]) cr.money = Math.max(0, cr.money - Math.ceil(F[f].p / 20));
+    }
+    cr.cards.push(...pl.cards);
+    log('💥 ' + pl.name + ' ist pleite! Alles geht an ' + cr.name + '.');
+  } else {
+    for (const f of BUYABLE) if (G.own[f] === p) { G.own[f] = -1; G.mort[f] = false; }
+    for (const c of pl.cards) { const [d, i] = c.split(':'); G.decks[d].push(+i); }
+    log('💥 ' + pl.name + ' ist pleite! Alles geht an die Bank.');
+  }
+  pl.cards = []; pl.money = 0; pl.out = true; pl.jail = false;
+  G.debts = G.debts.filter(d => d.p !== p && d.to !== p);
+  emit('bankrupt', { p, to });
+  if (alive().length <= 1) finish(alive()[0].idx);
+}
+
+// ======================================================================
+//  Aktionen: handle(pid, a) prüft und führt aus
+// ======================================================================
+function canManage(g, pid) {
+  if (['roll', 'jail', 'end', 'buy'].includes(g.phase)) return pid === g.cur;
+  if (g.phase === 'debt') return pid === g.debts[0].p;
+  return false;
+}
+function handle(pid, a) {
+  if (!G || G.phase === 'over' || !a || typeof a.k !== 'string') return false;
+  const pl = P(pid);
+  if (!pl || pl.out) return false;
+  const f = a.f | 0;
+  switch (a.k) {
+    case 'roll':
+      if (G.phase !== 'roll' || pid !== G.cur) return false;
+      doRoll(pid); return true;
+    case 'jailPay':
+      if (G.phase !== 'jail' || pid !== G.cur || pl.money < 50) return false;
+      log(pl.name + ' zahlt 50 Fr. und kommt frei.');
+      transfer(pid, bankOrPot(), 50, 'jail'); release(pid); G.phase = 'roll'; emit('phase'); return true;
+    case 'jailCard': {
+      if (G.phase !== 'jail' || pid !== G.cur || !pl.cards.length) return false;
+      const c = pl.cards.pop(); const [d, i] = c.split(':'); G.decks[d].push(+i);
+      log(pl.name + ' benutzt die Gefängnis-frei-Karte.');
+      release(pid); G.phase = 'roll'; emit('phase'); return true;
+    }
+    case 'jailRoll': {
+      if (G.phase !== 'jail' || pid !== G.cur) return false;
+      const d = [r6(), r6()]; G.dice = d; emit('dice', { p: pid, d });
+      if (d[0] === d[1]) {
+        log(pl.name + ' würfelt einen Pasch und kommt frei!');
+        release(pid); pl.dbl = 0;
+        moveSteps(pid, d[0] + d[1]); land(pid, d[0] + d[1]);
+      } else if (++pl.tries >= 3) {
+        log(pl.name + ' muss nach dem dritten Versuch 50 Fr. zahlen.');
+        release(pid); pl.dbl = 0;
+        charge(pid, 50, bankOrPot(), 'jail');
+        settle('jailmove');
+      } else { log(pl.name + ' bleibt im Gefängnis (Versuch ' + pl.tries + ' von 3).'); G.phase = 'end'; emit('phase'); }
+      return true;
+    }
+    case 'buy': {
+      if (G.phase !== 'buy' || pid !== G.cur) return false;
+      const fp = pl.pos, price = F[fp].p;
+      if (pl.money < price || G.own[fp] >= 0) return false;
+      G.own[fp] = pid;
+      log(pl.name + ' kauft ' + fname(fp) + ' für ' + fr(price) + '.');
+      transfer(pid, -1, price, 'buy');
+      emit('buy', { p: pid, f: fp, price });
+      G.phase = 'x'; post(); return true;
+    }
+    case 'decline':
+      if (G.phase !== 'buy' || pid !== G.cur) return false;
+      startAuction(pl.pos); return true;
+    case 'bid': {
+      if (G.phase !== 'auction' || pid !== actorOf(G)) return false;
+      const A = G.auction, amt = a.amt | 0;
+      if (amt <= A.bid || amt > pl.money || amt < 1) return false;
+      A.bid = amt; A.high = pid; A.i = (A.i + 1) % A.order.length;
+      emit('bid', { p: pid, amt });
+      auctionCheck(); return true;
+    }
+    case 'pass': {
+      if (G.phase !== 'auction' || pid !== actorOf(G)) return false;
+      const A = G.auction;
+      A.order.splice(A.i, 1);
+      emit('passbid', { p: pid });
+      auctionCheck(); return true;
+    }
+    case 'pay': {
+      if (G.phase !== 'debt' || pid !== G.debts[0].p) return false;
+      const d = G.debts[0];
+      if (pl.money < d.amt) return false;
+      G.debts.shift();
+      transfer(pid, d.to, d.amt, d.why);
+      settle(G.after); return true;
+    }
+    case 'bankrupt': {
+      if (G.phase !== 'debt' || pid !== G.debts[0].p) return false;
+      if (liquid(G, pid) >= G.debts[0].amt) return false;
+      bankrupt(pid, G.debts[0].to);
+      if (G.phase !== 'over') settle(G.after);
+      return true;
+    }
+    case 'end':
+      if (G.phase !== 'end' || pid !== G.cur) return false;
+      nextTurn(); return true;
+    case 'build':
+      if (!canManage(G, pid) || !canBuild(G, pid, f)) return false;
+      doBuild(pid, f); return true;
+    case 'sell':
+      if (!canManage(G, pid) || !canSell(G, pid, f)) return false;
+      doSell(pid, f); return true;
+    case 'mort':
+      if (!canManage(G, pid) || !canMort(G, pid, f)) return false;
+      doMort(pid, f); return true;
+    case 'unmort':
+      if (!canManage(G, pid) || !canUnmort(G, pid, f)) return false;
+      doUnmort(pid, f); return true;
+    case 'propose': {
+      if (!['roll', 'end', 'jail'].includes(G.phase) || pid !== G.cur) return false;
+      const t = sanitizeTrade(pid, a.t);
+      if (!t || !tradeOk(G, t)) return false;
+      G.trade = t; G.ret = G.phase; G.phase = 'trade';
+      pl.lastTrade = G.round;
+      log(pl.name + ' macht ' + P(t.to).name + ' ein Angebot.');
+      emit('offerTrade', { t });
+      return true;
+    }
+    case 'accept': case 'reject': case 'cancel': {
+      if (G.phase !== 'trade') return false;
+      const t = G.trade;
+      if (a.k === 'cancel' ? pid !== t.from : pid !== t.to) return false;
+      if (a.k === 'accept') { if (!tradeOk(G, t)) return false; doTrade(t); }
+      else { log(a.k === 'cancel' ? pl.name + ' zieht das Angebot zurück.' : pl.name + ' lehnt das Angebot ab.'); emit('tradeNo', { t }); }
+      G.trade = null; G.phase = G.ret; G.ret = null; emit('phase');
+      return true;
+    }
+  }
+  return false;
+}
+function sanitizeTrade(from, t) {
+  if (!t) return null;
+  const side = s => ({ props: [...new Set((s && Array.isArray(s.props) ? s.props : []).map(x => x | 0))], money: Math.max(0, (s && s.money) | 0), cards: Math.max(0, (s && s.cards) | 0) });
+  return { from, to: t.to | 0, give: side(t.give), get: side(t.get) };
+}
+
+// ======================================================================
+//  Bots
+// ======================================================================
+function reserveOf(g, p) {
+  const lvl = g.players[p].bot;
+  if (lvl === 1) return 40;
+  // Gefahr: höchste Miete, die mich auf dem Brett erwartet
+  let danger = 0;
+  for (const f of BUYABLE) {
+    const o = g.own[f];
+    if (o >= 0 && o !== p && !g.mort[f]) danger = Math.max(danger, F[f].t === 'util' ? 70 : rentOf(g, f, 7));
+  }
+  return lvl === 2 ? Math.max(120, danger * 0.4) : Math.max(150, Math.min(danger * 0.7, 900));
+}
+// Wie viel ist mir ein Feld wert?
+function fieldValue(g, p, f) {
+  const fd = F[f], lvl = g.players[p].bot || 2;
+  let v = fd.p;
+  const others = o => o >= 0 && o !== p;
+  if (fd.t === 'street') {
+    const grp = GROUPS[fd.g].f;
+    const mine = grp.filter(x => g.own[x] === p).length;
+    const theirs = grp.filter(x => others(g.own[x]));
+    const owners = new Set(theirs.map(x => g.own[x]));
+    if (mine === grp.length - 1) v *= lvl === 3 ? 2.1 : 1.6;          // macht meine Gruppe komplett
+    else if (owners.size === 1 && theirs.length === grp.length - 1) v *= lvl === 3 ? 1.6 : 1.25;  // blockiert eine fremde Gruppe
+    else if (mine > 0) v *= 1.25;
+    if (lvl === 3 && (fd.g === 3 || fd.g === 4)) v *= 1.15;            // Orange/Rot werden oft betreten
+  } else if (fd.t === 'rail') v *= 1 + 0.2 * countOwned(g, p, RAILS);
+  else v *= 0.85 + 0.25 * countOwned(g, p, UTILS);
+  return v;
+}
+function botManage(g, p, inDebt) {
+  const pl = g.players[p], lvl = pl.bot, res = reserveOf(g, p);
+  if (inDebt) {
+    // Zuerst Hypotheken auf Einzelstücke, dann Häuser verkaufen, dann den Rest
+    const mine = BUYABLE.filter(f => g.own[f] === p);
+    const single = mine.filter(f => canMort(g, p, f) && !(F[f].t === 'street' && ownsGroup(g, p, F[f].g))).sort((a, b) => F[a].p - F[b].p);
+    if (single.length) return { k: 'mort', f: single[0] };
+    const sell = mine.filter(f => canSell(g, p, f)).sort((a, b) => GROUPS[F[a].g].h - GROUPS[F[b].g].h || F[a].p - F[b].p);
+    if (sell.length) return { k: 'sell', f: sell[0] };
+    const rest = mine.filter(f => canMort(g, p, f)).sort((a, b) => F[a].p - F[b].p);
+    if (rest.length) return { k: 'mort', f: rest[0] };
+    return null;
+  }
+  // Hypotheken ablösen, wenn genug Geld da ist (zuerst in kompletten Gruppen)
+  const um = BUYABLE.filter(f => g.own[f] === p && g.mort[f]).sort((a, b) => (F[b].t === 'street' && ownsGroup(g, p, F[b].g) ? 1 : 0) - (F[a].t === 'street' && ownsGroup(g, p, F[a].g) ? 1 : 0));
+  for (const f of um) if (pl.money - unmortCost(f) > res + 150) return { k: 'unmort', f };
+  // Bauen: Gruppen mit gutem Ertrag zuerst, gleichmässig
+  const opts = BUYABLE.filter(f => canBuild(g, p, f));
+  if (!opts.length) return null;
+  const score = f => {
+    const fd = F[f], lv = g.houses[f];
+    let s = (fd.r[Math.min(lv + 1, 5)] - fd.r[lv]) / GROUPS[fd.g].h;
+    if (lv < 3) s += 2;              // drei Häuser lohnen sich am meisten
+    if (lvl === 1) s = Math.random();
+    return s;
+  };
+  opts.sort((a, b) => score(b) - score(a));
+  const f = opts[0], cost = GROUPS[F[f].g].h;
+  const keep = lvl === 1 ? 250 + rnd(200) : res;
+  if (pl.money - cost >= keep) return { k: 'build', f };
+  return null;
+}
+function botTrade(g, p) {
+  const pl = g.players[p];
+  if (pl.bot < 2 || g.round - pl.lastTrade < (pl.bot === 3 ? 2 : 4)) return null;
+  if (pl.bot === 2 && Math.random() < 0.5) return null;
+  const late = Math.min(1, g.round / 80), res = reserveOf(g, p);
+  const side = (props, money) => ({ props, money: Math.max(0, Math.round(money / 10) * 10), cards: 0 });
+  const sum = gi => GROUPS[gi].f.reduce((s, f) => s + F[f].p, 0);
+  for (let gi = 0; gi < GROUPS.length; gi++) {
+    const grp = GROUPS[gi].f;
+    const missing = grp.filter(f => g.own[f] !== p);
+    if (missing.length !== 1 || groupHasBuildings(g, gi)) continue;
+    const f = missing[0], o = g.own[f];
+    if (o < 0 || g.players[o].out) continue;
+    // 1) Tausch, der beiden eine Gruppe bringt
+    for (let gj = 0; gj < GROUPS.length; gj++) {
+      if (gj === gi || groupHasBuildings(g, gj)) continue;
+      const miss = GROUPS[gj].f.filter(x => g.own[x] !== o);
+      if (miss.length !== 1 || g.own[miss[0]] !== p) continue;
+      const diff = (sum(gi) - sum(gj)) / 2;
+      const pay = Math.min(Math.max(0, diff), pl.money - res);
+      return { k: 'propose', t: { to: o, give: side([miss[0]], pay), get: side([f], Math.max(0, -diff) * 0.5) } };
+    }
+    // 2) Geld bieten
+    const offer = Math.min(F[f].p * (1.6 + late * 1.4 + Math.random() * 0.5), pl.money - res * 0.5);
+    if (offer >= F[f].p * 1.3) return { k: 'propose', t: { to: o, give: side([], offer), get: side([f], 0) } };
+    // 3) Ein Feld tauschen, das mir keine Gruppe kaputt macht
+    const swap = BUYABLE.filter(x => g.own[x] === p && F[x].t === 'street' && F[x].g !== gi && !ownsGroup(g, p, F[x].g) && !groupHasBuildings(g, F[x].g))
+      .sort((a, b) => F[b].p - F[a].p)[0];
+    if (swap != null) return { k: 'propose', t: { to: o, give: side([swap], Math.max(0, F[f].p - F[swap].p) + 40 * late), get: side([f], 0) } };
+  }
+  return null;
+}
+function tradeValueFor(g, p, t) {
+  // Wert der Felder nach dem Handel minus vorher (für Spieler p)
+  const g2 = clone(g);
+  const fromSide = p === t.from;
+  for (const f of t.give.props) g2.own[f] = t.to;
+  for (const f of t.get.props) g2.own[f] = t.from;
+  const val = (gg, q) => {
+    let v = 0;
+    for (const f of BUYABLE) if (gg.own[f] === q) v += (gg.mort[f] ? 0.5 : 1) * F[f].p;
+    for (let gi = 0; gi < GROUPS.length; gi++) if (ownsGroup(gg, q, gi)) v += GROUPS[gi].f.reduce((s, f) => s + F[f].p, 0) * 1.3;
+    v += countOwned(gg, q, RAILS) ** 2 * 25;
+    return v;
+  };
+  const other = fromSide ? t.to : t.from;
+  const mine = val(g2, p) - val(g, p);
+  const theirs = val(g2, other) - val(g, other);
+  const money = fromSide ? t.get.money - t.give.money : t.give.money - t.get.money;
+  const cards = (fromSide ? t.get.cards - t.give.cards : t.give.cards - t.get.cards) * 40;
+  const w = [0.6, 0.25, 0.45, 0.55][g.players[p].bot] || 0.5;
+  return mine + money + cards - theirs * w;
+}
+function botDecide(g, p) {
+  const pl = g.players[p], lvl = pl.bot || 2;
+  switch (g.phase) {
+    case 'trade': {
+      const v = tradeValueFor(g, p, g.trade);
+      const need = (lvl === 1 ? -40 + rnd(80) : lvl === 2 ? 20 : 60) - Math.min(1, g.round / 80) * 50;
+      return { k: v > need ? 'accept' : 'reject' };
+    }
+    case 'debt': {
+      const d = g.debts[0];
+      if (pl.money >= d.amt) return { k: 'pay' };
+      if (liquid(g, p) < d.amt) return { k: 'bankrupt' };
+      return botManage(g, p, true) || { k: 'bankrupt' };
+    }
+    case 'auction': {
+      const A = g.auction;
+      let max = fieldValue(g, p, A.f);
+      if (lvl === 1) max *= 0.55 + Math.random() * 0.5;
+      else if (lvl === 2) max *= 0.9;
+      max = Math.min(max, pl.money - (lvl === 3 ? reserveOf(g, p) * 0.5 : 30));
+      const step = A.bid < 100 ? 10 : A.bid < 300 ? 20 : 50;
+      const next = A.bid + (lvl === 3 && A.high < 0 ? Math.max(10, Math.round(F[A.f].p * 0.3 / 10) * 10) : step);
+      return next <= max ? { k: 'bid', amt: next } : { k: 'pass' };
+    }
+    case 'buy': {
+      const f = pl.pos, price = F[f].p;
+      if (pl.money < price) {
+        // Für eine fast komplette Gruppe lohnt sich eine Hypothek
+        if (lvl === 3 && fieldValue(g, p, f) > price * 1.8 && liquid(g, p) - price > 100) { const m = botManage(g, p, true); if (m && m.k === 'mort') return m; }
+        return { k: 'decline' };
+      }
+      const left = pl.money - price;
+      if (lvl === 1) return { k: Math.random() < 0.8 ? 'buy' : 'decline' };
+      const v = fieldValue(g, p, f);
+      if (v > price * 1.5) return { k: 'buy' };
+      return { k: left >= reserveOf(g, p) * (lvl === 3 ? 0.6 : 1) ? 'buy' : 'decline' };
+    }
+    case 'jail': {
+      const m = botManage(g, p, false);
+      if (m) return m;
+      let developed = 0;
+      for (const f of BUYABLE) if (g.own[f] >= 0 && g.own[f] !== p) developed += g.houses[f];
+      const unowned = BUYABLE.filter(f => g.own[f] < 0).length;
+      const stay = lvl === 3 ? developed >= 6 && unowned < 6 : lvl === 2 ? developed >= 10 : Math.random() < 0.5;
+      if (!stay) {
+        if (pl.cards.length) return { k: 'jailCard' };
+        if (pl.money >= 50 + (lvl === 1 ? 0 : 100)) return { k: 'jailPay' };
+      }
+      return { k: 'jailRoll' };
+    }
+    case 'roll': case 'end': {
+      const m = botManage(g, p, false);
+      if (m) return m;
+      const t = botTrade(g, p);
+      if (t && tradeOk(g, sanitizeTrade(p, t.t))) return t;
+      if (t) g.players[p].lastTrade = g.round;
+      return { k: g.phase === 'roll' ? 'roll' : 'end' };
+    }
+  }
+  return null;
+}
+
+// ======================================================================
+//  3D-Szene
+// ======================================================================
+const L = 20, HB = 10, D = 2.6, W = (L - 2 * D) / 9, TOP = 0.2;
+const $ = id => document.getElementById(id);
+const glCanvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: COVER });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#0d0f13');
+scene.fog = new THREE.Fog('#0d0f13', 45, 95);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 300);
+
+// Umgebung für spiegelnde Figuren
+(function makeEnv() {
+  const pm = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene();
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ side: THREE.BackSide, vertexColors: true }));
+  const cols = [], pos = sky.geometry.attributes.position, c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 50; c.setHSL(0.6, 0.25, 0.08 + Math.max(0, y) * 0.55); cols.push(c.r, c.g, c.b); }
+  sky.geometry.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  es.add(sky);
+  const lamp = (x, y, z, s, col) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(s, s), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); };
+  lamp(0, 40, 10, 30, '#ffffff'); lamp(-35, 15, 20, 14, '#ffd9a8'); lamp(35, 12, -15, 14, '#a8c8ff'); lamp(10, 8, 40, 12, '#ffffff');
+  scene.environment = null;
+  window.__env = pm.fromScene(es, 0.03).texture;
+  pm.dispose();
+})();
+const ENV = window.__env;
+
+scene.add(new THREE.HemisphereLight('#dfe8ff', '#3a2a1a', 0.55));
+const sun = new THREE.DirectionalLight('#fff3e0', 1.35);
+sun.position.set(9, 26, 14);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 5, far: 60 });
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const fill = new THREE.DirectionalLight('#9ab8ff', 0.35);
+fill.position.set(-14, 10, -10);
+scene.add(fill);
+
+// ---------- Tisch ----------
+function noiseTex(w, h, base, spread, lines) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = base; x.fillRect(0, 0, w, h);
+  for (let i = 0; i < lines; i++) {
+    x.strokeStyle = `rgba(${Math.random() < 0.5 ? '0,0,0' : '255,220,180'},${Math.random() * spread})`;
+    x.lineWidth = 1 + Math.random() * 2;
+    x.beginPath(); const y = Math.random() * h; x.moveTo(0, y);
+    for (let k = 0; k <= 8; k++) x.lineTo(k * w / 8, y + Math.sin(k + i) * 4 + Math.random() * 3);
+    x.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+{
+  const tt = noiseTex(512, 512, '#3b2516', 0.12, 160); tt.repeat.set(5, 5);
+  const table = new THREE.Mesh(new THREE.CircleGeometry(70, 64), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.75, metalness: 0.05 }));
+  table.rotation.x = -Math.PI / 2; table.position.y = -0.6; table.receiveShadow = true;
+  scene.add(table);
+  const wood = noiseTex(512, 128, '#7a1d14', 0.15, 60);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(L + 1.1, 0.55, L + 1.1), new THREE.MeshStandardMaterial({ map: wood, roughness: 0.45, metalness: 0.1, color: '#ffffff' }));
+  frame.position.y = -0.18; frame.castShadow = true; frame.receiveShadow = true;
+  scene.add(frame);
+  const goldLine = new THREE.Mesh(new THREE.BoxGeometry(L + 0.5, 0.36, L + 0.5), new THREE.MeshStandardMaterial({ color: '#d4a94a', metalness: 0.9, roughness: 0.3, envMap: ENV }));
+  goldLine.position.y = -0.02; scene.add(goldLine);
+}
+
+// ---------- Brett-Textur ----------
+const TEX = Math.min(4096, renderer.capabilities.maxTextureSize);
+const PX = TEX / L;
+const toPx = v => (v + HB) * PX;
+function fieldGeo(i) {
+  if (i % 10 === 0) {
+    const c = HB - D / 2;
+    const s = [[c, c], [-c, c], [-c, -c], [c, -c]][i / 10];
+    return { x: s[0], z: s[1], ox: Math.sign(s[0]), oz: Math.sign(s[1]), tx: 0, tz: 0, corner: true, side: i / 10 };
+  }
+  const side = Math.floor(i / 10), k = i % 10, off = HB - D - (k - 0.5) * W, e = HB - D / 2;
+  return Object.assign({ side }, [
+    { x: off, z: e, ox: 0, oz: 1, tx: -1, tz: 0 }, { x: -e, z: off, ox: -1, oz: 0, tx: 0, tz: -1 },
+    { x: -off, z: -e, ox: 0, oz: -1, tx: 1, tz: 0 }, { x: e, z: -off, ox: 1, oz: 0, tx: 0, tz: 1 },
+  ][side]);
+}
+const FG = F.map((_, i) => fieldGeo(i));
+// Punkt auf einem Feld: u entlang der Seite, v nach aussen (Seitenfelder)
+function fieldPt(i, u, v, y) {
+  const g = FG[i];
+  return new THREE.Vector3(g.x + u * g.tx + v * g.ox, y == null ? TOP : y, g.z + u * g.tz + v * g.oz);
+}
+function fieldAt(x, z) {
+  const a = HB - D;
+  if (Math.abs(x) > HB || Math.abs(z) > HB) return -1;
+  if (Math.abs(x) < a && Math.abs(z) < a) return -1;
+  if (z > a) return x > a ? 0 : x < -a ? 10 : Math.floor((a - x) / W) + 1;
+  if (z < -a) return x < -a ? 20 : x > a ? 30 : 20 + Math.floor((x + a) / W) + 1;
+  if (x < -a) return 10 + Math.floor((a - z) / W) + 1;
+  return 30 + Math.floor((z + a) / W) + 1;
+}
+
+function wrapText(ctx, text, maxW) {
+  const words = text.split(/\s+/), lines = [];
+  let line = '';
+  for (const w of words) {
+    if (w.includes('-') && ctx.measureText(w).width > maxW) {
+      const [a, b] = w.split('-');
+      if (line) lines.push(line);
+      lines.push(a + '-'); line = b; continue;
+    }
+    const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function drawBoardTexture(noText) {
+  const c = document.createElement('canvas'); c.width = c.height = TEX;
+  const x = c.getContext('2d');
+  const fw = W * PX, fd = D * PX, s = PX / 204.8;
+  const FONT = 'system-ui, "Segoe UI", Arial, sans-serif';
+  const EMO = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+  // Grund
+  x.fillStyle = '#d7ecd9'; x.fillRect(0, 0, TEX, TEX);
+  // Mitte
+  const a0 = fd, a1 = TEX - fd;
+  const grd = x.createRadialGradient(TEX / 2, TEX / 2, 50, TEX / 2, TEX / 2, TEX * 0.45);
+  grd.addColorStop(0, '#e8f5ea'); grd.addColorStop(1, '#bfdcc4');
+  x.fillStyle = grd; x.fillRect(a0, a0, a1 - a0, a1 - a0);
+  // Schweizer Muster in der Mitte (dezent)
+  x.save(); x.globalAlpha = 0.07; x.fillStyle = '#c0392b';
+  for (let gx = a0 + 60 * s; gx < a1; gx += 150 * s) for (let gy = a0 + 60 * s; gy < a1; gy += 150 * s) {
+    x.fillRect(gx - 8 * s, gy - 24 * s, 16 * s, 48 * s); x.fillRect(gx - 24 * s, gy - 8 * s, 48 * s, 16 * s);
+  }
+  x.restore();
+  // Kartenplätze
+  const deckSpot = (cx, cy, col, label, icon) => {
+    x.save(); x.translate(cx, cy); x.rotate(-Math.PI / 4);
+    x.setLineDash([22 * s, 14 * s]); x.lineWidth = 7 * s; x.strokeStyle = col;
+    const w = 2.75 * PX, h = 1.8 * PX;
+    x.strokeRect(-w / 2, -h / 2, w, h);
+    x.setLineDash([]);
+    if (!noText) { x.fillStyle = col; x.font = `800 ${52 * s}px ${FONT}`; x.textAlign = 'center'; x.fillText(label, 0, h / 2 + 70 * s); }
+    x.restore();
+  };
+  deckSpot(toPx(-3.9), toPx(-3.9), '#2b8fcf', 'GEMEINSCHAFT');
+  deckSpot(toPx(3.9), toPx(3.9), '#e57f00', 'EREIGNIS');
+  // Logo
+  if (!noText) {
+    x.save(); x.translate(TEX / 2, TEX / 2); x.rotate(-Math.PI / 4);
+    const bw = 1420 * s, bh = 250 * s;
+    x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 30 * s; x.shadowOffsetY = 12 * s;
+    x.fillStyle = '#d62d1e'; x.fillRect(-bw / 2, -bh / 2, bw, bh);
+    x.shadowColor = 'transparent';
+    x.lineWidth = 14 * s; x.strokeStyle = '#fff'; x.strokeRect(-bw / 2 + 18 * s, -bh / 2 + 18 * s, bw - 36 * s, bh - 36 * s);
+    x.fillStyle = '#fff'; x.font = `900 ${150 * s}px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('STRASSENBARON', 0, 8 * s);
+    x.restore();
+  } else {
+    x.save(); x.translate(TEX / 2, TEX / 2); x.rotate(-Math.PI / 4);
+    x.fillStyle = '#d62d1e'; x.fillRect(-700 * s, -125 * s, 1400 * s, 250 * s);
+    x.lineWidth = 14 * s; x.strokeStyle = '#fff'; x.strokeRect(-682 * s, -107 * s, 1364 * s, 214 * s);
+    x.fillStyle = '#fff'; x.fillRect(-40 * s, -85 * s, 80 * s, 170 * s); x.fillRect(-85 * s, -40 * s, 170 * s, 80 * s);
+    x.restore();
+  }
+  // Felder
+  x.lineWidth = 5 * s; x.strokeStyle = '#1a1a1a';
+  x.strokeRect(fd, fd, TEX - 2 * fd, TEX - 2 * fd);
+  x.strokeRect(2, 2, TEX - 4, TEX - 4);
+  const rots = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+  for (let i = 0; i < 40; i++) {
+    const g = FG[i], fdat = F[i];
+    x.save(); x.translate(toPx(g.x), toPx(g.z));
+    if (g.corner) {
+      x.rotate([-Math.PI / 4, Math.PI / 4, Math.PI * 3 / 4, -Math.PI * 3 / 4][g.side] + 0);
+      drawCorner(x, i, fd, s, FONT, EMO, noText);
+      x.restore(); continue;
+    }
+    x.rotate(rots[g.side]);
+    const hw = fw / 2, hd = fd / 2;
+    x.fillStyle = '#f7f2e3'; x.fillRect(-hw, -hd, fw, fd);
+    x.strokeRect(-hw, -hd, fw, fd);
+    x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#161616';
+    const nameAt = (y0, size, txt, bold) => {
+      if (noText) return y0;
+      x.font = `${bold || 800} ${size * s}px ${FONT}`;
+      const lines = wrapText(x, txt.toUpperCase(), fw - 26 * s);
+      lines.forEach((l, k) => x.fillText(l, 0, y0 + k * size * 1.12 * s));
+      return y0 + lines.length * size * 1.12 * s;
+    };
+    const price = p => { if (!noText) { x.font = `700 ${40 * s}px ${FONT}`; x.fillText(fr(p), 0, hd - 46 * s); } };
+    const icon = (e, y, size) => { x.font = `${size * s}px ${EMO}`; x.fillText(e, 0, y); };
+    if (fdat.t === 'street') {
+      const bh = fd * 0.22;
+      x.fillStyle = GROUPS[fdat.g].c; x.fillRect(-hw, -hd, fw, bh);
+      x.strokeRect(-hw, -hd, fw, bh);
+      x.fillStyle = '#161616';
+      const y = nameAt(-hd + bh + 54 * s, 39, fdat.n);
+      if (!noText) { x.font = `600 ${31 * s}px ${FONT}`; x.fillStyle = '#555'; x.fillText(fdat.c, 0, y + 10 * s); x.fillStyle = '#161616'; }
+      price(fdat.p);
+    } else if (fdat.t === 'rail') {
+      nameAt(-hd + 58 * s, 38, fdat.n);
+      drawTrain(x, 0, 30 * s, s);
+      price(fdat.p);
+    } else if (fdat.t === 'util') {
+      nameAt(-hd + 58 * s, 36, fdat.n);
+      icon(i === 12 ? '💡' : '🚰', 40 * s, 150);
+      price(fdat.p);
+    } else if (fdat.t === 'chance') {
+      nameAt(-hd + 58 * s, 40, 'Ereignis');
+      x.save(); x.font = `900 ${300 * s}px ${FONT}`; x.fillStyle = '#e57f00'; x.translate(0, 70 * s); x.rotate(0.18); x.fillText('?', 0, 0); x.restore();
+    } else if (fdat.t === 'chest') {
+      nameAt(-hd + 58 * s, 36, 'Gemeinschaft');
+      drawChest(x, 0, 60 * s, s);
+      if (!noText) { x.font = `600 ${28 * s}px ${FONT}`; x.fillStyle = '#555'; x.fillText('Karte ziehen', 0, hd - 46 * s); }
+    } else if (fdat.t === 'tax') {
+      nameAt(-hd + 58 * s, 36, fdat.n);
+      icon(i === 4 ? '💰' : '💍', 30 * s, 140);
+      if (!noText) { x.font = `700 ${38 * s}px ${FONT}`; x.fillText('Zahle ' + fr(fdat.a), 0, hd - 46 * s); }
+    }
+    x.restore();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+function drawTrain(x, cx, cy, s) {
+  x.save(); x.translate(cx, cy); x.fillStyle = '#d6271d';
+  const r = (a, b, w, h, rad) => { x.beginPath(); x.roundRect ? x.roundRect(a, b, w, h, rad) : x.rect(a, b, w, h); x.fill(); };
+  r(-110 * s, -60 * s, 220 * s, 110 * s, 30 * s);
+  x.fillStyle = '#fff'; r(-90 * s, -40 * s, 50 * s, 40 * s, 6 * s); r(-25 * s, -40 * s, 50 * s, 40 * s, 6 * s); r(40 * s, -40 * s, 50 * s, 40 * s, 6 * s);
+  x.fillRect(-110 * s, 18 * s, 220 * s, 8 * s);
+  x.fillStyle = '#222'; [-70, 70].forEach(a => { x.beginPath(); x.arc(a * s, 56 * s, 17 * s, 0, 7); x.fill(); });
+  x.restore();
+}
+function drawChest(x, cx, cy, s) {
+  x.save(); x.translate(cx, cy);
+  x.fillStyle = '#2b8fcf'; x.fillRect(-100 * s, -40 * s, 200 * s, 110 * s);
+  x.fillStyle = '#1d6ea3'; x.beginPath(); x.moveTo(-100 * s, -40 * s); x.quadraticCurveTo(0, -120 * s, 100 * s, -40 * s); x.fill();
+  x.fillStyle = '#ffcf4a'; x.fillRect(-100 * s, -8 * s, 200 * s, 16 * s); x.fillRect(-18 * s, -20 * s, 36 * s, 44 * s);
+  x.restore();
+}
+function drawCorner(x, i, fd, s, FONT, EMO, noText) {
+  // Zeichnet in ein um 45° gedrehtes System, Ursprung = Eckmitte
+  const h = fd / 2;
+  x.save(); x.rotate(-[-Math.PI / 4, Math.PI / 4, Math.PI * 3 / 4, -Math.PI * 3 / 4][i / 10]);
+  x.fillStyle = '#f7f2e3'; x.fillRect(-h, -h, fd, fd); x.strokeRect(-h, -h, fd, fd);
+  if (i === 10) {
+    // Gefängniszelle innen oben rechts (Brettmitte liegt bei +x/-y)
+    const cw = fd * 0.69;
+    x.fillStyle = '#f39200'; x.fillRect(h - cw, -h, cw, cw); x.strokeRect(h - cw, -h, cw, cw);
+    x.fillStyle = '#ffd9a0'; x.fillRect(h - cw + 40 * s, -h + 40 * s, cw - 80 * s, cw - 80 * s);
+    x.strokeStyle = '#222'; x.lineWidth = 12 * s;
+    for (let k = 1; k < 6; k++) { const bx = h - cw + 40 * s + k * (cw - 80 * s) / 6; x.beginPath(); x.moveTo(bx, -h + 40 * s); x.lineTo(bx, -h + cw - 40 * s); x.stroke(); }
+    x.lineWidth = 5 * s;
+  }
+  x.restore();
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#161616';
+  const txt = (t, y, size, col, w) => { if (noText) return; x.font = `900 ${size * s}px ${FONT}`; x.fillStyle = col || '#161616'; x.fillText(t, 0, y); };
+  if (i === 0) {
+    txt('ZIEHE 200 FR. EIN', -170 * s, 34);
+    txt('LOS', -40 * s, 170, '#d62d1e');
+    x.save(); x.translate(0, 120 * s); x.fillStyle = '#d62d1e';
+    x.beginPath(); x.moveTo(-200 * s, 0); x.lineTo(-90 * s, -70 * s); x.lineTo(-90 * s, -30 * s); x.lineTo(200 * s, -30 * s); x.lineTo(200 * s, 30 * s); x.lineTo(-90 * s, 30 * s); x.lineTo(-90 * s, 70 * s); x.closePath(); x.fill();
+    x.restore();
+  } else if (i === 10) {
+    txt('GEFÄNGNIS', -117 * s, 46);
+    txt('NUR ZU', 236 * s, 34); txt('BESUCH', 276 * s, 34);
+  } else if (i === 20) {
+    txt('FREIER', -150 * s, 52); txt('PARKPLATZ', 150 * s, 52);
+    x.font = `${230 * s}px ${EMO}`; x.fillStyle = '#d62d1e'; x.fillText('🚗', 0, 0);
+  } else if (i === 30) {
+    txt('GEHE INS', -165 * s, 48); txt('GEFÄNGNIS', 165 * s, 48);
+    x.font = `${210 * s}px ${EMO}`; x.fillText('👮', 0, 0);
+  }
+}
+
+const boardTex = drawBoardTexture(COVER);
+const boardMat = new THREE.MeshStandardMaterial({ map: boardTex, roughness: 0.62, metalness: 0.0 });
+{
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(L, L), boardMat);
+  top.rotation.x = -Math.PI / 2; top.position.y = TOP; top.receiveShadow = true;
+  scene.add(top);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(L, 0.3, L), new THREE.MeshStandardMaterial({ color: '#efe9d6', roughness: 0.8 }));
+  base.position.y = TOP - 0.165; base.castShadow = true; base.receiveShadow = true;
+  scene.add(base);
+}
+const pickPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -TOP);
+
+// ---------- Kartenstapel ----------
+function cardBackTex(kind) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 330;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 512, 330);
+  if (kind === 'chance') { g.addColorStop(0, '#ffb347'); g.addColorStop(1, '#d97800'); } else { g.addColorStop(0, '#8fd6ff'); g.addColorStop(1, '#1d74b0'); }
+  x.fillStyle = g; x.fillRect(0, 0, 512, 330);
+  x.strokeStyle = 'rgba(255,255,255,.85)'; x.lineWidth = 12; x.strokeRect(18, 18, 476, 294);
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  if (kind === 'chance') { x.font = '900 230px system-ui, Arial'; x.fillText('?', 256, 175); }
+  else { drawChest(x, 256, 175, 1.1); }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+const DECK3 = {};
+for (const [k, px] of [['chest', -3.9], ['chance', 3.9]]) {
+  const side = new THREE.MeshStandardMaterial({ color: '#f4f0e6', roughness: 0.9 });
+  const topM = new THREE.MeshStandardMaterial({ map: cardBackTex(k), roughness: 0.5 });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.28, 1.65), [side, side, topM, side, side, side]);
+  m.position.set(px, TOP + 0.14, px); m.rotation.y = Math.PI / 4;
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m);
+  DECK3[k] = m;
+}
+
+// ---------- Figuren ----------
+function lathe(pts, seg, flat) {
+  const g = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg || 40);
+  if (flat) g.computeVertexNormals();
+  return g;
+}
+const PEDESTAL = [[0, 0], [0.3, 0], [0.31, 0.03], [0.3, 0.07], [0.22, 0.1]];
+function tokenMesh(kind, col) {
+  const mat = new THREE.MeshStandardMaterial({ color: col, metalness: 0.75, roughness: 0.22, envMap: ENV, envMapIntensity: 1.2 });
+  const silver = new THREE.MeshStandardMaterial({ color: '#e8e8ee', metalness: 1, roughness: 0.18, envMap: ENV });
+  const grp = new THREE.Group();
+  const add = (geo, m, y, rx) => { const o = new THREE.Mesh(geo, m || mat); o.position.y = y || 0; if (rx) o.rotation.x = rx; o.castShadow = true; grp.add(o); return o; };
+  add(lathe(PEDESTAL), silver);
+  switch (kind) {
+    case 0: // Zylinder
+      add(lathe([[0, 0.1], [0.36, 0.1], [0.37, 0.13], [0.22, 0.15], [0.2, 0.2], [0.21, 0.66], [0.22, 0.7], [0, 0.71]]));
+      add(new THREE.CylinderGeometry(0.212, 0.205, 0.08, 32), silver, 0.26);
+      break;
+    case 1: { // Rakete
+      add(lathe([[0, 0.1], [0.12, 0.1], [0.16, 0.2], [0.17, 0.5], [0.13, 0.72], [0.06, 0.86], [0, 0.92]]));
+      for (let k = 0; k < 3; k++) {
+        const fin = add(new THREE.BoxGeometry(0.03, 0.24, 0.16), silver, 0.24);
+        fin.position.x = Math.cos(k * 2.094) * 0.17; fin.position.z = Math.sin(k * 2.094) * 0.17; fin.rotation.y = -k * 2.094;
+      }
+      const win = add(new THREE.SphereGeometry(0.06, 16, 12), silver, 0.56); win.position.z = 0.15;
+      break;
+    }
+    case 2: { // Krone
+      add(lathe([[0, 0.1], [0.2, 0.1], [0.24, 0.16], [0.26, 0.42], [0.22, 0.42], [0.2, 0.18], [0, 0.18]]));
+      for (let k = 0; k < 6; k++) {
+        const sp = add(new THREE.ConeGeometry(0.06, 0.2, 8), mat, 0.52);
+        sp.position.x = Math.cos(k * 1.047) * 0.24; sp.position.z = Math.sin(k * 1.047) * 0.24;
+        const ball = add(new THREE.SphereGeometry(0.035, 10, 8), silver, 0.64);
+        ball.position.x = sp.position.x; ball.position.z = sp.position.z;
+      }
+      add(new THREE.TorusGeometry(0.255, 0.03, 8, 32), silver, 0.25, Math.PI / 2);
+      break;
+    }
+    case 3: { // Diamant
+      const gem = add(lathe([[0, 0.14], [0.3, 0.52], [0.22, 0.64], [0, 0.66]], 8));
+      gem.material = mat.clone(); gem.material.flatShading = true; gem.material.metalness = 0.4; gem.material.roughness = 0.05;
+      break;
+    }
+    case 4: // Pokal
+      add(lathe([[0, 0.1], [0.07, 0.1], [0.05, 0.3], [0.07, 0.38], [0.2, 0.46], [0.27, 0.66], [0.28, 0.76], [0.24, 0.76], [0.23, 0.67], [0, 0.6]]));
+      [-1, 1].forEach(sx => { const h = add(new THREE.TorusGeometry(0.09, 0.022, 8, 20, Math.PI), silver, 0.6); h.position.x = sx * 0.27; h.rotation.z = sx * Math.PI / 2; });
+      break;
+    case 5: // Figur
+      add(lathe([[0, 0.1], [0.24, 0.1], [0.2, 0.18], [0.11, 0.24], [0.08, 0.5], [0.15, 0.54], [0.15, 0.57], [0.07, 0.6], [0, 0.6]]));
+      add(new THREE.SphereGeometry(0.15, 24, 16), mat, 0.71);
+      break;
+  }
+  // Leuchtring in Spielerfarbe
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.33, 0.44, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012;
+  grp.add(ring); grp.userData.ring = ring;
+  grp.scale.setScalar(1.15);
+  return grp;
+}
+
+// ---------- Häuser ----------
+const houseGeo = new THREE.BoxGeometry(0.27, 0.2, 0.27); houseGeo.translate(0, 0.1, 0);
+const roofGeo = new THREE.ConeGeometry(0.23, 0.15, 4); roofGeo.rotateY(Math.PI / 4); roofGeo.translate(0, 0.275, 0);
+const hotelGeo = new THREE.BoxGeometry(0.62, 0.3, 0.32); hotelGeo.translate(0, 0.15, 0);
+const hotelRoofGeo = new THREE.BoxGeometry(0.66, 0.06, 0.36); hotelRoofGeo.translate(0, 0.33, 0);
+const houseMat = new THREE.MeshStandardMaterial({ color: '#21b04f', roughness: 0.35, metalness: 0.1 });
+const roofMat = new THREE.MeshStandardMaterial({ color: '#17863b', roughness: 0.4 });
+const hotelMat = new THREE.MeshStandardMaterial({ color: '#e0261a', roughness: 0.32, metalness: 0.1 });
+const hotelRoofMat = new THREE.MeshStandardMaterial({ color: '#9d140c', roughness: 0.4 });
+function makeBuilding(hotel) {
+  const g = new THREE.Group();
+  const a = new THREE.Mesh(hotel ? hotelGeo : houseGeo, hotel ? hotelMat : houseMat);
+  const b = new THREE.Mesh(hotel ? hotelRoofGeo : roofGeo, hotel ? hotelRoofMat : roofMat);
+  a.castShadow = b.castShadow = true; a.receiveShadow = true;
+  g.add(a, b);
+  return g;
+}
+function buildingSpots(f, lv) {
+  const fdepth = D, v = -fdepth / 2 + fdepth * 0.11;
+  const g = FG[f];
+  const rotY = Math.atan2(g.ox, g.oz);
+  if (lv === 5) return [{ p: fieldPt(f, 0, v), r: rotY }];
+  const us = [-0.57, -0.19, 0.19, 0.57];
+  return us.slice(0, lv).map(u => ({ p: fieldPt(f, u, v), r: rotY }));
+}
+
+// ---------- Besitz-Markierungen und Hypotheken ----------
+const ownMarks = [], mortMarks = [], buildings = F.map(() => []);
+const mortTex = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 400;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(20,10,10,.62)'; x.fillRect(0, 0, 256, 400);
+  x.strokeStyle = 'rgba(255,80,60,.9)'; x.lineWidth = 10; x.strokeRect(14, 14, 228, 372);
+  x.save(); x.translate(128, 200); x.rotate(-Math.PI / 2.6);
+  x.fillStyle = '#ff5a45'; x.font = '900 46px system-ui, Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  if (!COVER) x.fillText('HYPOTHEK', 0, 0);
+  x.restore();
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+})();
+for (const f of BUYABLE) {
+  const g = FG[f];
+  const m = new THREE.Mesh(new THREE.BoxGeometry(W - 0.16, 0.05, 0.16), new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#fff', emissiveIntensity: 0.6, roughness: 0.3 }));
+  m.position.copy(fieldPt(f, 0, D / 2 - 0.14, TOP + 0.025));
+  m.rotation.y = Math.atan2(g.ox, g.oz);
+  m.visible = false; m.castShadow = true;
+  scene.add(m); ownMarks[f] = m;
+  const mm = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.04, D - 0.04), new THREE.MeshBasicMaterial({ map: mortTex, transparent: true, depthWrite: false }));
+  mm.rotation.x = -Math.PI / 2; mm.rotation.z = Math.atan2(g.ox, g.oz) + Math.PI;
+  mm.position.set(g.x, TOP + 0.004, g.z);
+  mm.visible = false; scene.add(mm); mortMarks[f] = mm;
+}
+
+// ---------- Gefängnisgitter ----------
+const JAILC = new THREE.Vector3(-HB + D * 0.31 + D * 0.69 / 2, TOP, HB - D * 0.31 - D * 0.69 / 2);
+const bars = new THREE.Group();
+{
+  const bm = new THREE.MeshStandardMaterial({ color: '#c9ccd4', metalness: 1, roughness: 0.25, envMap: ENV });
+  const cw = D * 0.69 - 0.1, n = 6, hgt = 1.05;
+  const bg = new THREE.CylinderGeometry(0.03, 0.03, hgt, 8);
+  for (let side = 0; side < 4; side++) for (let k = 0; k <= n; k++) {
+    if (k === n) continue;
+    const t = -cw / 2 + k * cw / n;
+    const b = new THREE.Mesh(bg, bm); b.castShadow = true;
+    const [bx, bz] = [[t, -cw / 2], [cw / 2, t], [-t, cw / 2], [-cw / 2, -t]][side];
+    b.position.set(bx, hgt / 2, bz); bars.add(b);
+  }
+  for (let k = 0; k < 4; k++) {
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(cw + 0.08, 0.06, 0.06), bm);
+    rim.position.y = hgt; rim.rotation.y = k * Math.PI / 2;
+    rim.position.x = [0, cw / 2, 0, -cw / 2][k]; rim.position.z = [-cw / 2, 0, cw / 2, 0][k];
+    bars.add(rim);
+  }
+  bars.position.copy(JAILC); bars.position.y = TOP + 6; bars.visible = false;
+  scene.add(bars);
+}
+
+// ---------- Würfel ----------
+function dieTex(n) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fbfbf7'; x.fillRect(0, 0, 128, 128);
+  const g = x.createRadialGradient(64, 64, 40, 64, 64, 92); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.18)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  const P = { 1: [[64, 64]], 2: [[34, 34], [94, 94]], 3: [[30, 30], [64, 64], [98, 98]], 4: [[34, 34], [94, 34], [34, 94], [94, 94]],
+    5: [[30, 30], [98, 30], [64, 64], [30, 98], [98, 98]], 6: [[34, 28], [94, 28], [34, 64], [94, 64], [34, 100], [94, 100]] }[n];
+  for (const [a, b] of P) { x.fillStyle = n === 1 ? '#d62d1e' : '#151515'; x.beginPath(); x.arc(a, b, n === 1 ? 17 : 12.5, 0, 7); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+// Seiten einer BoxGeometry: +x, -x, +y, -y, +z, -z
+const DIE_FACES = [3, 4, 1, 6, 2, 5];
+const DIE_N = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)];
+const dieMats = DIE_FACES.map(n => new THREE.MeshStandardMaterial({ map: dieTex(n), roughness: 0.28, metalness: 0.0 }));
+const DS = 0.72;
+const dice = [0, 1].map(k => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(DS, DS, DS), dieMats);
+  m.castShadow = true; m.position.set(k ? 0.7 : -0.7, TOP + DS / 2, 1.5);
+  scene.add(m);
+  return m;
+});
+function dieQuat(v, yaw) {
+  const idx = DIE_FACES.indexOf(v);
+  const q = new THREE.Quaternion().setFromUnitVectors(DIE_N[idx], new THREE.Vector3(0, 1, 0));
+  return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw).multiply(q);
+}
+dice[0].quaternion.copy(dieQuat(3, 0.3)); dice[1].quaternion.copy(dieQuat(4, -0.4));
+
+// ---------- Effekte ----------
+const glowTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+// Funke: heller Kern mit farbigem Rand, sieht auch auf dem hellen Brett gut aus
+const sparkTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d'); const g = x.createRadialGradient(32, 32, 0, 32, 32, 30);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,.95)'); g.addColorStop(0.6, 'rgba(200,200,200,.6)'); g.addColorStop(1, 'rgba(128,128,128,0)');
+  x.fillStyle = g; x.beginPath();
+  for (let k = 0; k < 10; k++) { const r = k % 2 ? 12 : 31, a = k * Math.PI / 5 - Math.PI / 2; x.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); }
+  x.fill();
+  return new THREE.CanvasTexture(c);
+})();
+const sparks = [];
+const sparkPool = [];
+function spark(pos, col, opt) {
+  opt = opt || {};
+  let s = sparkPool.pop();
+  if (!s) { s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, depthWrite: false, transparent: true, toneMapped: false, fog: false })); }
+  s.material.color.set(col);
+  s.position.copy(pos);
+  const sp = opt.speed || 4;
+  s.userData = { v: new THREE.Vector3((Math.random() - 0.5) * sp, (opt.up || 0.5) * sp * (0.4 + Math.random()), (Math.random() - 0.5) * sp), life: 0, max: (opt.life || 0.9) * (0.6 + Math.random() * 0.6), size: opt.size || 0.35, g: opt.g == null ? 6 : opt.g };
+  s.scale.setScalar(s.userData.size);
+  scene.add(s); sparks.push(s);
+}
+function burst(pos, col, n, opt) { for (let i = 0; i < n; i++) spark(pos, Array.isArray(col) ? col[i % col.length] : col, opt); }
+
+const coinGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.035, 20);
+const coinMat = new THREE.MeshStandardMaterial({ color: '#ffd84f', metalness: 0.85, roughness: 0.28, envMap: ENV, emissive: '#8a5c00', emissiveIntensity: 0.7 });
+const coins = [], coinPool = [];
+function coin(from, to, delay, dur, h) {
+  let c = coinPool.pop();
+  if (!c) { c = new THREE.Mesh(coinGeo, coinMat); c.castShadow = true; }
+  c.visible = false;
+  c.userData = { a: from.clone(), b: to.clone(), t: -delay, dur, h: h == null ? 2.5 : h, spin: new THREE.Vector3(Math.random() * 14, Math.random() * 6, Math.random() * 14) };
+  scene.add(c); coins.push(c);
+}
+function coinStream(from, to, n, totalDur) {
+  n = Math.max(1, Math.min(n, 26));
+  for (let i = 0; i < n; i++) coin(from, to, i * (totalDur * 0.5) / n, totalDur * 0.55 + Math.random() * 0.1, 1.6 + Math.random() * 1.6);
+}
+const floats = [];
+function textSprite(text, col, size) {
+  const c = document.createElement('canvas'); c.width = 768; c.height = 128;
+  const x = c.getContext('2d');
+  x.font = '900 84px system-ui, "Segoe UI", Arial'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 14; x.strokeStyle = 'rgba(0,0,0,.65)'; x.strokeText(text, 384, 66);
+  x.fillStyle = col; x.fillText(text, 384, 66);
+  const t = new THREE.CanvasTexture(c);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthTest: false, toneMapped: false, fog: false }));
+  s.scale.set(6 * (size || 1), 1 * (size || 1), 1);
+  s.renderOrder = 10;
+  return s;
+}
+function floatText(pos, text, col, size) {
+  const s = textSprite(text, col, size);
+  s.position.copy(pos);
+  s.userData = { life: 0, max: 1.7, y0: pos.y };
+  scene.add(s); floats.push(s);
+}
+const rings = [];
+function ringFx(pos, col, maxR, dur) {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 48), new THREE.MeshBasicMaterial({ color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.rotation.x = -Math.PI / 2; m.position.copy(pos); m.position.y = TOP + 0.02;
+  m.userData = { life: 0, max: dur || 0.6, r: maxR || 1.5 };
+  scene.add(m); rings.push(m);
+}
+const beamTex = (() => {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 128;
+  const x = c.getContext('2d'); const g = x.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.7, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,1)');
+  x.fillStyle = g; x.fillRect(0, 0, 4, 128); return new THREE.CanvasTexture(c);
+})();
+const beams = [];
+function beamFx(f, col) {
+  const g = FG[f];
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.9, 7, 32, 1, true), new THREE.MeshBasicMaterial({ map: beamTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.position.set(g.x, TOP + 3.5, g.z);
+  m.userData = { life: 0, max: 1.4 };
+  m.scale.set(1, 0.01, 1);
+  scene.add(m); beams.push(m);
+}
+const shards = [];
+function shatter(pos, col) {
+  const mat = new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.3, envMap: ENV });
+  for (let i = 0; i < 26; i++) {
+    const m = new THREE.Mesh(new THREE.TetrahedronGeometry(0.08 + Math.random() * 0.1), mat);
+    m.position.copy(pos).add(new THREE.Vector3(0, 0.4, 0));
+    m.castShadow = true;
+    m.userData = { v: new THREE.Vector3((Math.random() - 0.5) * 9, 4 + Math.random() * 7, (Math.random() - 0.5) * 9), w: new THREE.Vector3(Math.random() * 10, Math.random() * 10, Math.random() * 10), life: 0 };
+    scene.add(m); shards.push(m);
+  }
+}
+const sirens = [new THREE.PointLight('#ff2020', 0, 18), new THREE.PointLight('#2050ff', 0, 18)];
+sirens.forEach(l => scene.add(l));
+let sirenT = 0;
+const activeRing = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.78, 48), new THREE.MeshBasicMaterial({ color: '#fff', transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+activeRing.rotation.x = -Math.PI / 2; activeRing.visible = false; scene.add(activeRing);
+const fieldHi = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#ffe680', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+fieldHi.rotation.x = -Math.PI / 2; scene.add(fieldHi);
+let fieldHiT = 0;
+function highlightField(f, dur) {
+  const g = FG[f];
+  fieldHi.position.set(g.x, TOP + 0.01, g.z);
+  const horiz = g.corner || g.oz !== 0;
+  fieldHi.scale.set(g.corner ? D : horiz ? W : D, g.corner ? D : horiz ? D : W, 1);
+  fieldHiT = dur || 1.5;
+}
+
+// ======================================================================
+//  Kamera
+// ======================================================================
+const RIGHT = 262, BOTTOM = 110;
+const camS = { theta: 0, phi: 0.62, r: 30, t: new THREE.Vector3() };
+const camG = { theta: 0, phi: 0.62, r: 30, t: new THREE.Vector3() };
+let camFollow = null, camOrbit = 0, shakeA = 0, baseR = 30, userCam = false;
+function fitR() {
+  const w = innerWidth - (menuOpen() ? 0 : RIGHT), h = innerHeight - (menuOpen() ? 0 : BOTTOM);
+  const vf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const needH = 12.2 / vf, needW = 12.6 / (vf * (w / h));
+  return Math.max(needH * 0.93, needW) * 1.02;
+}
+function onResize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  const off = menuOpen() ? 0 : RIGHT, offB = menuOpen() ? 0 : BOTTOM;
+  camera.aspect = (w + off) / (h + offB);
+  camera.setViewOffset(w + off, h + offB, off, offB, w, h);
+  camera.updateProjectionMatrix();
+  baseR = fitR();
+  if (!camFollow) camG.r = Math.min(Math.max(camG.r, 9), 60);
+  fx.width = w * Math.min(2, devicePixelRatio || 1); fx.height = h * Math.min(2, devicePixelRatio || 1);
+}
+function camOverview(keepAngle) {
+  camFollow = null;
+  camG.t.set(0, 0, 0.6);
+  camG.r = baseR;
+  camG.phi = 0.62;
+  if (!keepAngle) camG.theta = 0;
+}
+function camFocus(pos, r, phi) {
+  camG.t.copy(pos);
+  camG.r = r || 14;
+  camG.phi = phi || 0.78;
+}
+function updateCamera(dt) {
+  if (camOrbit) camG.theta += dt * camOrbit;
+  if (camFollow) camG.t.lerp(camFollow.position, 1 - Math.exp(-dt * 6));
+  const k = 1 - Math.exp(-dt * 3.2);
+  camS.theta += (camG.theta - camS.theta) * k;
+  camS.phi += (camG.phi - camS.phi) * k;
+  camS.r += (camG.r - camS.r) * k;
+  camS.t.lerp(camG.t, k);
+  const sp = Math.sin(camS.phi), cp = Math.cos(camS.phi);
+  camera.position.set(camS.t.x + camS.r * sp * Math.sin(camS.theta), camS.t.y + camS.r * cp, camS.t.z + camS.r * sp * Math.cos(camS.theta));
+  if (shakeA > 0.001) {
+    camera.position.x += (Math.random() - 0.5) * shakeA; camera.position.y += (Math.random() - 0.5) * shakeA; camera.position.z += (Math.random() - 0.5) * shakeA;
+    shakeA *= Math.exp(-dt * 7);
+  }
+  camera.lookAt(camS.t);
+}
+function shake(a) { shakeA = Math.max(shakeA, a); }
+
+// Ziehen dreht, Scrollen zoomt, Klick zeigt ein Feld
+let drag = null;
+glCanvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0 }; glCanvas.setPointerCapture(e.pointerId); });
+glCanvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.moved += Math.abs(dx) + Math.abs(dy); drag.x = e.clientX; drag.y = e.clientY;
+  if (drag.moved > 4) {
+    userCam = true;
+    camG.theta -= dx * 0.006; camS.theta = camG.theta;
+    camG.phi = Math.min(1.25, Math.max(0.12, camG.phi - dy * 0.005)); camS.phi = camG.phi;
+  }
+});
+glCanvas.addEventListener('pointerup', e => {
+  if (drag && drag.moved <= 4) pickAt(e.clientX, e.clientY);
+  drag = null;
+});
+glCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  camG.r = Math.min(60, Math.max(8, camG.r * Math.exp(e.deltaY * 0.0015)));
+}, { passive: false });
+const ray = new THREE.Raycaster();
+function pickAt(cx, cy) {
+  if (menuOpen() || !view) return;
+  const v = new THREE.Vector2(cx / innerWidth * 2 - 1, -(cy / innerHeight) * 2 + 1);
+  ray.setFromCamera(v, camera);
+  const p = new THREE.Vector3();
+  if (!ray.ray.intersectPlane(pickPlane, p)) return;
+  const f = fieldAt(p.x, p.z);
+  if (f >= 0) showFieldInfo(f, cx, cy); else closeInfo();
+}
+
+// ======================================================================
+//  Tweens und Zeit
+// ======================================================================
+const tweens = [];
+let speedMul = 1;      // aus den Optionen (Tempo)
+const spd = () => speedMul * (Q.length > 10 ? 0.4 : Q.length > 4 ? 0.7 : 1);
+function tween(ms, fn, ease) {
+  return new Promise(res => tweens.push({ t0: performance.now(), ms: Math.max(1, ms * spd()), fn, ease: ease || (x => x), res }));
+}
+const wait = ms => tween(ms, () => {});
+const E_OUT = x => 1 - Math.pow(1 - x, 3);
+const E_IO = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const E_BACK = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function runTweens(now) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const t = tweens[i];
+    const k = Math.min(1, (now - t.t0) / t.ms);
+    try { t.fn(t.ease(k), k); } catch (e) { console.error(e); }
+    if (k >= 1) { tweens.splice(i, 1); t.res(); }
+  }
+}
+
+// ======================================================================
+//  Figuren auf dem Brett
+// ======================================================================
+let toks = [];   // { m, target: Vector3, anim }
+function buildTokens(s) {
+  for (const t of toks) scene.remove(t.m);
+  toks = s.players.map(p => {
+    const m = tokenMesh(p.tok, p.col);
+    m.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    scene.add(m);
+    const t = { m, target: new THREE.Vector3(), anim: false, hide: false };
+    return t;
+  });
+  layoutTokens(s, true);
+}
+function slotPos(s, pid) {
+  const pl = s.players[pid], f = pl.pos;
+  const here = s.players.filter(q => !q.out && q.pos === f && (f !== 10 || q.jail === pl.jail)).map(q => q.idx);
+  const k = here.indexOf(pid), n = here.length;
+  const g = FG[f];
+  if (f === 10) {
+    if (pl.jail) {
+      const o = [[0, 0], [-0.4, -0.4], [0.4, 0.4], [-0.4, 0.4], [0.4, -0.4], [0, 0.45]][n === 1 ? 0 : k + 1] || [0, 0];
+      return new THREE.Vector3(JAILC.x + o[0], TOP, JAILC.z + o[1]);
+    }
+    // Nur zu Besuch: am Rand entlang
+    const spots = [[-9.6, 9.6], [-8.7, 9.62], [-9.62, 8.7], [-7.85, 9.62], [-9.62, 7.85], [-9.0, 9.0]];
+    const o = spots[k] || spots[0];
+    return new THREE.Vector3(o[0], TOP, o[1]);
+  }
+  if (g.corner) {
+    const o = n === 1 ? [0, 0] : [[-0.5, -0.5], [0.5, 0.5], [0.5, -0.5], [-0.5, 0.5], [0, 0], [0, 0.9]][k];
+    return new THREE.Vector3(g.x + o[0], TOP, g.z + o[1]);
+  }
+  const grid = [[-0.38, -0.25], [0.38, -0.25], [-0.38, 0.4], [0.38, 0.4], [-0.38, 1.0], [0.38, 1.0]];
+  const o = n === 1 ? [0, 0.15] : grid[k];
+  return fieldPt(f, o[0], o[1], TOP);
+}
+function layoutTokens(s, snap) {
+  s.players.forEach((p, i) => {
+    const t = toks[i]; if (!t) return;
+    if (p.out) { t.hide = true; return; }
+    t.target.copy(slotPos(s, i));
+    if (snap) t.m.position.copy(t.target);
+  });
+}
+function updateTokens(dt, now) {
+  toks.forEach((t, i) => {
+    if (t.hide && !t.anim) { t.m.visible = false; return; }
+    t.m.visible = true;
+    if (!t.anim) t.m.position.lerp(t.target, 1 - Math.exp(-dt * 8));
+    const active = view && view.phase !== 'over' && actorOf(view) === i;
+    const ring = t.m.userData.ring;
+    ring.material.opacity += ((active ? 0.55 + Math.sin(now * 0.005) * 0.3 : 0) - ring.material.opacity) * Math.min(1, dt * 6);
+    if (!t.anim) {
+      t.m.rotation.y += dt * (active ? 1.4 : 0.15);
+    }
+  });
+}
+
+// ======================================================================
+//  Häuser, Besitz, Hypotheken angleichen
+// ======================================================================
+function syncField(s, f, animate) {
+  const lv = s.houses[f];
+  const want = lv === 5 ? 'H' : 'h' + lv;
+  if (buildings[f].key !== want) {
+    for (const b of buildings[f]) scene.remove(b);
+    buildings[f] = buildingSpots(f, lv).map((sp, k) => {
+      const b = makeBuilding(lv === 5);
+      b.position.copy(sp.p); b.rotation.y = sp.r;
+      scene.add(b);
+      if (animate) {
+        const last = lv === 5 || k === lv - 1;
+        if (last) {
+          const y0 = sp.p.y;
+          b.position.y = y0 + 5; b.scale.setScalar(0.4);
+          tween(520, (e) => { b.position.y = y0 + 5 * (1 - e); b.scale.setScalar(0.4 + 0.6 * Math.min(1, e * 1.2)); }, x => x * x).then(() => {
+            burst(sp.p.clone().setY(y0 + 0.1), ['#ffffff', '#d8d0c0'], 16, { speed: 3, up: 0.3, life: 0.5, size: 0.25, g: 2 });
+            ringFx(sp.p, lv === 5 ? '#ff5040' : '#40ff80', 1.2, 0.5);
+            snd.thud();
+            tween(260, (e, k2) => { const sq = Math.sin(k2 * Math.PI) * 0.35; b.scale.set(1 + sq, 1 - sq, 1 + sq); });
+          });
+        }
+      }
+      return b;
+    });
+    buildings[f].key = want;
+  }
+  if (ownMarks[f]) {
+    const o = s.own[f];
+    const m = ownMarks[f];
+    if (o >= 0) {
+      if (!m.visible || m.userData.o !== o) {
+        m.material.color.set(s.players[o].col); m.material.emissive.set(s.players[o].col);
+        m.visible = true; m.userData.o = o;
+        if (animate) { m.scale.set(0.01, 1, 1); tween(500, e => m.scale.set(Math.max(0.01, e), 1 + (1 - e) * 4, 1), E_BACK); }
+      }
+    } else { m.visible = false; m.userData.o = -1; }
+    const mo = !!s.mort[f];
+    if (mortMarks[f].visible !== mo) {
+      mortMarks[f].visible = mo;
+      if (mo && animate) { const mm = mortMarks[f]; mm.scale.setScalar(2.2); mm.material.opacity = 0; tween(380, e => { mm.scale.setScalar(2.2 - 1.2 * e); mm.material.opacity = e; }, E_OUT).then(() => shake(0.15)); }
+    }
+  }
+}
+function syncBoard(s, animate) { for (let f = 0; f < 40; f++) syncField(s, f, animate); }
+
+// ======================================================================
+//  Ton (WebAudio, erst nach der ersten Eingabe)
+// ======================================================================
+let AC = null, muted = false;
+try { muted = localStorage.getItem(GAME_ID + '-ton') === 'aus'; } catch (e) { /* egal */ }
+function audio() {
+  if (muted) return null;
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, dur, type, vol, slide, delay) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + (delay || 0);
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(dur, vol, freq, delay, q) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + (delay || 0);
+  const b = a.createBuffer(1, Math.ceil(a.sampleRate * dur), a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+  const s = a.createBufferSource(); s.buffer = b;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 1500; f.Q.value = q || 1;
+  const g = a.createGain(); g.gain.value = vol || 0.3;
+  s.connect(f).connect(g).connect(a.destination); s.start(t);
+}
+const snd = {
+  click: () => tone(660, 0.06, 'square', 0.05),
+  dice: () => { for (let i = 0; i < 6; i++) noise(0.05, 0.35 - i * 0.04, 2500 + Math.random() * 1500, i * (0.09 + i * 0.03), 3); },
+  step: () => tone(520 + Math.random() * 60, 0.07, 'triangle', 0.08, 1.4),
+  coin: (d) => { tone(1568, 0.12, 'square', 0.04, 1, d || 0); tone(2093, 0.25, 'square', 0.035, 1, (d || 0) + 0.07); },
+  cash: () => { noise(0.08, 0.3, 4000, 0, 2); tone(1318, 0.15, 'triangle', 0.12, 1, 0.05); tone(1760, 0.4, 'triangle', 0.12, 1, 0.13); },
+  thud: () => { tone(110, 0.18, 'sine', 0.3, 0.5); noise(0.08, 0.2, 400); },
+  card: () => noise(0.25, 0.25, 3000, 0, 0.6),
+  jail: () => { tone(90, 0.5, 'sawtooth', 0.18, 0.6); noise(0.4, 0.4, 300, 0.05); },
+  siren: () => { for (let i = 0; i < 4; i++) { tone(880, 0.2, 'sawtooth', 0.05, 1, i * 0.4); tone(660, 0.2, 'sawtooth', 0.05, 1, i * 0.4 + 0.2); } },
+  boom: () => { noise(0.8, 0.6, 150, 0, 0.5); tone(60, 0.8, 'sine', 0.4, 0.4); },
+  fanfare: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, i === 5 ? 0.8 : 0.22, 'triangle', 0.14, 1, i * 0.16)),
+  bad: () => { tone(220, 0.25, 'sawtooth', 0.08, 0.7); tone(165, 0.35, 'sawtooth', 0.08, 0.7, 0.18); },
+  whoosh: () => noise(0.45, 0.3, 800, 0, 0.4),
+  gavel: () => { noise(0.06, 0.5, 900, 0, 2); tone(180, 0.15, 'sine', 0.2, 0.6); },
+  pop: () => tone(880, 0.12, 'sine', 0.12, 2),
+  turn: () => { tone(587, 0.1, 'triangle', 0.08); tone(880, 0.16, 'triangle', 0.08, 1, 0.08); },
+};
+function setMuted(m) {
+  muted = m;
+  try { localStorage.setItem(GAME_ID + '-ton', m ? 'aus' : 'an'); } catch (e) { /* egal */ }
+  $('bSound').textContent = m ? '🔇' : '🔊';
+}
+
+// ======================================================================
+//  2D-Effekte (Konfetti, Blitze)
+// ======================================================================
+const fx = $('fx'), fxc = fx.getContext('2d');
+const confetti = [];
+function confettiBurst(n) {
+  const cols = ['#ff5a45', '#ffcf4a', '#4f8ff7', '#3ccf6e', '#b26cf0', '#ffffff', '#ff8a3d'];
+  for (let i = 0; i < n; i++) confetti.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * 0.6, vx: (Math.random() - 0.5) * 120, vy: 80 + Math.random() * 200,
+    r: Math.random() * 6, vr: (Math.random() - 0.5) * 10, w: 6 + Math.random() * 8, h: 4 + Math.random() * 6, c: cols[i % cols.length], life: 0 });
+}
+function drawFx2D(dt) {
+  const dpr = fx.width / innerWidth;
+  fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
+  fxc.clearRect(0, 0, innerWidth, innerHeight);
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const c = confetti[i];
+    c.life += dt; c.x += c.vx * dt + Math.sin(c.life * 3 + c.r) * 0.6; c.y += c.vy * dt; c.r += c.vr * dt;
+    if (c.y > innerHeight + 20 || c.life > 9) { confetti.splice(i, 1); continue; }
+    fxc.save(); fxc.translate(c.x, c.y); fxc.rotate(c.r); fxc.scale(1, Math.cos(c.life * 6 + c.r));
+    fxc.fillStyle = c.c; fxc.fillRect(-c.w / 2, -c.h / 2, c.w, c.h); fxc.restore();
+  }
+}
+function flash(col, a) {
+  const el = $('flash');
+  el.style.background = col; el.style.transition = 'none'; el.style.opacity = a || 0.5;
+  requestAnimationFrame(() => { el.style.transition = 'opacity .6s'; el.style.opacity = 0; });
+}
+let bannerTimer = 0;
+function banner(text, sub, col) {
+  const el = $('banner');
+  el.style.setProperty('--bc', col || '#e8402f');
+  el.innerHTML = '<div class="b"></div>' + (sub ? '<div class="s"></div>' : '');
+  el.firstChild.textContent = text;
+  if (sub) el.lastChild.textContent = sub;
+  const ms = 1600 * Math.max(0.5, spd());
+  el.querySelectorAll('div').forEach(d => d.style.animationDuration = ms + 'ms');
+  clearTimeout(bannerTimer); bannerTimer = setTimeout(() => { el.innerHTML = ''; }, ms);
+}
+
+// ======================================================================
+//  Bildschirm-Positionen
+// ======================================================================
+function toScreen(v) {
+  const p = v.clone().project(camera);
+  return { x: (p.x + 1) / 2 * innerWidth, y: (1 - p.y) / 2 * innerHeight };
+}
+function tokPos(i) { return toks[i] ? toks[i].m.position.clone() : new THREE.Vector3(); }
+const BANKPOS = new THREE.Vector3(0, TOP + 0.4, 0);
+const POTPOS = new THREE.Vector3(FG[20].x, TOP + 0.3, FG[20].z);
+const placeOf = who => who === -1 ? BANKPOS : who === -2 ? POTPOS : tokPos(who).add(new THREE.Vector3(0, 0.6, 0));
+
+// ======================================================================
+//  Animationen für jedes Ereignis
+// ======================================================================
+async function hop(t, to, h, ms) {
+  const from = t.m.position.clone();
+  await tween(ms, (e, k) => {
+    t.m.position.lerpVectors(from, to, e);
+    t.m.position.y = from.y + (to.y - from.y) * e + Math.sin(k * Math.PI) * h;
+    const sq = k > 0.85 ? Math.sin((k - 0.85) / 0.15 * Math.PI) * 0.18 : 0;
+    t.m.scale.set(1.15 * (1 + sq), 1.15 * (1 - sq), 1.15 * (1 + sq));
+  }, E_IO);
+  t.m.scale.setScalar(1.15);
+}
+async function throwDice(d) {
+  snd.dice();
+  const yaw = () => (Math.random() - 0.5) * 1.2;
+  const targets = [new THREE.Vector3(-0.55 + (Math.random() - 0.5) * 0.6, TOP + DS / 2, 1.7 + (Math.random() - 0.5) * 0.8),
+    new THREE.Vector3(0.65 + (Math.random() - 0.5) * 0.6, TOP + DS / 2, 1.9 + (Math.random() - 0.5) * 0.8)];
+  const startBase = new THREE.Vector3(Math.sin(camS.theta) * 9, TOP + 4.5, Math.cos(camS.theta) * 9);
+  const anims = dice.map((m, k) => {
+    const from = startBase.clone().add(new THREE.Vector3((k - 0.5) * 1.4, Math.random(), 0));
+    const to = targets[k];
+    const qEnd = dieQuat(d[k], yaw());
+    const axis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+    const ang = Math.PI * (5 + Math.random() * 3);
+    let bounced = 0;
+    return tween(1150, (e, k2) => {
+      const hx = E_OUT(k2);
+      m.position.lerpVectors(from, to, hx);
+      // drei Sprünge mit abnehmender Höhe
+      const bt = k2 * 3.2;
+      const seg = Math.min(3, Math.floor(bt)), f = bt - seg;
+      const amp = [from.y - to.y, 1.1, 0.45, 0.12][seg];
+      m.position.y = to.y + (seg === 0 ? amp * (1 - f * f) : amp * 4 * f * (1 - f));
+      if (seg > bounced && seg < 3) { bounced = seg; noise(0.04, 0.25 / seg, 2800, 0, 3); }
+      const spin = new THREE.Quaternion().setFromAxisAngle(axis, ang * (1 - E_OUT(k2)));
+      m.quaternion.copy(qEnd).premultiply(spin);
+    });
+  });
+  await Promise.all(anims);
+  const mid = dice[0].position.clone().add(dice[1].position).multiplyScalar(0.5);
+  ringFx(mid, '#ffffff', 1.6, 0.4);
+  floatText(mid.clone().setY(TOP + 1.5), String(d[0] + d[1]), d[0] === d[1] ? '#ffcf4a' : '#ffffff', 0.9);
+  if (d[0] === d[1]) { burst(mid.clone().setY(TOP + 0.6), ['#ffcf4a', '#ffffff', '#ff8a3d'], 40, { speed: 6, up: 0.8 }); snd.pop(); }
+}
+async function moveAnim(ev) {
+  const t = toks[ev.p]; if (!t) return;
+  t.anim = true;
+  camFollow = t.m; camG.r = Math.min(camG.r, 15); camG.phi = 0.8;
+  const stepMs = ev.path.length > 12 ? 130 : 190;
+  for (let i = 0; i < ev.path.length; i++) {
+    const f = ev.path[i];
+    const last = i === ev.path.length - 1;
+    const s2 = clone(ev.s);
+    const to = last ? slotPos(s2, ev.p) : (FG[f].corner ? new THREE.Vector3(FG[f].x, TOP, FG[f].z) : fieldPt(f, 0, 0.15, TOP));
+    await hop(t, to, last ? 0.9 : 0.55, last ? stepMs * 1.6 : stepMs);
+    snd.step();
+    if (f === 0 && i < ev.path.length) {
+      // Über Los: Goldregen
+      burst(to.clone().setY(TOP + 0.5), ['#ffcf4a', '#fff2a8'], 30, { speed: 5, up: 1 });
+      ringFx(to, '#ffcf4a', 2.2, 0.7);
+    }
+    if (last) {
+      ringFx(to, ev.s.players[ev.p].col, 1.4, 0.5);
+      burst(to.clone().setY(TOP + 0.05), ['#ffffff'], 10, { speed: 2.5, up: 0.25, life: 0.4, size: 0.2, g: 1 });
+      highlightField(f, 1.2);
+    }
+  }
+  t.anim = false;
+}
+async function jailAnim(ev) {
+  const t = toks[ev.p]; if (!t) return;
+  banner('AB INS GEFÄNGNIS!', ev.s.players[ev.p].name, '#2050ff');
+  snd.siren();
+  sirenT = 2.4;
+  t.anim = true;
+  camFollow = null;
+  camFocus(JAILC, 16, 0.75);
+  const from = t.m.position.clone(), to = slotPos(ev.s, ev.p);
+  bars.visible = true; bars.position.y = TOP + 6;
+  await tween(1100, (e, k) => {
+    t.m.position.lerpVectors(from, to, e);
+    t.m.position.y = from.y + Math.sin(k * Math.PI) * 6;
+    t.m.rotation.y += 0.4; t.m.rotation.z = Math.sin(k * Math.PI * 4) * 0.4;
+  }, E_IO);
+  t.m.rotation.z = 0;
+  t.anim = false; t.m.position.copy(to);
+  await tween(260, e => { bars.position.y = TOP + 6 * (1 - e); }, x => x * x);
+  snd.jail(); shake(0.6); flash('#2050ff', 0.25);
+  burst(JAILC.clone().setY(TOP + 0.1), ['#ffffff', '#aab4c8'], 30, { speed: 4, up: 0.3, life: 0.6, size: 0.3, g: 1 });
+  await wait(450);
+}
+async function freeAnim(ev) {
+  snd.whoosh();
+  burst(JAILC.clone().setY(TOP + 1), ['#ffcf4a', '#ffffff'], 24, { speed: 4, up: 1 });
+  const anyLeft = ev.s.players.some(p => p.jail && !p.out);
+  if (!anyLeft) await tween(500, e => { bars.position.y = TOP + 6 * e; }, E_IO).then(() => { bars.visible = false; });
+}
+async function moneyAnim(ev) {
+  const a = placeOf(ev.from), b = placeOf(ev.to);
+  const n = Math.ceil(Math.sqrt(ev.amt) / 2.2);
+  coinStream(a, b, n, 0.9 * spd());
+  for (let i = 0; i < Math.min(n, 8); i++) snd.coin(0.12 + i * 0.07);
+  if (ev.to >= 0) floatText(b.clone().add(new THREE.Vector3(0, 0.8, 0)), '+' + ev.amt, '#7dff9e', 0.75);
+  if (ev.from >= 0) floatText(a.clone().add(new THREE.Vector3(0, 1.1, 0)), '−' + ev.amt, '#ff8a80', 0.75);
+  await wait(ev.why === 'go' ? 450 : 520);
+}
+async function cardAnim(ev) {
+  const c = DECKS[ev.deck][ev.ci];
+  const el = $('ecard');
+  el.className = ev.deck;
+  el.querySelector('.back').textContent = ev.deck === 'chance' ? '?' : '';
+  if (ev.deck === 'chest') el.querySelector('.back').innerHTML = '<span style="font-size:72px">🧰</span>';
+  el.querySelector('h3').textContent = ev.deck === 'chance' ? 'Ereignis' : 'Gemeinschaft';
+  el.querySelector('.ic').textContent = c.i;
+  el.querySelector('p').textContent = c.t;
+  const deck = DECK3[ev.deck];
+  camFollow = null; camFocus(deck.position, 17, 0.6);
+  snd.card();
+  // Karte hebt vom Stapel ab
+  const s0 = toScreen(deck.position);
+  const cx = innerWidth / 2 - (menuOpen() ? 0 : RIGHT / 2) - 190, cy = innerHeight / 2 - 160;
+  el.style.left = '0px'; el.style.top = '0px';
+  const human = !ev.s.players[ev.p].bot;
+  const hold = human ? 2600 : 1500;
+  const dur = (hold + 1500) * spd();
+  const T = (x, y, sc, rx, ry, rz) => `translate(${x}px, ${y}px) scale(${sc}) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
+  const anim = el.animate([
+    { transform: T(s0.x - 190, s0.y - 115, 0.25, 70, 0, -45), easing: 'cubic-bezier(.2,.8,.3,1)' },
+    { transform: T(cx, cy - 60, 1.15, 0, 90, 4), offset: 0.3, easing: 'cubic-bezier(.3,1.4,.5,1)' },
+    { transform: T(cx, cy, 1, 0, 180, 0), offset: 0.45 },
+    { transform: T(cx, cy, 1, 0, 180, 0), offset: 0.88, easing: 'ease-in' },
+    { transform: T(cx, cy - 50, 0.85, 0, 180, 0) },
+  ], { duration: dur, fill: 'forwards' });
+  const fade = $('ecardO').animate([{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.88 }, { opacity: 0 }], { duration: dur, fill: 'forwards' });
+  el.classList.remove('hidden');
+  cardSkip = () => { try { anim.finish(); fade.finish(); } catch (e) { /* egal */ } };
+  await new Promise(r => { anim.onfinish = r; anim.oncancel = r; });
+  cardSkip = null;
+  el.classList.add('hidden');
+}
+let cardSkip = null;
+async function buyAnim(ev) {
+  const col = ev.s.players[ev.p].col;
+  beamFx(ev.f, col);
+  const g = FG[ev.f];
+  burst(new THREE.Vector3(g.x, TOP + 0.3, g.z), [col, '#ffffff', '#ffcf4a'], 50, { speed: 5, up: 1.1 });
+  ringFx(new THREE.Vector3(g.x, TOP, g.z), col, 2.5, 0.8);
+  snd.cash();
+  floatText(new THREE.Vector3(g.x, TOP + 2.2, g.z), ev.auction ? 'ERSTEIGERT!' : 'GEKAUFT!', col, 1);
+  syncField(ev.s, ev.f, true);
+  await wait(800);
+}
+async function bankruptAnim(ev) {
+  const t = toks[ev.p];
+  banner('PLEITE!', ev.s.players[ev.p].name + ' ist bankrott', '#ff2a10');
+  snd.boom(); shake(1.2); flash('#ff3010', 0.45);
+  if (t) {
+    camFocus(t.m.position, 14, 0.7);
+    shatter(t.m.position, ev.s.players[ev.p].col);
+    burst(t.m.position.clone().setY(TOP + 0.5), ['#ff5a20', '#ffcf4a', '#ffffff'], 60, { speed: 8, up: 1 });
+    t.hide = true; t.m.visible = false;
+  }
+  syncBoard(ev.s, true);
+  await wait(1500);
+}
+async function winAnim(ev) {
+  const t = toks[ev.p];
+  snd.fanfare();
+  banner('🏆 ' + ev.s.players[ev.p].name, 'gewinnt das Spiel!', ev.s.players[ev.p].col);
+  confettiBurst(260);
+  if (t) { camFollow = t.m; camG.r = 11; camG.phi = 0.9; }
+  camOrbit = 0.35;
+  for (let i = 0; i < 6; i++) {
+    setTimeout(() => {
+      const p = new THREE.Vector3((Math.random() - 0.5) * 14, 5 + Math.random() * 4, (Math.random() - 0.5) * 14);
+      burst(p, [PCOLS[i % 6], '#ffffff', '#ffcf4a'], 70, { speed: 9, up: 0.2, life: 1.4, g: 2, size: 0.45 });
+      snd.pop();
+    }, i * 380);
+  }
+  await wait(2600);
+}
+
+async function animate(ev) {
+  const s = ev.s;
+  switch (ev.k) {
+    case 'turn': {
+      const p = s.players[ev.p];
+      if (!userCam) camOverview(true);
+      const many = s.players.filter(q => !q.bot && !q.out).length;
+      if (!p.bot && (many > 1 || isOnline())) { banner(p.name + ' ist dran', p.jail ? '🔒 im Gefängnis' : '', p.col); snd.turn(); await wait(700); }
+      else await wait(150);
+      break;
+    }
+    case 'dice': await throwDice(ev.d); break;
+    case 'move': await moveAnim(ev); break;
+    case 'jail': await jailAnim(ev); break;
+    case 'free': await freeAnim(ev); break;
+    case 'money': await moneyAnim(ev); break;
+    case 'jackpot': {
+      const p = placeOf(ev.p);
+      banner('JACKPOT!', '+' + fr(ev.amt), '#ffcf4a');
+      coinStream(POTPOS.clone().setY(TOP + 3), p, 26, 1.2 * spd());
+      burst(POTPOS, ['#ffcf4a', '#ffffff'], 60, { speed: 7, up: 1.2 });
+      snd.cash();
+      await wait(1100);
+      break;
+    }
+    case 'card': await cardAnim(ev); break;
+    case 'rent': {
+      const o = s.players[ev.o];
+      beamFx(ev.f, o.col);
+      if (ev.amt >= 400) { banner('AUTSCH!', fr(ev.amt) + ' Miete', '#ff3010'); shake(0.9); flash('#ff2010', 0.3); snd.bad(); }
+      else if (ev.amt >= 150) { shake(0.35); snd.bad(); }
+      await wait(350);
+      break;
+    }
+    case 'offer': {
+      const g = FG[ev.f];
+      camFollow = null;
+      camFocus(new THREE.Vector3(g.x * 0.62, 0, g.z * 0.62 + 2.2), 19, 0.7);
+      highlightField(ev.f, 3);
+      break;
+    }
+    case 'buy': await buyAnim(ev); break;
+    case 'auction': banner('VERSTEIGERUNG!', fname(ev.f), '#ffcf4a'); snd.gavel(); await wait(800); break;
+    case 'bid': snd.gavel(); await wait(250); break;
+    case 'passbid': await wait(120); break;
+    case 'nobid': await wait(400); break;
+    case 'build': syncField(s, ev.f, true); await wait(650); break;
+    case 'sell': {
+      const pos = FG[ev.f];
+      burst(new THREE.Vector3(pos.x, TOP + 0.4, pos.z), ['#ffffff', '#ffcf4a'], 20, { speed: 3, up: 1 });
+      snd.coin();
+      syncField(s, ev.f, true);
+      await wait(350);
+      break;
+    }
+    case 'mort': {
+      const g = FG[ev.f];
+      syncField(s, ev.f, true);
+      if (!ev.on) { burst(new THREE.Vector3(g.x, TOP + 0.3, g.z), ['#7dff9e', '#ffffff'], 24, { speed: 3, up: 1 }); snd.cash(); } else snd.thud();
+      await wait(420);
+      break;
+    }
+    case 'again': banner('PASCH!', 'Nochmal würfeln', '#ffcf4a'); await wait(600); break;
+    case 'debt': {
+      const d = ev.d, p = s.players[d.p];
+      if (!p.bot) { banner('Zu wenig Geld!', p.name + ' muss ' + fr(d.amt) + ' auftreiben', '#ff5a45'); snd.bad(); await wait(700); }
+      break;
+    }
+    case 'offerTrade': snd.pop(); await wait(200); break;
+    case 'traded': {
+      const t = ev.t;
+      banner('🤝 HANDEL!', s.players[t.from].name + ' & ' + s.players[t.to].name, '#3ccf6e');
+      snd.cash();
+      [...t.give.props, ...t.get.props].forEach(f => { const g = FG[f]; beamFx(f, s.players[s.own[f]].col); burst(new THREE.Vector3(g.x, TOP + 0.3, g.z), [s.players[s.own[f]].col, '#fff'], 20, { speed: 4, up: 1 }); });
+      syncBoard(s, true);
+      await wait(1100);
+      break;
+    }
+    case 'tradeNo': toast('Kein Handel.'); await wait(250); break;
+    case 'bankrupt': await bankruptAnim(ev); break;
+    case 'win': await winAnim(ev); break;
+  }
+}
+
+// ======================================================================
+//  Hauptschleife
+// ======================================================================
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  runTweens(now);
+  if (menuOpen() && !COVER) camG.theta += dt * 0.06;
+  updateCamera(dt);
+  updateTokens(dt, now);
+  // Funken
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i], u = s.userData;
+    u.life += dt;
+    if (u.life >= u.max) { scene.remove(s); sparks.splice(i, 1); sparkPool.push(s); continue; }
+    u.v.y -= u.g * dt; s.position.addScaledVector(u.v, dt);
+    if (s.position.y < TOP + 0.03) { s.position.y = TOP + 0.03; u.v.y *= -0.4; u.v.x *= 0.7; u.v.z *= 0.7; }
+    s.material.opacity = 1 - u.life / u.max;
+    s.scale.setScalar(u.size * (1 - 0.5 * u.life / u.max));
+  }
+  // Münzen
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const c = coins[i], u = c.userData;
+    u.t += dt;
+    if (u.t < 0) continue;
+    c.visible = true;
+    const k = Math.min(1, u.t / u.dur), e = E_IO(k);
+    c.position.lerpVectors(u.a, u.b, e);
+    c.position.y += Math.sin(k * Math.PI) * u.h;
+    c.rotation.set(u.spin.x * u.t, u.spin.y * u.t, u.spin.z * u.t);
+    if (k >= 1) { scene.remove(c); coins.splice(i, 1); coinPool.push(c); if (Math.random() < 0.3) spark(c.position, '#ffcf4a', { speed: 1.5, life: 0.3, size: 0.25 }); }
+  }
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const s = floats[i], u = s.userData;
+    u.life += dt;
+    const k = u.life / u.max;
+    s.position.y = u.y0 + E_OUT(Math.min(1, k)) * 1.6;
+    s.material.opacity = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    if (k >= 1) { scene.remove(s); s.material.map.dispose(); s.material.dispose(); floats.splice(i, 1); }
+  }
+  for (let i = rings.length - 1; i >= 0; i--) {
+    const m = rings[i], u = m.userData; u.life += dt;
+    const k = u.life / u.max;
+    m.scale.setScalar(0.2 + E_OUT(Math.min(1, k)) * u.r);
+    m.material.opacity = 1 - k;
+    if (k >= 1) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); rings.splice(i, 1); }
+  }
+  for (let i = beams.length - 1; i >= 0; i--) {
+    const m = beams[i], u = m.userData; u.life += dt;
+    const k = u.life / u.max;
+    m.scale.y = Math.min(1, k * 5); m.position.y = TOP + 3.5 * m.scale.y;
+    m.material.opacity = k < 0.4 ? 1 : 1 - (k - 0.4) / 0.6;
+    m.rotation.y += dt * 2;
+    if (k >= 1) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); beams.splice(i, 1); }
+  }
+  for (let i = shards.length - 1; i >= 0; i--) {
+    const m = shards[i], u = m.userData; u.life += dt;
+    u.v.y -= 18 * dt; m.position.addScaledVector(u.v, dt);
+    if (m.position.y < TOP + 0.05) { m.position.y = TOP + 0.05; u.v.y *= -0.35; u.v.x *= 0.6; u.v.z *= 0.6; }
+    m.rotation.x += u.w.x * dt; m.rotation.y += u.w.y * dt;
+    if (u.life > 2.5) { m.scale.multiplyScalar(0.9); }
+    if (u.life > 3.2) { scene.remove(m); m.geometry.dispose(); shards.splice(i, 1); }
+  }
+  if (sirenT > 0) {
+    sirenT -= dt;
+    const on = Math.floor(now / 160) % 2;
+    sirens[0].intensity = on ? 3.5 : 0; sirens[1].intensity = on ? 0 : 3.5;
+    sirens.forEach((l, k) => l.position.set(JAILC.x + (k ? 2 : -2), 4, JAILC.z));
+    if (sirenT <= 0) sirens.forEach(l => (l.intensity = 0));
+  }
+  if (fieldHiT > 0) { fieldHiT -= dt; fieldHi.material.opacity = Math.min(1, fieldHiT) * (0.25 + 0.15 * Math.sin(now * 0.012)); } else fieldHi.material.opacity = 0;
+  // Aktiver Spieler: Lichtring
+  if (view && view.phase !== 'over' && toks[view.cur] && !toks[view.cur].hide) {
+    activeRing.visible = true;
+    activeRing.position.copy(toks[view.cur].m.position); activeRing.position.y = TOP + 0.015;
+    activeRing.material.color.set(view.players[view.cur].col);
+    activeRing.scale.setScalar(1 + Math.sin(now * 0.004) * 0.12);
+  } else activeRing.visible = false;
+  renderer.render(scene, camera);
+  drawFx2D(dt);
+  requestAnimationFrame(frame);
+}
+// Ist der Tab im Hintergrund, laufen Online-Animationen trotzdem weiter
+setInterval(() => { if (document.hidden && isOnline()) runTweens(performance.now()); }, 200);
+
+// ======================================================================
+//  Ablauf: Ereignisse abspielen, Ansicht angleichen
+// ======================================================================
+let view = null;
+const Q = [];
+let playing = false;
+let mode = 'local';            // 'local' | 'online'
+let isHost = true;
+let room = null, net = null;
+let botTimer = 0;
+const isOnline = () => mode === 'online';
+const menuOpen = () => !$('menu').classList.contains('hidden');
+
+function deliver(evs) {
+  if (!evs.length) return;
+  if (isOnline() && isHost && room) {
+    // In Paketen schicken, damit keine Nachricht zu gross wird
+    for (let i = 0; i < evs.length; i += 12) room.send({ t: 'ev', evs: evs.slice(i, i + 12) });
+  }
+  if (!isOnline()) saveGame();
+  for (const e of evs) Q.push(e);
+  if (!playing) playQueue();
+}
+async function playQueue() {
+  playing = true;
+  renderPrompt(null);
+  while (Q.length) {
+    const e = Q.shift();
+    try { await animate(e); } catch (err) { console.error(err); }
+    applyView(e.s);
+  }
+  playing = false;
+  if (!userCam && view && view.phase !== 'over' && !camOrbit) { const ph = view.phase; if (ph !== 'buy') camOverview(true); }
+  renderPrompt(view);
+  if (isHost) scheduleBot();
+}
+function applyView(s) {
+  view = s;
+  layoutTokens(s);
+  syncBoard(s, false);
+  renderHUD(s);
+  if (s.phase === 'over' && !playing && !Q.length) setTimeout(showResult, 400);
+}
+function actHost(pid, a) {
+  if (!G) return false;
+  E = [];
+  let ok = false;
+  try { ok = handle(pid, a); } catch (err) { console.error(err); }
+  const evs = E; E = [];
+  if (ok) {
+    deliver(evs);
+    if (G.phase === 'over') onGameOver();
+  }
+  return ok;
+}
+// Eigene Eingabe abschicken
+function myPid(s) {
+  s = s || view;
+  if (!s) return -1;
+  if (isOnline()) return s.players.findIndex(p => p.seat === room.you && !p.bot);
+  return -1;
+}
+function canAct(s, pid) {
+  if (pid < 0 || !s.players[pid] || s.players[pid].bot || s.players[pid].out) return false;
+  return isOnline() ? s.players[pid].seat === room.you : true;
+}
+function send(a, pid) {
+  closeInfo();
+  if (pid == null) pid = isOnline() ? myPid() : actorOf(view);
+  if (isOnline() && !isHost) { room.send({ t: 'a', a }); renderPrompt(null); return; }
+  if (!actHost(pid, a)) { snd.bad(); toast('Das geht gerade nicht.'); }
+}
+function fallbackAction(g, p) {
+  switch (g.phase) {
+    case 'roll': return { k: 'roll' };
+    case 'end': return { k: 'end' };
+    case 'jail': return { k: 'jailRoll' };
+    case 'buy': return { k: 'decline' };
+    case 'auction': return { k: 'pass' };
+    case 'trade': return { k: 'reject' };
+    case 'debt': return g.players[p].money >= g.debts[0].amt ? { k: 'pay' } : { k: 'bankrupt' };
+  }
+  return null;
+}
+function scheduleBot() {
+  clearTimeout(botTimer);
+  if (!G || G.phase === 'over' || menuOpen() && !isOnline()) return;
+  const pid = actorOf(G);
+  if (pid < 0 || !P(pid) || !P(pid).bot) return;
+  const manageStep = ['roll', 'end', 'jail'].includes(G.phase);
+  botTimer = setTimeout(() => {
+    if (playing || Q.length || !G || G.phase === 'over') return;
+    if (document.hidden && !isOnline()) { scheduleBot(); return; }
+    if (menuOpen() && !isOnline()) return;
+    const p = actorOf(G);
+    if (p < 0 || !P(p) || !P(p).bot) return;
+    let a = null;
+    try { a = botDecide(G, p); } catch (err) { console.error(err); }
+    if (!a || !actHost(p, a)) {
+      const fb = fallbackAction(G, p);
+      if (!fb || !actHost(p, fb)) console.warn('Bot steckt fest', G.phase, a);
+    }
+  }, (manageStep ? 420 : 650) * speedMul);
+}
+
+// ======================================================================
+//  Anzeige: Spielerkarten, Runde, Protokoll
+// ======================================================================
+const shownMoney = [];
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function buildPanels(s) {
+  const box = $('players');
+  box.innerHTML = '';
+  s.players.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = 'pc'; d.style.setProperty('--pcol', p.col); d.id = 'pc' + i;
+    let props = '';
+    const grp = (list) => '<span class="pg">' + list.map(f => `<i class="pp" data-f="${f}" style="--c:${fieldColor(f)}"></i>`).join('') + '</span>';
+    GROUPS.forEach(g => { props += grp(g.f); });
+    props += grp(RAILS) + grp(UTILS);
+    d.innerHTML = `<div class="row1"><div class="tok">${TOKENS[p.tok].e}</div><div class="nm"></div><div class="st"></div></div>
+      <div class="money"></div><div class="props">${props}</div>`;
+    d.querySelector('.nm').innerHTML = esc(p.name) + (p.bot ? `<small>🤖 ${BOTN[p.bot]}</small>` : '');
+    d.addEventListener('click', () => showPlayerInfo(i));
+    box.appendChild(d);
+    shownMoney[i] = p.money;
+    d.querySelector('.money').textContent = fr(p.money);
+  });
+}
+function renderHUD(s) {
+  s.players.forEach((p, i) => {
+    const d = $('pc' + i); if (!d) return;
+    d.classList.toggle('active', s.cur === i && s.phase !== 'over');
+    d.classList.toggle('out', p.out);
+    d.querySelector('.nm').innerHTML = esc(p.name) + (p.bot ? `<small>🤖 ${BOTN[p.bot]}</small>` : '') + (p.out ? '<small>pleite</small>' : '');
+    d.querySelector('.st').textContent = (p.jail ? '🔒' : '') + (p.cards.length ? ' 🗝️' + (p.cards.length > 1 ? '×' + p.cards.length : '') : '');
+    d.querySelectorAll('.pp').forEach(el => {
+      const f = +el.dataset.f;
+      el.classList.toggle('on', s.own[f] === i);
+      el.classList.toggle('mo', s.own[f] === i && s.mort[f]);
+    });
+    const old = shownMoney[i];
+    if (old !== p.money) {
+      const m = d.querySelector('.money');
+      const diff = p.money - old;
+      m.classList.remove('up', 'down'); void m.offsetWidth; m.classList.add(diff > 0 ? 'up' : 'down');
+      const dl = document.createElement('div'); dl.className = 'delta';
+      dl.style.color = diff > 0 ? '#7dff9e' : '#ff8a80'; dl.textContent = (diff > 0 ? '+' : '−') + Math.abs(diff);
+      d.appendChild(dl); setTimeout(() => dl.remove(), 1500);
+      const t0 = performance.now(), from = old, to = p.money;
+      shownMoney[i] = to;
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / 650);
+        m.textContent = fr(Math.round(from + (to - from) * E_OUT(k)));
+        if (k < 1) requestAnimationFrame(step); else setTimeout(() => m.classList.remove('up', 'down'), 500);
+      };
+      step();
+    }
+  });
+  const r = $('round');
+  r.innerHTML = `Runde <b>${s.round}</b>${s.opts.rounds ? ' von ' + s.opts.rounds : ''} · 🏠 <b>${s.bankHouses}</b> · 🏨 <b>${s.bankHotels}</b>` +
+    (s.opts.parking ? ` · 🅿️ <b>${fr(s.pot)}</b>` : '') + (isOnline() ? ` · 🌐 ${room.code}` : '');
+  const lg = $('log');
+  const last = s.log.slice(-6).reverse();
+  const key = last.join('|');
+  if (lg.dataset.k !== key) {
+    lg.dataset.k = key;
+    lg.innerHTML = last.map(t => '<div>' + esc(t) + '</div>').join('');
+  }
+  if (modalKind === 'manage') renderManage();
+  if (modalKind === 'trade') renderTradeComposer();
+}
+
+// ======================================================================
+//  Besitzrechtskarten
+// ======================================================================
+function deedHTML(f, s, small) {
+  const fd = F[f];
+  const o = s ? s.own[f] : -1;
+  const lv = s && o >= 0 ? s.houses[f] : -1;
+  let h = '';
+  const light = fd.t === 'street' && [1, 5].includes(fd.g);
+  if (fd.t === 'street') {
+    const g = GROUPS[fd.g];
+    const full = s && o >= 0 && ownsGroup(s, o, fd.g);
+    h += `<div class="hd" style="--dc:${g.c};--dt:${light ? '#111' : '#fff'}"><small>BESITZRECHTSKARTE</small><b>${esc(fd.n)}</b><i>${esc(fd.c)}</i></div><table>`;
+    const row = (a, b, cur) => `<tr class="${cur ? 'cur' : ''}"><td>${a}</td><td>${b}</td></tr>`;
+    h += row('Miete', fr(fd.r[0]), lv === 0 && !full);
+    h += row('mit ganzer Gruppe', fr(fd.r[0] * 2), lv === 0 && full);
+    for (let k = 1; k <= 4; k++) h += row('mit ' + k + (k > 1 ? ' Häusern' : ' Haus'), fr(fd.r[k]), lv === k);
+    h += row('mit Hotel', fr(fd.r[5]), lv === 5);
+    h += '</table>';
+    if (!small) h += `<div class="ft">Haus kostet ${fr(g.h)} · Hotel ${fr(g.h)} + 4 Häuser<br>Hypothek ${fr(fd.p / 2)}</div>`;
+  } else if (fd.t === 'rail') {
+    h += `<div class="hd" style="--dc:#2a2a2a"><small>BAHNHOF</small><b>${esc(fd.n)}</b></div><div class="ico">🚆</div><table>`;
+    const n = s && o >= 0 ? countOwned(s, o, RAILS) : 0;
+    [25, 50, 100, 200].forEach((r, k) => { h += `<tr class="${n === k + 1 ? 'cur' : ''}"><td>${k ? 'mit ' + (k + 1) + ' Bahnhöfen' : 'Miete'}</td><td>${fr(r)}</td></tr>`; });
+    h += `</table><div class="ft">Hypothek ${fr(100)}</div>`;
+  } else if (fd.t === 'util') {
+    h += `<div class="hd" style="--dc:#6b7a8c"><small>WERK</small><b>${esc(fd.n.replace('-', ''))}</b></div><div class="ico">${f === 12 ? '💡' : '🚰'}</div>
+      <div style="font-size:13px;line-height:1.45">Besitzt du ein Werk, ist die Miete <b>4×</b> die gewürfelte Augenzahl.<br>Besitzt du beide Werke, ist sie <b>10×</b> die Augenzahl.</div><div class="ft">Hypothek ${fr(75)}</div>`;
+  }
+  if (s && o >= 0) h += `<div class="own" style="background:${s.players[o].col}">Besitzer: ${esc(s.players[o].name)}</div>`;
+  else if (s) h += `<div class="own" style="background:#556">Zu kaufen: ${fr(fd.p)}</div>`;
+  if (s && s.mort[f]) h += `<div class="mort">HYPOTHEK</div>`;
+  return `<div class="deed">${h}</div>`;
+}
+const FIELD_INFO = {
+  go: 'Kommst du über Los oder landest du darauf, ziehst du 200 Fr. ein.',
+  chance: 'Ziehe eine Ereigniskarte und befolge sie.', chest: 'Ziehe eine Gemeinschaftskarte und befolge sie.',
+  jail: 'Nur zu Besuch: Hier passiert nichts. Wer im Gefängnis sitzt, kommt mit einem Pasch, 50 Fr. oder einer Karte frei.',
+  parking: 'Hier kannst du dich ausruhen.', gotojail: 'Gehe direkt ins Gefängnis, ohne über Los zu ziehen.',
+};
+let infoOpen = false;
+function showFieldInfo(f, cx, cy) {
+  const el = $('info') || Object.assign(document.createElement('div'), { id: 'info' });
+  document.body.appendChild(el);
+  const fd = F[f];
+  if (fd.p) el.innerHTML = deedHTML(f, view);
+  else {
+    let t = FIELD_INFO[fd.t] || '';
+    if (fd.t === 'tax') t = 'Zahle ' + fr(fd.a) + ' an die Bank.';
+    if (fd.t === 'parking' && view.opts.parking) t = 'Hausregel: Wer hier landet, bekommt alle Steuern und Bussen aus dem Topf (zurzeit ' + fr(view.pot) + ').';
+    el.innerHTML = `<div class="deed"><div class="hd" style="--dc:#333"><b>${esc(fd.n.replace('-', ''))}</b></div><div style="padding:4px 2px;line-height:1.45">${esc(t)}</div></div>`;
+  }
+  const w = 250, h = el.offsetHeight || 320;
+  el.style.left = Math.max(150, Math.min(innerWidth - RIGHT - w - 10, cx + 16)) + 'px';
+  el.style.top = Math.max(10, Math.min(innerHeight - h - 10, cy - h / 2)) + 'px';
+  infoOpen = true;
+  highlightField(f, 2);
+  snd.click();
+}
+function closeInfo() { const el = $('info'); if (el) el.remove(); infoOpen = false; }
+function showPlayerInfo(i) {
+  if (!view) return;
+  const p = view.players[i];
+  const mine = BUYABLE.filter(f => view.own[f] === i);
+  openModal('pinfo', `<h2><span style="color:${p.col}">${TOKENS[p.tok].e}</span> ${esc(p.name)} <button class="x" data-key="escape">✕</button></h2>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px;font-size:15px"><div>💰 Bargeld <b>${fr(p.money)}</b></div><div>📊 Vermögen <b>${fr(worth(view, i))}</b></div>
+    <div>🗝️ Karten <b>${p.cards.length}</b></div>${p.jail ? '<div>🔒 im Gefängnis</div>' : ''}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">${mine.length ? mine.map(f => `<div style="transform:scale(.8);transform-origin:top left;width:200px;height:${F[f].t === 'street' ? 250 : 230}px">${deedHTML(f, view, true)}</div>`).join('') : '<div style="color:var(--dim)">Noch keine Grundstücke.</div>'}</div>`);
+}
+
+// ======================================================================
+//  Aktionsleiste
+// ======================================================================
+function btn(label, key, cls, fn, dis, title) {
+  const b = document.createElement('button');
+  b.className = 'btn ' + (cls || '');
+  b.innerHTML = label + (key ? `<span class="kbd">${key === 'space' ? 'Leertaste' : key.toUpperCase()}</span>` : '');
+  if (key) b.dataset.key = key;
+  if (dis) b.disabled = true;
+  if (title) b.title = title;
+  b.addEventListener('click', e => { e.currentTarget.blur(); audio(); snd.click(); fn(); });
+  return b;
+}
+function renderPrompt(s) {
+  const info = $('ainfo'), box = $('abtns');
+  box.innerHTML = ''; info.innerHTML = '';
+  if (!s || menuOpen()) { if (!s && modalKind === 'auction') renderAuction(); return; }
+  if (s.phase === 'over') { closeModal(); return; }
+  const actor = actorOf(s);
+  const me = canAct(s, actor);
+  const ap = s.players[actor];
+  if (!ap) return;
+  const local = !isOnline() && s.players.filter(p => !p.bot).length > 1;
+  const who = me ? (local ? esc(ap.name) + ', du' : 'Du') : '';
+  // Automatische Fenster
+  if (s.phase === 'auction') renderAuction();
+  else if (modalKind === 'auction') closeModal();
+  if (s.phase === 'trade' && canAct(s, s.trade.to)) renderTradeAnswer();
+  else if (modalKind === 'answer') closeModal();
+  if (modalKind === 'manage' && !canManage(s, isOnline() ? myPid(s) : actor)) closeModal();
+  if (modalKind === 'trade' && !(['roll', 'end', 'jail'].includes(s.phase) && canAct(s, s.cur))) closeModal();
+
+  if (!me) {
+    if (s.phase === 'trade' && canAct(s, s.trade.from)) {
+      info.textContent = '⏳ Warte auf die Antwort von ' + s.players[s.trade.to].name + ' …';
+      box.append(btn('Angebot zurückziehen', 'escape', '', () => send({ k: 'cancel' }, s.trade.from)));
+      return;
+    }
+    info.innerHTML = (ap.bot ? '🤖 ' : '⏳ ') + esc(ap.name) + (ap.bot ? ' überlegt …' : ' ist dran …');
+    return;
+  }
+  const manage = () => btn('🏠 Verwalten', 'v', '', openManage);
+  const tradeB = () => btn('🤝 Handeln', 'h', '', openTrade, alive2(s) < 2);
+  switch (s.phase) {
+    case 'roll':
+      info.innerHTML = `${who} bist am Zug${ap.dbl ? ' – nochmal würfeln!' : '.'}`;
+      box.append(btn('🎲 Würfeln', 'space', 'main', () => send({ k: 'roll' })), manage(), tradeB());
+      break;
+    case 'jail':
+      info.innerHTML = `🔒 ${who} sitzt im Gefängnis (Versuch ${ap.tries + 1} von 3).`;
+      box.append(btn('🎲 Pasch versuchen', 'space', 'main', () => send({ k: 'jailRoll' })),
+        btn('💰 50 Fr. zahlen', 'z', 'gold', () => send({ k: 'jailPay' }), ap.money < 50),
+        btn('🗝️ Karte benutzen', 'k', 'green', () => send({ k: 'jailCard' }), !ap.cards.length), manage(), tradeB());
+      break;
+    case 'buy': {
+      const f = ap.pos, price = F[f].p;
+      info.innerHTML = `<div style="display:flex;gap:14px;align-items:center;text-align:left">${deedHTML(f, s, true).replace('class="deed"', 'class="deed" style="width:210px;font-size:12px"')}
+        <div style="max-width:230px">${who} bist auf <b>${esc(fname(f))}</b> gelandet.<br><br>Kaufen für <b style="color:var(--gold)">${fr(price)}</b>? Sonst wird das Feld versteigert.
+        ${ap.money < price ? '<br><br><span style="color:#ff8a80">Zu wenig Bargeld. Nimm eine Hypothek auf oder lass versteigern.</span>' : ''}</div></div>`;
+      box.append(btn('✅ Kaufen ' + fr(price), 'space', 'main', () => send({ k: 'buy' }), ap.money < price),
+        btn('🔨 Versteigern', 'a', 'gold', () => send({ k: 'decline' })), manage());
+      break;
+    }
+    case 'debt': {
+      const d = s.debts[0];
+      const can = liquid(s, actor) >= d.amt;
+      info.innerHTML = `💸 ${who} schuldest <b>${d.to >= 0 ? esc(s.players[d.to].name) : 'der Bank'}</b> <b style="color:#ff8a80">${fr(d.amt)}</b>.` +
+        (ap.money < d.amt ? (can ? ' Verkaufe Häuser oder nimm Hypotheken auf.' : ' Das reicht nicht mehr – du bist pleite.') : '');
+      box.append(btn('💸 Bezahlen', 'space', 'main', () => send({ k: 'pay' }), ap.money < d.amt), manage(),
+        btn('💥 Bankrott erklären', 'b', '', () => send({ k: 'bankrupt' }), can, can ? 'Du kannst noch Geld auftreiben.' : ''));
+      break;
+    }
+    case 'end':
+      info.innerHTML = `${who} kannst jetzt bauen, handeln oder den Zug beenden.`;
+      box.append(btn('✅ Zug beenden', 'space', 'main', () => send({ k: 'end' })), manage(), tradeB());
+      break;
+    case 'auction': info.textContent = 'Versteigerung läuft …'; break;
+    case 'trade': info.textContent = 'Ein Angebot wartet auf dich.'; break;
+  }
+}
+const alive2 = s => s.players.filter(p => !p.out).length;
+
+// ======================================================================
+//  Fenster
+// ======================================================================
+let modalKind = null;
+function openModal(kind, html, closable) {
+  modalKind = kind;
+  const m = $('modal');
+  const fresh = !m.firstChild || m.dataset.kind !== kind;
+  m.dataset.kind = kind;
+  if (fresh) m.innerHTML = `<div class="ovl"><div class="win"></div></div>`;
+  const w = m.querySelector('.win');
+  w.innerHTML = html;
+  if (fresh && closable !== false) m.querySelector('.ovl').addEventListener('mousedown', e => { if (e.target === e.currentTarget) closeModal(); });
+  w.querySelectorAll('.x').forEach(b => b.addEventListener('click', closeModal));
+  return w;
+}
+function closeModal() {
+  if (modalKind === 'auction' && view && view.phase === 'auction') return;
+  if (modalKind === 'answer' && view && view.phase === 'trade' && canAct(view, view.trade.to)) return;
+  modalKind = null; $('modal').innerHTML = ''; $('modal').dataset.kind = '';
+  if (gameMenuOpen) gameMenuOpen = false;
+}
+
+// ---------- Verwalten ----------
+function openManage() { renderManage(true); }
+function renderManage(first) {
+  const s = view;
+  if (!s) return;
+  const pid = isOnline() ? myPid(s) : actorOf(s);
+  if (!canManage(s, pid)) { if (modalKind === 'manage') closeModal(); return; }
+  const p = s.players[pid];
+  const gkey = f => F[f].t === 'street' ? F[f].g : F[f].t === 'rail' ? 8 : 9;
+  const mine = BUYABLE.filter(f => s.own[f] === pid).sort((a, b) => gkey(a) - gkey(b) || a - b);
+  let h = `<h2>🏠 Verwalten <span style="font-size:15px;color:var(--dim);font-weight:500">${esc(p.name)} · Bargeld <b style="color:var(--gold)">${fr(p.money)}</b></span><button class="x" data-key="escape">✕</button></h2>`;
+  h += `<div style="font-size:13px;color:var(--dim);margin-bottom:6px">Bauen geht nur mit einer ganzen Farbgruppe ohne Hypothek und gleichmässig (ein Haus pro Strasse, dann das nächste). Die Bank hat noch ${s.bankHouses} Häuser und ${s.bankHotels} Hotels.</div>`;
+  if (!mine.length) h += '<div style="padding:20px;text-align:center;color:var(--dim)">Du besitzt noch keine Grundstücke.</div>';
+  let lastG = null;
+  for (const f of mine) {
+    const fd = F[f];
+    const gk = fd.t === 'street' ? fd.g : fd.t;
+    if (gk !== lastG) { lastG = gk; h += `<div class="mgrp">${fd.t === 'street' ? GROUPS[fd.g].n + (ownsGroup(s, pid, fd.g) ? ' ✓ komplett' : '') : fd.t === 'rail' ? 'Bahnhöfe' : 'Werke'}</div>`; }
+    const lv = s.houses[f];
+    const lvTxt = s.mort[f] ? '<span style="color:#ff8a80">Hypothek</span>' : lv === 5 ? '🏨' : lv ? '🏠'.repeat(lv) : '–';
+    const hc = fd.t === 'street' ? GROUPS[fd.g].h : 0;
+    let bs = '';
+    if (fd.t === 'street') {
+      bs += `<button class="btn green" data-a="build" data-f="${f}" ${canBuild(s, pid, f) ? '' : 'disabled'}>+${lv === 4 ? '🏨' : '🏠'} ${fr(hc)}</button>`;
+      bs += `<button class="btn" data-a="sell" data-f="${f}" ${canSell(s, pid, f) ? '' : 'disabled'}>−🏠 +${fr(hc / 2)}</button>`;
+    }
+    if (s.mort[f]) bs += `<button class="btn gold" data-a="unmort" data-f="${f}" ${canUnmort(s, pid, f) ? '' : 'disabled'}>Ablösen −${fr(unmortCost(f))}</button>`;
+    else bs += `<button class="btn" data-a="mort" data-f="${f}" ${canMort(s, pid, f) ? '' : 'disabled'}>Hypothek +${fr(mortVal(f))}</button>`;
+    h += `<div class="mrow"><div class="chip" style="background:${fieldColor(f)}"></div><div class="n">${esc(fd.n.replace('-', ''))}<small>${esc(fd.c || '')}</small></div><div class="lv">${lvTxt}</div><div class="bs">${bs}</div></div>`;
+  }
+  h += `<div class="foot"><button class="btn main x">Fertig</button></div>`;
+  const w = openModal('manage', h);
+  w.querySelectorAll('button[data-a]').forEach(b => b.addEventListener('click', () => { snd.click(); send({ k: b.dataset.a, f: +b.dataset.f }, pid); }));
+}
+
+// ---------- Handel ----------
+let tradeDraft = null;
+function openTrade() {
+  const s = view;
+  const from = s.cur;
+  const partners = s.players.filter(p => !p.out && p.idx !== from);
+  if (!partners.length) return;
+  tradeDraft = { to: partners[0].idx, give: { props: [], money: 0, cards: 0 }, get: { props: [], money: 0, cards: 0 } };
+  renderTradeComposer();
+}
+function tradeItems(s, who, side, sel) {
+  let h = '';
+  const list = BUYABLE.filter(f => s.own[f] === who);
+  if (!list.length) h += '<div style="color:var(--dim);font-size:13px;padding:4px">Keine Grundstücke</div>';
+  for (const f of list) {
+    const blocked = F[f].t === 'street' && groupHasBuildings(s, F[f].g);
+    h += `<div class="titem ${sel.props.includes(f) ? 'sel' : ''} ${blocked ? 'dis' : ''}" data-side="${side}" data-f="${f}" title="${blocked ? 'Erst alle Häuser der Gruppe verkaufen' : ''}">
+      <span class="chip" style="background:${fieldColor(f)}"></span>${esc(fname(f))}${s.mort[f] ? ' <small style="color:#ff8a80">(Hypothek)</small>' : ''}<span style="margin-left:auto;color:var(--dim)">${fr(F[f].p)}</span></div>`;
+  }
+  const pl = s.players[who];
+  if (pl.cards.length) h += `<div class="titem ${sel.cards ? 'sel' : ''}" data-side="${side}" data-card="1">🗝️ Gefängnis-frei-Karte</div>`;
+  h += `<div class="mny">💰 <input type="number" min="0" step="10" max="${pl.money}" value="${sel.money}" data-side="${side}"> Fr. <span style="color:var(--dim);font-size:13px">(hat ${fr(pl.money)})</span></div>`;
+  return h;
+}
+function renderTradeComposer() {
+  const s = view, t = tradeDraft;
+  if (!s || !t) return;
+  if (!(['roll', 'end', 'jail'].includes(s.phase) && canAct(s, s.cur))) { if (modalKind === 'trade') closeModal(); return; }
+  const from = s.cur;
+  if (s.players[t.to].out) t.to = s.players.find(p => !p.out && p.idx !== from).idx;
+  // Ungültige Auswahl entfernen
+  t.give.props = t.give.props.filter(f => s.own[f] === from); t.get.props = t.get.props.filter(f => s.own[f] === t.to);
+  const tabs = s.players.filter(p => !p.out && p.idx !== from).map(p => `<button class="ptab ${p.idx === t.to ? 'sel' : ''}" style="--pcol:${p.col}" data-to="${p.idx}">${TOKENS[p.tok].e} ${esc(p.name)}</button>`).join('');
+  const test = sanitizeTrade(from, t);
+  const ok = tradeOk(s, test);
+  const h = `<h2>🤝 Handeln <button class="x" data-key="escape">✕</button></h2>
+    <div class="ptabs">${tabs}</div>
+    <div class="tcols"><div class="tcol"><h3>Du gibst</h3>${tradeItems(s, from, 'give', t.give)}</div>
+    <div class="tcol"><h3>Du bekommst von ${esc(s.players[t.to].name)}</h3>${tradeItems(s, t.to, 'get', t.get)}</div></div>
+    <div style="font-size:13px;color:var(--dim);margin-top:10px">Felder mit Häusern in der Gruppe kann man nicht handeln. Für übernommene Hypotheken zahlt man sofort 10 % Zins.</div>
+    <div class="foot"><button class="btn x">Abbrechen</button><button class="btn main" id="tSend" ${ok ? '' : 'disabled'}>Angebot senden</button></div>`;
+  const w = openModal('trade', h);
+  w.querySelectorAll('.ptab').forEach(b => b.addEventListener('click', () => { t.to = +b.dataset.to; t.get = { props: [], money: 0, cards: 0 }; renderTradeComposer(); }));
+  w.querySelectorAll('.titem').forEach(el => el.addEventListener('click', () => {
+    if (el.classList.contains('dis')) return;
+    const side = t[el.dataset.side];
+    if (el.dataset.card) side.cards = side.cards ? 0 : 1;
+    else { const f = +el.dataset.f; const i = side.props.indexOf(f); if (i >= 0) side.props.splice(i, 1); else side.props.push(f); }
+    snd.click(); renderTradeComposer();
+  }));
+  w.querySelectorAll('input[type=number]').forEach(inp => inp.addEventListener('change', () => {
+    t[inp.dataset.side].money = Math.max(0, Math.round((+inp.value || 0)));
+    renderTradeComposer();
+  }));
+  $('tSend').addEventListener('click', () => { const tt = sanitizeTrade(from, t); closeModal(); tradeDraft = null; send({ k: 'propose', t: tt }, from); });
+}
+function tradeList(s, side, owner) {
+  const items = side.props.map(f => `<div class="titem"><span class="chip" style="background:${fieldColor(f)}"></span>${esc(fname(f))}${s.mort[f] ? ' <small style="color:#ff8a80">(Hypothek)</small>' : ''}</div>`);
+  if (side.cards) items.push('<div class="titem">🗝️ Gefängnis-frei-Karte</div>');
+  if (side.money) items.push(`<div class="titem">💰 ${fr(side.money)}</div>`);
+  return items.join('') || '<div style="color:var(--dim);padding:4px">nichts</div>';
+}
+function renderTradeAnswer() {
+  const s = view, t = s.trade;
+  const A = s.players[t.from], B = s.players[t.to];
+  const h = `<h2>🤝 Angebot von <span style="color:${A.col}">${esc(A.name)}</span></h2>
+    <div style="margin-bottom:10px">${esc(B.name)}, willst du tauschen?</div>
+    <div class="tcols"><div class="tcol"><h3>Du bekommst</h3>${tradeList(s, t.give)}</div><div class="tcol"><h3>Du gibst</h3>${tradeList(s, t.get)}</div></div>
+    <div class="foot"><button class="btn" id="tNo">❌ Ablehnen <span class="kbd">N</span></button><button class="btn main" id="tYes">✅ Annehmen <span class="kbd">J</span></button></div>`;
+  const w = openModal('answer', h, false);
+  $('tNo').dataset.key = 'n'; $('tYes').dataset.key = 'j';
+  $('tNo').addEventListener('click', () => { snd.click(); send({ k: 'reject' }, t.to); });
+  $('tYes').addEventListener('click', () => { snd.click(); send({ k: 'accept' }, t.to); });
+  return w;
+}
+
+// ---------- Versteigerung ----------
+let lastBid = -1;
+function renderAuction() {
+  const s = view;
+  if (!s || s.phase !== 'auction') return;
+  const A = s.auction, f = A.f;
+  const actor = A.order[A.i];
+  const me = !playing && canAct(s, actor);
+  const ap = s.players[actor];
+  if (!ap) return;
+  const bidders = s.players.filter(p => !p.out).map(p => {
+    const gone = !A.order.includes(p.idx);
+    return `<span class="bidder ${gone ? 'gone' : ''} ${p.idx === actor && !gone ? 'now' : ''}" style="--pcol:${p.col}">${TOKENS[p.tok].e} ${esc(p.name)}${A.high === p.idx ? ' 👑' : ''}</span>`;
+  }).join('');
+  let ctl = '';
+  if (me) {
+    const opts = [10, 50, 100].map(n => A.bid + n);
+    ctl = `<div style="margin:6px 0 4px">${esc(ap.name)}, dein Gebot (du hast ${fr(ap.money)}):</div><div style="display:flex;gap:7px;flex-wrap:wrap">` +
+      opts.map((v, k) => `<button class="btn ${k ? '' : 'main'}" data-bid="${v}" data-key="${k ? String(k + 1) : 'space'}" ${v > ap.money ? 'disabled' : ''}>${fr(v)} <span class="kbd">${k ? k + 1 : 'Leertaste'}</span></button>`).join('') +
+      `<input type="number" id="aCustom" min="${A.bid + 1}" step="10" placeholder="Betrag" style="width:110px"><button class="btn" id="aGo">Bieten</button>` +
+      `<button class="btn" data-pass="1" data-key="p">Passen <span class="kbd">P</span></button></div>`;
+  } else ctl = `<div style="color:var(--dim);margin-top:8px">${ap.bot ? '🤖 ' : '⏳ '}${esc(ap.name)} ist mit Bieten dran …</div>`;
+  const h = `<h2>🔨 Versteigerung</h2><div class="auc">${deedHTML(f, s, true)}<div style="flex:1;min-width:280px">
+    <div style="color:var(--dim)">Höchstes Gebot</div><div class="big ${A.bid !== lastBid ? 'bump' : ''}">${A.bid ? fr(A.bid) : '–'}</div>
+    <div>${A.high >= 0 ? 'von <b style="color:' + s.players[A.high].col + '">' + esc(s.players[A.high].name) + '</b>' : 'Noch kein Gebot'}</div>
+    <div class="bidders">${bidders}</div>${ctl}</div></div>`;
+  lastBid = A.bid;
+  const w = openModal('auction', h, false);
+  w.querySelectorAll('[data-bid]').forEach(b => b.addEventListener('click', () => send({ k: 'bid', amt: +b.dataset.bid }, actor)));
+  w.querySelectorAll('[data-pass]').forEach(b => b.addEventListener('click', () => send({ k: 'pass' }, actor)));
+  const go = $('aGo');
+  if (go) go.addEventListener('click', () => { const v = Math.round(+$('aCustom').value || 0); if (v > A.bid && v <= ap.money) send({ k: 'bid', amt: v }, actor); else { snd.bad(); toast('Ungültiges Gebot.'); } });
+}
+
+// ---------- Hinweis ----------
+let toastT = 0;
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), 2200); }
+
+// ======================================================================
+//  Spielende
+// ======================================================================
+function onGameOver() {
+  if (!isOnline()) clearSave();
+  if (isOnline() && isHost && room) {
+    const w = P(G.winner);
+    try { room.result(w && !w.bot && w.seat >= 0 ? w.seat : -1); } catch (e) { /* egal */ }
+  }
+}
+let resultShown = false;
+function showResult() {
+  if (resultShown || !view || view.phase !== 'over') return;
+  resultShown = true;
+  if (window.LW && LW.rundeFertig) { try { LW.rundeFertig(); } catch (e) { /* egal */ } }
+  const s = view;
+  const order = s.players.map((p, i) => ({ p, i, w: p.out ? -1 : worth(s, i) })).sort((a, b) => (b.i === s.winner) - (a.i === s.winner) || b.w - a.w);
+  const rows = order.map((o, k) => `<div class="rank"><div>${['🥇', '🥈', '🥉'][k] || k + 1}</div><div>${TOKENS[o.p.tok].e}</div><div style="color:${o.p.col}">${esc(o.p.name)}</div><div>${o.p.out ? 'pleite' : fr(o.w)}</div></div>`).join('');
+  const again = !isOnline() || isHost;
+  openModal('result', `<h2>🏆 ${esc(s.players[s.winner].name)} gewinnt!</h2><div style="color:var(--dim);margin-bottom:8px">Nach ${s.round} Runden. Gezählt wird das ganze Vermögen.</div>${rows}
+    ${isOnline() ? '<div class="board-wrap" id="lbRes"></div>' : ''}
+    <div class="foot"><button class="btn" id="rMenu">Menü</button>${again ? '<button class="btn main" id="rAgain">Nochmal</button>' : ''}</div>`, false);
+  $('rMenu').addEventListener('click', () => { closeModalForce(); leaveGame(); showMain(); });
+  if (again) $('rAgain').addEventListener('click', () => { closeModalForce(); restartSame(); });
+  if (isOnline() && HUB) HUB.loadBoard(GAME_ID, $('lbRes'), HUB.getName());
+}
+function closeModalForce() { modalKind = null; $('modal').innerHTML = ''; $('modal').dataset.kind = ''; }
+
+// ======================================================================
+//  Spiel starten, speichern, verlassen
+// ======================================================================
+let lastSetup = null;
+function startView(s) {
+  resultShown = false; camOrbit = 0; userCam = false;
+  Q.length = 0; playing = false;
+  closeModalForce(); closeInfo();
+  speedMul = [1, 0.6, 0.35][(s.opts.speed || 1) - 1] || 1;
+  buildTokens(s);
+  bars.visible = s.players.some(p => p.jail && !p.out); bars.position.y = TOP + (bars.visible ? 0 : 6);
+  for (let f = 0; f < 40; f++) { buildings[f].forEach(b => scene.remove(b)); buildings[f] = []; buildings[f].key = 'h0'; }
+  syncBoard(s, false);
+  buildPanels(s);
+  view = s;
+  renderHUD(s);
+  hideMenu();
+  $('hud').classList.remove('hidden');
+  camOverview();
+  camS.r = baseR * 1.6; camS.theta = -1.2; camS.phi = 0.35;
+}
+function startLocal(seats, opts) {
+  mode = 'local'; isHost = true;
+  if (room) { try { room.close(); } catch (e) { /* egal */ } room = null; }
+  lastSetup = { seats: clone(seats), opts: clone(opts) };
+  G = newGame(seats, opts);
+  startView(clone(G));
+  E = []; emit('turn', { p: 0 });
+  const evs = E; E = [];
+  banner('LOS GEHT\'S!', 'Viel Glück, Baron!', '#e8402f');
+  setTimeout(() => deliver(evs), 900);
+}
+function restartSame() {
+  if (isOnline()) { if (isHost) hostStart(); return; }
+  if (lastSetup) startLocal(lastSetup.seats, lastSetup.opts);
+}
+function saveGame() {
+  if (!G || isOnline() || G.phase === 'over') return;
+  try { localStorage.setItem(GAME_ID + '-spielstand', JSON.stringify(G)); } catch (e) { /* egal */ }
+}
+function clearSave() { try { localStorage.removeItem(GAME_ID + '-spielstand'); } catch (e) { /* egal */ } }
+function loadSave() { try { const s = JSON.parse(localStorage.getItem(GAME_ID + '-spielstand') || 'null'); return s && s.v === 1 && s.players ? s : null; } catch (e) { return null; } }
+function resumeGame() {
+  const s = loadSave(); if (!s) return;
+  mode = 'local'; isHost = true;
+  G = s;
+  lastSetup = { seats: s.players.map(p => ({ name: p.name, col: p.col, tok: p.tok, bot: p.bot })), opts: s.opts };
+  startView(clone(G));
+  renderPrompt(view);
+  scheduleBot();
+}
+function leaveGame() {
+  clearTimeout(botTimer);
+  if (room) { try { room.send({ t: 'bye' }); room.close(); } catch (e) { /* egal */ } room = null; }
+  net = null;
+  if (G && G.phase !== 'over' && !isOnline()) saveGame();
+  if (isOnline()) G = null;
+  mode = 'local';
+  Q.length = 0; camOrbit = 0;
+  $('hud').classList.add('hidden');
+  closeModalForce();
+  view = null;
+}
+
+// ======================================================================
+//  Online
+// ======================================================================
+function hostStart() {
+  if (!net || !isHost) return;
+  const seats = [];
+  net.names.forEach((n, idx) => { if (n) seats.push({ name: n, seat: idx, bot: 0 }); });
+  for (let b = 0; b < net.bots && seats.length < 6; b++) seats.push({ name: BOTNAMES[b], bot: net.botLvl, seat: -1 });
+  if (seats.length < 2) { toast('Mindestens 2 Spieler (oder Bots) nötig.'); return; }
+  seats.forEach((s, i) => { s.col = PCOLS[i]; s.tok = i; });
+  G = newGame(seats, net.opts);
+  room.send({ t: 'init', s: G });
+  try { room.roundStart(); } catch (e) { /* egal */ }
+  startView(clone(G));
+  E = []; emit('turn', { p: 0 });
+  const evs = E; E = [];
+  banner('LOS GEHT\'S!', 'Online-Spiel', '#e8402f');
+  setTimeout(() => deliver(evs), 900);
+}
+function onNetMsg(d, from) {
+  if (!d || typeof d !== 'object') return;
+  if (isHost) {
+    if (d.t === 'a' && G) {
+      const pid = G.players.findIndex(p => p.seat === from && !p.bot);
+      if (pid >= 0) actHost(pid, d.a);
+    } else if (d.t === 'hello' && G && G.phase !== 'over') room.send({ t: 'init', s: G });
+    return;
+  }
+  // Mitspieler
+  if (d.t === 'lobby') { net.names = d.names; net.bots = d.bots; net.botLvl = d.botLvl; renderLobby(); }
+  else if (d.t === 'init') { G = null; startView(d.s); renderPrompt(view); }
+  else if (d.t === 'ev' && Array.isArray(d.evs)) {
+    if (!view) return;
+    for (const e of d.evs) Q.push(e);
+    if (!playing) playQueue();
+  }
+}
+function lobbyBroadcast() { if (room && isHost) room.send({ t: 'lobby', names: net.names, bots: net.bots, botLvl: net.botLvl }); renderLobby(); }
+function setupRoom() {
+  room = HUB.connect(GAME_ID);
+  room.on('msg', onNetMsg);
+  room.on('peer-join', m => {
+    net.names = (m.players || room.players || []).map(p => (p && (p.name || p)) || null);
+    if (isHost) {
+      if (G && G.phase !== 'over') room.send({ t: 'init', s: G });
+      lobbyBroadcast();
+    } else renderLobby();
+  });
+  room.on('peer-left', m => {
+    if (net) net.names[m.idx] = null;
+    if (!isHost && m.idx === 0) { info('📡 Der Host ist weg', 'Der Host hat das Spiel verlassen. Das Spiel ist beendet.'); return; }
+    if (isHost && G && G.phase !== 'over') {
+      const pid = G.players.findIndex(p => p.seat === m.idx && !p.bot);
+      if (pid >= 0) {
+        E = [];
+        G.players[pid].bot = 2; G.players[pid].seat = -1;
+        log(G.players[pid].name + ' hat das Spiel verlassen. Ein Bot übernimmt.');
+        emit('phase');
+        const evs = E; E = []; deliver(evs);
+        buildPanels(view); renderHUD(view);
+      }
+    }
+    if (isHost && !G) lobbyBroadcast(); else renderLobby();
+  });
+  room.on('close', () => { if (net) info('📡 Verbindung verloren', 'Die Verbindung zum Spiel-Server ist abgebrochen.'); });
+  room.on('leaderboard', rows => { const el = $('lbRes') || $('lbMenu'); if (el) HUB.renderBoard(el, rows, HUB.getName()); });
+}
+function info(title, text) {
+  leaveGame();
+  showMenu(`<h2 style="margin-top:0">${esc(title)}</h2><p>${esc(text)}</p><div class="foot" style="display:flex;justify-content:flex-end"><button class="btn main" id="iOk">Zum Menü</button></div>`);
+  $('iOk').addEventListener('click', showMain);
+}
+
+// ======================================================================
+//  Menüs
+// ======================================================================
+function showMenu(html, wide) {
+  $('menu').classList.remove('hidden');
+  $('menu').innerHTML = `<div class="mpanel ${wide ? 'wide' : ''}">${html}</div>`;
+  onResize();
+  clearTimeout(botTimer);
+}
+function hideMenu() { $('menu').classList.add('hidden'); $('menu').innerHTML = ''; onResize(); }
+function logoHTML() { return `<div class="logo"><div class="t">STRASSENBARON</div><div class="sub">Kaufen, bauen, abkassieren – quer durch die Schweiz.</div></div>`; }
+function showMain() {
+  leaveGame();
+  view = null;
+  camOverview(); camOrbit = 0;
+  const save = loadSave();
+  showMenu(logoHTML() + `<div class="mbtns">
+    ${save ? `<button class="btn main" id="mResume"><span class="e">▶️</span><div>Weiterspielen<small>Runde ${save.round} mit ${save.players.filter(p => !p.out).length} Spielern</small></div></button>` : ''}
+    <button class="btn ${save ? '' : 'main'}" id="mBots"><span class="e">🤖</span><div>Gegen Bots<small>Du gegen 1 bis 5 Computer-Gegner</small></div></button>
+    <button class="btn" id="mLocal"><span class="e">👥</span><div>Lokal<small>2 bis 6 Spieler an einem Laptop</small></div></button>
+    ${HUB ? '<button class="btn" id="mOnline"><span class="e">🌐</span><div>Online<small>Mit Freunden über einen Raum-Code</small></div></button>' : ''}
+    <button class="btn" id="mHelp"><span class="e">📖</span><div>Anleitung<small>Regeln und Steuerung</small></div></button></div>`);
+  if (save) $('mResume').addEventListener('click', () => { audio(); resumeGame(); });
+  $('mBots').addEventListener('click', () => { audio(); showSetup('bots'); });
+  $('mLocal').addEventListener('click', () => { audio(); showSetup('local'); });
+  if (HUB) $('mOnline').addEventListener('click', () => { audio(); showOnline(); });
+  $('mHelp').addEventListener('click', () => showHelp(showMain));
+}
+function loadPrefs() { try { return JSON.parse(localStorage.getItem(GAME_ID + '-einstellungen') || '{}'); } catch (e) { return {}; } }
+function savePrefs(p) { try { localStorage.setItem(GAME_ID + '-einstellungen', JSON.stringify(p)); } catch (e) { /* egal */ } }
+let setupSeats = null, setupOpts = null;
+function defaultOpts() { return { start: 1500, rounds: 0, parking: false, speed: 1 }; }
+function showSetup(kind) {
+  const prefs = loadPrefs();
+  const myName = (HUB && HUB.getName()) || prefs.name || 'Spieler 1';
+  if (kind === 'bots') setupSeats = [{ name: myName, bot: 0 }, { name: BOTNAMES[0], bot: 2 }, { name: BOTNAMES[1], bot: 2 }, { name: BOTNAMES[2], bot: 2 }];
+  else setupSeats = [{ name: myName, bot: 0 }, { name: 'Spieler 2', bot: 0 }];
+  setupSeats.forEach((s, i) => { s.tok = i; s.col = PCOLS[i]; });
+  setupOpts = Object.assign(defaultOpts(), prefs.opts || {});
+  renderSetup(kind);
+}
+function optsHTML(o) {
+  return `<div class="opts">
+    <label>Startgeld<select id="oStart">${[1000, 1500, 2000, 2500].map(v => `<option value="${v}" ${o.start === v ? 'selected' : ''}>${fr(v)}</option>`).join('')}</select></label>
+    <label>Spieldauer<select id="oRounds">${[[0, 'Bis nur noch einer übrig ist'], [15, 'Kurz: 15 Runden'], [30, 'Mittel: 30 Runden'], [50, 'Lang: 50 Runden']].map(([v, t]) => `<option value="${v}" ${o.rounds === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>Freier Parkplatz<select id="oPark"><option value="0" ${!o.parking ? 'selected' : ''}>Offizielle Regel (nichts)</option><option value="1" ${o.parking ? 'selected' : ''}>Hausregel: Steuern in den Topf</option></select></label>
+    <label>Tempo<select id="oSpeed">${[[1, 'Normal'], [2, 'Schnell'], [3, 'Turbo']].map(([v, t]) => `<option value="${v}" ${o.speed === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>`;
+}
+function readOpts(o) {
+  o.start = +$('oStart').value; o.rounds = +$('oRounds').value; o.parking = $('oPark').value === '1'; o.speed = +$('oSpeed').value;
+  return o;
+}
+function renderSetup(kind) {
+  const seats = setupSeats;
+  const rows = seats.map((s, i) => `<div class="seat"><div class="tok" data-i="${i}" style="background:${s.col}" title="Figur wechseln">${TOKENS[s.tok].e}</div>
+    <input type="text" maxlength="16" value="${esc(s.name)}" data-i="${i}">
+    <select data-i="${i}">${[[0, '🙂 Mensch'], [1, '🤖 Bot Leicht'], [2, '🤖 Bot Mittel'], [3, '🤖 Bot Schwer']].map(([v, t]) => `<option value="${v}" ${s.bot === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+    <button class="rm" data-i="${i}" title="Entfernen" ${seats.length <= 2 ? 'disabled style="opacity:.3"' : ''}>✕</button></div>`).join('');
+  showMenu(`<h2 style="margin-top:0">${kind === 'bots' ? '🤖 Gegen Bots' : '👥 Lokal spielen'}</h2>
+    <div style="color:var(--dim);font-size:14px;margin-bottom:12px">2 bis 6 Spieler. Wähle für jeden Platz Mensch oder Bot. Klick auf die Figur, um sie zu wechseln.</div>
+    ${rows}
+    ${seats.length < 6 ? '<button class="btn" id="sAdd" style="margin-top:4px">+ Spieler</button>' : ''}
+    ${optsHTML(setupOpts)}
+    <div class="foot" style="display:flex;gap:8px;justify-content:space-between;margin-top:18px"><button class="btn" id="sBack">← Zurück</button><button class="btn main" id="sGo">Spiel starten</button></div>`, true);
+  const m = $('menu');
+  m.querySelectorAll('.seat input').forEach(inp => inp.addEventListener('input', () => { seats[+inp.dataset.i].name = inp.value; }));
+  m.querySelectorAll('.seat select').forEach(sel => sel.addEventListener('change', () => {
+    const s = seats[+sel.dataset.i]; const was = s.bot; s.bot = +sel.value;
+    if (!was && s.bot && !/^Bot /.test(s.name)) s.name = BOTNAMES[+sel.dataset.i % 6];
+    if (was && !s.bot && /^Bot /.test(s.name)) s.name = 'Spieler ' + (+sel.dataset.i + 1);
+    readOpts(setupOpts); renderSetup(kind);
+  }));
+  m.querySelectorAll('.seat .tok').forEach(t => t.addEventListener('click', () => {
+    const s = seats[+t.dataset.i];
+    const used = seats.map(x => x.tok);
+    let n = s.tok; do n = (n + 1) % 6; while (used.includes(n) && n !== s.tok);
+    s.tok = n; readOpts(setupOpts); renderSetup(kind);
+  }));
+  m.querySelectorAll('.seat .rm').forEach(b => b.addEventListener('click', () => { if (seats.length > 2) { seats.splice(+b.dataset.i, 1); seats.forEach((s, i) => { s.col = PCOLS[i]; }); readOpts(setupOpts); renderSetup(kind); } }));
+  const add = $('sAdd');
+  if (add) add.addEventListener('click', () => {
+    const used = seats.map(x => x.tok);
+    const tok = [0, 1, 2, 3, 4, 5].find(t => !used.includes(t));
+    seats.push({ name: kind === 'bots' ? BOTNAMES[seats.length % 6] : 'Spieler ' + (seats.length + 1), bot: kind === 'bots' ? 2 : 0, tok, col: PCOLS[seats.length] });
+    readOpts(setupOpts); renderSetup(kind);
+  });
+  $('sBack').addEventListener('click', showMain);
+  $('sGo').addEventListener('click', () => {
+    readOpts(setupOpts);
+    seats.forEach((s, i) => { s.name = (s.name || '').trim().slice(0, 16) || (s.bot ? BOTNAMES[i] : 'Spieler ' + (i + 1)); s.col = PCOLS[i]; });
+    const firstHuman = seats.find(s => !s.bot);
+    if (firstHuman && HUB) HUB.setName(firstHuman.name);
+    savePrefs({ name: firstHuman ? firstHuman.name : '', opts: setupOpts });
+    startLocal(seats.map(s => ({ name: s.name, bot: s.bot, tok: s.tok, col: s.col })), clone(setupOpts));
+  });
+}
+function showHelp(back) {
+  const html = `<h2 style="margin-top:0">📖 Anleitung</h2><div class="help">
+    <p>Würfle, zieh über das Brett und kaufe Strassen, Bahnhöfe und Werke. Wer auf deinem Feld landet, zahlt dir Miete. Wer am Schluss als Einziger nicht pleite ist, gewinnt.</p>
+    <h3>Ablauf</h3><ul>
+    <li><b>Würfeln:</b> Du ziehst die Augenzahl vor. Bei einem Pasch darfst du nochmal. Drei Pasche hintereinander: ab ins Gefängnis.</li>
+    <li><b>Los:</b> Jedes Mal, wenn du über Los kommst, gibt es 200 Fr.</li>
+    <li><b>Kaufen:</b> Landest du auf einem freien Feld, kannst du es kaufen. Sonst wird es versteigert, und alle dürfen mitbieten.</li>
+    <li><b>Miete:</b> Mit einer ganzen Farbgruppe verdoppelt sich die Miete. Mit Häusern und Hotels steigt sie stark.</li>
+    <li><b>Bauen:</b> Nur mit ganzer Farbgruppe, gleichmässig verteilt. Nach 4 Häusern kommt das Hotel. Die Bank hat nur 32 Häuser und 12 Hotels.</li>
+    <li><b>Hypothek:</b> Du bekommst den halben Kaufpreis, verlangst aber keine Miete mehr. Ablösen kostet 10 % Zins.</li>
+    <li><b>Gefängnis:</b> Mit einem Pasch, 50 Fr. oder einer Gefängnis-frei-Karte kommst du raus. Nach drei Versuchen musst du zahlen. Auch im Gefängnis kassierst du Miete.</li>
+    <li><b>Handeln:</b> Während deines Zuges kannst du Felder, Geld und Karten mit anderen tauschen.</li>
+    <li><b>Pleite:</b> Kannst du nicht zahlen, auch nicht mit Hypotheken und Hausverkäufen, scheidest du aus.</li></ul>
+    <h3>Steuerung (Tastatur und Touchpad)</h3><ul>
+    <li><b>Leertaste</b>: Hauptaktion (Würfeln, Kaufen, Zug beenden). Die Buchstaben auf den Knöpfen sind Abkürzungen.</li>
+    <li><b>V</b> Verwalten (bauen, Hypotheken) · <b>H</b> Handeln · <b>A</b> Versteigern · <b>Esc</b> Menü</li>
+    <li><b>Ziehen</b> mit gedrückter Taste dreht das Brett, <b>zwei Finger scrollen</b> zoomt. Pfeiltasten drehen, <b>+</b>/<b>−</b> zoomen, <b>C</b> setzt die Kamera zurück.</li>
+    <li><b>Klick auf ein Feld</b> zeigt die Besitzrechtskarte, <b>Klick auf eine Spielerkarte</b> zeigt deren Besitz. <b>M</b> schaltet den Ton.</li></ul>
+    </div><div class="foot" style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn main" id="hBack">Verstanden</button></div>`;
+  if (back) { showMenu(html, true); $('hBack').addEventListener('click', back); }
+  else { openModal('help', html.replace('style="margin-top:0"', '')); $('hBack').addEventListener('click', closeModal); }
+}
+function showOnline(prefill) {
+  if (!HUB) return showMain();
+  const name = HUB.getName() || loadPrefs().name || '';
+  showMenu(`<h2 style="margin-top:0">🌐 Online spielen</h2>
+    <div style="color:var(--dim);font-size:14px;margin-bottom:12px">Erstelle einen Raum und schick den Code an deine Freunde (bis 6 Spieler). Freie Plätze kannst du mit Bots füllen.</div>
+    <label style="font-size:13px;color:var(--dim)">Dein Name<br><input type="text" id="oName" maxlength="16" value="${esc(name)}" style="width:100%;margin-top:4px"></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <button class="btn main" id="oCreate">Raum erstellen</button>
+      <div style="display:flex;gap:6px"><input type="text" id="oCode" maxlength="4" placeholder="CODE" value="${esc(prefill || '')}" style="width:96px;text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button class="btn" id="oJoin" style="flex:1">Beitreten</button></div>
+    </div><div class="err" id="oErr"></div>
+    <h3 style="margin:14px 0 6px;font-size:15px">🏆 Rangliste</h3><div id="lbMenu"></div>
+    <div class="foot" style="display:flex;justify-content:flex-start;margin-top:14px"><button class="btn" id="oBack">← Zurück</button></div>`);
+  HUB.loadBoard(GAME_ID, $('lbMenu'), HUB.getName());
+  if (prefill) setTimeout(() => $('oName').focus(), 50);
+  const getName = () => { const n = HUB.setName($('oName').value); if (!n) { $('oErr').textContent = 'Bitte gib einen Namen ein.'; } return n; };
+  $('oBack').addEventListener('click', showMain);
+  $('oCreate').addEventListener('click', async () => {
+    const n = getName(); if (!n) return;
+    $('oErr').textContent = 'Verbinde …';
+    try {
+      setupRoom();
+      const res = await room.create(n, 6);
+      mode = 'online'; isHost = true;
+      net = { you: res.you, names: [n], bots: 1, botLvl: 2, opts: Object.assign(defaultOpts(), (loadPrefs().opts || {}), { speed: 1 }) };
+      renderLobby();
+    } catch (e) { $('oErr').textContent = HUB.errorText(e); room = null; }
+  });
+  $('oJoin').addEventListener('click', async () => {
+    const n = getName(); if (!n) return;
+    const code = HUB.cleanCode($('oCode').value);
+    if (code.length !== 4) { $('oErr').textContent = 'Der Code hat 4 Zeichen.'; return; }
+    $('oErr').textContent = 'Verbinde …';
+    try {
+      setupRoom();
+      const res = await room.join(code, n);
+      mode = 'online'; isHost = false;
+      net = { you: res.you, names: (res.players || room.players || []).map(p => (p && (p.name || p)) || null), bots: 0, botLvl: 2 };
+      room.send({ t: 'hello' });
+      renderLobby();
+    } catch (e) { $('oErr').textContent = HUB.errorText(e); room = null; }
+  });
+}
+function renderLobby() {
+  if (!net || !room || view) return;
+  const names = net.names.map((n, i) => n ? `<div class="rank"><div>${i === 0 ? '👑' : '🙂'}</div><div></div><div>${esc(n)}${i === room.you ? ' (du)' : ''}</div><div></div></div>` : '').join('');
+  const humans = net.names.filter(Boolean).length;
+  const hostCtl = isHost ? `<div class="opts" style="grid-template-columns:1fr 1fr">
+      <label>Bots dazu<select id="lBots">${[0, 1, 2, 3, 4, 5].map(v => `<option value="${v}" ${net.bots === v ? 'selected' : ''} ${humans + v > 6 ? 'disabled' : ''}>${v}</option>`).join('')}</select></label>
+      <label>Bot-Stärke<select id="lLvl">${[[1, 'Leicht'], [2, 'Mittel'], [3, 'Schwer']].map(([v, t]) => `<option value="${v}" ${net.botLvl === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
+      ${optsHTML(net.opts)}` : `<div style="color:var(--dim);margin-top:10px">Warte, bis der Host das Spiel startet …${net.bots ? ' (+' + net.bots + ' Bots)' : ''}</div>`;
+  showMenu(`<h2 style="margin-top:0">🌐 Raum</h2><div class="code">${esc(room.code || '')}</div>
+    <div style="display:flex;justify-content:center;margin-bottom:10px"><button class="btn" id="lCopy">🔗 Link kopieren</button></div>
+    <div style="font-size:13px;color:var(--dim)">Spieler (${humans} von 6)</div>${names}${hostCtl}
+    <div class="foot" style="display:flex;gap:8px;justify-content:space-between;margin-top:16px"><button class="btn" id="lBack">← Verlassen</button>${isHost ? '<button class="btn main" id="lGo">Spiel starten</button>' : ''}</div>`, true);
+  $('lCopy').addEventListener('click', () => {
+    const link = HUB.SEITE + '/' + GAME_ID + '/#' + room.code;
+    navigator.clipboard.writeText(link).then(() => toast('Link kopiert!'), () => toast(link));
+  });
+  $('lBack').addEventListener('click', showMain);
+  if (isHost) {
+    const upd = () => { net.bots = +$('lBots').value; net.botLvl = +$('lLvl').value; readOpts(net.opts); lobbyBroadcast(); };
+    ['lBots', 'lLvl', 'oStart', 'oRounds', 'oPark', 'oSpeed'].forEach(id => $(id).addEventListener('change', upd));
+    $('lGo').addEventListener('click', () => { readOpts(net.opts); hostStart(); });
+  }
+}
+
+// ---------- Menü im Spiel ----------
+let gameMenuOpen = false;
+function openGameMenu() {
+  gameMenuOpen = true;
+  const sp = view ? view.opts.speed || 1 : 1;
+  openModal('gmenu', `<h2>☰ Menü <button class="x" data-key="escape">✕</button></h2><div class="mbtns">
+    <button class="btn main" id="gmBack"><span class="e">▶️</span><div>Weiterspielen</div></button>
+    <button class="btn" id="gmHelp"><span class="e">📖</span><div>Anleitung</div></button>
+    <button class="btn" id="gmSpeed"><span class="e">⏩</span><div>Tempo: ${['Normal', 'Schnell', 'Turbo'][sp - 1]}<small>Klicken zum Wechseln</small></div></button>
+    <button class="btn" id="gmQuit"><span class="e">🚪</span><div>Spiel verlassen<small>${isOnline() ? 'Ein Bot übernimmt deinen Platz' : 'Der Spielstand wird gespeichert'}</small></div></button></div>`);
+  $('gmBack').addEventListener('click', closeModal);
+  $('gmHelp').addEventListener('click', () => showHelp());
+  $('gmSpeed').addEventListener('click', () => {
+    const n = sp % 3 + 1;
+    speedMul = [1, 0.6, 0.35][n - 1];
+    if (G && isHost) G.opts.speed = n;
+    if (view) view.opts.speed = n;
+    openGameMenu();
+  });
+  $('gmQuit').addEventListener('click', () => { closeModalForce(); showMain(); });
+}
+
+// ======================================================================
+//  Tastatur
+// ======================================================================
+addEventListener('keydown', e => {
+  const tag = e.target && e.target.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
+    if (e.key === 'Escape') e.target.blur();
+    if (e.key === 'Enter' && e.target.id === 'aCustom') $('aGo').click();
+    if (e.key === 'Enter' && e.target.id === 'oCode') $('oJoin').click();
+    return;
+  }
+  audio();
+  const k = e.key === ' ' ? 'space' : e.key.toLowerCase();
+  if (cardSkip && (k === 'space' || k === 'enter')) { e.preventDefault(); cardSkip(); return; }
+  if (menuOpen()) return;
+  if (k === 'escape') {
+    e.preventDefault();
+    if (infoOpen) { closeInfo(); return; }
+    if (modalKind && modalKind !== 'auction' && modalKind !== 'answer' && modalKind !== 'result') { closeModal(); return; }
+    if (!modalKind) openGameMenu();
+    return;
+  }
+  if (k === 'm') { setMuted(!muted); return; }
+  if (k === 'c') { userCam = false; camOverview(); return; }
+  if (k === 'arrowleft' || k === 'arrowright') { e.preventDefault(); userCam = true; camG.theta += (k === 'arrowleft' ? 1 : -1) * 0.25; return; }
+  if (k === 'arrowup' || k === 'arrowdown') { e.preventDefault(); userCam = true; camG.phi = Math.min(1.25, Math.max(0.12, camG.phi + (k === 'arrowup' ? -0.08 : 0.08))); return; }
+  if (k === '+' || k === '=') { camG.r = Math.max(8, camG.r * 0.88); return; }
+  if (k === '-' || k === '_') { camG.r = Math.min(60, camG.r * 1.12); return; }
+  const scope = modalKind ? $('modal') : $('abtns');
+  const b = [...scope.querySelectorAll('button[data-key]')].find(x => x.dataset.key === k && !x.disabled);
+  if (b) { e.preventDefault(); b.click(); }
+  else if (k === 'space') e.preventDefault();
+});
+document.addEventListener('mousedown', e => { if (infoOpen && !e.target.closest('#info') && e.target !== glCanvas) closeInfo(); });
+$('bMenu').addEventListener('click', e => { e.currentTarget.blur(); openGameMenu(); });
+$('bSound').addEventListener('click', e => { e.currentTarget.blur(); setMuted(!muted); if (!muted) snd.click(); });
+$('bCam').addEventListener('click', e => { e.currentTarget.blur(); userCam = false; camOverview(); });
+$('bHelp').addEventListener('click', e => { e.currentTarget.blur(); showHelp(); });
+$('cardWrap').addEventListener('click', () => { if (cardSkip) cardSkip(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && isHost) scheduleBot(); });
+addEventListener('resize', onResize);
+
+// ======================================================================
+//  Titelbild und Tests
+// ======================================================================
+function coverScene() {
+  const seats = [0, 1, 2, 3].map(i => ({ name: 'P' + i, bot: 2, tok: i, col: PCOLS[i] }));
+  const s = newGame(seats, defaultOpts());
+  [[37, 0, 5], [39, 0, 5], [1, 1, 3], [3, 1, 3], [31, 2, 4], [32, 2, 4], [34, 2, 4], [35, 3, 0], [5, 3, 0], [6, 1, 2], [8, 1, 2], [9, 1, 2]].forEach(([f, o, h]) => { s.own[f] = o; s.houses[f] = h; });
+  s.players[0].pos = 38; s.players[1].pos = 0; s.players[2].pos = 0; s.players[3].pos = 2;
+  view = s;
+  buildTokens(s); syncBoard(s, false);
+  $('menu').classList.add('hidden'); $('hud').classList.add('hidden');
+  onResize();
+  camG.theta = camS.theta = 0.62; camG.phi = camS.phi = 1.0; camG.r = camS.r = 13.5; camG.t.set(5.2, 0, 5.6); camS.t.copy(camG.t);
+  dice[0].position.set(4.6, TOP + 1.6, 7.0); dice[0].rotation.set(0.6, 0.8, 0.3);
+  dice[1].position.set(5.6, TOP + 2.3, 6.2); dice[1].rotation.set(1.3, 0.2, 0.9);
+  for (let i = 0; i < 16; i++) {
+    const c = new THREE.Mesh(coinGeo, coinMat);
+    c.position.set(7.3 + Math.random() * 2.2, TOP + 0.8 + Math.random() * 2.4, 7.4 + Math.random() * 2.2);
+    c.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    c.castShadow = true; scene.add(c);
+  }
+  for (let i = 0; i < 26; i++) spark(new THREE.Vector3(7.6 + Math.random() * 2, TOP + 0.6 + Math.random() * 2.6, 7.6 + Math.random() * 2), ['#ffcf4a', '#ff9d2e', '#ffe680'][i % 3], { speed: 0.01, up: 0, life: 99, g: 0, size: 0.28 });
+}
+if (TEST) {
+  window.SB = {
+    get G() { return G; }, get view() { return view; }, camera, ray, pickPlane, get Q() { return Q; }, get playing() { return playing; },
+    actHost, botDecide, handle, newGame, actorOf, startLocal, pickAt, fieldAt, showFieldInfo,
+    card(deck) { E = []; G.phase = 'x'; drawCard(G.cur, deck); const evs = E; E = []; deliver(evs); },
+    auction() { const f = BUYABLE.find(x => G.own[x] < 0); G.players[G.cur].pos = f; G.phase = 'buy'; E = []; handle(G.cur, { k: 'decline' }); const evs = E; E = []; deliver(evs); },
+    midgame(rounds) {
+      const seats = [0, 1, 2, 3].map(i => ({ name: i ? 'B' + i : 'Ich', bot: 3, tok: i, col: PCOLS[i] }));
+      G = newGame(seats, defaultOpts());
+      while (G.phase !== 'over' && G.round < rounds) { const pid = actorOf(G); E = []; if (!handle(pid, botDecide(G, pid))) handle(pid, fallbackAction(G, pid)); }
+      while (G.phase !== 'over' && !(G.phase === 'roll' && G.cur === 0)) { const pid = actorOf(G); E = []; if (!handle(pid, botDecide(G, pid))) handle(pid, fallbackAction(G, pid)); }
+      E = [];
+      G.players[0].bot = 0; G.players[0].money += 2000;
+      mode = 'local'; isHost = true; startView(clone(G)); renderPrompt(view);
+    },
+    simulate(n, levels) {
+      const out = [];
+      for (let k = 0; k < n; k++) {
+        const seats = (levels || [1, 2, 3, 3]).map((b, i) => ({ name: 'B' + i, bot: b, tok: i, col: PCOLS[i] }));
+        G = newGame(seats, Object.assign(defaultOpts(), { parking: k % 2 === 1 }));
+        let steps = 0, err = null;
+        while (G.phase !== 'over' && steps < 40000) {
+          const pid = actorOf(G);
+          let a = botDecide(G, pid);
+          E = [];
+          let ok = a && handle(pid, a);
+          if (!ok) { a = fallbackAction(G, pid); E = []; ok = handle(pid, a); }
+          if (!ok) { err = 'stuck ' + G.phase + ' ' + JSON.stringify(a); break; }
+          steps++;
+          let hs = 0, hh = 0;
+          for (let f = 0; f < 40; f++) { if (G.houses[f] === 5) hh++; else hs += G.houses[f]; if (G.own[f] >= 0 && G.players[G.own[f]].out) err = 'owner out'; }
+          if (hs + G.bankHouses !== 32 || hh + G.bankHotels !== 12) err = 'houses ' + hs + '/' + G.bankHouses;
+          for (const p of G.players) if (!p.out && p.money < 0) err = 'neg money ' + p.name + ' ' + p.money + ' ' + G.phase;
+          if (err) break;
+        }
+        out.push({ steps, round: G.round, winner: G.winner, phase: G.phase, err, alive: G.players.filter(p => !p.out).length });
+      }
+      E = [];
+      return out;
+    },
+  };
+}
+
+// ======================================================================
+//  Start
+// ======================================================================
+setMuted(muted);
+onResize();
+requestAnimationFrame(frame);
+if (COVER) coverScene();
+else {
+  const code = HUB ? HUB.cleanCode(location.hash) : '';
+  if (code.length === 4) showOnline(code); else showMain();
+}
+</script>
+</body>
+</html>
