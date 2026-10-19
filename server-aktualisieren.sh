@@ -38,8 +38,32 @@ ssh -o BatchMode=yes "$SERVER" 'set -e
   fi' || fehler "nginx hat die Einstellung für die IP nicht akzeptiert (siehe oben). Bitte die Meldungen an Claude schicken."
 ok "Webseite über die IP eingerichtet"
 
-if curl -fsS http://46.224.94.231/api/spiele >/dev/null 2>&1; then
-  ok "Bewertungen sind aktiv: http://46.224.94.231/"
+# Läuft alles auf dem Server? (Spiel-Server, /api und /ws über nginx)
+WS_KOPF=(-H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==')
+ssh -o BatchMode=yes "$SERVER" '
+  if ! systemctl is-active --quiet game-hub; then
+    echo "Spiel-Server (game-hub) lief nicht, wird neu gestartet ..."
+    systemctl restart game-hub; sleep 2
+  fi
+  if ! systemctl is-active --quiet game-hub; then
+    journalctl -u game-hub -n 20 --no-pager >&2
+    echo "FEHLER: Spiel-Server startet nicht." >&2; exit 1
+  fi
+  api=$(curl -s -o /dev/null -w "%{http_code}" -H "Host: 46.224.94.231" http://127.0.0.1/api/spiele)
+  ws=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 -H "Host: 46.224.94.231" -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" http://127.0.0.1/ws || true)
+  echo "Auf dem Server: /api -> $api, /ws -> $ws"
+  if [ "$api" != 200 ] || [ "$ws" != 101 ]; then
+    echo "--- nginx-Einstellungen für Port 80 ---" >&2
+    nginx -T 2>/dev/null | grep -nE "^# configuration file|listen|server_name|location|proxy_pass|return" >&2
+    exit 1
+  fi' || fehler "Auf dem Server klappt /api oder /ws noch nicht. Bitte die Meldungen oben an Claude schicken."
+ok "Spiel-Server und Lobbys laufen auf dem Server"
+
+# Und von hier aus (über das Internet)?
+api="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://46.224.94.231/api/spiele || true)"
+ws="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "${WS_KOPF[@]}" http://46.224.94.231/ws || true)"
+if [ "$api" = 200 ] && [ "$ws" = 101 ]; then
+  ok "Lobbys und Bewertungen funktionieren: http://46.224.94.231/"
 else
-  fehler "Der Spiel-Server antwortet noch nicht auf /api/spiele. Bitte die Meldungen oben an Claude schicken."
+  fehler "Der Server ist bereit, aber von hier aus kommt nichts an (/api -> $api, /ws -> $ws). Vermutlich blockiert dein Netzwerk (z.B. Schule) die Verbindung."
 fi
