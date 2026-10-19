@@ -147,8 +147,8 @@
     box.id = 'lw-rate';
     box.setAttribute('role', 'dialog');
     box.setAttribute('aria-label', 'Spiel bewerten');
-    // deploy.sh hängt für Google " – kostenlos im Browser spielen | KEI Langwiligi site" an den Titel
-    var name = String(document.title.replace(/ – kostenlos im Browser spielen \| KEI Langwiligi site$/, '') || 'dieses Spiel').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+    // deploy.sh schreibt den kurzen Namen in data-name und hängt für Google Suchbegriffe an den Titel
+    var name = String((me && me.getAttribute('data-name')) || document.title.replace(/( \([^)]*\))? – [^|]*\| KEI Langwiligi site$/, '') || 'dieses Spiel').replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
     var again = oldRating() > 0;
     box.innerHTML = '<div class="lw-k">// Bewertung</div><button class="lw-x" type="button">Später ✕</button>' +
       '<div class="lw-q">' + (again ? 'Wir haben an ' + name + ' gearbeitet. Wie gefällt es dir jetzt?' : 'Wie gefällt dir ' + name + '?') + '</div><div class="lw-s">' +

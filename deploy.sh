@@ -18,8 +18,6 @@ set -euo pipefail
 
 SERVER="${DEPLOY_SERVER:-root@46.224.94.231}"
 SITE="https://langwiligi.site"
-# Wird an den Titel jedes Spiels angehängt (games/_shared/back.js schneidet ihn für die Bewertung wieder ab)
-TITLE_SUFFIX=" – kostenlos im Browser spielen | KEI Langwiligi site"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="$ROOT/games"
 START="$ROOT/startseite"
@@ -56,23 +54,115 @@ game_version() {
   fi
   printf '%s' "${t:-$(version "$SRC/$1/index.html")}"
 }
+html_unescape() { sed -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g'; }
+html_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'; }
+# Text als JSON-Zeichenkette (für die strukturierten Daten, die Google liest)
+json_str() { printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/</\\u003c/g' | tr -d '\n')"; }
+# Wert eines Meta-Tags: meta_raw ohne, meta mit HTML-Maskierung
+meta_raw() { { grep -o -i -m1 "<meta name=\"$1\" content=\"[^\"]*\"" "$2" || true; } | sed 's/.*content="//; s/"$//' | tr -d '\r' | html_unescape; }
+meta() { meta_raw "$1" "$2" | html_escape; }
+title_raw() { { grep -o -i -m1 '<title>[^<]*</title>' "$1" || true; } | sed -E 's/<\/?[Tt][Ii][Tt][Ll][Ee]>//g' | tr -d '\r' | html_unescape; }
+trim() { sed 's/^ *//; s/ *$//'; }
+cover_of() {
+  local ext
+  for ext in webp png jpg jpeg svg; do
+    if [ -f "$1/cover.$ext" ]; then printf 'cover.%s?v=%s' "$ext" "$(version "$1/cover.$ext")"; return; fi
+  done
+}
+
 for f in "$BUILD"/*/index.html; do
   slug="$(basename "$(dirname "$f")")"
-  grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" >> "$f"
-  # Für Google: Suchbegriffe im Titel und die Hauptadresse (canonical), damit die IP nicht als zweite Seite zählt.
-  # Der Name auf der Startseite bleibt kurz, er kommt aus games/ und nicht aus dieser Kopie.
+  src="$SRC/$slug/index.html"
+  name="$(title_raw "$src")"
+  [ -n "$name" ] || name="$slug"
+  grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s" data-name="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" "$(printf '%s' "$name" | html_escape)" >> "$f"
+  # Für Google: Suchbegriffe in Titel und Beschreibung, die Hauptadresse (canonical), damit die IP nicht als zweite Seite zählt,
+  # Vorschau für geteilte Links und strukturierte Daten (schema.org). Der Name auf der Startseite bleibt kurz,
+  # er kommt aus games/ und nicht aus dieser Kopie.
   grep -qi 'rel="canonical"' "$f" && continue
-  SUFFIX="$TITLE_SUFFIX" URL="$SITE/$slug/" awk '
-    !done && (i = index(tolower($0), "</title>")) > 0 {
-      $0 = substr($0, 1, i - 1) ENVIRON["SUFFIX"] "</title><link rel=\"canonical\" href=\"" ENVIRON["URL"] "\">" substr($0, i + 8); done = 1
+  url="$SITE/$slug/"
+  modi=",$(meta_raw spiel-modi "$src" | tr -d ' '),"
+  # spiel-suche: Wörter, die Leute bei Google für dieses Spiel eintippen (z.B. "Käsekästchen"). Das erste kommt in den Titel.
+  suche="$(meta_raw spiel-suche "$src")"
+  first="$(printf '%s' "${suche%%,*}" | trim)"
+  gname="$name"
+  # Nicht doppelt: "Schach" + "Schach online" bleibt "Schach", "Bottle-Flip" + "Bottle Flip" bleibt "Bottle-Flip"
+  n_low="$(printf '%s' "$name" | tr '[:upper:]-' '[:lower:] ')"
+  f_low="$(printf '%s' "$first" | tr '[:upper:]-' '[:lower:] ')"
+  if [ -n "$first" ] && [[ " $n_low " != *" $f_low "* && "$f_low " != "$n_low "* ]]; then gname="$name ($first)"; fi
+  case "$modi" in
+    *,Lokal,*|*,Online,*) wie="online zu zweit spielen, kostenlos" ;;
+    *) wie="kostenlos online spielen" ;;
+  esac
+  wege=()
+  [[ "$modi" == *",Lokal,"* ]] && wege+=("zu zweit an einem Laptop")
+  [[ "$modi" == *",Online,"* ]] && wege+=("online mit Freunden")
+  [[ "$modi" == *",Bots,"* ]] && wege+=("gegen Bots")
+  [[ "$modi" == *",Solo,"* ]] && wege+=("allein")
+  extra="Gratis im Browser spielen"
+  if [ "${#wege[@]}" -gt 0 ]; then
+    w="${wege[0]}"
+    for ((k = 1; k < ${#wege[@]}; k++)); do
+      if [ "$k" -eq $((${#wege[@]} - 1)) ]; then w+=" oder ${wege[$k]}"; else w+=", ${wege[$k]}"; fi
+    done
+    extra+=": $w"
+  fi
+  extra+=". Ohne Download, ohne Werbung."
+  desc="$(meta_raw description "$src")"
+  full_desc="$(printf '%s %s' "$desc" "$extra" | trim)"
+  cover="$(cover_of "$SRC/$slug")"
+  img_url=""
+  [ -n "$cover" ] && img_url="$url$cover"
+
+  alt="" sep=""
+  if [ -n "$suche" ]; then
+    IFS=',' read -ra words <<< "$suche"
+    for w in "${words[@]}"; do
+      w="$(printf '%s' "$w" | trim)"
+      [ -n "$w" ] && alt+="$sep$(json_str "$w")" && sep=","
+    done
+  fi
+  genre="" sep=""
+  IFS=',' read -ra words <<< "$(meta_raw spiel-typ "$src")"
+  for w in "${words[@]}"; do
+    w="$(printf '%s' "$w" | trim)"
+    [ -n "$w" ] && genre+="$sep$(json_str "$w")" && sep=","
+  done
+  play=""
+  [[ "$modi" == *",Solo,"* || "$modi" == *",Bots,"* ]] && play+='"SinglePlayer"'
+  [[ "$modi" == *",Lokal,"* || "$modi" == *",Online,"* ]] && play+="${play:+,}\"MultiPlayer\""
+  ld='{"@context":"https://schema.org","@graph":[{"@type":"VideoGame","name":'"$(json_str "$name")"
+  [ -n "$alt" ] && ld+=',"alternateName":['"$alt"']'
+  ld+=',"description":'"$(json_str "$full_desc")"',"url":'"$(json_str "$url")"
+  [ -n "$img_url" ] && ld+=',"image":'"$(json_str "$img_url")"
+  [ -n "$genre" ] && ld+=',"genre":['"$genre"']'
+  [ -n "$play" ] && ld+=',"playMode":['"$play"']'
+  ld+=',"gamePlatform":"Webbrowser","applicationCategory":"GameApplication","operatingSystem":"Windows, macOS, Linux, ChromeOS","inLanguage":"de-CH","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"CHF"}'
+  ld+=',"isPartOf":{"@type":"WebSite","name":"KEI Langwiligi site","url":"'"$SITE"'/"}}'
+  ld+=',{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"KEI Langwiligi site","item":"'"$SITE"'/"},{"@type":"ListItem","position":2,"name":'"$(json_str "$name")"',"item":'"$(json_str "$url")"'}]}]}'
+
+  t_html="$(printf '%s – %s | KEI Langwiligi site' "$gname" "$wie" | html_escape)"
+  d_html="$(printf '%s' "$full_desc" | html_escape)"
+  og_title="$(printf '%s – %s' "$gname" "$wie" | html_escape)"
+  head="<link rel=\"canonical\" href=\"$url\">"
+  head+="<meta property=\"og:type\" content=\"website\"><meta property=\"og:site_name\" content=\"KEI Langwiligi site\">"
+  head+="<meta property=\"og:url\" content=\"$url\"><meta property=\"og:title\" content=\"$og_title\">"
+  head+="<meta property=\"og:description\" content=\"$d_html\"><meta property=\"og:locale\" content=\"de_CH\">"
+  if [ -n "$img_url" ]; then
+    head+="<meta property=\"og:image\" content=\"$(printf '%s' "$img_url" | html_escape)\"><meta name=\"twitter:card\" content=\"summary_large_image\">"
+  fi
+  head+="<script type=\"application/ld+json\">$ld</script>"
+  T="$t_html" D="$d_html" HEAD="$head" awk '
+    !done_t && (i = index(tolower($0), "<title>")) > 0 && (j = index(tolower($0), "</title>")) > i {
+      $0 = substr($0, 1, i + 6) ENVIRON["T"] "</title>" ENVIRON["HEAD"] substr($0, j + 8); done_t = 1
+    }
+    !done_d && (i = index($0, "name=\"description\" content=\"")) > 0 {
+      a = substr($0, 1, i + 27); rest = substr($0, i + 28)
+      if ((j = index(rest, "\"")) > 0) { $0 = a ENVIRON["D"] substr(rest, j); done_d = 1 }
     }
     { print }
   ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 done
-
-html_unescape() { sed -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g'; }
-html_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'; }
-meta() { { grep -o -i -m1 "<meta name=\"$1\" content=\"[^\"]*\"" "$2" || true; } | sed 's/.*content="//; s/"$//' | tr -d '\r' | html_unescape | html_escape; }
 # Wann kam das Spiel dazu? (Unix-Zeit des ersten Commits; ohne Git bzw. noch nicht eingecheckt: jetzt)
 added() {
   local t=""
@@ -85,6 +175,7 @@ added() {
 CARDS="$TMP/cards.html"
 : > "$CARDS"
 count=0
+items=""
 top_titles=()
 : > "$TMP/spiele.txt"
 newest_t=0
@@ -156,6 +247,7 @@ for dir in "$SRC"/*/; do
 EOF
   count=$((count + 1))
   printf '%s %s %s\n' "$when" "$slug" "$title" >> "$TMP/spiele.txt"
+  items+="${items:+,}{\"@type\":\"ListItem\",\"position\":$count,\"url\":\"$SITE/$slug/\",\"name\":$(json_str "$(title_raw "$page")")}"
 done
 
 # Spiele in der Beschreibung für Google: die meistgespielten der letzten 7 Tage (vom Spiel-Server),
@@ -205,6 +297,17 @@ ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile
   echo '</urlset>'
 } > "$BUILD/sitemap.xml"
 printf 'User-agent: *\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n' "$SITE" > "$BUILD/robots.txt"
+# Bestätigungs-Dateien für Google Search Console und Bing Webmaster Tools (z.B. startseite/google1234abcd.html, startseite/BingSiteAuth.xml)
+for v in "$START"/google*.html "$START"/BingSiteAuth.xml; do
+  [ -f "$v" ] && cp "$v" "$BUILD/"
+done
+# IndexNow: meldet Bing, Ecosia, DuckDuckGo, Yandex & Co. nach jedem Hochladen alle Seiten (Google liest die sitemap.xml).
+# Der Schlüssel aus startseite/indexnow.txt muss dafür als <schlüssel>.txt auf der Webseite liegen.
+INDEXNOW_KEY=""
+if [ -f "$START/indexnow.txt" ]; then
+  INDEXNOW_KEY="$(tr -cd 'a-zA-Z0-9-' < "$START/indexnow.txt")"
+  [ -n "$INDEXNOW_KEY" ] && printf '%s' "$INDEXNOW_KEY" > "$BUILD/$INDEXNOW_KEY.txt"
+fi
 
 # Startseite aus der Vorlage zusammensetzen
 mkdir -p "$BUILD/_start"
@@ -230,7 +333,7 @@ fi
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
 ver="$(cat "$START/start.css" "$START/start.js" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
+CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -238,7 +341,7 @@ CARDS="$CARDS" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$i
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat
@@ -256,3 +359,14 @@ echo "Lade $count Spiele hoch ..."
 # und führt seine feste Kopie /usr/local/bin/langwiligi-deploy aus.
 tar -czf - -C "$BUILD" . | ssh -o BatchMode=yes "$SERVER" "$(cat "$ROOT/server/langwiligi-deploy.sh")"
 echo "Fertig: https://langwiligi.site/"
+
+if [ -n "$INDEXNOW_KEY" ] && command -v curl >/dev/null 2>&1; then
+  urls="$(grep -o '<loc>[^<]*' "$BUILD/sitemap.xml" | sed 's/<loc>//' | awk -v ORS=, '{ print "\"" $0 "\"" }' | sed 's/,$//')"
+  if curl -fsS --max-time 20 -o /dev/null -H 'Content-Type: application/json; charset=utf-8' \
+       -d "{\"host\":\"langwiligi.site\",\"key\":\"$INDEXNOW_KEY\",\"keyLocation\":\"$SITE/$INDEXNOW_KEY.txt\",\"urlList\":[$urls]}" \
+       https://api.indexnow.org/indexnow; then
+    echo "Suchmaschinen über IndexNow benachrichtigt."
+  else
+    echo "Hinweis: IndexNow nicht erreichbar, Suchmaschinen finden die Seiten trotzdem über sitemap.xml." >&2
+  fi
+fi

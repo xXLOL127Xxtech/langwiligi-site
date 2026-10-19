@@ -211,6 +211,19 @@ h1 .site { display: block; margin-top: .16em; color: var(--cyan); text-shadow: 5
 .intro-on .card { animation-delay: calc(var(--i, 0) * 35ms + 2.5s); }
 @keyframes card-in { from { opacity: 0; transform: translateY(18px); } }
 
+/* ---------- Über die Seite (Text für Besucher und Google) ---------- */
+.about { margin-top: 72px; padding-top: 28px; border-top: 1px solid var(--line); }
+.about .kicker { margin: 0 0 8px; }
+.about h2 { margin: 0; font: 700 clamp(22px, 3vw, 30px)/1.15 var(--display); text-transform: uppercase; }
+.about-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 32px; margin-top: 18px; }
+.about-cols p { margin: 0; color: var(--muted); font-size: 15px; }
+.about-cols b { color: var(--text); font-weight: 600; }
+.faq { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 32px; align-items: start; margin-top: 24px; }
+.faq details { border: 1px solid var(--line); background: var(--panel); padding: 10px 14px; }
+.faq summary { cursor: pointer; font-weight: 600; }
+.faq summary:hover { color: var(--cyan); }
+.faq details p { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
   font: 14px/1.4 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 footer a { color: var(--cyan); text-decoration: none; }
