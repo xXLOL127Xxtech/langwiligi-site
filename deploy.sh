@@ -85,6 +85,8 @@ added() {
 CARDS="$TMP/cards.html"
 : > "$CARDS"
 count=0
+top_titles=()
+: > "$TMP/spiele.txt"
 newest_t=0
 newest_title=""
 for dir in "$SRC"/*/; do
@@ -153,7 +155,33 @@ for dir in "$SRC"/*/; do
       </a>
 EOF
   count=$((count + 1))
+  printf '%s %s %s\n' "$when" "$slug" "$title" >> "$TMP/spiele.txt"
 done
+
+# Spiele in der Beschreibung für Google: die meistgespielten der letzten 7 Tage (vom Spiel-Server),
+# aufgefüllt mit den neusten. Ist der Server nicht erreichbar, nur die neusten.
+top=""
+if command -v node >/dev/null 2>&1; then
+  for base in "$SITE" "http://46.224.94.231"; do
+    stats="$(curl -fsS --max-time 10 "$base/api/spiele" 2>/dev/null)" || continue
+    top="$(printf '%s' "$stats" | node -e '
+      let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+        try { const o = JSON.parse(s); console.log(Object.keys(o).filter(k => o[k].week > 0).sort((a, b) => o[b].week - o[a].week).join(" ")); } catch (e) {}
+      })')"
+    break
+  done
+fi
+picked=()
+for s in $top $(sort -rn "$TMP/spiele.txt" | cut -d' ' -f2); do
+  t="$(awk -v s="$s" '$2 == s { sub(/^[^ ]+ [^ ]+ /, ""); print; exit }' "$TMP/spiele.txt")"
+  [ -n "$t" ] || continue   # Spiel gibt es nicht mehr
+  [[ " ${picked[*]-} " == *" $s "* ]] && continue
+  picked+=("$s")
+  top_titles+=("$t")
+  [ "${#picked[@]}" -ge 4 ] && break
+done
+top_games="$(printf '%s, ' "${top_titles[@]}")"
+top_games="${top_games%, }"
 
 ticker="<span>$count Spiele</span><span>1 gegen 1</span><span>Lokal · Online · Bots</span>"
 [ -n "$newest_title" ] && ticker+="<span>Neu: $newest_title</span>"
@@ -202,7 +230,7 @@ fi
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
 ver="$(cat "$START/start.css" "$START/start.js" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
+CARDS="$CARDS" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -210,7 +238,7 @@ CARDS="$CARDS" N="$count" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bil
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat
