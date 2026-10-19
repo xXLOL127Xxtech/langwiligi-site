@@ -17,6 +17,9 @@
 set -euo pipefail
 
 SERVER="${DEPLOY_SERVER:-root@46.224.94.231}"
+SITE="https://langwiligi.site"
+# Wird an den Titel jedes Spiels angehängt (games/_shared/back.js schneidet ihn für die Bewertung wieder ab)
+TITLE_SUFFIX=" – kostenlos im Browser spielen | KEI Langwiligi site"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 SRC="$ROOT/games"
 START="$ROOT/startseite"
@@ -56,6 +59,15 @@ game_version() {
 for f in "$BUILD"/*/index.html; do
   slug="$(basename "$(dirname "$f")")"
   grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" >> "$f"
+  # Für Google: Suchbegriffe im Titel und die Hauptadresse (canonical), damit die IP nicht als zweite Seite zählt.
+  # Der Name auf der Startseite bleibt kurz, er kommt aus games/ und nicht aus dieser Kopie.
+  grep -qi 'rel="canonical"' "$f" && continue
+  SUFFIX="$TITLE_SUFFIX" URL="$SITE/$slug/" awk '
+    !done && (i = index(tolower($0), "</title>")) > 0 {
+      $0 = substr($0, 1, i - 1) ENVIRON["SUFFIX"] "</title><link rel=\"canonical\" href=\"" ENVIRON["URL"] "\">" substr($0, i + 8); done = 1
+    }
+    { print }
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 done
 
 html_unescape() { sed -e 's/&quot;/"/g' -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&amp;/\&/g'; }
@@ -147,6 +159,25 @@ ticker="<span>$count Spiele</span><span>1 gegen 1</span><span>Lokal · Online ·
 [ -n "$newest_title" ] && ticker+="<span>Neu: $newest_title</span>"
 ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile</span>"
 
+# Für Suchmaschinen: Liste aller Seiten (sitemap.xml, in der Google Search Console einreichen) und robots.txt
+{
+  echo '<?xml version="1.0" encoding="UTF-8"?>'
+  echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+  echo "  <url><loc>$SITE/</loc></url>"
+  for dir in "$SRC"/*/; do
+    [ -f "$dir/index.html" ] || continue
+    slug="$(basename "$dir")"
+    d="$(game_version "$slug")"
+    if [[ "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+      echo "  <url><loc>$SITE/$slug/</loc><lastmod>$d</lastmod></url>"
+    else
+      echo "  <url><loc>$SITE/$slug/</loc></url>"
+    fi
+  done
+  echo '</urlset>'
+} > "$BUILD/sitemap.xml"
+printf 'User-agent: *\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n' "$SITE" > "$BUILD/robots.txt"
+
 # Startseite aus der Vorlage zusammensetzen
 mkdir -p "$BUILD/_start"
 cp "$START/start.css" "$START/start.js" "$BUILD/_start/"
@@ -196,4 +227,4 @@ echo "Lade $count Spiele hoch ..."
 # Das Empfangs-Skript wird mitgeschickt. Beim GitHub-Schlüssel ignoriert der Server diesen Befehl
 # und führt seine feste Kopie /usr/local/bin/langwiligi-deploy aus.
 tar -czf - -C "$BUILD" . | ssh -o BatchMode=yes "$SERVER" "$(cat "$ROOT/server/langwiligi-deploy.sh")"
-echo "Fertig: http://46.224.94.231/"
+echo "Fertig: https://langwiligi.site/"
