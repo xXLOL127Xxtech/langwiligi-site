@@ -25,9 +25,9 @@ if ! git pull -q --rebase origin main; then
   exit 1
 fi
 if [ "$(git rev-list --count origin/main..HEAD)" = "0" ]; then
-  echo "Nichts Neues zum Hochladen. Online: http://46.224.94.231/"
+  echo "Nichts Neues zum Hochladen. Online: https://langwiligi.site/"
   exit 0
 fi
 git push -q origin main
-echo "Zu GitHub geschickt. In ca. 1 Minute online: http://46.224.94.231/"
+echo "Zu GitHub geschickt. In ca. 1 Minute online: https://langwiligi.site/"
 echo "Fortschritt: https://github.com/$REPO/actions"

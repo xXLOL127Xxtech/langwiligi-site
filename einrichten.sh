@@ -91,8 +91,8 @@ if ! git remote get-url origin >/dev/null 2>&1; then
     git remote add origin "https://github.com/$REPO.git"
   else
     "$GH" repo create "$REPO" --public --source . --remote origin \
-      --description "Browser-Spiele für 1 gegen 1 – lokal, online oder gegen Bots. Spiel mit: http://46.224.94.231" \
-      --homepage "http://46.224.94.231"
+      --description "Browser-Spiele für 1 gegen 1 – lokal, online oder gegen Bots. Spiel mit: https://langwiligi.site" \
+      --homepage "https://langwiligi.site"
   fi
 fi
 
@@ -110,7 +110,7 @@ Fertig!
   Repository:          https://github.com/$REPO
   Link für Freunde:    https://github.com/$REPO/blob/main/MITMACHEN.md
   Uploads ansehen:     https://github.com/$REPO/actions
-  Webseite:            http://46.224.94.231/
+  Webseite:            https://langwiligi.site/
 
 Ab jetzt lädt hochladen.cmd deine Änderungen über GitHub hoch (inkl. Spiele deiner Freunde).
 EOF
