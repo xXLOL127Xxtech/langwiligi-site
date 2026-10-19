@@ -3,20 +3,18 @@
   'use strict';
   // Solange langwiligi.site gesperrt ist, läuft die Seite direkt über die IP des Servers (ohne HTTPS)
   var API = /^https?:$/.test(location.protocol) && /(^|\.)langwiligi\.site$|^46\.224\.94\.231$/.test(location.hostname) ? '/api' : 'http://46.224.94.231/api';
-  var NEW_DAYS = 21;
+  var NEW_COUNT = 3;   // so viele zuletzt hochgeladene Spiele gelten als "Neu"
   var $ = function (id) { return document.getElementById(id); };
   function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
   var grid = $('grid');
   var cards = Array.prototype.slice.call(grid.querySelectorAll('.card'));
-  var now = Date.now() / 1000;
   var stats = {};   // slug -> { avg, count, week }
 
-  cards.forEach(function (c, i) {
-    c.style.setProperty('--i', Math.min(i, 14));
-    if (now - (+c.dataset.added || 0) < NEW_DAYS * 86400) c.classList.add('is-new');
-  });
+  cards.forEach(function (c, i) { c.style.setProperty('--i', Math.min(i, 14)); });
+  // Nur die zuletzt hochgeladenen Spiele bekommen das "Neu"-Schild
+  cards.slice().sort(byNew).slice(0, NEW_COUNT).forEach(function (c) { c.classList.add('is-new'); });
 
   // ---------- Intro ----------
   var intro = $('intro');
@@ -188,7 +186,7 @@
     cards.forEach(function (c) { bySlug[slug(c)] = c; });
     function add(c, tag) { if (c && !seen[slug(c)]) { seen[slug(c)] = 1; out.push({ card: c, tag: tag }); } }
     var newest = cards.slice().sort(byNew);
-    var fresh = newest.filter(function (c) { return c.classList.contains('is-new'); }).slice(0, 3);
+    var fresh = newest.filter(function (c) { return c.classList.contains('is-new'); });
     var trend = Object.keys(stats).filter(function (k) { return bySlug[k] && stats[k].week >= 3; })
       .sort(function (a, b) { return stats[b].week - stats[a].week; }).slice(0, 3);
     var top = Object.keys(stats).filter(function (k) { return bySlug[k] && stats[k].count >= 3 && stats[k].avg >= 3.5; })
