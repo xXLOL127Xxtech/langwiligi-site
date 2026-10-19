@@ -160,7 +160,7 @@ kbd{background:#2b3244;border-radius:5px;padding:1px 6px;font-size:12.5px;border
   <div class="box" style="width:640px">
     <h2>Anleitung</h2>
     <div class="help">
-      <p>Schiess die Vögel mit der Schleuder auf die Burgen und erledige alle <b>Waschbären</b>. Holz, Eis und Stein brechen unterschiedlich leicht, und rote Knallkisten explodieren. Jeder Vogel, der am Ende übrig bleibt, gibt 10'000 Bonuspunkte.</p>
+      <p>Schiess die Vögel mit der Schleuder auf die Burgen und erledige alle <b>Waschbären</b>. Holz, Eis und Stein brechen unterschiedlich leicht, und rote Knallkisten explodieren. Jede Burg steht auf einem Steinsockel: Fällt ein Waschbär davon herunter ins Gras, ist er erledigt. Jeder Vogel, der am Ende übrig bleibt, gibt 10'000 Bonuspunkte.</p>
       <table>
         <tr><td>Zielen (Touchpad)</td><td>Auf den Vogel in der Schleuder klicken, mit gedrückter Taste zurückziehen und loslassen.</td></tr>
         <tr><td>Zielen (Tastatur)</td><td><kbd>↑</kbd> <kbd>↓</kbd> Winkel, <kbd>←</kbd> <kbd>→</kbd> Kraft, <kbd>Leertaste</kbd> schiessen</td></tr>
@@ -232,6 +232,7 @@ const GRAV = -14, DT = 1 / 60;
 const PULL = 2.0;              // maximale Auszugslänge der Schleuder (m)
 const REST_Y = 2.65;           // Höhe des Vogels in der Schleuder
 const SX2 = 22;                // Schleuder-Abstand zur Mitte in 2-Spieler-Leveln
+const BASE_H = 0.4;            // Höhe des Steinsockels unter jeder Burg
 const MATS = {
   wood:  { d: 1.0, hp: 28, pts: 500, f: 0.75, r: 0.05, snd: 'wood' },
   glass: { d: 0.7, hp: 9,  pts: 500, f: 0.4,  r: 0.05, snd: 'glass' },
@@ -826,7 +827,7 @@ function createGame(mode, idx, opts) {
   const add = {
     block(shape, x, y, w, h, m, a) {
       const mat = MATS[m];
-      const body = world.createBody({ type: 'dynamic', position: V(x, y), angle: a, angularDamping: 0.15, linearDamping: 0.02 });
+      const body = world.createBody({ type: 'dynamic', position: V(x, y + BASE_H), angle: a, angularDamping: 0.15, linearDamping: 0.02 });
       let sh;
       if (shape === 'circle') sh = pl.Circle(w / 2);
       else if (shape === 'tri') sh = pl.Polygon([V(-w / 2, -h / 2), V(w / 2, -h / 2), V(0, h / 2)]);
@@ -839,16 +840,16 @@ function createGame(mode, idx, opts) {
     },
     pig(x, y, sz, hat) {
       const P = PIGS[sz];
-      const body = world.createBody({ type: 'dynamic', position: V(x, y), angularDamping: 2.5, linearDamping: 0.03 });
+      const body = world.createBody({ type: 'dynamic', position: V(x, y + BASE_H), angularDamping: 2.5, linearDamping: 0.03 });
       body.createFixture(pl.Circle(P.r), { density: 0.9, friction: 0.7, restitution: 0.15 });
       const hp = (P.hp + (hat ? (sz === 'k' ? 36 : 22) : 0)) * tough;
       const e = { kind: 'pig', sz, r: P.r, hat, hp, max: hp, body, seed: Math.random() * 1000, blink: Math.random() * 4 };
       body.setUserData(e); g.ents.push(e); g.pigs.push(e);
     },
     rock(x, y, w, h) {
-      const body = world.createBody({ type: 'static', position: V(x, y) });
+      const body = world.createBody({ type: 'static', position: V(x, y + BASE_H) });
       body.createFixture(pl.Box(w / 2, h / 2), { friction: 0.9 });
-      const e = { kind: 'rock', w, h, x, y, body, seed: Math.random() * 1000 };
+      const e = { kind: 'rock', w, h, x, y: y + BASE_H, body, seed: Math.random() * 1000 };
       body.setUserData(e); g.rocks.push(e);
     },
   };
@@ -860,6 +861,10 @@ function createGame(mode, idx, opts) {
     const p = e.body.getPosition(); const hw = (e.w || e.r * 2) / 2, hh = (e.h || e.r * 2) / 2;
     minX = Math.min(minX, p.x - hw); maxX = Math.max(maxX, p.x + hw); topY = Math.max(topY, p.y + hh);
   }
+  // Sockel: Waschbären stehen immer auf einer Plattform, unten im Gras sind sie erledigt
+  minX -= 0.35; maxX += 0.35;
+  add.rock((minX + maxX) / 2, BASE_H / 2 - BASE_H, maxX - minX, BASE_H);
+  g.rocks[g.rocks.length - 1].base = true;
   g.minX = minX; g.maxX = maxX; g.topY = topY;
   g.boundL = Math.min(minX, g.slings[0].x) - 15; g.boundR = Math.max(maxX, g.slings[g.slings.length - 1].x) + 15;
 
@@ -893,6 +898,7 @@ function onContact(g, c) {
     if (x.kind === 'egg' && !x.done) { x.done = true; g.explodeQ.push({ x: x.body.getPosition().x, y: x.body.getPosition().y, R: 3.1, pow: 16, dmg: 90, src: x }); }
   }
   if (!g.damageOn) return;
+  for (const [x, y] of [[ea, eb], [eb, ea]]) if (x.kind === 'pig' && y.kind === 'ground' && !x.dead) { x.fell = true; kill(g, x); return; }
   const wm = c.getWorldManifold(null); if (!wm || !wm.pointCount) return;
   const p = wm.points[0], n = wm.normal;
   const va = A.getLinearVelocityFromWorldPoint(p), vb = Bd.getLinearVelocityFromWorldPoint(p);
@@ -1344,7 +1350,17 @@ function drawGround(th) {
   for (let x = Math.floor(x0); x < x1; x += 0.5) { ctx.moveTo(x, 0); ctx.lineTo(x + 0.15, 0.25 + ((x * 31) % 3) * 0.06); ctx.lineTo(x + 0.3, 0); }
   ctx.fill();
 }
+function drawBase(e) {
+  ctx.save(); ctx.translate(e.x, e.y);
+  ctx.fillStyle = '#8f8a80'; rr(-e.w / 2, -e.h / 2, e.w, e.h, 0.08); ctx.fill();
+  ctx.lineWidth = 0.06; ctx.strokeStyle = '#55504a'; ctx.stroke();
+  ctx.fillStyle = '#b5afa3'; ctx.fillRect(-e.w / 2 + 0.04, e.h / 2 - 0.12, e.w - 0.08, 0.1);
+  ctx.strokeStyle = 'rgba(60,55,50,.45)'; ctx.lineWidth = 0.04;
+  for (let x = -e.w / 2 + 0.9; x < e.w / 2 - 0.2; x += 0.9) { ctx.beginPath(); ctx.moveTo(x, -e.h / 2 + 0.04); ctx.lineTo(x, e.h / 2 - 0.12); ctx.stroke(); }
+  ctx.restore();
+}
 function drawRock(e) {
+  if (e.base) return drawBase(e);
   ctx.save(); ctx.translate(e.x, e.y);
   ctx.fillStyle = '#7d7468'; rr(-e.w / 2, -e.h / 2, e.w, e.h, 0.25); ctx.fill();
   ctx.lineWidth = 0.08; ctx.strokeStyle = '#4e463d'; ctx.stroke();
