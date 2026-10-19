@@ -301,7 +301,8 @@ printf 'User-agent: *\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n' "$SITE" > "
 for v in "$START"/google*.html "$START"/BingSiteAuth.xml; do
   [ -f "$v" ] && cp "$v" "$BUILD/"
 done
-# IndexNow: meldet Bing, Ecosia, DuckDuckGo, Yandex & Co. nach jedem Hochladen alle Seiten (Google liest die sitemap.xml).
+# IndexNow: meldet Bing, Ecosia, DuckDuckGo, Yandex & Co. nach jedem Hochladen die Startseite und alle Spiele,
+# die seit gestern geändert wurden (Google liest die sitemap.xml). Unveränderte Seiten nicht jedes Mal melden, sonst wird gebremst.
 # Der Schlüssel aus startseite/indexnow.txt muss dafür als <schlüssel>.txt auf der Webseite liegen.
 INDEXNOW_KEY=""
 if [ -f "$START/indexnow.txt" ]; then
@@ -361,11 +362,19 @@ tar -czf - -C "$BUILD" . | ssh -o BatchMode=yes "$SERVER" "$(cat "$ROOT/server/l
 echo "Fertig: https://langwiligi.site/"
 
 if [ -n "$INDEXNOW_KEY" ] && command -v curl >/dev/null 2>&1; then
-  urls="$(grep -o '<loc>[^<]*' "$BUILD/sitemap.xml" | sed 's/<loc>//' | awk -v ORS=, '{ print "\"" $0 "\"" }' | sed 's/,$//')"
+  # Ohne GNU date (z.B. macOS) nur die heute geänderten Spiele
+  since="$(date -u -d '1 day ago' +%F 2>/dev/null || date -u +%F)"
+  urls="$(SINCE="$since" HOME_URL="$SITE/" awk '
+    match($0, /<loc>[^<]*<\/loc>/) {
+      url = substr($0, RSTART + 5, RLENGTH - 11); mod = ""
+      if (match($0, /<lastmod>[^<]*<\/lastmod>/)) mod = substr($0, RSTART + 9, RLENGTH - 19)
+      if (url == ENVIRON["HOME_URL"] || mod >= ENVIRON["SINCE"]) printf "%s\"%s\"", (n++ ? "," : ""), url
+    }
+  ' "$BUILD/sitemap.xml")"
   if curl -fsS --max-time 20 -o /dev/null -H 'Content-Type: application/json; charset=utf-8' \
        -d "{\"host\":\"langwiligi.site\",\"key\":\"$INDEXNOW_KEY\",\"keyLocation\":\"$SITE/$INDEXNOW_KEY.txt\",\"urlList\":[$urls]}" \
        https://api.indexnow.org/indexnow; then
-    echo "Suchmaschinen über IndexNow benachrichtigt."
+    echo "Suchmaschinen über IndexNow benachrichtigt: $(printf '%s' "$urls" | tr -cd ',' | wc -c | awk '{ print $1 + 1 }') Seiten."
   else
     echo "Hinweis: IndexNow nicht erreichbar, Suchmaschinen finden die Seiten trotzdem über sitemap.xml." >&2
   fi
