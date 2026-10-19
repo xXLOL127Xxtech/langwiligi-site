@@ -951,7 +951,7 @@ function bindHub() {
   hub.on('leaderboard', rows => GameHub.renderBoard($('end-board'), rows, myName));
 }
 function inviteLink(code) {
-  const base = location.protocol === 'https:' ? location.origin + location.pathname : 'https://langwiligi.site/schlangen-arena/';
+  const base = GameHub.SEITE + '/schlangen-arena/';
   return base + '#' + code;
 }
 function updateRoom() {

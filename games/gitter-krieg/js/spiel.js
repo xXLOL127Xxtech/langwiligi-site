@@ -200,7 +200,7 @@ function setPause(on) {
 // ---------- Online ----------
 function humansInRoom() { return room ? (room.players || []).filter(Boolean).length : 0; }
 function inviteLink() {
-  const base = location.protocol === 'https:' ? location.origin + location.pathname : 'https://langwiligi.site/' + GAME_ID + '/';
+  const base = GameHub.SEITE + '/' + GAME_ID + '/';
   return base + '#' + (room ? room.code : '');
 }
 function bindRoom() {

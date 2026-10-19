@@ -7,8 +7,10 @@
   if (document.getElementById('lw-back')) return;
 
   var HOME = 'langwiligi.site';
-  var ONLINE = location.protocol === 'https:' && (location.hostname === HOME || location.hostname.slice(-HOME.length - 1) === '.' + HOME);
-  var API = ONLINE ? '/api' : 'https://' + HOME + '/api';
+  // Solange langwiligi.site gesperrt ist, läuft die Seite direkt über die IP des Servers (ohne HTTPS)
+  var IP = '46.224.94.231';
+  var ONLINE = /^https?:$/.test(location.protocol) && (location.hostname === IP || location.hostname === HOME || location.hostname.slice(-HOME.length - 1) === '.' + HOME);
+  var API = ONLINE ? '/api' : 'http://' + IP + '/api';
   var parts = location.pathname.replace(/index\.html?$/, '').split('/').filter(Boolean);
   var GAME = (parts[parts.length - 1] || '').toLowerCase();
 

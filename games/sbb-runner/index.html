@@ -624,7 +624,7 @@ const Net = {
   },
   copyLink() {
     const code = $('on-codebox').textContent;
-    const url = 'https://langwiligi.site/' + GAME_ID + '/#' + code;
+    const url = GameHub.SEITE + '/' + GAME_ID + '/#' + code;
     const ok = () => this.setStatus('Link kopiert: ' + url, 'ok');
     const fallback = () => {
       const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select();

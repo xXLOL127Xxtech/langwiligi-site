@@ -4,10 +4,29 @@
 (function () {
   'use strict';
   const HOME = 'langwiligi.site';
-  const BASE = location.protocol === 'https:' && location.hostname.endsWith(HOME) ? location.host : HOME;
-  const WS_URL = 'wss://' + BASE + '/ws';
-  const API = 'https://' + BASE + '/api';
+  // Solange langwiligi.site gesperrt ist, läuft die Seite direkt über die IP des Servers (ohne HTTPS)
+  const IP = '46.224.94.231';
+  const BEI_UNS = /^https?:$/.test(location.protocol) && (location.hostname === IP || location.hostname === HOME || location.hostname.endsWith('.' + HOME));
+  // Adresse der Webseite (für Einladungslinks), z.B. http://46.224.94.231
+  const SEITE = BEI_UNS ? location.origin : 'http://' + IP;
+  const WS_URL = SEITE.replace(/^http/, 'ws') + '/ws';
+  const API = SEITE + '/api';
   const NAME_KEY = 'lw-name';
+
+  // Ohne HTTPS gibt es navigator.clipboard nicht: Ersatz, damit "Link kopieren" trotzdem geht
+  if (!navigator.clipboard) {
+    try {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText(text) {
+        const t = document.createElement('textarea');
+        t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:-9999px;top:0';
+        document.body.appendChild(t); t.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        t.remove();
+        return ok ? Promise.resolve() : Promise.reject(new Error('Kopieren nicht möglich'));
+      } } });
+    } catch (e) {}
+  }
 
   function getName() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; } }
   function setName(n) {
@@ -134,6 +153,6 @@
 .lw-empty{font-size:13px;opacity:.7;padding:6px 0}`;
   document.head.appendChild(css);
 
-  window.GameHub = { connect, leaderboard, loadBoard, renderBoard, highscores, submitScore, renderScores,
+  window.GameHub = { SEITE, connect, leaderboard, loadBoard, renderBoard, highscores, submitScore, renderScores,
     getName, setName, cleanCode, errorText };
 })();
