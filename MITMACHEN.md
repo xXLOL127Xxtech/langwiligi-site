@@ -1,6 +1,6 @@
 # Dein Spiel auf langwiligi.site 🎮
 
-Du hast ein Browser-Spiel gebaut (oder willst eins bauen)? So kommt es auf **[langwiligi.site](https://langwiligi.site/)**.
+Du hast ein Browser-Spiel gebaut (oder willst eins bauen)? So kommt es auf **[langwiligi.site](http://46.224.94.231/)**.
 Du brauchst nur einen Browser und ein kostenloses GitHub-Konto. Kein Git, keine Kommandozeile.
 
 ---
@@ -10,7 +10,7 @@ Du brauchst nur einen Browser und ein kostenloses GitHub-Konto. Kein Git, keine 
 Dein Spiel ist **ein Ordner** mit diesem Inhalt:
 
 ```
-panzer-pong/          ← Ordnername = Link: langwiligi.site/panzer-pong/
+panzer-pong/          ← Ordnername = Link: 46.224.94.231/panzer-pong/
 ├── index.html        ← das Spiel (Startdatei)
 ├── cover.webp        ← Titelbild, 16:10, z.B. 1280 × 800, ohne Text
 └── ...               ← Bilder, Sounds usw. (optional)
@@ -62,7 +62,7 @@ Fertig! Das nennt sich *Pull Request*: ein Vorschlag, dein Spiel aufzunehmen.
 
    Beim allerersten Mal steht dort evtl. *„Workflow awaiting approval“*. Das ist normal, der Besitzer gibt die Prüfung frei.
 2. **Der Besitzer schaut sich dein Spiel an** und klickt auf „Merge“.
-3. **Ca. 1 Minute später ist dein Spiel online**: `https://langwiligi.site/panzer-pong/`
+3. **Ca. 1 Minute später ist dein Spiel online**: `http://46.224.94.231/panzer-pong/`
    Es erscheint automatisch mit Bild und Beschreibung auf der Startseite.
 
 ---

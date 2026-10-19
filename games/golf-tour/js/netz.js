@@ -97,7 +97,7 @@ const Netz = {
     this.imSpiel = false;
     $('lCode').textContent = this.code;
     $('lKopieren').onclick = () => {
-      const url = (location.protocol === 'https:' && location.hostname.endsWith('langwiligi.site') ? location.origin + location.pathname : 'https://langwiligi.site/' + GAME_ID + '/') + '#' + this.code;
+      const url = (GameHub.SEITE + '/' + GAME_ID + '/') + '#' + this.code;
       const fertig = () => { $('lKopieren').textContent = 'Kopiert!'; setTimeout(() => $('lKopieren').textContent = 'Link kopieren', 1500); };
       try { navigator.clipboard.writeText(url).then(fertig, () => { $('lStatus').textContent = url; }); } catch (e) { $('lStatus').textContent = url; }
     };

@@ -196,4 +196,4 @@ echo "Lade $count Spiele hoch ..."
 # Das Empfangs-Skript wird mitgeschickt. Beim GitHub-Schlüssel ignoriert der Server diesen Befehl
 # und führt seine feste Kopie /usr/local/bin/langwiligi-deploy aus.
 tar -czf - -C "$BUILD" . | ssh -o BatchMode=yes "$SERVER" "$(cat "$ROOT/server/langwiligi-deploy.sh")"
-echo "Fertig: https://langwiligi.site/"
+echo "Fertig: http://46.224.94.231/"

@@ -1167,7 +1167,7 @@ window.Sound = (function () {
     $('codeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
     $('cancelBtn').addEventListener('click', () => { if (room) room.close(); room = null; net = null; resetOnlineUI(); });
     $('copyBtn').addEventListener('click', async () => {
-      const link = 'https://langwiligi.site/' + GAME_ID + '/#' + $('roomCode').textContent;
+      const link = GameHub.SEITE + '/' + GAME_ID + '/#' + $('roomCode').textContent;
       try { await navigator.clipboard.writeText(link); toast('✅ Link kopiert!'); }
       catch (e) { toast(link); }
     });

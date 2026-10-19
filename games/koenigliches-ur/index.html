@@ -536,7 +536,7 @@ window.OnlineKit = function (cfg) {
   q('.ol-cancel').addEventListener('click', function () { kit.leave(); });
   q('.ol-leave').addEventListener('click', function () { kit.leave(); if (cfg.onAbort) cfg.onAbort(''); });
   q('.ol-copy').addEventListener('click', function () {
-    var link = 'https://langwiligi.site/' + cfg.gameId + '/#' + q('.ol-big').textContent;
+    var link = GameHub.SEITE + '/' + cfg.gameId + '/#' + q('.ol-big').textContent;
     var done = function () { msg('Link kopiert! Warte auf Mitspieler …'); };
     try { navigator.clipboard.writeText(link).then(done, function () { msg(link); }); } catch (e) { msg(link); }
   });

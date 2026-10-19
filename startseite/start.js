@@ -1,7 +1,8 @@
 // Startseite: Intro, Filter, Sortierung, Bewertungen, Spotlight, "Spiel empfehlen"
 (function () {
   'use strict';
-  var API = location.protocol === 'https:' && /(^|\.)langwiligi\.site$/.test(location.hostname) ? '/api' : 'https://langwiligi.site/api';
+  // Solange langwiligi.site gesperrt ist, läuft die Seite direkt über die IP des Servers (ohne HTTPS)
+  var API = /^https?:$/.test(location.protocol) && /(^|\.)langwiligi\.site$|^46\.224\.94\.231$/.test(location.hostname) ? '/api' : 'http://46.224.94.231/api';
   var NEW_DAYS = 21;
   var $ = function (id) { return document.getElementById(id); };
   function load(k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }

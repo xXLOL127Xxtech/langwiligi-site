@@ -6154,7 +6154,7 @@ window.PB = window.PB || {};
         break;
       }
       case 'copy': {
-        var url = 'https://langwiligi.site/blasen-arena/#' + net.code;
+        var url = GameHub.SEITE + '/blasen-arena/#' + net.code;
         (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () {
           var b = elModal.querySelector('[data-act="copy"]'); if (b) b.textContent = 'Kopiert ✓';
         }, function () { var b = elModal.querySelector('[data-act="copy"]'); if (b) b.textContent = url; });

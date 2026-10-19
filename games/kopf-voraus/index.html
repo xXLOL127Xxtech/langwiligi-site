@@ -2200,7 +2200,7 @@ function renderLobby() {
   $('#lobby-hint').textContent = Net.host ? (Net.peer ? 'Alles bereit – du kannst starten!' : 'Schick deinem Gegner den Code oder den Link.') : 'Der Host wählt Modus und Arena und startet das Spiel.';
 }
 function copyLink() {
-  const url = 'https://langwiligi.site/' + GAME_ID + '/#' + Net.code;
+  const url = GameHub.SEITE + '/' + GAME_ID + '/#' + Net.code;
   const done = () => toast('Link kopiert!');
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => toast(url));
   else toast(url);
