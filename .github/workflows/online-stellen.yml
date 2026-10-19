@@ -16,6 +16,9 @@ on:
       - 'tools/**'
       - '.github/workflows/online-stellen.yml'
   workflow_dispatch:
+  # Jeden Montag neu hochladen, damit die meistgespielten Spiele in der Google-Beschreibung aktuell bleiben
+  schedule:
+    - cron: '17 4 * * 1'
 
 permissions:
   contents: read
