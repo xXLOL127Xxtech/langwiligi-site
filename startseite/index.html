@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="de">
+<html lang="de-CH">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Browser-Spiele zu zweit – online, lokal &amp; gegen Bots | KEI Langwiligi site</title>
-  <meta name="description" content="<!--ANZAHL--> kostenlose Browser-Spiele für 1 gegen 1: <!--TOP-SPIELE--> und viele mehr. Zu zweit an einem Laptop, online mit Freunden oder gegen Bots. Ohne Download, ohne Login.">
+  <title>KEI Langwiligi site – Online Spiele zu zweit, gratis &amp; ohne Werbung</title>
+  <meta name="description" content="<!--ANZAHL--> kostenlose Online Spiele zu zweit: <!--TOP-SPIELE--> und viele mehr. Lokal an einem Laptop, online mit Freunden oder gegen Bots. Ohne Download, ohne Login, ohne Werbung.">
   <link rel="canonical" href="https://langwiligi.site/">
   <meta name="theme-color" content="#07060d">
   <!-- Vorschau, wenn der Link geteilt wird (WhatsApp, Discord, Instagram, ...). Bild: startseite/vorschau.jpg, gebaut mit tools/vorschaubild/ -->
@@ -20,6 +20,20 @@
   <meta property="og:image:alt" content="KEI Langwiligi site – Best Browser Games!">
   <meta property="og:locale" content="de_CH">
   <meta name="twitter:card" content="summary_large_image">
+  <!-- Für Google: Name der Seite (auch "Langwiligi site" ohne KEI) und Liste aller Spiele (füllt deploy.sh) -->
+  <script type="application/ld+json">
+  {"@context": "https://schema.org", "@graph": [
+    {"@type": "WebSite", "@id": "https://langwiligi.site/#website", "url": "https://langwiligi.site/", "name": "KEI Langwiligi site",
+     "alternateName": ["Langwiligi site", "Langwiligi", "langwiligi.site", "Kei langwiligi Site"], "inLanguage": "de-CH",
+     "description": "Kostenlose Online Spiele zu zweit: lokal an einem Laptop, online mit Freunden oder gegen Bots. Ohne Download, ohne Werbung.",
+     "publisher": {"@id": "https://langwiligi.site/#org"}},
+    {"@type": "Organization", "@id": "https://langwiligi.site/#org", "name": "KEI Langwiligi site", "url": "https://langwiligi.site/",
+     "logo": "https://langwiligi.site/apple-touch-icon.png", "sameAs": ["https://github.com/xXLOL127Xxtech/langwiligi-site"]},
+    {"@type": "CollectionPage", "@id": "https://langwiligi.site/#spiele", "url": "https://langwiligi.site/", "name": "Online Spiele zu zweit",
+     "isPartOf": {"@id": "https://langwiligi.site/#website"}, "inLanguage": "de-CH",
+     "mainEntity": {"@type": "ItemList", "numberOfItems": <!--ANZAHL-->, "itemListElement": [<!--SPIELE-LISTE-->]}}
+  ]}
+  </script>
   <!--ICONS-->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -108,6 +122,30 @@
     <div class="grid" id="grid">
 <!--SPIELE-->
     </div>
+
+    <section class="about" aria-labelledby="about-h">
+      <p class="kicker">// Über die Seite</p>
+      <h2 id="about-h">Online Spiele zu zweit – gratis, ohne Download, ohne Werbung</h2>
+      <div class="about-cols">
+        <p><b>KEI Langwiligi site</b> heisst auf Schweizerdeutsch „keine langweilige Seite“: <!--ANZAHL--> kostenlose Browser-Spiele aus der Schweiz.
+          Mir isch langwilig? Dann einfach eine Karte anklicken. Das Spiel startet sofort im Browser, ohne Anmeldung, ohne App und ohne Werbung.</p>
+        <p><b>Zu zweit an einem Laptop:</b> Viele Spiele laufen mit zwei Spielern an einer Tastatur, ideal für die Pause oder einen Spieleabend.
+          <b>Online mit Freunden:</b> Raum erstellen, Link oder Code schicken, los geht's. <b>Gegen Bots:</b> Wer allein ist, spielt gegen den Computer.</p>
+        <p><b>Brettspiel-Klassiker online:</b> Schach, Dame, Go, Backgammon, Mancala (Kalaha), Reversi, Vier gewinnt, Käsekästchen (Dots and Boxes),
+          Ultimate Tic Tac Toe und das 4500 Jahre alte Königliche Spiel von Ur. <b>Action:</b> Kartrennen, Billard, Bogenschiessen, Snake,
+          Tower Defense und Strategie in Echtzeit.</p>
+      </div>
+      <div class="faq">
+        <details><summary>Sind die Spiele wirklich gratis?</summary>
+          <p>Ja. Alle Spiele sind kostenlos, ohne Werbung, ohne Cookies und ohne Login.</p></details>
+        <details><summary>Wie spiele ich online mit einem Freund?</summary>
+          <p>Spiel öffnen, „Online“ wählen und einen Raum erstellen. Dann den Einladungslink oder den Code an deinen Freund schicken.</p></details>
+        <details><summary>Kann man zu zweit an einem Laptop spielen?</summary>
+          <p>Ja. Bei allen Spielen mit „Lokal“ spielen zwei Personen an einem Gerät, gesteuert mit Tastatur und Touchpad. Eine Maus braucht es nicht.</p></details>
+        <details><summary>Muss ich etwas herunterladen?</summary>
+          <p>Nein. Alles läuft direkt im Browser, auf Windows, Mac, Linux und Chromebook.</p></details>
+      </div>
+    </section>
 
     <footer>
       <span>langwiligi.site</span>
