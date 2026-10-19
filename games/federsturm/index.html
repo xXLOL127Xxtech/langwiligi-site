@@ -245,19 +245,19 @@ const PIGS = {
   k: { r: 0.98, hp: 70 },
 };
 const BIRDS = {
-  kiki:    { n: 'Kiki', art: 'Rotkehlchen', r: 0.42, d: 2.6, v: 24, ab: null, str: { glass: 1, wood: .5, stone: .15, tnt: 1 },
+  kiki:    { n: 'Kiki', art: 'Rotkehlchen', r: 0.42, d: 2.9, v: 24, ab: null, str: { glass: 1, wood: .5, stone: .15, tnt: 1 },
              txt: 'Mutig und zuverlässig. Keine Spezialkraft, aber immer zur Stelle.' },
-  drillis: { n: 'Drillis', art: 'Blaumeise', r: 0.32, d: 2.6, v: 24, ab: 'split', str: { glass: 2.8, wood: .4, stone: .1, tnt: 1 },
+  drillis: { n: 'Drillis', art: 'Blaumeise', r: 0.32, d: 2.9, v: 24, ab: 'split', str: { glass: 2.8, wood: .4, stone: .1, tnt: 1 },
              txt: 'Klick im Flug: teilt sich in drei Meisen. Zerbröselt Eis wie nichts.' },
-  blitz:   { n: 'Blitz', art: 'Mauersegler', r: 0.38, d: 2.6, v: 24, ab: 'dash', str: { glass: .8, wood: 2.4, stone: .25, tnt: 1 },
+  blitz:   { n: 'Blitz', art: 'Mauersegler', r: 0.38, d: 2.9, v: 24, ab: 'dash', str: { glass: .8, wood: 2.4, stone: .25, tnt: 1 },
              txt: 'Klick im Flug: Turbo! Schiesst geradeaus und durchschlägt Holz.' },
-  donner:  { n: 'Donner', art: 'Strassentaube', r: 0.5, d: 2.4, v: 23, ab: 'boom', str: { glass: .6, wood: .6, stone: .3, tnt: 1 },
+  donner:  { n: 'Donner', art: 'Strassentaube', r: 0.5, d: 2.6, v: 23, ab: 'boom', str: { glass: .6, wood: .6, stone: .3, tnt: 1 },
              txt: 'Klick im Flug oder kurz nach dem Aufprall: grosse Explosion.' },
-  greta:   { n: 'Greta', art: 'Graugans', r: 0.55, d: 2.2, v: 23, ab: 'egg', str: { glass: .6, wood: .6, stone: .3, tnt: 1 },
+  greta:   { n: 'Greta', art: 'Graugans', r: 0.55, d: 2.4, v: 23, ab: 'egg', str: { glass: .6, wood: .6, stone: .3, tnt: 1 },
              txt: 'Klick im Flug: wirft ein Sprengei senkrecht nach unten und saust davon.' },
-  brocken: { n: 'Brocken', art: 'Uhu', r: 0.7, d: 2.4, v: 22, ab: 'dive', str: { glass: 1.4, wood: 1.4, stone: 1.9, tnt: 1 },
+  brocken: { n: 'Brocken', art: 'Uhu', r: 0.7, d: 2.6, v: 22, ab: 'dive', str: { glass: 1.4, wood: 1.4, stone: 1.9, tnt: 1 },
              txt: 'Riesig und schwer. Klick im Flug: Sturzflug. Bricht sogar Stein.' },
-  tuko:    { n: 'Tuko', art: 'Tukan', r: 0.45, d: 2.6, v: 24, ab: 'boomerang', str: { glass: 1, wood: 1.1, stone: .3, tnt: 1 },
+  tuko:    { n: 'Tuko', art: 'Tukan', r: 0.45, d: 2.9, v: 24, ab: 'boomerang', str: { glass: 1, wood: 1.1, stone: .3, tnt: 1 },
              txt: 'Klick im Flug: dreht um und fliegt im Bogen zurück. Erwischt Waschbären hinter Mauern.' },
 };
 const BIRD_ORDER = ['kiki', 'drillis', 'blitz', 'donner', 'greta', 'brocken', 'tuko'];
@@ -322,15 +322,15 @@ const W_ = 'wood', G_ = 'glass', S_ = 'stone';
 
 const SOLO = [
   // Welt 1: Sonnenwiese
-  { n: 'Erster Flug', th: 'wiese', birds: [K, K, K], build(b) {
-    b.hut(19, 0, 2.4, 1.6, W_); b.pig(19, 0, 's');
-    const t = b.hut(23.5, 0, 2.4, 1.6, W_); b.pig(23.5, 0, 's'); b.pig(23.5, t, 's');
+  { n: 'Erster Flug', th: 'wiese', birds: [K, K, K, K], build(b) {
+    b.hut(19, 0, 2.4, 1.6, G_, W_); b.pig(19, 0, 's');
+    const t = b.hut(22.5, 0, 2.4, 1.6, G_, W_); b.pig(22.5, 0, 's'); b.pig(22.5, t, 's');
   } },
   { n: 'Holzturm', th: 'wiese', birds: [K, K, K], build(b) {
     const t = b.tower(21, 0, 2.6, 1.6, 3, W_, W_, ['s', '', 's']); b.pig(21, t, 'm');
     b.col(25.5, 0, 2, 1, W_); b.pig(25.5, 2, 's');
   } },
-  { n: 'Eisige Grüsse', th: 'wiese', birds: [K, K, K], build(b) {
+  { n: 'Eisige Grüsse', th: 'wiese', birds: [K, K, K, K], build(b) {
     b.tower(19, 0, 2.4, 1.5, 2, G_, G_, ['s', 's']);
     const r = b.rock(24, 0, 3.2, 2); b.hut(24, r, 2.6, 1.5, G_, W_); b.pig(24, r, 'm');
     const t = b.tower(29, 0, 2.4, 1.5, 2, W_, G_, ['', 's']); b.pig(29, t, 's');
@@ -608,7 +608,7 @@ const DUELL = [
 // Koop: dicke Schutzmauern auf beiden Seiten, wenige Vögel – nur gemeinsam zu schaffen
 const KOOP = [
   { n: 'Zwei Fronten', th: 'wiese', b1: [K, K, K], b2: [K, K, K], build(b) {
-    b.sym(m => { m.wall(4.4, 0, 2.6, W_); m.tower(2.2, 0, 2.4, 1.6, 2, W_, W_, ['m', 's'], [1]); });
+    b.sym(m => { m.wall(4.4, 0, 2.6, W_); m.tower(2.2, 0, 2.4, 1.6, 2, W_, W_, ['m', 's']); });
     b.pig(0, 3.8, 'm');
   } },
   { n: 'Eisige Allianz', th: 'wiese', b1: [D, K], b2: [D, K], build(b) {
@@ -808,6 +808,7 @@ function createGame(mode, idx, opts) {
   const def = MODES[mode].list[idx];
   const two = MODES[mode].two;
   const tough = mode === 'koop' ? 1.3 : 1;   // im Koop ist alles zäher
+  const prog = idx / Math.max(1, MODES[mode].list.length - 1);
   const world = new pl.World({ gravity: V(0, GRAV) });
   const g = {
     mode, idx, def, two, world, ents: [], pigs: [], rocks: [], parts: [], floats: [], trails: [[], []],
@@ -816,6 +817,7 @@ function createGame(mode, idx, opts) {
     score: [0, 0], cur: 0, last: 1, phase: 'intro', t: 0, phaseT: 0, damageOn: false, acc: 0,
     loaded: null, active: [], abilityUsed: false, aim: null, keyAim: null, manual: false, demo: !!opts.demo, sim: !!opts.sim,
     toRemove: [], explodeQ: [], removed: 0, birdHits: 0, overview: false,
+    ease: 1.7 - 0.6 * prog,   // Schadensbonus: Level 1 ×1.7, letztes Level ×1.1
   };
   const ground = world.createBody({ type: 'static', position: V(0, -5) });
   ground.createFixture(pl.Box(400, 5), { friction: 0.9, restitution: 0.05 });
@@ -859,7 +861,7 @@ function createGame(mode, idx, opts) {
     minX = Math.min(minX, p.x - hw); maxX = Math.max(maxX, p.x + hw); topY = Math.max(topY, p.y + hh);
   }
   g.minX = minX; g.maxX = maxX; g.topY = topY;
-  g.boundL = Math.min(minX, g.slings[0].x) - 25; g.boundR = Math.max(maxX, g.slings[g.slings.length - 1].x) + 25;
+  g.boundL = Math.min(minX, g.slings[0].x) - 15; g.boundR = Math.max(maxX, g.slings[g.slings.length - 1].x) + 15;
 
   // Kontakte -> Schaden
   world.on('begin-contact', c => onContact(g, c));
@@ -887,8 +889,8 @@ function onContact(g, c) {
   if (!ea || !eb) return;
   // Vogel trifft etwas
   for (const [x, y] of [[ea, eb], [eb, ea]]) {
-    if (x.kind === 'bird' && !x.hit) { x.hit = true; if (x.type === 'donner') x.fuse = 1.4; Sfx.squawk(); }
-    if (x.kind === 'egg' && !x.done) { x.done = true; g.explodeQ.push({ x: x.body.getPosition().x, y: x.body.getPosition().y, R: 2.9, pow: 14, dmg: 80, src: x }); }
+    if (x.kind === 'bird' && !x.hit) { x.hit = true; x.hitT = x.t; if (x.type === 'donner') x.fuse = 1.4; Sfx.squawk(); }
+    if (x.kind === 'egg' && !x.done) { x.done = true; g.explodeQ.push({ x: x.body.getPosition().x, y: x.body.getPosition().y, R: 3.1, pow: 16, dmg: 90, src: x }); }
   }
   if (!g.damageOn) return;
   const wm = c.getWorldManifold(null); if (!wm || !wm.pointCount) return;
@@ -922,11 +924,12 @@ function hurt(g, t, o, En, p) {
     if (o.kind === 'bird') mul = 1.3;
     else if (o.kind === 'ground' || o.kind === 'rock') mul = 0.22;
     else if (o.kind === 'pig') mul = 0.2;
-    else mul = 0.35;
+    else mul = 0.45;
     damage(g, t, En * mul);
   }
 }
 function damage(g, e, d) {
+  d *= e.kind === 'pig' ? g.ease : 1 + (g.ease - 1) * 0.5;
   if (e.dead || d < 0.5) return;
   const before = e.hp;
   e.hp -= d;
@@ -946,7 +949,7 @@ function kill(g, e) {
   } else if (e.kind === 'block') {
     const pts = MATS[e.mat].pts; addScore(g, pts); float(g, p.x, p.y, String(pts), '#fff', 0.8);
     Sfx.brk(MATS[e.mat].snd); debris(g, e);
-    if (e.mat === 'tnt') g.explodeQ.push({ x: p.x, y: p.y, R: 3.0, pow: 14, dmg: 70 });
+    if (e.mat === 'tnt') g.explodeQ.push({ x: p.x, y: p.y, R: 3.2, pow: 16, dmg: 80 });
   }
 }
 function explode(g, x, y, R, pow, dmg) {
@@ -1047,7 +1050,7 @@ function useAbility(g) {
     const ns = Math.min(42, Math.max(30, sp * 2.1));
     e.body.setLinearVelocity(V(v.x / sp * ns, v.y / sp * ns)); e.dash = 0.6;
   } else if (ab === 'boom') {
-    g.explodeQ.push({ x: p.x, y: p.y, R: 3.3, pow: 16, dmg: 85, bird: e });
+    g.explodeQ.push({ x: p.x, y: p.y, R: 3.5, pow: 18, dmg: 95, bird: e });
   } else if (ab === 'egg') {
     const eb = g.world.createBody({ type: 'dynamic', position: V(p.x, p.y - e.r - 0.42), bullet: true });
     eb.createFixture(pl.Circle(0.36), { density: 6, friction: 0.5, restitution: 0.1 });
@@ -1083,9 +1086,17 @@ function startTurn(g) {
 function birdsCalm(g) {
   for (const e of g.active) {
     if (e.dead) continue;
-    const p = e.body.getPosition();
+    const p = e.body.getPosition(), v = e.body.getLinearVelocity();
     if (p.x < g.boundL || p.x > g.boundR || p.y < -5) continue;
-    if (e.still < 0.9 && !(e.t > 9)) return false;
+    // an der Burg vorbeigeflogen und unterwegs nach draussen: nicht abwarten
+    // (Tuko mit unbenutzter Kraft darf noch umkehren)
+    const far = e.dir > 0 ? p.x - g.maxX : g.minX - p.x, away = v.x * e.dir > 0;
+    const canTurn = e.type === 'tuko' && e.main && (!g.abilityUsed || e.boom);
+    if (far > 3 && away && !canTurn) continue;
+    if (far > 14) continue;
+    // nach dem Aufprall nur noch kurz ausrollen lassen
+    if (e.hit && e.hitT !== undefined && e.t - e.hitT > 2.5) continue;
+    if (e.still < 0.6 && !(e.t > 8)) return false;
   }
   return true;
 }
@@ -1160,10 +1171,10 @@ function stepGame(g) {
     const v = e.body.getLinearVelocity(), sp = Math.hypot(v.x, v.y);
     e.still = sp < 0.5 ? e.still + DT : 0;
     if (e.dash) e.dash = Math.max(0, e.dash - DT);
-    if (e.fuse !== undefined && !e.dead) { e.fuse -= DT; if (e.fuse <= 0 && !g.abilityUsed) { g.abilityUsed = true; const p = e.body.getPosition(); g.explodeQ.push({ x: p.x, y: p.y, R: 3.3, pow: 16, dmg: 85, bird: e }); showAbil(''); } }
+    if (e.fuse !== undefined && !e.dead) { e.fuse -= DT; if (e.fuse <= 0 && !g.abilityUsed) { g.abilityUsed = true; const p = e.body.getPosition(); g.explodeQ.push({ x: p.x, y: p.y, R: 3.5, pow: 18, dmg: 95, bird: e }); showAbil(''); } }
     const p = e.body.getPosition();
     if (p.y < -6 || p.x < g.boundL - 10 || p.x > g.boundR + 10) { e.dead = true; g.toRemove.push(e); }
-    if (e.kind === 'egg' && e.t > 4 && !e.done) { e.done = true; g.explodeQ.push({ x: p.x, y: p.y, R: 2.9, pow: 14, dmg: 80, src: e }); }
+    if (e.kind === 'egg' && e.t > 4 && !e.done) { e.done = true; g.explodeQ.push({ x: p.x, y: p.y, R: 3.1, pow: 16, dmg: 90, src: e }); }
   }
   // Waschbären oder Blöcke aus der Welt gefallen
   for (const e of g.ents) {
@@ -1188,9 +1199,9 @@ function stepGame(g) {
   if (g.phase === 'intro') {
     if (g.phaseT > (g.demo ? 0 : 2.2)) startTurn(g);
   } else if (g.phase === 'fly') {
-    if ((birdsCalm(g) && g.phaseT > 0.5) || g.phaseT > 14) { g.phase = 'settle'; g.phaseT = 0; }
+    if ((birdsCalm(g) && g.phaseT > 0.5) || g.phaseT > 10) { g.phase = 'settle'; g.phaseT = 0; }
   } else if (g.phase === 'settle') {
-    if ((worldCalm(g) && g.phaseT > 0.6) || g.phaseT > 4.5) {
+    if ((worldCalm(g) && g.phaseT > 0.4) || g.phaseT > 3.5) {
       clearBirds(g);
       if (alivePigs(g) === 0) finish(g, true);
       else { g.phase = 'next'; g.phaseT = 0; }
