@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Wanderlicht</title>
+<meta name="description" content="Wandere durch eine endlose Pixelwelt voller Wunder, verlassener Burgen, Gewitter und stiller Aussichten.">
+<meta name="theme-color" content="#b98ddc">
+<meta name="spiel-modi" content="Solo">
+<meta name="spiel-tags" content="Offene Welt,Entdecken">
+<meta name="spiel-typ" content="3D,Pixel-Art,Action">
+<meta name="spiel-suche" content="Open World Spiel, Erkundungsspiel, Pixel Abenteuer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent: #b98ddc;
+  --accent2: #e8d4ff;
+  --panel: rgba(18, 14, 30, 0.86);
+  --line: rgba(200, 170, 255, 0.28);
+  --text: #efe8ff;
+  --dim: #a99cc4;
+  --gold: #ffd36a;
+  --hp: #e0607a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b16; color: var(--text); font-family: 'Pixelify Sans', system-ui, sans-serif; user-select: none; }
+#spiel { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: grab; }
+#spiel:active { cursor: grabbing; }
+button { font-family: inherit; }
+kbd { display: inline-block; min-width: 1.5em; padding: 1px 6px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 4px; background: rgba(255,255,255,0.06); font-family: inherit; font-size: 0.9em; text-align: center; color: var(--accent2); }
+
+/* HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s; }
+#hud.show { opacity: 1; }
+body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
+#topLeft { position: absolute; left: 18px; top: 16px; width: 230px; }
+.hp { position: relative; height: 18px; background: rgba(10, 6, 18, 0.7); border: 2px solid var(--line); border-radius: 4px; overflow: hidden; }
+#hpFill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(#f07890, #c04060); transition: width 0.25s; }
+#hpFill::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 10px, rgba(0,0,0,0.18) 10px 12px); }
+#hpText { position: absolute; inset: 0; text-align: center; font-size: 12px; line-height: 15px; text-shadow: 0 1px 0 #000; }
+.subrow { margin-top: 6px; font-size: 14px; color: var(--dim); text-shadow: 0 1px 2px #000; display: flex; gap: 14px; align-items: center; }
+.subrow b { color: var(--text); }
+.subrow .pot { color: #ff8aa4; }
+#topRight { position: absolute; right: 66px; top: 16px; font-size: 18px; text-shadow: 0 1px 2px #000; display: flex; gap: 16px; align-items: center; background: rgba(10,6,18,0.45); padding: 4px 12px; border-radius: 6px; border: 2px solid rgba(200,170,255,0.12); }
+#topRight .coin { color: var(--gold); }
+#topRight .star { color: #b8d4ff; }
+#btnSound { position: fixed; right: 16px; top: 14px; width: 38px; height: 34px; border-radius: 6px; border: 2px solid var(--line); background: rgba(10,6,18,0.55); color: var(--accent2); font-size: 18px; cursor: pointer; z-index: 6; }
+#compass { position: absolute; left: 50%; top: 14px; width: 440px; height: 30px; margin-left: -220px; overflow: hidden;
+  background: linear-gradient(90deg, transparent, rgba(10,6,18,0.6) 15%, rgba(10,6,18,0.6) 85%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+#cstrip { position: absolute; inset: 0; }
+.cdir, .cmark { position: absolute; top: 7px; transform: translateX(-50%); font-size: 12px; color: var(--dim); white-space: nowrap; }
+.cdir.big { font-size: 15px; top: 5px; color: var(--text); }
+.cmark { top: 5px; font-size: 16px; color: var(--accent2); text-shadow: 0 0 6px rgba(200,160,255,0.8); }
+.cmark.burg { color: #d8c8e8; }
+.cmark.lager { color: #ffb070; text-shadow: 0 0 6px rgba(255,150,80,0.8); }
+.cmark.neu { color: #fff; animation: glim 1.6s infinite; }
+.cmark.hint { color: #b8d4ff; animation: glim 2.4s infinite; }
+@keyframes glim { 50% { opacity: 0.45; } }
+.cneedle { position: absolute; left: 50%; top: 0; width: 2px; height: 5px; margin-left: -1px; background: var(--accent); }
+#region { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); font-size: 15px; letter-spacing: 3px; color: var(--accent2); text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity 1.5s; text-transform: uppercase; }
+#region.show { opacity: 0.9; }
+#prompt { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 7px 14px; background: var(--panel); border: 2px solid var(--line); border-radius: 6px; font-size: 16px; opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+#prompt.show { opacity: 1; }
+#toasts { position: absolute; right: 18px; top: 64px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.toast { padding: 6px 12px; background: var(--panel); border: 2px solid var(--line); border-radius: 6px; font-size: 14px; max-width: 340px; transition: opacity 0.8s, transform 0.8s; animation: tin 0.3s; }
+.toast.out { opacity: 0; transform: translateX(20px); }
+@keyframes tin { from { opacity: 0; transform: translateX(20px); } }
+#bossbar { position: absolute; left: 50%; bottom: 26px; width: min(520px, 70vw); transform: translateX(-50%); opacity: 0; transition: opacity 0.6s; text-align: center; }
+#bossbar.show { opacity: 1; }
+#bossName { font-size: 18px; letter-spacing: 2px; margin-bottom: 4px; color: #ffd4e0; text-shadow: 0 1px 3px #000; }
+#bossbar .bar { height: 12px; border: 2px solid rgba(255,160,190,0.4); background: rgba(10,6,18,0.7); border-radius: 3px; overflow: hidden; }
+#bossFill { height: 100%; width: 100%; background: linear-gradient(#d070ff, #8040c0); transition: width 0.2s; }
+
+/* Titelkarte bei Entdeckungen */
+#card { position: fixed; left: 50%; top: 18%; transform: translate(-50%, -10px); text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.4s, transform 1.4s; width: 90vw; }
+#card.show { opacity: 1; transform: translate(-50%, 0); }
+#card h2 { margin: 0; font-size: clamp(30px, 4.4vw, 54px); font-weight: 600; letter-spacing: 2px; color: #fff; text-shadow: 0 0 18px rgba(200,160,255,0.65), 0 2px 0 rgba(0,0,0,0.6); }
+#card p { margin: 8px 0 0; font-size: clamp(15px, 1.6vw, 20px); color: var(--accent2); text-shadow: 0 1px 3px #000; }
+#card h2::before, #card h2::after { content: '✦'; font-size: 0.4em; vertical-align: middle; margin: 0 18px; color: var(--accent); }
+
+#rest { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity 1.5s; pointer-events: none; text-shadow: 0 1px 3px #000; }
+#rest.show { opacity: 1; }
+#rest p { margin: 0 0 6px; font-size: 20px; }
+#rest small { color: var(--dim); font-size: 14px; }
+#loading { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); font-size: 16px; color: var(--accent2); opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+#loading.show { opacity: 0.9; animation: glim 1.4s infinite; }
+
+/* Titel */
+#title { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 5;
+  background: radial-gradient(ellipse at center, rgba(10,6,20,0.15), rgba(10,6,20,0.55)); }
+#title.show { display: flex; }
+#title h1 { margin: 0; font-size: clamp(48px, 8vw, 104px); font-weight: 700; letter-spacing: 6px; color: #fff; text-shadow: 0 0 30px rgba(190,140,255,0.8), 0 4px 0 rgba(40,20,70,0.8); }
+#title .sub { margin: 4px 0 30px; font-size: clamp(16px, 1.8vw, 22px); color: var(--accent2); letter-spacing: 2px; text-shadow: 0 1px 4px #000; }
+.btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.btn { min-width: 260px; padding: 11px 22px; font-size: 20px; color: var(--text); background: var(--panel); border: 2px solid var(--line); border-radius: 8px; cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.1s; }
+.btn:hover { background: rgba(70, 50, 110, 0.9); border-color: var(--accent); }
+.btn:active { transform: scale(0.98); }
+.btn.big { font-size: 24px; border-color: var(--accent); box-shadow: 0 0 22px rgba(185,141,220,0.35); }
+.help { margin-top: 30px; display: grid; grid-template-columns: auto auto auto auto; gap: 6px 14px; font-size: 14px; color: var(--dim); background: rgba(10,6,18,0.55); padding: 12px 18px; border-radius: 8px; border: 2px solid rgba(200,170,255,0.12); text-align: left; align-items: center; }
+.help span { color: var(--text); }
+
+/* Panels */
+.panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92vw); max-height: 86vh; display: none; flex-direction: column; background: var(--panel); border: 2px solid var(--line); border-radius: 10px; padding: 18px 20px; z-index: 8; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+.panel.show { display: flex; animation: pin 0.25s; }
+@keyframes pin { from { opacity: 0; transform: translate(-50%, -46%); } }
+.panel h3 { margin: 0 0 4px; font-size: 24px; color: #fff; font-weight: 600; letter-spacing: 1px; }
+.panel .meta { color: var(--gold); font-size: 15px; margin-bottom: 10px; }
+.list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.opt { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 9px 12px; font-size: 16px; color: var(--text); background: rgba(255,255,255,0.04); border: 2px solid transparent; border-radius: 6px; cursor: pointer; }
+.opt span { display: flex; flex-direction: column; }
+.opt small { color: var(--dim); font-size: 13px; margin-top: 1px; }
+.opt em { font-style: normal; color: var(--gold); white-space: nowrap; }
+.opt.arm { opacity: 0.55; }
+.opt:hover, .opt.sel { background: rgba(185,141,220,0.18); border-color: var(--accent); }
+.opt.close { justify-content: center; color: var(--dim); margin-top: 6px; }
+.hint { color: var(--dim); font-size: 13px; margin-top: 10px; text-align: center; }
+#journal .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 10px; }
+#journal .stats div { background: rgba(255,255,255,0.05); border-radius: 6px; padding: 8px; text-align: center; }
+#journal .stats b { display: block; font-size: 20px; color: #fff; }
+#journal .stats small { color: var(--dim); font-size: 12px; }
+#jGear { color: var(--dim); font-size: 14px; margin-bottom: 10px; line-height: 1.5; }
+#jList { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 34vh; columns: 2; column-gap: 16px; font-size: 15px; }
+#jList li { padding: 3px 0; break-inside: avoid; }
+#jList .ico { color: var(--accent); display: inline-block; width: 22px; }
+#jList .dim { color: var(--dim); }
+#dialog { top: auto; bottom: 40px; transform: translateX(-50%); width: min(640px, 92vw); }
+#dialog.show { animation: dlg 0.3s; }
+@keyframes dlg { from { opacity: 0; transform: translate(-50%, 10px); } }
+#dlgName { color: var(--accent); font-size: 16px; letter-spacing: 1px; margin-bottom: 6px; }
+#dlgText { margin: 0 0 12px; font-size: 19px; line-height: 1.45; }
+#dlgBtn { justify-content: center; }
+#death { text-align: center; align-items: center; }
+#death h3 { font-size: 30px; }
+#death p { color: var(--dim); }
+@media (max-height: 700px) {
+  .help { margin-top: 16px; font-size: 13px; }
+  #title .sub { margin-bottom: 18px; }
+}
+</style>
+</head>
+<body>
+<canvas id="spiel"></canvas>
+
+<div id="hud">
+  <div id="topLeft">
+    <div class="hp"><div id="hpFill"></div><span id="hpText"></span></div>
+    <div class="subrow"><span class="pot">♥ <b id="potions">0</b> Tränke</span><span><kbd>Q</kbd> trinken</span></div>
+  </div>
+  <div id="compass"><div id="cstrip"></div><div class="cneedle"></div></div>
+  <div id="region"><span id="regionText"></span></div>
+  <div id="topRight"><span><span class="coin">●</span> <b id="gold">0</b></span><span><span class="star">✦</span> <b id="splinters">0</b></span></div>
+  <div id="toasts"></div>
+  <div id="prompt"><kbd>E</kbd> <span id="promptText"></span></div>
+  <div id="bossbar"><div id="bossName"></div><div class="bar"><div id="bossFill"></div></div></div>
+</div>
+<button id="btnSound" title="Ton an/aus (M)">♪</button>
+
+<div id="card"><h2 id="cardTitle"></h2><p id="cardSub"></p></div>
+<div id="rest"><p id="restText"></p><small>Die Zeit fliesst schneller. Drück eine Taste, um weiterzugehen.</small></div>
+<div id="loading">Die Welt entsteht …</div>
+
+<div id="title">
+  <h1>Wanderlicht</h1>
+  <p class="sub">Eine endlose Welt voller stiller Wunder</p>
+  <div class="btns">
+    <button id="btnStart" class="btn big">Losgehen</button>
+    <button id="btnNew" class="btn">Neue Welt</button>
+  </div>
+  <div class="help">
+    <kbd>W A S D</kbd><span>gehen</span><kbd>Shift</kbd><span>rennen</span>
+    <kbd>Leertaste</kbd><span>springen</span><kbd>F</kbd><span>oder Klick: schlagen</span>
+    <kbd>E</kbd><span>sprechen, öffnen, rasten</span><kbd>Q</kbd><span>Heiltrank</span>
+    <kbd>← → ↑ ↓</kbd><span>oder ziehen: umsehen</span><kbd>+ −</kbd><span>oder scrollen: Zoom</span>
+    <kbd>Tab</kbd><span>Tagebuch</span><kbd>Esc</kbd><span>Menü · <kbd>H</kbd> Bild ohne Anzeigen</span>
+  </div>
+</div>
+
+<div id="shop" class="panel">
+  <h3 id="shopTitle">Laden</h3>
+  <div class="meta" id="shopMoney"></div>
+  <div class="list" id="shopList"></div>
+  <div class="hint"><kbd>↑</kbd> <kbd>↓</kbd> wählen · <kbd>E</kbd> kaufen · <kbd>Esc</kbd> zurück</div>
+</div>
+
+<div id="journal" class="panel">
+  <h3>Tagebuch</h3>
+  <div class="stats" id="jStats"></div>
+  <div id="jGear"></div>
+  <ul id="jList"></ul>
+  <button class="opt close" id="jClose">Zuklappen</button>
+</div>
+
+<div id="menu" class="panel">
+  <h3>Pause</h3>
+  <div class="list">
+    <button class="opt" id="mResume">Weiterwandern</button>
+    <button class="opt" id="mJournal">Tagebuch</button>
+    <button class="opt" id="mPixel">Pixelgrösse</button>
+    <button class="opt" id="mView">Sichtweite</button>
+    <button class="opt" id="mSound">Ton</button>
+    <button class="opt" id="mTitle">Zum Titelbild</button>
+  </div>
+  <div class="hint">Dein Weg wird automatisch gespeichert.</div>
+</div>
+
+<div id="dialog" class="panel">
+  <div id="dlgName"></div>
+  <p id="dlgText"></p>
+  <button class="opt" id="dlgBtn">Weiter</button>
+</div>
+
+<div id="death" class="panel">
+  <h3>Du sinkst ins Gras.</h3>
+  <p id="deathLost"></p>
+  <button class="opt" id="btnWake" style="justify-content:center">Aufwachen</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="welt.js"></script>
+<script src="grafik.js"></script>
+<script src="wesen.js"></script>
+<script src="bauten.js"></script>
+<script src="ton.js"></script>
+<script src="spiel.js"></script>
+<script>document.getElementById('btnWake').onclick = () => respawn();</script>
+</body>
+</html>
