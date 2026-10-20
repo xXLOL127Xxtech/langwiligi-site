@@ -57,7 +57,8 @@ und „unblocked games“-Begriffe (die zielen auf das Umgehen von Schulsperren)
   - längere Beschreibung: „Gratis im Browser spielen: zu zweit an einem Laptop, online mit Freunden oder gegen Bots. Ohne Download, ohne Werbung.“
   - Vorschau für geteilte Links (WhatsApp, Discord …) mit dem Titelbild des Spiels
   - strukturierte Daten als Spiel (VideoGame) und Brotkrumen-Pfad `KEI Langwiligi site › Spiel`
-- **IndexNow**: Nach jedem Hochladen bekommen Bing, Ecosia, DuckDuckGo, Yandex & Co. automatisch die Liste aller Seiten.
+- **IndexNow**: Nach jedem Hochladen bekommen Bing, Ecosia, DuckDuckGo, Yandex & Co. automatisch die Startseite und alle Spiele,
+  die seit gestern neu sind oder geändert wurden. Unveränderte Spiele werden nicht jedes Mal gemeldet, sonst wird die Seite gebremst.
   Schlüssel in `startseite/indexnow.txt` (darf öffentlich sein).
 - `sitemap.xml` und `robots.txt` gab es schon.
 
