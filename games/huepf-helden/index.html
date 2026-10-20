@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Hüpf-Helden</title>
+<meta name="description" content="Jump and Run für 1 bis 4 Spieler: springen, stampfen, Münzen sammeln – jede Welt wird für euch neu gebaut.">
+<meta name="theme-color" content="#ffb627">
+<meta name="spiel-modi" content="Lokal,Solo">
+<meta name="spiel-tags" content="Bis 4,Plattformer,Neue Level">
+<meta name="spiel-typ" content="Action,Geschick,Party">
+<meta name="spiel-suche" content="Jump and Run, Plattformer für 4 Spieler, Hüpfspiel, Jump and Run zu viert">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+:root{--acc:#ffb627;--acc-d:#b86a00;--gold:#ffd23a;--bg:#0d0f13;--panel:rgba(14,16,34,.86);--line:rgba(255,255,255,.13);--fn:"Lilita One",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hidden{display:none!important}
+button{font-family:inherit}
+kbd{display:inline-block;min-width:20px;padding:1px 6px;margin:0 1px;border-radius:6px;background:rgba(255,255,255,.16);border-bottom:2px solid rgba(255,255,255,.3);font:700 12px system-ui,sans-serif;text-align:center;color:#fff}
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:18px 18px 18px 150px;overflow-y:auto;z-index:20;background:radial-gradient(ellipse at center,rgba(8,10,24,.25),rgba(8,10,24,.6))}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:24px;padding:20px 26px;max-width:540px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:auto}
+.panel.mittel{max-width:800px}.panel.breit{max-width:1040px}
+h2{font-family:var(--fn);font-weight:400;color:var(--gold);margin:0 0 12px;font-size:34px;text-align:center;letter-spacing:1px;text-shadow:0 3px 0 rgba(0,0,0,.4)}
+h3{font-family:var(--fn);font-weight:400;margin:14px 0 6px;font-size:19px;letter-spacing:.5px}
+.logo{text-align:center;margin:0 0 2px;font-family:var(--fn);line-height:.9;font-size:clamp(54px,8.5vw,96px);letter-spacing:2px}
+.logo span{display:inline-block;background:linear-gradient(#fff6b0,#ffd23a 50%,#ff9b1c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 0 #8a3a00) drop-shadow(0 12px 18px rgba(0,0,0,.5));transform:rotate(-3deg)}
+.logo span.b{background-image:linear-gradient(#e2f0ff,#7fb2ff 55%,#3a6ee0);filter:drop-shadow(0 5px 0 #1a2a6a) drop-shadow(0 12px 18px rgba(0,0,0,.5));transform:rotate(2deg)}
+.sub{text-align:center;opacity:.88;font-size:15px;margin:6px 0 8px}
+#titelHelden{display:block;margin:0 auto;width:100%;max-width:460px;height:auto}
+.btn{display:block;width:100%;padding:13px 16px;margin:8px 0;border:0;border-radius:14px;font:700 17px system-ui,sans-serif;color:#fff;background:rgba(255,255,255,.1);cursor:pointer;transition:transform .08s,background .15s,box-shadow .15s;text-align:center;outline:none}
+.btn:hover,.btn:focus-visible,.btn:focus{background:rgba(255,255,255,.2);box-shadow:0 0 0 3px var(--gold)}
+.btn:active{transform:scale(.97)}
+.btn.haupt{background:linear-gradient(#ffd35a,var(--acc));color:#4a2600;font-family:var(--fn);font-weight:400;font-size:24px;letter-spacing:1px;box-shadow:0 5px 0 var(--acc-d);text-shadow:0 1px 0 rgba(255,255,255,.4)}
+.btn.haupt:hover,.btn.haupt:focus{box-shadow:0 5px 0 var(--acc-d),0 0 0 3px #fff}
+.btn:disabled{opacity:.4;cursor:default}
+.btn small{display:block;font-weight:500;font-size:12.5px;opacity:.8;margin-top:2px;font-family:system-ui,sans-serif;letter-spacing:0}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.lbl{display:block;font-size:12px;opacity:.7;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;font-weight:700;text-align:center}
+.seg{display:flex;gap:6px;flex-wrap:wrap;max-width:520px;margin:0 auto}
+.seg button{flex:1;min-width:64px;padding:9px 6px;border:0;border-radius:11px;background:rgba(255,255,255,.08);color:#fff;font:700 14px system-ui,sans-serif;cursor:pointer;outline:none}
+.seg button small{display:block;font-weight:500;font-size:11px;opacity:.75}
+.seg button:hover,.seg button:focus-visible{background:rgba(255,255,255,.18);box-shadow:0 0 0 3px var(--gold)}
+.seg button.on{background:var(--acc);color:#4a2600;box-shadow:0 3px 0 var(--acc-d)}
+.hinweis{font-size:13px;opacity:.75;text-align:center;margin-top:10px;line-height:1.6}
+/* Lobby */
+.plaetze{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pkarte{position:relative;border-radius:20px;padding:10px 8px 12px;background:rgba(255,255,255,.05);border:3px dashed rgba(255,255,255,.18);text-align:center;transition:transform .15s,border-color .2s;cursor:pointer;min-height:290px;display:flex;flex-direction:column;align-items:center}
+.pkarte:hover{background:rgba(255,255,255,.09)}
+.pkarte.dabei{border:3px solid var(--f);background:linear-gradient(180deg,color-mix(in srgb,var(--f) 26%,transparent),rgba(255,255,255,.03));cursor:default}
+.pkarte.hops{animation:hops .3s}
+@keyframes hops{50%{transform:translateY(-8px)}}
+.ptag{font-family:var(--fn);font-size:20px;color:var(--f,#aab);letter-spacing:.5px}
+.pfig{width:130px;height:130px;display:block;margin:2px auto 0}
+.pname{font-family:var(--fn);font-size:22px;display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
+.pname button{border:0;background:rgba(255,255,255,.12);color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;outline:none}
+.pname button:hover,.pname button:focus-visible{background:rgba(255,255,255,.3)}
+.pfaehig{font-size:12px;opacity:.85;line-height:1.35;min-height:48px;margin-top:4px}
+.psteuer{font-size:11px;opacity:.7;margin-top:6px;line-height:1.7}
+.pweg{position:absolute;right:8px;top:8px;border:0;background:rgba(0,0,0,.3);color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:13px}
+.pleer{opacity:.75;font-size:13px;line-height:1.8;margin-top:6px}
+.pleer b{display:block;font-family:var(--fn);font-weight:400;font-size:18px;margin-bottom:6px;opacity:.9}
+/* Karte */
+.weg{display:flex;align-items:center;justify-content:space-between;gap:4px;margin:18px 0 10px;position:relative}
+.weg::before{content:"";position:absolute;left:30px;right:30px;top:30px;height:6px;border-radius:3px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0 12px,transparent 12px 20px)}
+.knoten{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;font-size:11.5px;text-align:center;opacity:.8}
+.knoten i{font-style:normal;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:28px;background:radial-gradient(circle at 35% 30%,#fff8,transparent 60%),var(--k);border:3px solid rgba(255,255,255,.7);box-shadow:0 6px 0 rgba(0,0,0,.35)}
+.knoten.fertig{opacity:.55}.knoten.fertig i::after{content:"✓";position:absolute;top:-6px;right:calc(50% - 38px);background:#3fbf5a;border-radius:50%;width:24px;height:24px;font-size:14px;display:grid;place-items:center;border:2px solid #fff}
+.knoten.jetzt{opacity:1;font-weight:800}.knoten.jetzt i{animation:puls 1s infinite alternate;border-color:var(--gold);box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 24px var(--gold)}
+@keyframes puls{to{transform:scale(1.12)}}
+.team{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+.team canvas{width:86px;height:86px}
+.info{display:flex;justify-content:center;gap:22px;font-size:16px;margin:4px 0 8px}
+.info b{font-family:var(--fn);font-weight:400;font-size:22px;color:var(--gold)}
+/* Ergebnis */
+.ekarten{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:6px}
+.ekarte{border-radius:18px;padding:10px 12px 12px;background:linear-gradient(180deg,color-mix(in srgb,var(--f) 24%,transparent),rgba(255,255,255,.03));border:3px solid var(--f);text-align:center;animation:rein .5s both}
+@keyframes rein{from{opacity:0;transform:translateY(20px) scale(.9)}}
+.ekarte canvas{width:100px;height:100px}
+.ekarte .preis{font-family:var(--fn);font-size:21px;color:var(--gold);margin-top:2px}
+.ekarte .pgrund{font-size:12.5px;opacity:.85;margin-bottom:6px}
+.ekarte table{width:100%;font-size:13px;border-collapse:collapse}
+.ekarte td{padding:2px 4px}.ekarte td:last-child{text-align:right;font-weight:800}
+.sterne{display:flex;justify-content:center;gap:10px;font-size:34px;margin-bottom:4px}
+.sterne span{filter:grayscale(1) opacity(.35)}.sterne span.ja{filter:none}
+/* Ende */
+.score-liste{margin-top:10px;font-size:14px}
+input.txt{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.35);color:#fff;font:700 16px system-ui,sans-serif;outline:none;user-select:text;-webkit-user-select:text}
+input.txt:focus{border-color:var(--gold)}
+/* Hilfe */
+.hilfe{font-size:14px;line-height:1.55}
+.hilfe table{width:100%;border-collapse:collapse;margin:4px 0 8px}
+.hilfe td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+.hilfe td:first-child{font-weight:800;white-space:nowrap}
+.figs{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
+.figs div{display:flex;gap:8px;align-items:flex-start}.figs b{color:var(--f)}
+/* Knöpfe oben rechts */
+.eckknopf{position:fixed;top:12px;z-index:30;width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(12,14,30,.62);color:#fff;font-size:19px;cursor:pointer;outline:none}
+.eckknopf:hover,.eckknopf:focus-visible{border-color:var(--gold)}
+#ton{right:12px}#pauseKnopf{right:62px;font-size:15px}
+@media (max-width:900px){.plaetze{grid-template-columns:repeat(2,1fr)}.screen{padding-left:70px}}
+@media (max-height:760px){.pkarte{min-height:250px}.pfig{width:110px;height:110px}.logo{font-size:64px}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="ton" class="eckknopf" title="Ton an/aus (M)">🔊</button>
+<button id="pauseKnopf" class="eckknopf hidden" title="Pause (Esc)">❚❚</button>
+
+<div id="titel" class="screen">
+  <div class="panel">
+    <div class="logo"><span>Hüpf</span><span class="b">Helden</span></div>
+    <p class="sub">Jump and Run für 1 bis 4 Spieler · jede Welt wird für euch neu gebaut</p>
+    <canvas id="titelHelden" width="920" height="260"></canvas>
+    <button class="btn haupt" id="bSpielen" autofocus>Spielen</button>
+    <button class="btn" id="bHilfe">Steuerung und Tipps</button>
+    <p class="hinweis">Am besten mit Gamepads oder zu zweit an einer Tastatur – bis zu vier passen drauf.</p>
+  </div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <div class="panel breit">
+    <h2>Wer spielt mit?</h2>
+    <div class="plaetze" id="plaetze"></div>
+    <span class="lbl">Schwierigkeit</span>
+    <div class="seg" id="diffSeg">
+      <button data-d="locker">Locker<small>viele Leben, weniger Gegner</small></button>
+      <button data-d="normal">Normal<small>wie es sein soll</small></button>
+      <button data-d="knifflig">Knifflig<small>für Profis</small></button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="bLobbyZurueck" style="flex:0 0 130px">Zurück</button>
+      <button class="btn haupt" id="bLos">Los geht's!</button>
+    </div>
+    <p class="hinweis">Beitreten: eigene <b>Springen-Taste</b> drücken (<kbd>W</kbd> <kbd>↑</kbd> <kbd>I</kbd> <kbd>T</kbd> oder Gamepad <kbd>A</kbd>) oder ein freies Feld anklicken.<br>
+      Laufen-Tasten wechseln die Figur · Stampfen-Taste verlässt den Platz · <kbd>Leertaste</kbd> startet.</p>
+  </div>
+</div>
+
+<div id="karte" class="screen hidden">
+  <div class="panel mittel">
+    <h2 id="karteTitel">Welt 1</h2>
+    <div class="weg" id="weg"></div>
+    <div class="team" id="team"></div>
+    <div class="info" id="karteInfo"></div>
+    <button class="btn haupt" id="bKarteLos">Los!</button>
+    <p class="hinweis">Springen-Taste, <kbd>Leertaste</kbd> oder Klick startet das Level.</p>
+  </div>
+</div>
+
+<div id="ergebnis" class="screen hidden">
+  <div class="panel breit">
+    <h2 id="ergTitel">Geschafft!</h2>
+    <div class="sterne" id="ergSterne"></div>
+    <div class="ekarten" id="ekarten"></div>
+    <button class="btn haupt" id="bWeiter" style="margin-top:14px">Weiter</button>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="panel">
+    <h2>Pause</h2>
+    <button class="btn haupt" id="bPWeiter">Weiter</button>
+    <button class="btn" id="bPNeu">Level neu starten</button>
+    <button class="btn" id="bPMenu">Zum Hauptmenü</button>
+    <p class="hinweis"><kbd>Esc</kbd> oder <kbd>P</kbd>: weiterspielen · <kbd>M</kbd>: Ton an/aus</p>
+  </div>
+</div>
+
+<div id="ende" class="screen hidden">
+  <div class="panel mittel">
+    <h2 id="endeTitel">Game Over</h2>
+    <div class="ekarten" id="endeKarten"></div>
+    <div id="hsBox" class="hidden">
+      <h3 style="text-align:center">Rangliste</h3>
+      <div class="row"><input class="txt" id="hsName" maxlength="16" placeholder="Dein Name"><button class="btn" id="hsSenden" style="flex:0 0 150px;margin:0">Eintragen</button></div>
+      <div class="hinweis" id="hsInfo"></div>
+      <div class="score-liste" id="hsListe"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="bEndeMenu">Menü</button>
+      <button class="btn haupt" id="bNochmal">Nochmal</button>
+    </div>
+  </div>
+</div>
+
+<div id="hilfe" class="screen hidden">
+  <div class="panel mittel hilfe">
+    <h2>Steuerung und Tipps</h2>
+    <table>
+      <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen (in der Luft) · <kbd>Q</kbd> Spezial</td></tr>
+      <tr><td style="color:#ef5350">Spieler 2</td><td><kbd>←</kbd> <kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> oder <kbd>-</kbd> Spezial</td></tr>
+      <tr><td style="color:#3fbf5a">Spieler 3</td><td><kbd>J</kbd> <kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial</td></tr>
+      <tr><td style="color:#ffc531">Spieler 4</td><td><kbd>F</kbd> <kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial</td></tr>
+      <tr><td>Gamepad</td><td>Stick oder Steuerkreuz laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · Start = Pause</td></tr>
+      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, zusätzlich <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial.</td></tr>
+    </table>
+    <h3>Die Helden</h3>
+    <div class="figs" id="figInfo"></div>
+    <h3>Tipps</h3>
+    <ul style="margin:4px 0;padding-left:20px">
+      <li>Wer lange in eine Richtung läuft, wird schneller und springt weiter. Sprungtaste länger halten = höher.</li>
+      <li>An Wänden rutschen und abspringen geht auch. Stampfen zerbricht Ziegel unter dir.</li>
+      <li>Sternblöcke enthalten Münzen oder Extras: Kraftbeere (gross), Glutblüte (Feuerbälle mit der Spezial-Taste), Federkappe (Sprungtaste halten = gleiten) und Funkelstern (unverwundbar).</li>
+      <li>Erwischt es jemanden, schwebt er in einer Blase zurück – berührt sie, um euren Freund zu befreien.</li>
+      <li>In jedem Level sind drei Sternmünzen versteckt. Je höher ihr den Zielmast trefft, desto mehr Punkte.</li>
+    </ul>
+    <button class="btn haupt" id="bHilfeZurueck">Alles klar!</button>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script src="js/basis.js"></script>
+<script src="js/themen.js"></script>
+<script src="js/generator.js"></script>
+<script src="js/figuren.js"></script>
+<script src="js/spiel.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
