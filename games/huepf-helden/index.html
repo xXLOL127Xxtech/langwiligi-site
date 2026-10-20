@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <title>Hüpf-Helden</title>
-<meta name="description" content="Jump and Run für 1 bis 4 Spieler: springen, stampfen, Münzen sammeln – jede Welt wird für euch neu gebaut.">
+<meta name="description" content="Rettet Prinzessin Lunara! Jump and Run für 1–4: Weltkarte, Türme, Burgen, Geheimwege und Bosse.">
 <meta name="theme-color" content="#ffb627">
 <meta name="spiel-modi" content="Lokal,Solo">
-<meta name="spiel-tags" content="Bis 4,Plattformer,Neue Level">
+<meta name="spiel-tags" content="Bis 4,Weltkarte,Bosse">
 <meta name="spiel-typ" content="Action,Geschick,Party">
 <meta name="spiel-suche" content="Jump and Run, Plattformer für 4 Spieler, Hüpfspiel, Jump and Run zu viert">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -103,21 +103,52 @@ input.txt:focus{border-color:var(--gold)}
 #ton{right:12px}#pauseKnopf{right:62px;font-size:15px}
 @media (max-width:900px){.plaetze{grid-template-columns:repeat(2,1fr)}.screen{padding-left:70px}}
 @media (max-height:760px){.pkarte{min-height:250px}.pfig{width:110px;height:110px}.logo{font-size:64px}}
+
+/* Speicherstände */
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.slot{border-radius:18px;padding:14px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.12);text-align:center;display:flex;flex-direction:column;gap:6px}
+.slot b{font-family:var(--fn);font-weight:400;font-size:22px;color:var(--gold)}
+.slot .sinfo{font-size:13px;opacity:.85;line-height:1.6;min-height:64px}
+.slot .btn{margin:2px 0;padding:10px}
+.slot .btn.klein{font-size:13px;padding:6px;background:rgba(255,80,80,.18)}
+/* Überlagerungen auf der Karte */
+.over{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:25;background:rgba(5,3,12,.55);padding:18px}
+.invgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.inv{border:0;border-radius:16px;background:rgba(255,255,255,.07);color:#fff;padding:8px 6px 10px;cursor:pointer;outline:none;text-align:center;font:600 13px system-ui}
+.inv canvas{width:72px;height:72px;display:block;margin:0 auto}
+.inv b{display:block;font-family:var(--fn);font-weight:400;font-size:17px}
+.inv .anz{font-family:var(--fn);font-size:20px;color:var(--gold)}
+.inv.sel,.inv:hover,.inv:focus-visible{background:rgba(255,210,58,.22);box-shadow:0 0 0 3px var(--gold)}
+.inv:disabled{opacity:.35;cursor:default}
+.welten{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.welt{border:0;border-radius:16px;padding:12px 8px;color:#fff;cursor:pointer;font:600 13px system-ui;text-align:center;outline:none;background:linear-gradient(160deg,var(--w1),var(--w2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
+.welt b{display:block;font-family:var(--fn);font-weight:400;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.welt:hover,.welt:focus-visible{box-shadow:0 0 0 3px var(--gold)}
+.welt:disabled{filter:grayscale(1) brightness(.5);cursor:default}
+#frageText{font-size:17px;text-align:center;line-height:1.5;margin:4px 0 14px}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <button id="ton" class="eckknopf" title="Ton an/aus (M)">🔊</button>
-<button id="pauseKnopf" class="eckknopf hidden" title="Pause (Esc)">❚❚</button>
+<button id="pauseKnopf" class="eckknopf hidden" title="Pause / Menü (Esc)">❚❚</button>
 
 <div id="titel" class="screen">
   <div class="panel">
     <div class="logo"><span>Hüpf</span><span class="b">Helden</span></div>
-    <p class="sub">Jump and Run für 1 bis 4 Spieler · jede Welt wird für euch neu gebaut</p>
+    <p class="sub">Rettet Prinzessin Lunara aus den Klauen des Schattenkönigs!</p>
     <canvas id="titelHelden" width="920" height="260"></canvas>
     <button class="btn haupt" id="bSpielen" autofocus>Spielen</button>
     <button class="btn" id="bHilfe">Steuerung und Tipps</button>
-    <p class="hinweis">Am besten mit Gamepads oder zu zweit an einer Tastatur – bis zu vier passen drauf.</p>
+    <p class="hinweis">1 bis 4 Spieler an einer Tastatur oder mit Gamepads · der Fortschritt wird gespeichert</p>
+  </div>
+</div>
+
+<div id="slots" class="screen hidden">
+  <div class="panel mittel">
+    <h2>Spielstand wählen</h2>
+    <div class="slots" id="slotListe"></div>
+    <button class="btn" id="bSlotsZurueck" style="margin-top:12px">Zurück</button>
   </div>
 </div>
 
@@ -127,7 +158,7 @@ input.txt:focus{border-color:var(--gold)}
     <div class="plaetze" id="plaetze"></div>
     <span class="lbl">Schwierigkeit</span>
     <div class="seg" id="diffSeg">
-      <button data-d="locker">Locker<small>viele Leben, weniger Gegner</small></button>
+      <button data-d="locker">Locker<small>mehr Leben, weniger Gegner</small></button>
       <button data-d="normal">Normal<small>wie es sein soll</small></button>
       <button data-d="knifflig">Knifflig<small>für Profis</small></button>
     </div>
@@ -137,17 +168,6 @@ input.txt:focus{border-color:var(--gold)}
     </div>
     <p class="hinweis">Beitreten: eigene <b>Springen-Taste</b> drücken (<kbd>W</kbd> <kbd>↑</kbd> <kbd>I</kbd> <kbd>T</kbd> oder Gamepad <kbd>A</kbd>) oder ein freies Feld anklicken.<br>
       Laufen-Tasten wechseln die Figur · Stampfen-Taste verlässt den Platz · <kbd>Leertaste</kbd> startet.</p>
-  </div>
-</div>
-
-<div id="karte" class="screen hidden">
-  <div class="panel mittel">
-    <h2 id="karteTitel">Welt 1</h2>
-    <div class="weg" id="weg"></div>
-    <div class="team" id="team"></div>
-    <div class="info" id="karteInfo"></div>
-    <button class="btn haupt" id="bKarteLos">Los!</button>
-    <p class="hinweis">Springen-Taste, <kbd>Leertaste</kbd> oder Klick startet das Level.</p>
   </div>
 </div>
 
@@ -165,6 +185,7 @@ input.txt:focus{border-color:var(--gold)}
     <h2>Pause</h2>
     <button class="btn haupt" id="bPWeiter">Weiter</button>
     <button class="btn" id="bPNeu">Level neu starten</button>
+    <button class="btn" id="bPKarte">Zurück zur Weltkarte</button>
     <button class="btn" id="bPMenu">Zum Hauptmenü</button>
     <p class="hinweis"><kbd>Esc</kbd> oder <kbd>P</kbd>: weiterspielen · <kbd>M</kbd>: Ton an/aus</p>
   </div>
@@ -173,16 +194,11 @@ input.txt:focus{border-color:var(--gold)}
 <div id="ende" class="screen hidden">
   <div class="panel mittel">
     <h2 id="endeTitel">Game Over</h2>
+    <p class="sub" id="endeText">Keine Leben mehr! Ihr macht beim letzten Spielstand weiter – mit 5 frischen Leben.</p>
     <div class="ekarten" id="endeKarten"></div>
-    <div id="hsBox" class="hidden">
-      <h3 style="text-align:center">Rangliste</h3>
-      <div class="row"><input class="txt" id="hsName" maxlength="16" placeholder="Dein Name"><button class="btn" id="hsSenden" style="flex:0 0 150px;margin:0">Eintragen</button></div>
-      <div class="hinweis" id="hsInfo"></div>
-      <div class="score-liste" id="hsListe"></div>
-    </div>
     <div class="row" style="margin-top:12px">
-      <button class="btn" id="bEndeMenu">Menü</button>
-      <button class="btn haupt" id="bNochmal">Nochmal</button>
+      <button class="btn" id="bEndeMenu">Hauptmenü</button>
+      <button class="btn haupt" id="bNochmal">Weiterspielen</button>
     </div>
   </div>
 </div>
@@ -191,33 +207,79 @@ input.txt:focus{border-color:var(--gold)}
   <div class="panel mittel hilfe">
     <h2>Steuerung und Tipps</h2>
     <table>
-      <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen (in der Luft) · <kbd>Q</kbd> Spezial</td></tr>
+      <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen / ducken · <kbd>Q</kbd> Spezial</td></tr>
       <tr><td style="color:#ef5350">Spieler 2</td><td><kbd>←</kbd> <kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> oder <kbd>-</kbd> Spezial</td></tr>
       <tr><td style="color:#3fbf5a">Spieler 3</td><td><kbd>J</kbd> <kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial</td></tr>
       <tr><td style="color:#ffc531">Spieler 4</td><td><kbd>F</kbd> <kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial</td></tr>
-      <tr><td>Gamepad</td><td>Stick oder Steuerkreuz laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · Start = Pause</td></tr>
-      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, zusätzlich <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial.</td></tr>
+      <tr><td>Gamepad</td><td>Stick laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · Start = Pause</td></tr>
+      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, dazu <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial.</td></tr>
     </table>
-    <h3>Die Helden</h3>
+    <h3>Die Spezial-Taste</h3>
+    <p style="margin:4px 0">Sie macht immer das Passende: Schneckenhäuser, Eisblöcke oder <b>Mitspieler hochheben und werfen</b> · mit einem Extra dessen Kraft nutzen · sonst die Fähigkeit eurer Figur.</p>
     <div class="figs" id="figInfo"></div>
-    <h3>Tipps</h3>
+    <h3>Extras</h3>
+    <div class="figs" id="itemInfo"></div>
+    <h3>Weltkarte</h3>
     <ul style="margin:4px 0;padding-left:20px">
-      <li>Wer lange in eine Richtung läuft, wird schneller und springt weiter. Sprungtaste länger halten = höher.</li>
-      <li>An Wänden rutschen und abspringen geht auch. Stampfen zerbricht Ziegel unter dir.</li>
-      <li>Sternblöcke enthalten Münzen oder Extras: Kraftbeere (gross), Glutblüte (Feuerbälle mit der Spezial-Taste), Federkappe (Sprungtaste halten = gleiten) und Funkelstern (unverwundbar).</li>
-      <li>Erwischt es jemanden, schwebt er in einer Blase zurück – berührt sie, um euren Freund zu befreien.</li>
-      <li>In jedem Level sind drei Sternmünzen versteckt. Je höher ihr den Zielmast trefft, desto mehr Punkte.</li>
+      <li>Lauft von Level zu Level. In der Mitte jeder Welt wartet ein <b>Turm</b> mit Zwischenboss, am Ende eine <b>Burg</b>.</li>
+      <li>Jedes Level hat <b>drei Sternmünzen</b>. Damit öffnet ihr Sternentore auf der Karte.</li>
+      <li>Rotes Haus: <b>Memory</b> für Extras ins Inventar. Grünes Haus: <b>Ballon-Kanone</b> für Extraleben.</li>
+      <li>Mit der Spezial-Taste öffnet ihr auf der Karte das <b>Inventar</b> und startet das nächste Level verwandelt.</li>
+      <li>Manche Level haben einen <b>geheimen Ausgang</b> mit roter Fahne – achtet auf brüchigen Boden und stampft drauf!</li>
+      <li>Wer in allen acht Welten jede Sternmünze findet, öffnet eine geheime neunte Welt.</li>
+      <li>Nach jedem geschafften Level wird automatisch gespeichert. In Levels gibt es Zwischenziele.</li>
     </ul>
     <button class="btn haupt" id="bHilfeZurueck">Alles klar!</button>
   </div>
 </div>
 
-<script src="../_shared/hub.js"></script>
+<div id="inventar" class="over hidden">
+  <div class="panel">
+    <h2>Inventar</h2>
+    <div class="invgrid" id="invGrid"></div>
+    <p class="hinweis" id="invInfo">Ein Extra wählen: alle Spieler starten das nächste Level damit.</p>
+    <button class="btn" id="bInvZu">Schliessen</button>
+  </div>
+</div>
+
+<div id="kartenmenue" class="over hidden">
+  <div class="panel">
+    <h2>Weltkarte</h2>
+    <button class="btn haupt" id="bKWeiter">Weiter</button>
+    <button class="btn" id="bKInv">Inventar</button>
+    <button class="btn" id="bKWelt">Welt wählen</button>
+    <button class="btn" id="bKSpeichern">Speichern</button>
+    <button class="btn" id="bKMenu">Zum Hauptmenü</button>
+    <p class="hinweis" id="kInfo"></p>
+  </div>
+</div>
+
+<div id="weltwahl" class="over hidden">
+  <div class="panel mittel">
+    <h2>Welt wählen</h2>
+    <div class="welten" id="weltListe"></div>
+    <button class="btn" id="bWeltZu" style="margin-top:12px">Zurück</button>
+  </div>
+</div>
+
+<div id="frage" class="over hidden">
+  <div class="panel">
+    <p id="frageText"></p>
+    <div class="row"><button class="btn" id="bFrageNein">Abbrechen</button><button class="btn haupt" id="bFrageJa">Ja</button></div>
+  </div>
+</div>
+
 <script src="js/basis.js"></script>
 <script src="js/themen.js"></script>
 <script src="js/generator.js"></script>
 <script src="js/figuren.js"></script>
+<script src="js/gegner.js"></script>
+<script src="js/dinge.js"></script>
+<script src="js/welten.js"></script>
 <script src="js/spiel.js"></script>
+<script src="js/karte.js"></script>
+<script src="js/minispiele.js"></script>
+<script src="js/story.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>
