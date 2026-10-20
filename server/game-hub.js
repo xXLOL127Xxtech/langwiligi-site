@@ -27,7 +27,8 @@ function isKnownGame(game) {
   }
   return !knownGames || knownGames.has(game);
 }
-// Anzeigenamen der Spiele aus dem <title> der Webseite (für die Admin-Seite, 1 Min. gecacht)
+// Anzeigenamen der Spiele aus dem <title> der Webseite (für die Admin-Seite, 1 Min. gecacht).
+// deploy.sh hängt für Google Suchbegriffe an den Titel, die schneiden wir hier wieder ab (wie in games/_shared/back.js).
 let titles = {}, titlesAt = 0;
 function gameTitle(game) {
   if (Date.now() - titlesAt > 60000) {
@@ -37,7 +38,8 @@ function gameTitle(game) {
       for (const d of fs.readdirSync(GAMES_DIR)) {
         try {
           const m = fs.readFileSync(path.join(GAMES_DIR, d, 'index.html'), 'utf8').slice(0, 6000).match(/<title>([^<]*)<\/title>/i);
-          if (m) t[d] = m[1].trim().replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          if (m) t[d] = m[1].trim().replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+            .replace(/( \([^)]*\))? – [^|]*\| KEI Langwiligi site$/, '');
         } catch (e) { /* kein Spielordner */ }
       }
     } catch (e) { /* Ordner gerade nicht lesbar */ }
