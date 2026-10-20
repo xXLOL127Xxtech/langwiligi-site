@@ -2,7 +2,7 @@
 // =====================================================================
 //  Welten: Farben, Hintergründe, Bodenkacheln und Dekoration
 // =====================================================================
-const THEME_ORDER = ['wiese', 'hoehle', 'wueste', 'wolken', 'schnee', 'abend', 'burg'];
+
 const THEMES = {
   wiese: {
     name: 'Sonnenwiese', sky: ['#3d9cf5', '#8fd3ff', '#e2f6ff'], sun: { x: .78, y: .18, r: 46, c: '#fff6c2' },
@@ -13,7 +13,7 @@ const THEMES = {
     ],
     ground: { style: 'gras', top: '#8ae657', top2: '#45b53c', body: '#d99a5b', body2: '#8e542a', dot: '#b97a42', dot2: '#f0b878' },
     stone: ['#ded2bf', '#a8957a'], brick: ['#e8874a', '#a8501f'], plat: 'holz',
-    enemies: { kaefer: 6, schnecke: 3, hummel: 1 },
+    enemies: { kaefer: 6, schnecke: 3, hummel: 1, flugkaefer: 1, pflanze: 1 },
     deko: { back: ['baum', 'baum', 'busch'], front: ['busch', 'blume', 'blume', 'zaun', 'gras'] },
     ambient: 'pollen', clouds: 6,
     music: { scale: 'dur', root: 60, bpm: 128, lead: 'triangle' },
@@ -26,7 +26,7 @@ const THEMES = {
     ],
     ground: { style: 'moos', top: '#5fe0cf', top2: '#2a9d8f', body: '#5d4c80', body2: '#251c3c', dot: '#7a68a6', dot2: '#9a88c8' },
     stone: ['#8f80c4', '#4f4282'], brick: ['#9a68d8', '#5a2e9a'], plat: 'kristall',
-    enemies: { kaefer: 4, igel: 3, schnecke: 2 },
+    enemies: { kaefer: 4, igel: 3, schnecke: 2, pflanze: 1, wicht: 1 },
     deko: { back: [], front: ['kristall', 'kristall', 'pilz', 'pilz', 'stein'] },
     ambient: 'gluehw', clouds: 0,
     music: { scale: 'dorisch', root: 57, bpm: 106, lead: 'sine', comp: 'pad', legato: 1.4 },
@@ -40,7 +40,7 @@ const THEMES = {
     ],
     ground: { style: 'sand', top: '#ffe7a3', top2: '#f0c26a', body: '#e6aa62', body2: '#a86a33', dot: '#cf8f4c', dot2: '#f7c98a' },
     stone: ['#e8b77a', '#a8743f'], brick: ['#e0743a', '#9c4518'], plat: 'stein',
-    enemies: { kaefer: 4, igel: 3, hummel: 2 },
+    enemies: { kaefer: 4, igel: 3, hummel: 2, flugkaefer: 1, pflanze: 1 },
     deko: { back: ['palme'], front: ['kaktus', 'kaktus', 'stein', 'gras'] },
     ambient: 'sand', clouds: 2,
     music: { scale: 'dorisch', root: 62, bpm: 120, lead: 'triangle' },
@@ -53,7 +53,7 @@ const THEMES = {
     ],
     ground: { style: 'wolke', top: '#ffffff', top2: '#eef4ff', body: '#f2f6ff', body2: '#b9caee', dot: '#dce6fb', dot2: '#ffffff' },
     stone: ['#ffe9a8', '#d8a845'], brick: ['#f2a65a', '#b8652a'], plat: 'wolke',
-    enemies: { hummel: 4, kaefer: 2, schnecke: 2 }, bottomless: true,
+    enemies: { hummel: 4, kaefer: 2, schnecke: 2, flugkaefer: 3 }, bottomless: true,
     deko: { back: [], front: ['puff'] },
     ambient: 'none', clouds: 12,
     music: { scale: 'dur', root: 65, bpm: 118, lead: 'sine', legato: 1.2 },
@@ -67,7 +67,7 @@ const THEMES = {
     ],
     ground: { style: 'schnee', top: '#ffffff', top2: '#d4e6f8', body: '#8aa6c8', body2: '#48627f', dot: '#a6bdd8', dot2: '#c8daee' },
     stone: ['#c4ecff', '#6fb4dc'], brick: ['#cc6b4c', '#86361f'], plat: 'eis',
-    enemies: { schnecke: 3, igel: 3, kaefer: 3 },
+    enemies: { schnecke: 3, igel: 3, kaefer: 3, wicht: 1 },
     deko: { back: ['tanne', 'tanne'], front: ['schneemann', 'busch', 'stein'] },
     ambient: 'schnee', clouds: 3,
     music: { scale: 'dur', root: 64, bpm: 112, lead: 'sine', legato: 1.1 },
@@ -94,10 +94,96 @@ const THEMES = {
     ],
     ground: { style: 'burg', top: '#8a8796', top2: '#5c5968', body: '#4a4654', body2: '#211e28', dot: '#5f5b6b', dot2: '#76728a' },
     stone: ['#7a7488', '#3f3a4c'], brick: ['#9a4434', '#5a1e14'], plat: 'gitter',
-    enemies: { kaefer: 2, igel: 3, schnecke: 1 },
+    enemies: { kaefer: 2, igel: 3, schnecke: 1, wicht: 2 },
     deko: { back: ['kette'], front: ['fackel', 'stein'] },
     ambient: 'funken', clouds: 0,
     music: { scale: 'moll', root: 57, bpm: 134, lead: 'triangle' },
+  },
+  strand: {
+    name: 'Korallenstrand', sky: ['#3fa8f0', '#9ee0ff', '#fff4d8'], sun: { x: .2, y: .2, r: 50, c: '#fff6c2' },
+    layers: [
+      { style: 'wellen', c1: '#2a8ad0', c2: '#5ec0f0', base: .62, amp: .03, f: .05, seed: 3 },
+      { style: 'duenen', c1: '#f0d090', c2: '#ffe6b0', base: .78, amp: .05, f: .24, seed: 8 },
+    ],
+    ground: { style: 'sand', top: '#fff0c0', top2: '#f2d080', body: '#ecc077', body2: '#b07a3a', dot: '#d8a560', dot2: '#fff0c8' },
+    stone: ['#f0c890', '#b0844a'], brick: ['#e8874a', '#a8501f'], plat: 'koralle',
+    enemies: { kaefer: 3, schnecke: 4, flugkaefer: 2, pflanze: 1 },
+    deko: { back: ['palme', 'palme'], front: ['koralle', 'stein', 'gras'] },
+    ambient: 'pollen', clouds: 5,
+    music: { scale: 'mixo', root: 62, bpm: 132, lead: 'triangle' },
+  },
+  see: {
+    name: 'Tiefseeriff', sky: ['#04304e', '#0a5a86', '#1a86b0'], water: true, dark: .12,
+    layers: [
+      { style: 'kristalle', c1: '#0a4a6e', c2: '#13668e', base: .7, amp: .3, f: .08, seed: 4, glow: '#5af0d0' },
+      { style: 'kristalle', c1: '#06344e', c2: '#0a4a6a', base: .86, amp: .22, f: .22, seed: 9 },
+    ],
+    ground: { style: 'sand', top: '#ffe6b0', top2: '#e0b870', body: '#c49a62', body2: '#5a4a3a', dot: '#a8804a', dot2: '#f0d8a8' },
+    stone: ['#ff9ab0', '#b84a6a'], brick: ['#e8874a', '#a8501f'], plat: 'koralle',
+    enemies: { fisch: 5, qualle: 3, seeigel: 2 },
+    deko: { back: ['seegras'], front: ['koralle', 'seegras', 'stein'] },
+    ambient: 'blasen', clouds: 0,
+    music: { scale: 'dorisch', root: 57, bpm: 96, lead: 'sine', comp: 'pad', legato: 1.5, drums: false },
+  },
+  nebel: {
+    name: 'Nebelwald', sky: ['#0c0f1e', '#232a44', '#3e4660'], dark: .32, rain: true, stars: true,
+    layers: [
+      { style: 'baeume', c1: '#1a2030', c2: '#2a3248', base: .6, amp: .14, f: .08, seed: 13 },
+      { style: 'tannen', c1: '#111624', c2: '#1a2032', base: .74, amp: .12, f: .2, seed: 4 },
+      { style: 'tannen', c1: '#080b14', c2: '#10141f', base: .86, amp: .08, f: .38, seed: 21 },
+    ],
+    ground: { style: 'gras', top: '#5a7a5a', top2: '#2e4a36', body: '#4a3a40', body2: '#1a1420', dot: '#3a2e34', dot2: '#6a5a62' },
+    stone: ['#7a7a8a', '#3a3a4a'], brick: ['#8a5a4a', '#4a2a22'], plat: 'holz',
+    enemies: { kaefer: 2, wicht: 3, igel: 2, flugkaefer: 2, irrlicht: 2, pflanze: 1 },
+    deko: { back: ['baumtot', 'baumtot'], front: ['grab', 'laterne', 'pilz', 'gras'] },
+    ambient: 'regen', clouds: 0,
+    music: { scale: 'moll', root: 55, bpm: 118, lead: 'triangle', legato: .9 },
+  },
+  spuk: {
+    name: 'Spukhaus', sky: ['#120a1a', '#1e1228', '#2a1a36'], ceiling: true, dark: .38,
+    layers: [{ style: 'wand', c1: '#2a1a2a', c2: '#3a2638', base: 0, amp: 0, f: .15, seed: 2 }],
+    ground: { style: 'dielen', top: '#7a5a4a', top2: '#4a3428', body: '#3e2a26', body2: '#1a100e', dot: '#2a1a16', dot2: '#5a4038' },
+    stone: ['#6a5a6a', '#2a202a'], brick: ['#6a4a5a', '#3a2232'], plat: 'holz',
+    enemies: { irrlicht: 5, kaefer: 2, wicht: 2 },
+    deko: { back: [], front: ['kerze', 'kerze', 'stein'] },
+    ambient: 'staub', clouds: 0,
+    music: { scale: 'moll', root: 52, bpm: 100, lead: 'sine', comp: 'pad', legato: 1.3 },
+  },
+  turm: {
+    name: 'Wachturm', sky: ['#160c10', '#2a1618', '#3a2020'], ceiling: true, lava: true, dark: .3,
+    layers: [{ style: 'wand', c1: '#2a1c20', c2: '#3a282c', base: 0, amp: 0, f: .15, seed: 5, stein: true }],
+    ground: { style: 'burg', top: '#8a8090', top2: '#5c5466', body: '#463e4e', body2: '#1e1a24', dot: '#5f5b6b', dot2: '#76728a' },
+    stone: ['#7a7488', '#3f3a4c'], brick: ['#9a4434', '#5a1e14'], plat: 'gitter',
+    enemies: { kaefer: 2, igel: 2, wicht: 3 },
+    deko: { back: ['kette'], front: ['fackel', 'stein'] },
+    ambient: 'funken', clouds: 0,
+    music: { scale: 'moll', root: 55, bpm: 138, lead: 'triangle' },
+  },
+  schatten: {
+    name: 'Schattenreich', sky: ['#06030c', '#1c0a26', '#4a1236'], dark: .3, lava: true, stars: true,
+    layers: [
+      { style: 'berge', c1: '#1e0e2a', c2: '#34183e', cap: null, base: .6, amp: .3, f: .06, seed: 17 },
+      { style: 'burg', c1: '#12081a', c2: '#1e0e26', base: .78, amp: .2, f: .2, seed: 23 },
+    ],
+    ground: { style: 'moos', top: '#a03aff', top2: '#5a1a8a', body: '#3a2a3e', body2: '#120a16', dot: '#4e3a52', dot2: '#7a5a82' },
+    stone: ['#6a5a7a', '#2a1e36'], brick: ['#7a3a5a', '#3a1428'], plat: 'schatten',
+    enemies: { wicht: 4, kaefer: 2, igel: 2, flugkaefer: 2, irrlicht: 1, pflanze: 1 },
+    deko: { back: ['baumtot'], front: ['kristall', 'grab', 'fackel'] },
+    ambient: 'funken', clouds: 0,
+    music: { scale: 'moll', root: 50, bpm: 140, lead: 'sawtooth', legato: .8 },
+  },
+  sterne: {
+    name: 'Sternenwelt', sky: ['#02020e', '#0e1240', '#2a1a5e'], stars: true, bottomless: true, dark: .1,
+    layers: [
+      { style: 'kristalle', c1: '#1a1e5a', c2: '#2a2e7a', base: .72, amp: .25, f: .06, seed: 33, glow: '#ffe066' },
+      { style: 'wolkenbank', c1: '#3a2a7a', c2: '#5a4aa8', base: .86, amp: .08, f: .18, seed: 7, alpha: .6 },
+    ],
+    ground: { style: 'moos', top: '#ffe066', top2: '#c8902a', body: '#3a3a8a', body2: '#12123a', dot: '#5a5aa8', dot2: '#8a8ad8' },
+    stone: ['#a8a0ff', '#4a42a8'], brick: ['#e8a03a', '#8a4a10'], plat: 'kristall',
+    enemies: { kaefer: 2, flugkaefer: 3, wicht: 2, hummel: 2, irrlicht: 1 },
+    deko: { back: [], front: ['kristall', 'kristall'] },
+    ambient: 'gluehw', clouds: 0,
+    music: { scale: 'dorisch', root: 59, bpm: 146, lead: 'triangle' },
   },
 };
 
@@ -217,6 +303,23 @@ function paintLayer(g, L, W, H) {
       }
     }
     if (L.style === 'kristalle') g.fillRect(0, 0, W, H * .12);
+  } else if (L.style === 'wand') {
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+    const bw = L.stein ? 80 : 60, bh = L.stein ? 40 : H;
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 3;
+    for (let y = 0; y < H; y += bh) for (let x = ((y / bh) % 2) * bw / 2; x < W; x += bw) { g.strokeRect(x, y, bw, bh); }
+    for (let i = 0; i < 5; i++) {   // Fenster
+      const x = (i + .5) * W / 5, y = H * .32;
+      g.fillStyle = L.stein ? 'rgba(255,120,40,.18)' : 'rgba(120,140,220,.16)';
+      g.beginPath(); g.moveTo(x - 30, y + 70); g.lineTo(x - 30, y); g.quadraticCurveTo(x, y - 40, x + 30, y); g.lineTo(x + 30, y + 70); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.5)'; g.lineWidth = 6; g.stroke();
+      g.beginPath(); g.moveTo(x, y - 18); g.lineTo(x, y + 70); g.moveTo(x - 30, y + 30); g.lineTo(x + 30, y + 30); g.stroke();
+      g.lineWidth = 3;
+    }
+  } else if (L.style === 'wellen') {
+    g.fillRect(0, base, W, H - base);
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 3;
+    for (let r = 0; r < 6; r++) { g.beginPath(); for (let x = 0; x <= W; x += 8) { const y = base + 10 + r * 22 + Math.sin(x * P(16) + r) * 3; if (x) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); }
   } else if (L.style === 'burg') {
     g.fillRect(0, base, W, H - base);
     let x = 0;
@@ -253,7 +356,7 @@ function getCloudSprite() {
 // ---------------------------------------------------------------------
 //  Kacheln zeichnen (für den Zwischenspeicher pro Abschnitt)
 // ---------------------------------------------------------------------
-const TILE = { EMPTY: 0, G: 1, S: 2, B: 3, Q: 4, U: 5, H: 6, P: 7, X: 8, C: 9, V: 10 };
+const TILE = { EMPTY: 0, G: 1, S: 2, B: 3, Q: 4, U: 5, H: 6, P: 7, X: 8, C: 9, V: 10, R: 11, K: 12 };
 function rr(g, x, y, w, h, r) {
   g.beginPath();
   if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
@@ -286,12 +389,17 @@ function paintChunk(g, L, x0, x1) {
 function paintGround(g, tx, ty, isG, th, body) {
   const x = tx * T, y = ty * T, gr = th.ground;
   const up = !isG(tx, ty - 1), dn = !isG(tx, ty + 1), lf = !isG(tx - 1, ty), rt = !isG(tx + 1, ty);
-  const R = gr.style === 'burg' ? 6 : 18;
+  const R = gr.style === 'burg' || gr.style === 'dielen' ? 6 : 18;
   g.fillStyle = body;
   rr(g, x, y, T + (rt ? 0 : 1), T + (dn ? 0 : 1), [up && lf ? R : 0, up && rt ? R : 0, dn && rt ? R : 0, dn && lf ? R : 0]);
   g.fill();
   const h = hash2(tx, ty), h2 = hash2(tx + 31, ty * 7);
-  if (gr.style === 'burg') {
+  if (gr.style === 'dielen') {
+    g.strokeStyle = 'rgba(0,0,0,.4)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x, y + 16); g.lineTo(x + T, y + 16); g.moveTo(x, y + 32); g.lineTo(x + T, y + 32);
+    const o = (ty * 17) % 3 * 16; g.moveTo(x + o + 2, y); g.lineTo(x + o + 2, y + 16); g.stroke();
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.arc(x + 8, y + 8, 1.6, 0, TAU); g.arc(x + 40, y + 24, 1.6, 0, TAU); g.fill();
+  } else if (gr.style === 'burg') {
     // Mauerwerk
     g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 2;
     g.beginPath();
@@ -347,7 +455,7 @@ function paintTop(g, tx, ty, isG, th) {
     g.fillStyle = 'rgba(150,180,230,.25)'; g.fillRect(x + (lf ? 10 : 0), y + 16, T - (lf ? 10 : 0) - (rt ? 10 : 0), 4);
     return;
   }
-  if (gr.style === 'burg') {
+  if (gr.style === 'burg' || gr.style === 'dielen') {
     rr(g, x + ox, y - 2, w, 14, [lf ? 5 : 0, rt ? 5 : 0, 0, 0]); g.fill();
     g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(x + ox, y - 2, w, 3);
     g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(x + ox, y + 11, w, 2);
@@ -424,6 +532,7 @@ function paintPlat(g, tx, ty, L, th) {
   const cols = {
     holz: ['#d9954a', '#8c5222', '#f2bf7a'], stein: ['#e8b77a', '#a8743f', '#ffe0ac'], kristall: ['#9f7cff', '#4e2fae', '#e2d4ff'],
     eis: ['#bfe9ff', '#5ea9d6', '#ffffff'], gitter: ['#8b8798', '#3d3a48', '#c4c0d0'],
+    koralle: ['#ff9ab0', '#b84a6a', '#ffe0ea'], schatten: ['#7a5a9a', '#2a1a3e', '#c8a8ff'],
   }[st];
   const grad = g.createLinearGradient(0, y, 0, y + 20);
   grad.addColorStop(0, cols[0]); grad.addColorStop(1, cols[1]);
@@ -592,6 +701,36 @@ function paintDeko(g, d, th) {
       for (let i = 0; i < d.len / 14; i++) { g.beginPath(); g.ellipse(0, i * 14 + 7, i % 2 ? 2 : 5, 7, 0, 0, TAU); g.stroke(); }
       break;
     }
+    case 'koralle': {
+      const col = [['#ff7aa8', '#c03a6a'], ['#ffb04a', '#c0601a'], ['#c87aff', '#7a2ab8']][Math.floor(h * 3)];
+      g.strokeStyle = col[1]; g.lineCap = 'round';
+      const br = (x0, y0, a, len, w, d) => { if (d > 3) return; const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); g.strokeStyle = col[0]; br(x1, y1, a - .5, len * .7, w * .7, d + 1); br(x1, y1, a + .45, len * .72, w * .7, d + 1); g.strokeStyle = col[1]; };
+      br(0, 0, -Math.PI / 2, 26, 9, 0);
+      break;
+    }
+    case 'seegras': {
+      g.strokeStyle = '#2a9a6a'; g.lineCap = 'round'; g.lineWidth = 6;
+      for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(i * 8, 0); g.bezierCurveTo(i * 8 - 12, -30, i * 8 + 12, -60, i * 8 - 4, -90 - i * 10); g.stroke(); }
+      break;
+    }
+    case 'baumtot': {
+      g.strokeStyle = '#1a1420'; g.lineCap = 'round';
+      const br = (x0, y0, a, len, w, d) => { if (d > 4) return; const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len; g.lineWidth = w; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); br(x1, y1, a - .55, len * .7, w * .62, d + 1); br(x1, y1, a + .4, len * .66, w * .62, d + 1); };
+      br(0, 0, -Math.PI / 2 + (h - .5) * .2, 90, 14, 0);
+      break;
+    }
+    case 'grab': {
+      g.beginPath(); g.moveTo(-16, 0); g.lineTo(-16, -30); g.quadraticCurveTo(0, -48, 16, -30); g.lineTo(16, 0); g.closePath();
+      g.fillStyle = '#6a6a7a'; g.fill(); g.strokeStyle = '#1c1428'; g.lineWidth = 2.4; g.stroke();
+      g.strokeStyle = 'rgba(30,30,40,.6)'; g.lineWidth = 3; g.beginPath(); g.moveTo(0, -30); g.lineTo(0, -10); g.moveTo(-7, -23); g.lineTo(7, -23); g.stroke();
+      g.fillStyle = '#4a6a4a'; g.beginPath(); g.ellipse(0, 0, 20, 4, 0, 0, TAU); g.fill();
+      break;
+    }
+    case 'kerze': {
+      g.fillStyle = '#3a2a2a'; rr(g, -14, -6, 28, 6, 2); g.fill();
+      for (const [cx, hh] of [[-8, 22], [0, 30], [8, 18]]) { g.fillStyle = '#efe6d0'; rr(g, cx - 3, -6 - hh, 6, hh, 2); g.fill(); }
+      break;
+    }
     case 'fackel': case 'laterne': {
       g.fillStyle = '#3a3036'; rr(g, -4, -60, 8, 60, 3); g.fill();
       g.fillStyle = '#5a4a40'; rr(g, -10, -70, 20, 12, 4); g.fill();
@@ -602,6 +741,15 @@ function paintDeko(g, d, th) {
 }
 // Bewegte Deko (Flammen, Licht) – jedes Bild neu gezeichnet
 function paintDekoDyn(g, d, t) {
+  if (d.kind === 'kerze') {
+    const fl = Math.sin(t * 11 + d.x) * .5;
+    const glow = g.createRadialGradient(d.x, d.y - 40, 2, d.x, d.y - 40, 80);
+    glow.addColorStop(0, 'rgba(255,210,120,.3)'); glow.addColorStop(1, 'rgba(255,180,80,0)');
+    g.fillStyle = glow; g.beginPath(); g.arc(d.x, d.y - 40, 80, 0, TAU); g.fill();
+    g.fillStyle = '#ffd35a';
+    for (const [cx, hh] of [[-8, 22], [0, 30], [8, 18]]) { g.beginPath(); g.ellipse(d.x + cx + fl, d.y - 6 - hh - 6, 2.6, 5, 0, 0, TAU); g.fill(); }
+    return;
+  }
   if (d.kind === 'fackel' || d.kind === 'laterne') {
     const fl = Math.sin(t * 13 + d.x) * .15 + Math.sin(t * 7.3 + d.x * .1) * .1;
     const cx = d.x, cy = d.y - 76;
