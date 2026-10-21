@@ -124,7 +124,7 @@ for (const b of BIOMES) {
 const World = {
   seed: 1, spawnX: 0, spawnZ: 0,
   nH: null, nT: null, nM: null, nD: null,
-  sites: new Map(),
+  sites: new Map(), big: new Map(), paths: new Map(),
 };
 
 function initWorld(seed, spawn) {
@@ -133,7 +133,7 @@ function initWorld(seed, spawn) {
   World.nT = new Simplex(seed + 11);
   World.nM = new Simplex(seed + 23);
   World.nD = new Simplex(seed + 37);
-  World.sites.clear();
+  World.sites.clear(); World.big.clear(); World.paths.clear();
   if (spawn) { World.spawnX = spawn[0]; World.spawnZ = spawn[1]; }
   else findSpawn();
 }
@@ -207,7 +207,7 @@ function applySites(x, z, h) {
 }
 
 function heightAt(x, z, w) {
-  return applySites(x, z, naturalHeight(x, z, w || weightsAt(x, z)));
+  return applyBig(x, z, applySites(x, z, naturalHeight(x, z, w || weightsAt(x, z))));
 }
 
 function dominantBiome(w) {
@@ -263,13 +263,19 @@ function makeSite(ci, cj, key) {
   let type;
   const roll = r();
   if (spawnCell) type = 'lager';
-  else if (roll < 0.30) type = 'burg';
-  else if (roll < 0.62) type = 'wunder';
-  else if (roll < 0.74) type = 'lager';
-  else if (roll < 0.85) type = 'aussicht';
-  else if (roll < 0.93) type = 'wanderer';
+  else if (roll < 0.17) type = 'burg';
+  else if (roll < 0.36) type = 'wunder';
+  else if (roll < 0.45) type = 'lager';
+  else if (roll < 0.53) type = 'aussicht';
+  else if (roll < 0.59) type = 'wanderer';
+  else if (roll < 0.7) type = 'hoehle';
+  else if (roll < 0.8) type = 'lichtung';
+  else if (roll < 0.89) type = 'ritter';
   else return null;
-  if (type === 'burg' && distSpawn < 420) type = 'wunder';
+  if (type === 'burg' && distSpawn < 420) type = 'ritter';
+  // Platz für die grossen Wahrzeichen lassen
+  const L = bigNear(cx, cz, 330);
+  if (L && !spawnCell) return null;
 
   const M = 64;
   let x = ox + M + r() * (CELL - 2 * M), z = oz + M + r() * (CELL - 2 * M);
@@ -326,6 +332,21 @@ function makeSite(ci, cj, key) {
     s.npc = pick(r, WANDERERS);
     s.name = s.npc;
     s.discR = 0;
+  } else if (type === 'hoehle') {
+    s.cave = r() < 0.5 ? 'kristall' : 'lava';
+    s.name = s.cave === 'kristall' ? pick(r, ['Die Kristallgrotte', 'Die Blitzhöhle', 'Die Glimmergrotte']) : pick(r, ['Die Glutschlucht', 'Die Zwergenmine', 'Der Feuerschlund']);
+    s.flatR = 9; s.flatF = 10; s.baseH = Math.max(nat, 1.5);
+    s.discR = 26;
+  } else if (type === 'lichtung') {
+    s.flatR = 24; s.flatF = 14; s.baseH = Math.max(nat, 1.4);
+    s.name = pick(r, ['Die Lichtung der Feen', 'Der Mutterbaum', 'Der Baum der tausend Lichter']);
+    s.sub = 'Hier schlägt das Herz des Waldes.';
+    s.discR = 40;
+  } else if (type === 'ritter') {
+    s.flatR = 10; s.baseH = Math.max(nat, 1.4);
+    s.npc = 'Wandernde Ritter';
+    s.name = 'Lager der ' + pick(r, ['Silbernen', 'Grauen', 'Letzten', 'Stillen', 'Verlorenen']) + ' Ritter';
+    s.discR = 20;
   }
   return s;
 }
@@ -365,4 +386,178 @@ function groundColor(x, z, h, slope, w, out) {
   const n = World.nD.noise(x * 0.09, z * 0.09) * 0.06 + World.nD.noise(x * 0.013 + 9, z * 0.013) * 0.08;
   out[0] = r * (1 + n); out[1] = g * (1 + n); out[2] = b * (1 + n);
   return out;
+}
+
+
+// ---------- Wälder ----------
+function forestAt(x, z) {
+  const n = fbm(World.nD, x * 0.0042 + 500, z * 0.0042 - 200, 3);
+  let f = smooth(0.0, 0.28, n);
+  // Lichtungen sind dicht umwaldet
+  const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL);
+  const s = siteAt(ci, cj);
+  if (s && s.type === 'lichtung') { const d = Math.hypot(x - s.x, z - s.z); f = Math.max(f, smooth(90, 45, d)); }
+  return f;
+}
+
+// ---------- Grosse Wahrzeichen (von weit sichtbar, erreichbar) ----------
+const BIG = 1150;
+const LANDMARKS = {
+  abendschloss: { mood: 'hell', names: ['Schloss Abendrot', 'Schloss Rosenlicht', 'Schloss Dämmerglanz', 'Schloss Violenhain'], sub: 'Hier geht die Sonne nie ganz unter.' },
+  dunkelfeste: { mood: 'dunkel', names: ['Die Schwarze Feste', 'Burg Nachtzahn', 'Die Aschenzitadelle', 'Feste Grauentor'], sub: 'Selbst der Wind meidet diese Mauern.' },
+  mondschloss: { mood: 'mond', names: ['Das Mondschloss', 'Schloss Silbermond', 'Die Sternenkrone', 'Schloss Nachtglanz'], sub: 'Der Mond wohnt hinter seinen Türmen.' },
+};
+function bigAt(bi, bj) {
+  const key = bi + ',' + bj;
+  if (World.big.has(key)) return World.big.get(key);
+  const r = mulberry32(hash2(bi, bj, World.seed ^ 0xb16b));
+  let L = null;
+  const sbi = Math.floor(World.spawnX / BIG), sbj = Math.floor(World.spawnZ / BIG);
+  const spawnBig = bi === sbi && bj === sbj;
+  if (spawnBig || r() < 0.85) {
+    let x = bi * BIG + 230 + r() * (BIG - 460), z = bj * BIG + 230 + r() * (BIG - 460);
+    let type = pick(r, ['abendschloss', 'dunkelfeste', 'mondschloss']);
+    if (spawnBig) {
+      // das erste Schloss liegt in Sichtweite, aber nicht zu nah
+      const a = r() * Math.PI * 2;
+      x = World.spawnX + Math.cos(a) * 560; z = World.spawnZ + Math.sin(a) * 560;
+      type = 'abendschloss';
+    } else {
+      const S0 = bigAt(sbi, sbj);
+      if (Math.hypot(x - World.spawnX, z - World.spawnZ) < 700 || (S0 && Math.hypot(x - S0.x, z - S0.z) < 650)) { World.big.set(key, null); return null; }
+    }
+    const def = LANDMARKS[type];
+    const nat = naturalHeight(x, z);
+    L = { key: 'L' + key, type: 'wahrzeichen', kind: type, mood: def.mood, x, z, seed: hash2(bi, bj, World.seed + 31),
+      name: pick(r, def.names), sub: def.sub, R: type === 'dunkelfeste' ? 46 : 52, F: type === 'dunkelfeste' ? 22 : 34 };
+    L.baseH = type === 'dunkelfeste' ? Math.max(nat, 4) + 14 : Math.max(nat, 2) + 3;
+    L.lakeAng = r() * Math.PI * 2;
+    L.lake = type !== 'dunkelfeste';
+    L.lakeA = type === 'mondschloss' ? 70 : 58; L.lakeB = type === 'mondschloss' ? 44 : 36;
+    L.lx = x + Math.cos(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6); L.lz = z + Math.sin(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6);
+    // Damm mit Laternen über den See bis zum Tor
+    L.lakeD = L.R + L.lakeB * 0.9 + 6; L.dam = L.lake ? L.lakeD + L.lakeB * 1.5 : 0;
+    L.gx = x + Math.cos(L.lakeAng) * (L.R + 2); L.gz = z + Math.sin(L.lakeAng) * (L.R + 2);
+    L.ax = x + Math.cos(L.lakeAng) * (L.lake ? L.dam + 8 : L.R + L.F + 8); L.az = z + Math.sin(L.lakeAng) * (L.lake ? L.dam + 8 : L.R + L.F + 8);
+    L.dist = Math.hypot(x - World.spawnX, z - World.spawnZ);
+    L.level = 2 + L.dist / 700;
+    L.discR = 140;
+    L.biome = dominantBiome(weightsAt(x, z, new Float32Array(NB)));
+  }
+  World.big.set(key, L);
+  return L;
+}
+function bigNear(x, z, rad) {
+  const b0 = Math.floor((x - rad) / BIG), b1 = Math.floor((x + rad) / BIG), c0 = Math.floor((z - rad) / BIG), c1 = Math.floor((z + rad) / BIG);
+  let best = null, bd = rad;
+  for (let i = b0; i <= b1; i++) for (let j = c0; j <= c1; j++) {
+    const L = bigAt(i, j);
+    if (!L) continue;
+    const d = Math.hypot(L.x - x, L.z - z);
+    if (d < bd) { bd = d; best = L; }
+  }
+  return best;
+}
+function bigsNear(x, z, rad) {
+  const out = [];
+  const b0 = Math.floor((x - rad) / BIG), b1 = Math.floor((x + rad) / BIG), c0 = Math.floor((z - rad) / BIG), c1 = Math.floor((z + rad) / BIG);
+  for (let i = b0; i <= b1; i++) for (let j = c0; j <= c1; j++) { const L = bigAt(i, j); if (L && Math.hypot(L.x - x, L.z - z) < rad) out.push(L); }
+  return out;
+}
+function applyBig(x, z, h) {
+  const i0 = Math.floor((x - 230) / BIG), i1 = Math.floor((x + 230) / BIG), j0 = Math.floor((z - 230) / BIG), j1 = Math.floor((z + 230) / BIG);
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) h = applyOneBig(x, z, h, bigAt(i, j));
+  // der Startort darf sein Schloss auch ausserhalb seines Feldes haben
+  const sb = bigAt(Math.floor(World.spawnX / BIG), Math.floor(World.spawnZ / BIG));
+  if (sb) { const si = Math.floor(World.spawnX / BIG), sj = Math.floor(World.spawnZ / BIG); if (si < i0 || si > i1 || sj < j0 || sj > j1) h = applyOneBig(x, z, h, sb); }
+  return h;
+}
+function applyOneBig(x, z, h, L) {
+  if (!L) return h;
+  const dx = x - L.x, dz = z - L.z;
+  if (Math.abs(dx) > 230 || Math.abs(dz) > 230) return h;
+  const d = Math.sqrt(dx * dx + dz * dz);
+  if (L.lake) {
+    const lx = x - L.lx, lz = z - L.lz, ca = Math.cos(L.lakeAng), sa = Math.sin(L.lakeAng);
+    const u = (lx * ca + lz * sa) / L.lakeB, v = (-lx * sa + lz * ca) / L.lakeA;
+    const e = Math.sqrt(u * u + v * v);
+    if (e < 1.5) {
+      let lh = lerp(h, Math.min(h, -3.8), smooth(1.5, 0.95, e));
+      const al = dx * ca + dz * sa, pv = Math.abs(-dx * sa + dz * ca);
+      if (al > L.R - 4 && al < L.dam + 4 && pv < 5) lh = lerp(lh, Math.max(lh, 0.9), smooth(4.6, 2.6, pv));
+      h = lh;
+    }
+  }
+  if (d < L.R + L.F) h = lerp(h, L.baseH, smooth(L.R + L.F, L.R, d));
+  if (L.kind === 'dunkelfeste' && d < L.R + L.F + 50) {
+    // zerklüfteter Felssockel
+    const n = World.nD.noise(x * 0.08, z * 0.08);
+    h += smooth(L.R + L.F + 40, L.R + 6, d) * (1 - smooth(L.R, L.R - 10, d)) * n * 5;
+  }
+  return h;
+}
+
+// ---------- Wege zwischen den Orten ----------
+function linkPath(a, b, salt) {
+  const pts = [];
+  const len = Math.hypot(b.x - a.x, b.z - a.z);
+  const nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len;
+  const N = Math.max(6, Math.round(len / 25));
+  const ph = (salt % 1000) * 0.137;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, bend = Math.sin(Math.PI * t);
+    const o = (World.nD.noise(t * 2.2 + ph, ph * 0.7) * 0.18 * len + Math.sin(t * 9 + ph) * 4) * bend;
+    pts.push([a.x + (b.x - a.x) * t + nx * o, a.z + (b.z - a.z) * t + nz * o]);
+  }
+  return pts;
+}
+function pathsOfCell(ci, cj) {
+  const key = ci + ',' + cj;
+  if (World.paths.has(key)) return World.paths.get(key);
+  const out = [];
+  const s = siteAt(ci, cj);
+  if (s) {
+    for (const [di, dj] of [[1, 0], [0, 1]]) {
+      const o = siteAt(ci + di, cj + dj);
+      if (o && Math.hypot(o.x - s.x, o.z - s.z) < CELL * 1.8) out.push(linkPath(s, o, hash2(ci, cj, di * 3 + dj)));
+    }
+    // Weg zum nächsten Wahrzeichen
+    const L = bigNear(s.x, s.z, 560);
+    if (L) {
+      const tgt = { x: L.ax, z: L.az };
+      // nur der nächste Ort baut den Weg
+      let mine = true;
+      for (let i = -2; i <= 2 && mine; i++) for (let j = -2; j <= 2; j++) {
+        if (!i && !j) continue;
+        const o = siteAt(ci + i, cj + j);
+        if (o && Math.hypot(o.x - tgt.x, o.z - tgt.z) < Math.hypot(s.x - tgt.x, s.z - tgt.z)) { mine = false; break; }
+      }
+      if (mine) out.push(linkPath(s, tgt, hash2(ci, cj, 99)));
+    }
+  }
+  World.paths.set(key, out);
+  return out;
+}
+// Wegstücke rund um ein Rechteck (für ein Geländestück)
+function pathSegsNear(x0, z0, x1, z1) {
+  const segs = [];
+  const c0 = Math.floor(x0 / CELL) - 2, c1 = Math.floor(x1 / CELL) + 1, d0 = Math.floor(z0 / CELL) - 2, d1 = Math.floor(z1 / CELL) + 1;
+  for (let i = c0; i <= c1; i++) for (let j = d0; j <= d1; j++) {
+    for (const pl of pathsOfCell(i, j)) for (let k = 0; k < pl.length - 1; k++) {
+      const a = pl[k], b = pl[k + 1];
+      if (Math.max(a[0], b[0]) < x0 - 8 || Math.min(a[0], b[0]) > x1 + 8 || Math.max(a[1], b[1]) < z0 - 8 || Math.min(a[1], b[1]) > z1 + 8) continue;
+      segs.push([a[0], a[1], b[0], b[1]]);
+    }
+  }
+  return segs;
+}
+function pathDist(x, z, segs) {
+  let best = 1e9;
+  for (const [ax, az, bx, bz] of segs) {
+    const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez;
+    const t = l2 > 0 ? clamp(((x - ax) * ex + (z - az) * ez) / l2, 0, 1) : 0;
+    const dx = x - ax - ex * t, dz = z - az - ez * t, d = dx * dx + dz * dz;
+    if (d < best) best = d;
+  }
+  return Math.sqrt(best);
 }

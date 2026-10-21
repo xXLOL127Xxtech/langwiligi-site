@@ -7,7 +7,7 @@ const DAY_LEN = 960;
 const $ = id => document.getElementById(id);
 
 // ---------- Zustand ----------
-const SET = { pixel: 3, view: 1, sound: true };
+const SET = { pixel: 2, view: 1, sound: true, v: 2 };
 let S = null;         // Spielstand
 let P = null;         // Spielfigur
 let playerModel = null;
@@ -24,7 +24,8 @@ const _bw = new Float32Array(NB);
 
 function loadSettings() {
   try { Object.assign(SET, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) { /* egal */ }
-  SET.pixel = clamp(SET.pixel | 0 || 3, 2, 5); SET.view = clamp(SET.view | 0, 0, 2);
+  if ((SET.v | 0) < 2) { SET.v = 2; SET.pixel = Math.min(SET.pixel | 0 || 2, 2); }
+  SET.pixel = clamp(SET.pixel | 0 || 2, 2, 5); SET.view = clamp(SET.view | 0, 0, 2);
 }
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { /* egal */ } }
 
@@ -42,7 +43,8 @@ function loadSave() {
 }
 function saveGame() {
   if (!S || !P) return;
-  S.pos = [Math.round(P.x * 10) / 10, Math.round(P.z * 10) / 10]; S.face = P.face; S.hp = Math.round(P.hp);
+  const px = P.inCave ? P.inCave.mouth.x : P.x, pz = P.inCave ? P.inCave.mouth.z : P.z;
+  S.pos = [Math.round(px * 10) / 10, Math.round(pz * 10) / 10]; S.face = P.face; S.hp = Math.round(P.hp);
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* egal */ }
 }
 
@@ -53,6 +55,7 @@ const playerSpeed = () => 6.2 * (1 + S.up.tempo * 0.07);
 // ---------- Welt starten ----------
 function startWorld(state) {
   S = state;
+  G.caveGround = null;
   for (const [, b] of built) unbuild(b);
   built.clear();
   for (const e of enemies) e.remove();
@@ -77,7 +80,7 @@ function startWorld(state) {
   worldReady = false; readyFrames = 0;
   lastBiome = -1;
   ATM.cur = Object.assign({}, WEATHERS[S.weather]);
-  resetBackdrop();
+
   clearEyes();
 }
 
@@ -211,6 +214,7 @@ function die() {
 }
 function respawn() {
   show('death', false);
+  if (P.inCave) leaveCave(true);
   P.dead = false; P.hp = maxHp();
   P.x = S.fire[0] + 2; P.z = S.fire[1] + 2; P.y = groundY(P.x, P.z) + 0.5; P.vx = P.vz = P.vy = 0;
   for (const e of enemies) if (!e.dead) { e.state = 'home'; }
@@ -232,7 +236,7 @@ function updatePlayer(dt) {
   const ml = Math.hypot(mx, mz);
   if (ml > 0) { mx /= ml; mz /= ml; }
   const ground = groundY(P.x, P.z);
-  P.swim = ground < WATER - 0.9;
+  P.swim = !P.inCave && ground < WATER - 0.9;
   const sprint = keys.Shift && !P.swim;
   let sp = playerSpeed() * (sprint ? 1.55 : 1) * (P.swim ? 0.55 : 1) * (P.atkT > 0 ? 0.45 : 1);
   const tvx = mx * sp, tvz = mz * sp;
@@ -300,10 +304,17 @@ function chunkW(x, z) {
 
 // ---------- Kollision ----------
 function collide(o, rad) {
+  const inCave = !!o.inCave;
   for (const [, b] of built) {
     const s = b.site;
     if (Math.abs(s.x - o.x) > 90 || Math.abs(s.z - o.z) > 90) continue;
     for (const c of b.colliders) {
+      if (!!c.cave !== inCave) continue;
+      if (c.ring) {
+        const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz), m = c.r - rad;
+        if (d > m) { o.x = c.x + dx / d * m; o.z = c.z + dz / d * m; }
+        continue;
+      }
       let px, pz;
       if (c.seg) {
         const ex = c.bx - c.ax, ez = c.bz - c.az;
@@ -351,10 +362,17 @@ function updateCamera(dt) {
     yaw = restInfo.yaw != null ? restInfo.yaw + Math.sin(restInfo.t * 0.08) * 0.35 : cam.yaw + restInfo.t * 0.04;
     dist = 10; pitch = 0.1; skyLook = 2;
   }
-  const tx = P.x - Math.sin(yaw) * dist * Math.cos(pitch);
-  const tz = P.z - Math.cos(yaw) * dist * Math.cos(pitch);
+  if (P.inCave) dist = Math.min(dist, 7);
+  let tx = P.x - Math.sin(yaw) * dist * Math.cos(pitch);
+  let tz = P.z - Math.cos(yaw) * dist * Math.cos(pitch);
   let ty = P.y + 1.6 + Math.sin(pitch) * dist;
-  ty = Math.max(ty, groundY(tx, tz) + 0.8, WATER + 0.5);
+  ty = Math.max(ty, groundY(tx, tz) + 0.8, P.inCave ? -1e9 : WATER + 0.5);
+  if (P.inCave) {
+    const cv = P.inCave.cave;
+    ty = Math.min(ty, cv.y + cv.ceil - 2);
+    const dx = tx - cv.x, dz = tz - cv.z, d = Math.hypot(dx, dz), lim = cv.R - 1;
+    if (d > lim) { tx = cv.x + dx / d * lim; tz = cv.z + dz / d * lim; }
+  }
   const k = Math.min(1, dt * 8);
   cam.pos.x += (tx - cam.pos.x) * k; cam.pos.y += (ty - cam.pos.y) * k; cam.pos.z += (tz - cam.pos.z) * k;
   G.camera.position.copy(cam.pos);
@@ -382,13 +400,14 @@ function updateSites(dt, px, pz) {
   siteTick -= dt;
   if (siteTick <= 0) {
     siteTick = 0.35;
-    const list = sitesNear(px, pz, 470);
+    const list = bigsNear(px, pz, 1450).concat(sitesNear(px, pz, 470));
     let builtOne = false;
     for (const s of list) {
       if (built.has(s.key) || builtOne) continue;
       const d = Math.hypot(s.x - px, s.z - pz);
-      if (d > 430) continue;
+      if (d > (s.type === 'wahrzeichen' ? 1400 : 430)) continue;
       const b = buildSite(s, siteState);
+      if (b.cave) b.onClink = () => { if (P.inCave === b && Math.random() < 0.5) Ton.sfx('clink'); };
       b.enemies = [];
       for (const sp of b.spawns) {
         const e = new Enemy(sp.type, sp.x, sp.z, s.level, { boss: sp.boss, name: sp.name, site: s, homeX: sp.x, homeZ: sp.z, seed: hash2(Math.round(sp.x), Math.round(sp.z), 3) });
@@ -400,7 +419,7 @@ function updateSites(dt, px, pz) {
     }
     for (const [key, b] of built) {
       const d = Math.hypot(b.site.x - px, b.site.z - pz);
-      if (d > 600) { unbuild(b); built.delete(key); }
+      if (d > (b.site.type === 'wahrzeichen' ? 1650 : 600) && P.inCave !== b) { unbuild(b); built.delete(key); }
     }
   }
   // Feuerlicht beim nächsten Lager
@@ -413,7 +432,7 @@ function updateSites(dt, px, pz) {
       const dd = Math.hypot(f.x - px, f.z - pz);
       if (dd < fd) { fd = dd; fl = [f.x, f.y + 0.8, f.z]; fk = f.size; }
     }
-    if (s.type === 'lager' && d < 16) P.safe = true;
+    if ((s.type === 'lager' || s.type === 'ritter') && d < 16) P.safe = true;
     if (mode === 'play' && !S.disc[s.key] && s.discR > 0 && d < s.discR) discover(s);
     if (b.gate && mode === 'play') {
       const g = b.gate;
@@ -423,10 +442,10 @@ function updateSites(dt, px, pz) {
       g.prev = side;
     }
     // Burg befreit?
-    if (s.type === 'burg' && !S.cleared[s.key] && b.enemies.length && b.enemies.every(e => e.dead)) {
+    if ((s.type === 'burg' || s.type === 'wahrzeichen') && !S.cleared[s.key] && b.enemies.length && b.enemies.every(e => e.dead)) {
       S.cleared[s.key] = 1;
       for (const c of b.chests) c.locked = false;
-      card(s.name, 'Die Burg ist befreit. Stille kehrt zurück.');
+      card(s.name, s.type === 'wahrzeichen' ? 'Die Feste ist gefallen. Zum ersten Mal seit Ewigkeiten sieht man hier Sterne.' : 'Die Burg ist befreit. Stille kehrt zurück.');
       Ton.sfx('discover');
       saveGame();
     }
@@ -434,7 +453,9 @@ function updateSites(dt, px, pz) {
   if (fl) { G.fireLight.position.set(fl[0], fl[1], fl[2]); G.fireLight.intensity = (1.2 + Math.random() * 0.5) * (0.55 + fk * 0.6); G.fireLight.distance = 10 + fk * 10; } else G.fireLight.intensity = 0;
 }
 function siteSub(s) {
-  if (s.type === 'wunder') return s.sub;
+  if (s.type === 'wunder' || s.type === 'wahrzeichen' || s.type === 'lichtung') return s.sub;
+  if (s.type === 'hoehle') return s.cave === 'kristall' ? 'Aus der Tiefe flackert ein kaltes Licht.' : 'Tief unten hämmert es, und die Luft ist warm.';
+  if (s.type === 'ritter') return 'Müde Rüstungen, warme Geschichten.';
   if (s.type === 'burg') return s.content === 'boss' ? 'Etwas Grosses schläft hinter diesen Mauern.' : s.content === 'wachen' ? 'Die Mauern sind nicht so leer, wie sie scheinen.' : 'Verlassen seit Jahrhunderten. Nur der Wind wohnt hier.';
   if (s.type === 'lager') return 'Ein warmes Feuer und ein offenes Ohr.';
   if (s.type === 'aussicht') return 'Setz dich. Die Welt läuft nicht weg.';
@@ -454,6 +475,16 @@ function discover(s) {
   saveGame();
 }
 function passGate(b) {
+  if (b.gate.moon) {
+    G.flash = 0.8;
+    Ton.sfx('gate');
+    P.hp = maxHp();
+    burst(P.x, P.y + 1.5, P.z, 50, [0.8, 0.9, 1], 4, 0.22, 1.8, -1, 2);
+    const k = b.site.key + ':segen';
+    if (!S.opened[k]) { S.opened[k] = 1; S.splinters += 2; card('Der Segen des Mondes', 'Zwei Sternsplitter leuchten in deiner Hand.'); saveGame(); }
+    else toast('Das Mondlicht heilt deine Wunden.');
+    return;
+  }
   S.dayT = (S.dayT + 0.5) % 1;
   G.flash = 1.2;
   Ton.sfx('gate');
@@ -503,7 +534,7 @@ function roamSpawn(dt) {
   const night = ATM.night, storm = ATM.cur.storm;
   const max = Math.round(1 + night * 3 + storm * 2);
   const dSpawn = Math.hypot(P.x - World.spawnX, P.z - World.spawnZ);
-  if (roaming >= max || dSpawn < 140 || P.resting) return;
+  if (roaming >= max || dSpawn < 140 || P.resting || P.inCave) return;
   for (let tries = 0; tries < 6; tries++) {
     const a = Math.random() * 6.283, d = 38 + Math.random() * 25;
     const x = P.x + Math.sin(a) * d, z = P.z + Math.cos(a) * d;
@@ -520,6 +551,7 @@ function roamSpawn(dt) {
   }
 }
 function updateEnemies(dt) {
+  if (P.inCave) dt = 0;
   for (const e of enemies) {
     if (!e.site && Math.hypot(e.x - P.x, e.z - P.z) > 120) e.remove();
     if (!e.gone) e.update(dt, P, ctx);
@@ -549,7 +581,9 @@ function findInteract() {
     const d = Math.hypot(sh.x - P.x, sh.z - P.z);
     if (d < 2.6 && d < bd) { bd = d; nearI = { it: { kind: 'shrine', x: sh.x, z: sh.z, sh }, b: null }; }
   }
+  const inCave = !!P.inCave;
   for (const [, b] of built) for (const it of b.interact) {
+    if (!!it.cave !== inCave) continue;
     const d = Math.hypot(it.x - P.x, it.z - P.z);
     if (d < it.r && d < bd) {
       if (it.kind === 'chest' && it.chest.opened) continue;
@@ -568,6 +602,7 @@ function interactLabel(n) {
     case 'npc': return 'Mit ' + n.b.site.npc + ' sprechen';
     case 'lantern': return it.label;
     case 'shrine': return 'Am Schrein innehalten';
+    case 'cave': case 'caveExit': case 'feen': return it.label;
   }
   return '';
 }
@@ -599,6 +634,17 @@ function interact() {
       toast(pick(Math.random, ['Jemand hat hier lange gebetet. Du fühlst dich leichter.', 'Ein kleines Licht in einer grossen Dunkelheit.', 'Die Kerzen flackern, als würden sie dich kennen.']));
       break;
     }
+    case 'cave': enterCave(b); break;
+    case 'caveExit': leaveCave(false); break;
+    case 'feen': {
+      const k = b.site.key + ':feen';
+      P.hp = maxHp();
+      burst(P.x, P.y + 1.5, P.z, 40, [1, 0.9, 0.6], 3, 0.18, 2, -1, 1.5);
+      Ton.sfx('lantern');
+      if (!S.opened[k]) { S.opened[k] = 1; S.splinters++; S.potions++; card('Der Segen der Feen', 'Sie legen dir einen Splitter und einen Trank in die Hände.'); saveGame(); }
+      else toast(pick(Math.random, ['Die Feen kichern und tanzen um deinen Kopf.', 'Ein warmes Leuchten fliesst durch dich hindurch.', 'Du hörst ein leises Lied aus dem Laub.']));
+      break;
+    }
     case 'lantern':
       if (b.addLantern) b.addLantern();
       Ton.sfx('lantern');
@@ -606,6 +652,71 @@ function interact() {
       break;
   }
 }
+// ---------- Höhlen ----------
+function enterCave(b) {
+  const cv = b.cave;
+  P.inCave = b;
+  cv.inner.visible = true;
+  G.caveGround = (x, z) => (P.inCave && Math.hypot(x - cv.x, z - cv.z) < cv.R + 12 ? cv.y : null);
+  P.x = cv.inX; P.z = cv.inZ; P.y = cv.y + 0.2; P.vx = P.vz = P.vy = 0;
+  P.face = Math.atan2(cv.x - P.x, cv.z - P.z); cam.yaw = P.face;
+  cam.pos.set(P.x - Math.sin(cam.yaw) * 6, P.y + 3, P.z - Math.cos(cam.yaw) * 6);
+  G.fade = 1;
+  Ton.sfx('discover');
+  const k = b.site.key + ':innen';
+  if (!S.disc[k]) { S.disc[k] = 1; card(b.site.name, b.site.cave === 'kristall' ? 'Die Wände atmen Licht.' : 'Ein Abgrund aus Feuer. Und irgendwo singen Zwerge.'); }
+}
+function leaveCave(silent) {
+  const b = P.inCave;
+  if (!b) return;
+  b.cave.inner.visible = false;
+  P.inCave = null; G.caveGround = null;
+  if (silent) return;
+  P.x = b.mouth.x; P.z = b.mouth.z; P.y = groundY(P.x, P.z) + 0.2; P.vx = P.vz = P.vy = 0;
+  P.face = b.mouth.face; cam.yaw = P.face;
+  cam.pos.set(P.x - Math.sin(cam.yaw) * 8, P.y + 3, P.z - Math.cos(cam.yaw) * 8);
+  G.fade = 1;
+}
+
+// ---------- Stimmung: Orte färben die Welt ----------
+const mood = { hell: 0, dunkel: 0, mond: 0, fogBank: 0, feen: 0, hellDir: new THREE.Vector3(1, 0.06, 0), mondDir: new THREE.Vector3(1, 0.35, 0) };
+const env = { mood, cave: null, elev: 0, dunkelYaw: null };
+let moodTick = 0, elevBase = 0, lakeNear = false;
+function updateMood(dt, x, y, z) {
+  moodTick -= dt;
+  if (moodTick <= 0) {
+    moodTick = 0.5;
+    let sum = 0;
+    for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; sum += Math.max(WATER, heightAt(x + Math.cos(a) * 70, z + Math.sin(a) * 70)); }
+    elevBase = sum / 8;
+    lakeNear = false;
+    for (let i = 0; i < 12 && !lakeNear; i++) { const a = i / 12 * 6.283, d = 40 + (i % 3) * 50; if (heightAt(x + Math.cos(a) * d, z + Math.sin(a) * d) < -0.4) lakeNear = true; }
+  }
+  const tg = { hell: 0, dunkel: 0, mond: 0, fogBank: 0, feen: 0 };
+  env.dunkelYaw = null;
+  for (const L of bigsNear(x, z, 1300)) {
+    const dx = L.x - x, dz = L.z - z, d = Math.hypot(dx, dz);
+    if (L.lake && d < 900) lakeNear = lakeNear || d < 600;
+    if (L.kind === 'abendschloss') {
+      const k = smooth(720, 160, d);
+      if (k > tg.hell) { tg.hell = k; mood.hellDir.set(dx / d, 0.05 + 0.04 * (1 - k), dz / d).normalize(); }
+    } else if (L.kind === 'dunkelfeste') {
+      const k = smooth(650, 110, d);
+      if (k > tg.dunkel) { tg.dunkel = k; env.dunkelYaw = Math.atan2(dx, dz); }
+    } else {
+      const k = smooth(430, 200, d);
+      tg.fogBank = Math.max(tg.fogBank, smooth(760, 590, d) * (1 - smooth(460, 360, d)));
+      if (k > tg.mond) { tg.mond = k; const top = L.baseH + LM_STYLE.mondschloss.keep * 1.15 - y; mood.mondDir.set(dx / d, clamp(top / Math.max(d, 1) * 0.9, 0.12, 0.7), dz / d).normalize(); }
+    }
+  }
+  for (const [, b] of built) if (b.site.type === 'lichtung') tg.feen = Math.max(tg.feen, smooth(48, 18, Math.hypot(b.site.x - x, b.site.z - z)));
+  const k = Math.min(1, dt * 0.7);
+  for (const key in tg) mood[key] += (tg[key] - mood[key]) * k;
+  env.cave = P && P.inCave ? P.inCave.cave.env : null;
+  env.elev = env.cave ? 0 : y - elevBase;
+  G.reflOn = !env.cave && lakeNear && G.pixel <= 3;
+}
+
 function openChest(c, b) {
   if (c.locked) { toast(b.site.content === 'boss' ? 'Verschlossen. Ein mächtiger Wächter hält den Schlüssel.' : 'Verschlossen.'); return; }
   c.opened = true; S.opened[c.key] = 1;
@@ -651,9 +762,23 @@ function dirWord(dx, dz) {
   return DIRS[((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8];
 }
 let dialogPages = [], dialogName = '';
+const KNIGHT_LINES = [
+  'Wir ziehen seit dem Fall unseres Königs durch die Lande. Setz dich, das Feuer reicht für alle.',
+  'Siehst du die Türme am Horizont? Je näher man ihnen kommt, desto weiter scheinen sie fort.',
+  'Einer von uns schwört, er habe in einer Höhle einen Baum aus reinem Licht gesehen. Wir lachen. Aber nur ein bisschen.',
+  'Ruh dich aus, Wanderer. Morgen ist ein langer Weg, und übermorgen auch.',
+];
 function talkTo(s) {
   const r = mulberry32(s.seed + (S.met[s.key] || 0));
-  dialogPages = [pick(r, NPC_LINES)];
+  dialogPages = [pick(r, s.type === 'ritter' ? KNIGHT_LINES : NPC_LINES)];
+  if (s.type === 'ritter') {
+    const L = bigNear(P.x, P.z, 2600);
+    if (L && !S.disc[L.key]) {
+      const what = L.kind === 'dunkelfeste' ? 'Wo der Himmel schwarz wird, steht ' + L.name + '. Wer dort hingeht, kommt verändert zurück, oder gar nicht.' : L.kind === 'mondschloss' ? 'Hinter dem Nebel liegt ' + L.name + '. Geh hindurch, auch wenn du nichts mehr siehst.' : L.name + ' leuchtet im Abendrot. Dort ist das Licht freundlicher als irgendwo sonst.';
+      S.hints[L.key] = [L.x, L.z, L.name];
+      dialogPages.push(what + ' Es liegt im ' + dirWord(L.x - P.x, L.z - P.z) + '.');
+    }
+  }
   // Hinweis auf ein unentdecktes Wunder
   const cands = sitesNear(P.x, P.z, 1400).filter(o => o.type === 'wunder' && !S.disc[o.key] && !S.hints[o.key]);
   cands.sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z));
@@ -851,12 +976,16 @@ function updateCompass(dt) {
   compassT = 0.08;
   const marks = [...$('cstrip').querySelectorAll('.cmark')];
   const list = [];
+  for (const L of bigsNear(P.x, P.z, 1500)) {
+    const d = Math.hypot(L.x - P.x, L.z - P.z);
+    list.push([Math.atan2(L.x - P.x, L.z - P.z), '♛', d * 0.3, S.disc[L.key] ? 'burg' : 'hint']);
+  }
   for (const s of sitesNear(P.x, P.z, 650)) {
     if (s.type === 'wanderer' && !S.met[s.key] && Math.hypot(s.x - P.x, s.z - P.z) > 200) continue;
     const d = Math.hypot(s.x - P.x, s.z - P.z);
     const known = S.disc[s.key] || S.hints[s.key];
     if (!known && d > 320) continue;
-    const icon = !known ? '?' : s.type === 'wunder' ? '✦' : s.type === 'burg' ? '♜' : s.type === 'lager' ? '▲' : s.type === 'aussicht' ? '◠' : '•';
+    const icon = !known ? '?' : s.type === 'wunder' ? '✦' : s.type === 'burg' ? '♜' : s.type === 'lager' ? '▲' : s.type === 'aussicht' ? '◠' : s.type === 'hoehle' ? '◓' : s.type === 'lichtung' ? '❀' : s.type === 'ritter' ? '⚔' : '•';
     list.push([Math.atan2(s.x - P.x, s.z - P.z), icon, d, known ? s.type : 'neu']);
   }
   for (const k in S.hints) {
@@ -1013,7 +1142,9 @@ function frame(now) {
   updateCamera(dt);
   if (S && live) {
     const w = chunkW(cam.pos.x, cam.pos.z);
-    updateAtmosphere(dt, S.dayT, WEATHERS[S.weather], w, G.camera.position, cam.yaw, mode === 'title' ? { x: World.spawnX, y: groundY(World.spawnX, World.spawnZ), z: World.spawnZ } : P, mode !== 'title', d => Ton.thunder(d));
+    updateMood(dt, cam.pos.x, cam.pos.y, cam.pos.z);
+    if (mood.feen > 0.4 && Math.random() < dt * 0.4) Ton.sfx('chime');
+    updateAtmosphere(dt, S.dayT, WEATHERS[S.weather], w, G.camera.position, cam.yaw, mode === 'title' ? { x: World.spawnX, y: groundY(World.spawnX, World.spawnZ), z: World.spawnZ } : P, mode !== 'title', d => Ton.thunder(d), env);
     G.sky.position.copy(G.camera.position);
     updateBurst(dt);
     let cold = 0; for (let b = 0; b < NB; b++) cold += w[b] * BIOMES[b].cold;

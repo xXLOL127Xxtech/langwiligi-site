@@ -158,6 +158,8 @@ const Ton = {
       case 'kill': this.tone(h(74), t, 0.4, 0.05, 'triangle'); this.noiseHit(t, 0.35, 0.12, 'bandpass', 900, 0.8, 300); break;
       case 'jump': this.noiseHit(t, 0.12, 0.05, 'bandpass', 500, 1, 1200); break;
       case 'click': this.tone(h(86), t, 0.06, 0.04, 'sine'); break;
+      case 'clink': this.tone(1400 + Math.random() * 500, t, 0.35, 0.035, 'triangle', null, 0.002); this.tone(2900, t, 0.12, 0.015, 'sine', null, 0.002); break;
+      case 'chime': [93, 97, 100].forEach((m, i) => this.tone(h(m + Math.floor(Math.random() * 3)), t + i * 0.08, 1.2, 0.025, 'sine', this.musicFilter, 0.01)); break;
       case 'wal': {
         const o = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), lg = c.createGain();
         o.type = 'sine'; o.frequency.setValueAtTime(190, t); o.frequency.linearRampToValueAtTime(340, t + 1.4); o.frequency.linearRampToValueAtTime(240, t + 2.4); o.frequency.linearRampToValueAtTime(150, t + 4);

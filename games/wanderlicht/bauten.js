@@ -20,7 +20,7 @@ function newBuilt(s) {
   return { site: s, group: new THREE.Group(), colliders: [], interact: [], spawns: [], chests: [], fires: [], updaters: [], gate: null };
 }
 function segCollider(out, ax, az, bx, bz, r) { out.colliders.push({ seg: true, ax, az, bx, bz, r }); }
-function circCollider(out, x, z, r) { out.colliders.push({ seg: false, x, z, r }); }
+function circCollider(out, x, z, r) { const c = { seg: false, x, z, r }; out.colliders.push(c); return c; }
 function boxCollider(out, cx, cz, w, d, ang) {
   const c = Math.cos(ang), s = Math.sin(ang);
   const pts = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [cx + u * c - v * s, cz + u * s + v * c]);
@@ -757,6 +757,10 @@ function buildSite(s, st) {
   else if (s.type === 'wunder') out = buildWonder(s, st);
   else if (s.type === 'lager') out = buildCamp(s, st);
   else if (s.type === 'aussicht') out = buildView(s);
+  else if (s.type === 'wahrzeichen') out = buildLandmark(s, st);
+  else if (s.type === 'hoehle') out = buildCave(s, st);
+  else if (s.type === 'lichtung') out = buildClearing(s, st);
+  else if (s.type === 'ritter') out = buildKnights(s, st);
   else out = buildWanderer(s);
   G.scene.add(out.group);
   return out;
