@@ -121,6 +121,7 @@ canvas.addEventListener('wheel', e => {
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 window.addEventListener('keydown', e => {
+  if (e.key === 'F3') { e.preventDefault(); toggleFps(); return; }
   Ton.start();
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(e.key)) e.preventDefault();
@@ -547,15 +548,15 @@ function updateSites(dt, px, pz) {
   }
   // Fackeln und Feuer: die vier nächsten leuchten wirklich
   P.safe = false;
-  const near4 = [];
+  const near4 = [], NT = G.torches.length;
   for (const [, b] of built) {
     for (const u of b.updaters) u(dt);
     const s = b.site, d = Math.hypot(s.x - px, s.z - pz);
     for (const f of b.fires) {
       const dd = (f.x - px) * (f.x - px) + (f.y - (P.y + 1)) * (f.y - (P.y + 1)) + (f.z - pz) * (f.z - pz);
       if (dd > 2500) continue;
-      if (near4.length < 4) { near4.push([dd, f]); near4.sort((p, q) => p[0] - q[0]); }
-      else if (dd < near4[3][0]) { near4[3] = [dd, f]; near4.sort((p, q) => p[0] - q[0]); }
+      if (near4.length < NT) { near4.push([dd, f]); near4.sort((p, q) => p[0] - q[0]); }
+      else if (dd < near4[NT - 1][0]) { near4[NT - 1] = [dd, f]; near4.sort((p, q) => p[0] - q[0]); }
     }
     if ((s.type === 'lager' || s.type === 'ritter') && d < 16) P.safe = true;
     if (mode === 'play' && !S.disc[s.key] && s.discR > 0 && d < s.discR) discover(s);
@@ -1291,7 +1292,17 @@ function beginPlay() {
 }
 
 // ---------- Hauptschleife ----------
-let last = performance.now(), fpsAcc = 0, fpsN = 0;
+let last = performance.now(), fpsAcc = 0, fpsN = 0, fpsShow = 0, dynRaised = false, goodWin = 0;
+G.dyn = 1; G.dynMax = 1;
+// F3: kleine Anzeige für Bildrate und Last
+let fpsBox = null;
+function toggleFps() {
+  if (fpsBox) { fpsBox.remove(); fpsBox = null; return; }
+  fpsBox = document.createElement('div');
+  fpsBox.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:50;padding:6px 10px;border-radius:8px;background:rgba(10,8,24,.72);color:#e8e4ff;font:12px/1.4 Nunito,sans-serif;pointer-events:none;white-space:pre';
+  document.body.appendChild(fpsBox);
+}
+let fpsBoxT = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const raw = Math.max(0, (now - last) / 1000);
@@ -1300,9 +1311,19 @@ function frame(now) {
   fpsAcc += Math.min(raw, 0.5); fpsN++;
   // Bleibt es zu langsam, wird das Bild etwas gröber (nur für diese Sitzung)
   if (mode !== 'play' || !worldReady) { fpsAcc = 0; fpsN = 0; }
-  else if (fpsAcc > 6) {
+  else if (fpsAcc > 3) {
     const fps = fpsN / fpsAcc;
-    if (fps < 24 && !qualityManual && G.quality > 0) { G.quality--; SET.quality = G.quality; applyQuality(); clearGrass(); toast('Die Grafik wurde etwas reduziert, damit alles flüssig läuft.'); }
+    if (!qualityManual) {
+      // Erst die Auflösung stufenweise anpassen, erst danach die Grafikstufe senken
+      if (fps < 30) {
+        if (G.dyn > 0.65) { if (dynRaised) G.dynMax = Math.max(0.6, G.dyn - 0.05); G.dyn = Math.max(0.6, G.dyn - 0.1); resizeGraphics(); }
+        else if (fps < 26 && G.quality > 0) { G.quality--; SET.quality = G.quality; G.dyn = 1; applyQuality(); clearGrass(); toast('Die Grafik wurde etwas reduziert, damit alles flüssig läuft.'); }
+        dynRaised = false; goodWin = 0;
+      } else if (fps > 56 && G.dyn < G.dynMax) {
+        if (++goodWin >= 2) { G.dyn = Math.min(G.dynMax, G.dyn + 0.05); resizeGraphics(); dynRaised = true; goodWin = 0; }
+      } else { goodWin = 0; dynRaised = false; }
+    }
+    fpsShow = fps;
     fpsAcc = 0; fpsN = 0;
   }
   if (hitStop > 0) { hitStop -= dt; dt *= 0.15; }
@@ -1355,6 +1376,7 @@ function frame(now) {
   saveTick -= dt;
   if (saveTick <= 0 && mode === 'play') { saveTick = 15; saveGame(); }
   renderFrame();
+  if (fpsBox && now - fpsBoxT > 500) { fpsBoxT = now; const inf = G.renderer.info.render; fpsBox.textContent = Math.round(fpsShow || 1 / Math.max(raw, 0.001)) + ' Bilder/s   Auflösung ' + Math.round(G.dyn * 100) + ' %\n' + inf.calls + ' Zeichenaufrufe   ' + Math.round(inf.triangles / 1000) + 'k Dreiecke\nStücke ' + G.chunks.size + '   Gras ' + G.grass.size; }
 }
 
 // ---------- Start ----------

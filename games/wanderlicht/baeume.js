@@ -147,9 +147,9 @@ function makeTree(spec, mg, ls, near) {
       let th, tr0, nl, llen, wide = 1, tall = 0.78, up = 0.7, depth = 2, wander = 0.35, flat = 0.3, kind = 0;
       if (g) {
         // Riesenbäume: mächtiger Stamm, weit ausladende Äste
-        th = 13 + r() * 5; tr0 = 1.5 + r() * 0.6; nl = 8; llen = 9 + r() * 3; up = sp === 'birke' ? 0.9 : 0.55; wide = 1.15; tall = 0.8;
+        th = 20 + r() * 8; tr0 = 2.2 + r() * 0.8; nl = 9; llen = 12 + r() * 4; up = sp === 'birke' ? 0.9 : 0.55; wide = 1.15; tall = 0.8;
         if (sp === 'kirsch') kind = 2;
-        c.cr = 5.6 + r() * 1.6;
+        c.cr = 8 + r() * 2.2;
       } else {
         if (sp === 'eiche') { th = 3.6 * S * (0.9 + r() * 0.3); tr0 = 0.34 * S; nl = 5; llen = 5.2 * S; up = 0.5; }
         else if (sp === 'birke') { th = 5.5 * S * (0.9 + r() * 0.25); tr0 = 0.18 * S; nl = 6; llen = 3.6 * S; up = 1.1; wander = 0.5; tall = 0.7; }
@@ -187,21 +187,21 @@ function makeTree(spec, mg, ls, near) {
     }
     case 'tanne': case 'schneetanne': {
       const snow = sp === 'schneetanne';
-      let th = (g ? 40 + r() * 16 : 9 + r() * 5) * (g ? 1 : S * 0.9);
-      const tr0 = (g ? 1.5 : 0.32) * (g ? 1 + r() * 0.4 : S);
+      let th = (g ? 56 + r() * 22 : 9 + r() * 5) * (g ? 1 : S * 0.9);
+      const tr0 = (g ? 2.2 : 0.32) * (g ? 1 + r() * 0.4 : S);
       const rings = near ? Math.max(6, Math.round(th / 2)) : 4;
       trunkPath(c, x, y, z, th, tr0 * 1.1, tr0 * 0.18, (r() - 0.5) * 0.06, rings, { bend: 0.5, flare: g ? 0.6 : 0.4, taper: 0.8 });
       if (g) roots(c, x, y, z, tr0 * 1.05, 8, tr0 * 1.8);
       const bareH = g ? th * 0.28 : th * 0.12 + 0.8;
-      const tiers = g ? 15 : 6 + Math.floor(r() * 3);
-      const maxR = (g ? 6.8 : 2.4 * S) * (0.85 + r() * 0.3);
+      const tiers = g ? 18 : 6 + Math.floor(r() * 3);
+      const maxR = (g ? 9.5 : 2.4 * S) * (0.85 + r() * 0.3);
       const cc = snow ? [cols[1], cols[0], cols[2]] : cols;
       for (let i = 0; i < tiers; i++) {
         const t = i / (tiers - 1);
         const yy = y + bareH + t * (th - bareH) * 0.94;
         const rad = maxR * Math.pow(1 - t, 0.82) * (0.78 + r() * 0.3) + 0.35;
         const hh = (th - bareH) / tiers * 2.15;
-        ls.cone(x + (r() - 0.5) * 0.4, yy, z + (r() - 0.5) * 0.4, rad, hh, snow ? [cc[1], cc[0], cc[2]] : cc, rc, { size: g ? 1.5 : undefined });
+        ls.cone(x + (r() - 0.5) * 0.4, yy, z + (r() - 0.5) * 0.4, rad, hh, snow ? [cc[1], cc[0], cc[2]] : cc, rc, { size: g ? 1.7 : undefined });
         if (near && rad > 1.4 && !g) {
           // sichtbare Äste unter den Nadeln
           for (let q = 0; q < 4; q++) { const a = r() * 6.28; tube(mg, [[x, yy + hh * 0.35, z], [x + Math.cos(a) * rad * 0.5, yy + hh * 0.3, z + Math.sin(a) * rad * 0.5], [x + Math.cos(a) * rad * 0.9, yy + hh * 0.1, z + Math.sin(a) * rad * 0.9]], [0.07 * S, 0.05 * S, 0.02], bark, 5, MT.bark, bark, rc); }
@@ -293,11 +293,16 @@ function pickSpecies(bi, r) {
   return t[0][0];
 }
 
+// ---------- Riesenwälder: Gebiete, in denen fast nur gewaltige Bäume stehen ----------
+function giantZone(x, z) {
+  return smooth(0.02, 0.3, fbm(World.nD, x * 0.0021 + 1300, z * 0.0021 - 700, 3));
+}
+
 // ---------- Wälder: Planung je Geländestück ----------
 function planTrees(ch, r, segs, bigL) {
   const x0 = ch.ci * CHUNK, z0 = ch.cj * CHUNK;
   ch.trees = []; ch.col = []; ch.under = null;
-  const tries = 80;
+  const tries = 135;
   const placed = [];
   const w = new Float32Array(NB);
   for (let k = 0; k < tries; k++) {
@@ -307,7 +312,8 @@ function planTrees(ch, r, segs, bigL) {
     const patch = World.nD.noise(x * 0.018 + 7, z * 0.018) * 0.5 + 0.5;
     const fo = forestAt(x, z) * Math.min(1, td * 1.5 + 0.1);
     const pOpen = td * (0.12 + patch * patch * 1.3) * 0.2;
-    if (r() > Math.max(pOpen, fo * 0.34 + 0.02 * td)) continue;
+    const gz = giantZone(x, z) * smooth(0.22, 0.55, fo);
+    if (r() > Math.max(pOpen, Math.max(fo * 0.58, gz * 0.7) + 0.03 * td)) continue;
     const h = chunkHeight(ch, x, z);
     if (h < 0.5 || h > 46 + r() * 26) continue;
     if (nearSite(x, z, 5)) continue;
@@ -316,15 +322,15 @@ function planTrees(ch, r, segs, bigL) {
     const bi = sampleBiome(w, r());
     const B = BIOMES[bi];
     const inForest = fo > 0.3;
-    let giant = r() < (inForest ? 0.09 : 0.012) * Math.min(1, B.trees * 1.4) && x > x0 + 7 && x < x0 + CHUNK - 7 && z > z0 + 7 && z < z0 + CHUNK - 7;
+    let giant = r() < (inForest ? 0.03 + gz * 0.6 : 0.012) * Math.min(1, B.trees * 1.4) && x > x0 + 7 && x < x0 + CHUNK - 7 && z > z0 + 7 && z < z0 + CHUNK - 7;
     let sp = giant ? GIANT_OF[bi] : pickSpecies(bi, r);
     if (giant && bi === 5) { giant = false; sp = pickSpecies(bi, r); }
     const dead = r() < 0.1 && B.cold < 0.9 && B.tree !== 'knorrig' && !giant;
     if (dead) sp = 'tot';
-    const sz = giant ? 2.6 + r() * 1.5 : 0.82 + r() * 0.5;
+    const sz = giant ? 2.6 + r() * 1.5 : (0.82 + r() * 0.5) * 1.75;
     const info = SPECIES[sp];
-    const crown = info.crown * (giant ? (sp === 'tanne' || sp === 'schneetanne' ? 1.9 : 2.4) * sz / 2.6 * 1.3 : sz);
-    const trunk = giant ? (sp === 'tanne' || sp === 'schneetanne' ? 1.6 : sp === 'baobab' ? 3.6 : sp === 'weide' ? 1.5 : 1.9) * (sz / 3) * 1.1 : info.trunk * sz;
+    const crown = info.crown * (giant ? (sp === 'tanne' || sp === 'schneetanne' ? 2.5 : 2.8) * sz / 2.6 * 1.3 : sz);
+    const trunk = giant ? (sp === 'tanne' || sp === 'schneetanne' ? 2.2 : sp === 'baobab' ? 3.6 : sp === 'weide' ? 1.9 : 2.6) * (sz / 3) * 1.1 : info.trunk * sz;
     // Abstand zu bereits gesetzten Bäumen
     let ok = true;
     for (const p of placed) { const d = Math.hypot(p.x - x, p.z - z); if (d < (p.trunk + trunk) * 1.3 + 1.6 || (d < (p.crown + crown) * 0.28 && (p.giant || giant))) { ok = false; break; } }
@@ -334,8 +340,8 @@ function planTrees(ch, r, segs, bigL) {
     if (neon) { const nc = B.neonCC[Math.floor(r() * 3)]; tint = null; var neonCols = [nc, nc.map(v => v * 0.55), nc.map(v => Math.min(1, v * 0.6 + 0.45))]; }
     const spec = { B: neon ? Object.assign({}, B, { canopyC: neonCols }) : B, sp, x, y: h, z, s: sz, seed: Math.floor(r() * 1e9), giant, neon, tint, crown, trunk, height: info.h * sz * (giant ? 3.2 : 1) * (sp === 'tanne' || sp === 'schneetanne' ? 1.3 : 1), leafy: r() < 0.45 };
     if (!giant && !neon && inForest && B.tree !== 'knorrig' && r() < 0.3) spec.tint = [0.72, 0.72, 0.72];
-    if (!giant && (spec.sp === 'tanne' || spec.sp === 'schneetanne')) spec.height = (9 + 7 * r()) * 1.0;
-    if (giant && (sp === 'tanne' || sp === 'schneetanne')) spec.height = 52;
+    if (!giant && (spec.sp === 'tanne' || spec.sp === 'schneetanne')) spec.height = (11 + 5 * r()) * sz * 0.9;
+    if (giant && (sp === 'tanne' || sp === 'schneetanne')) spec.height = 68;
     placed.push({ x, z, trunk, crown, giant });
     ch.trees.push(spec);
     ch.col.push({ x, z, r: Math.max(0.28, trunk * 0.92), top: h + spec.height });
@@ -350,13 +356,13 @@ function buildTreeLayer(ch, near) {
   const ls = new LeafSet(false), lsN = new LeafSet(true);
   ls.noCards = lsN.noCards = !near;
   for (const spec of ch.trees) makeTree(spec, mg, spec.neon ? lsN : ls, near);
-  ls.addFarTo(fmg); lsN.addFarTo(fmg);
+  ls.addFarTo(fmg, near); lsN.addFarTo(fmg, near);
   if (!mg.empty) for (const g of mg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.flat); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
   if (!fmg.empty) {
     for (const g of fmg.buildBuckets(64)) {
-      // Laubkugeln: in der Ferne sichtbar, in der Nähe nur als Schattenwerfer
-      const m = new THREE.Mesh(g, near ? MAT.shadowOnly : MAT.leafFar);
-      m.castShadow = true; m.receiveShadow = !near;
+      // Laubkugeln: in der Ferne die ganze Krone, in der Nähe der dichte Kern unter den Blattkarten
+      const m = new THREE.Mesh(g, MAT.leafFar);
+      m.castShadow = true; m.receiveShadow = true;
       grp.add(m);
     }
   }
@@ -370,7 +376,7 @@ function planUnderwood(ch, r, segs) {
   const x0 = ch.ci * CHUNK, z0 = ch.cj * CHUNK;
   const items = [], w = new Float32Array(NB);
   const castles = castlesNear(x0 + CHUNK / 2, z0 + CHUNK / 2);
-  const tries = Math.round(130 * QUALITY[G.quality].leaf);
+  const tries = Math.round(62 * QUALITY[G.quality].leaf);
   for (let k = 0; k < tries; k++) {
     const x = x0 + r() * CHUNK, z = z0 + r() * CHUNK;
     const h = chunkHeight(ch, x, z);
@@ -383,10 +389,10 @@ function planUnderwood(ch, r, segs) {
     const moist = B.cold < 0.5 && B.id !== 'duenen' && B.id !== 'gold';
     let t = r(), type = null;
     if (fo > 0.25) {
-      if (t < 0.22) type = 'busch'; else if (t < 0.5 && moist) type = 'farn'; else if (t < 0.64) type = 'pilz'; else if (t < 0.73 && B.grass > 0.3) type = 'blume';
-      else if (t < 0.78) type = 'stumpf'; else if (t < 0.83) type = 'stamm'; else if (t < 0.92) type = 'findling'; else if (t < 0.96 && (B.neon > 0.4 || B.id === 'toten')) type = 'riesenpilz';
+      if (t < 0.3) type = 'busch'; else if (t < 0.56 && moist) type = 'farn'; else if (t < 0.62) type = 'pilz'; else if (t < 0.68 && B.grass > 0.3) type = 'blume';
+      else if (t < 0.7) type = 'stumpf'; else if (t < 0.72) type = 'stamm'; else if (t < 0.75) type = 'findling'; else if (t < 0.78 && (B.neon > 0.4 || B.id === 'toten')) type = 'riesenpilz';
     } else {
-      if (t < 0.3 && B.grass > 0.3) type = 'blume'; else if (t < 0.46 && B.trees > 0.1) type = 'busch'; else if (t < 0.76) type = 'findling'; else if (t < 0.84) type = 'pilz'; else if (t < 0.9 && moist) type = 'farn';
+      if (t < 0.3 && B.grass > 0.3) type = 'blume'; else if (t < 0.5 && B.trees > 0.1) type = 'busch'; else if (t < 0.56) type = 'findling'; else if (t < 0.6) type = 'pilz'; else if (t < 0.65 && moist) type = 'farn';
     }
     if (!type) continue;
     const s = type === 'riesenpilz' ? 1.6 + r() * 1.2 : type === 'stamm' ? 3 + r() * 5 : 0.7 + r() * 0.9;

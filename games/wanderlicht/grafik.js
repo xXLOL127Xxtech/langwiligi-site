@@ -16,7 +16,7 @@ const U = {
   uFogColor: { value: new THREE.Color() }, uFogNear: { value: 30 }, uFogFar: { value: 220 },
   uScale: { value: 150 }, uPx: { value: 3 }, uCam: { value: new THREE.Vector3() },
   uLanternPos: { value: new THREE.Vector3() }, uLanternCol: { value: new THREE.Color(0, 0, 0) },
-  uGrassFar: { value: 70 }, uNeon: { value: 0 }, uNearCut: { value: 0 }, uFarCut: { value: 0 },
+  uGrassFar: { value: 70 }, uNeon: { value: 0 }, uNearCut: { value: 0 }, uFarCut: { value: 0 }, uCanCut: { value: 0 }, uMistAmt: { value: 0 }, uMistBase: { value: 0 },
   uSunDirW: { value: new THREE.Vector3(0, 1, 0) }, uCDrift: { value: new THREE.Vector2() }, uCShadow: { value: 0 },
   uPlayer: { value: new THREE.Vector3() }, uLDir: { value: new THREE.Vector3(0, 1, 0) },
   uAmb: { value: new THREE.Color() }, uAmbG: { value: new THREE.Color() }, uSunL: { value: new THREE.Color() },
@@ -214,10 +214,18 @@ class PointSet {
 // ---------- Shader ----------
 // Luftperspektive: dünn in der Nähe, dicht in der Ferne, Gipfel ragen aus dem Dunst
 const AERIAL = `
+uniform float uMistAmt, uMistBase;
 float aerialF(float d, float y, float n, float f) {
   float fd = max(d - n, 0.0) / max(f, 1.0);
   float a = 1.0 - exp(-(fd * fd * 2.2 + fd * 0.45));
-  return a * mix(1.0, 0.42, smoothstep(6.0, 190.0, y));
+  a *= mix(1.0, 0.42, smoothstep(6.0, 190.0, y));
+  if (uMistAmt > 0.001) {
+    // Bodennebel: dicht in Mulden und über dem Boden, Hügel und Wipfel ragen heraus
+    float ym = max(0.5 * (y + cameraPosition.y) - uMistBase, 0.0);
+    float hf = exp(-ym / 11.0);
+    a = 1.0 - (1.0 - a) * exp(-max(d - 4.0, 0.0) * 0.016 * uMistAmt * hf);
+  }
+  return a;
 }
 `;
 // Wolkenschatten, die über das Land ziehen
@@ -370,7 +378,7 @@ function worldMat(o = {}) {
   m.onBeforeCompile = sh => {
     sh.uniforms.uCam = U.uCam; sh.uniforms.uCut = cutU || { value: 0 };
     sh.uniforms.uCDrift = U.uCDrift; sh.uniforms.uCShadow = U.uCShadow;
-    sh.uniforms.uSunDirW = U.uSunDirW;
+    sh.uniforms.uSunDirW = U.uSunDirW; sh.uniforms.uMistAmt = U.uMistAmt; sh.uniforms.uMistBase = U.uMistBase;
     sh.vertexShader = 'attribute float aMat; attribute float aU; varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN;' + (o.path ? 'attribute float aPath; varying float vPath;' : '') + '\n' + sh.vertexShader
       .replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vMat = aMat; vU = aU;' + (o.path ? ' vPath = aPath;' : ''));
     sh.fragmentShader = 'varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN; uniform vec3 uCam; uniform float uCut;' + (o.path ? 'varying float vPath;' : '') + '\n' + CLOUD_SH + SURF + sh.fragmentShader
@@ -398,7 +406,7 @@ function initMaterials() {
   MAT.ultraTerrain = worldMat({ cut: U.uFarCut, shine: 2 });
   MAT.ground = worldMat({ shine: 2, spec: 0x0a0a0a, path: true });
   MAT.grass = makeGrassMat();
-  MAT.farCanopy = worldMat({ cut: U.uNearCut, shine: 2, spec: 0x000000 });
+  MAT.farCanopy = worldMat({ cut: U.uCanCut, shine: 2, spec: 0x000000 });
   MAT.flame = pointsMat(1.25, { emit: 1, additive: true, sway: 0, flicker: true, maxPt: 40 });
   MAT.landGlow = pointsMat(0.9, { emit: 1, additive: true, sway: 0, farMul: 3.2, maxPt: 14, fogCap: 0.7 });
   initFoliageMats();
@@ -431,6 +439,7 @@ function applyQuality() {
 function initGraphics(canvas) {
   const r = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
   r.setPixelRatio(1);
+  r.info.autoReset = false;
   r.autoClear = true;
   r.shadowMap.type = THREE.PCFSoftShadowMap;
   G.renderer = r;
@@ -445,7 +454,7 @@ function initGraphics(canvas) {
   G.lantern = new THREE.PointLight(0xffb070, 0, 13, 2);
   G.scene.add(G.hemi, G.sun, G.sun.target, G.lantern);
   // Fackeln und Feuer in Hallen: ein paar bewegliche Lichter
-  for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xff9a50, 0, 18, 2); G.torches.push(l); G.scene.add(l); }
+  for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff9a50, 0, 18, 2); G.torches.push(l); G.scene.add(l); }
   for (const l of [G.hemi, G.sun, G.lantern, ...G.torches]) l.layers.enable(1);
 
   const qv = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -529,7 +538,6 @@ function initGraphics(canvas) {
   initWeatherFX();
   initBurst();
   initButterflies();
-  initMist();
   initCloudSea();
   G.bolts = new THREE.Group();
   G.scene.add(G.bolts);
@@ -540,7 +548,7 @@ function resizeGraphics() {
   const qs = QUALITY[G.quality];
   const W = Math.max(1, window.innerWidth), H = Math.max(1, window.innerHeight);
   const dpr = window.devicePixelRatio || 1;
-  const sc = Math.min(dpr, 2) * qs.scale / Math.max(1, dpr > 1.5 ? dpr / 1.5 : 1);
+  const sc = Math.min(dpr, 2) * qs.scale * (G.dyn || 1) / Math.max(1, dpr > 1.5 ? dpr / 1.5 : 1);
   G.scale = sc;
   G.w = Math.max(320, Math.round(W * sc)); G.h = Math.max(200, Math.round(H * sc));
   G.renderer.setSize(G.w, G.h, false);
@@ -561,7 +569,11 @@ function renderFrame() {
   G.postMat.uniforms.uHurt.value = G.hurt;
   G.postMat.uniforms.uFade.value = G.fade;
   const r = G.renderer;
+  r.info.reset();
   if (G.reflectFn) G.reflectFn();
+  // Sonnenschatten nur jedes zweite Bild neu berechnen (spart etwa die halbe Schattenarbeit)
+  r.shadowMap.autoUpdate = false;
+  if ((G.shadowTick = (G.shadowTick || 0) + 1) % 2 === 1 || G.shadowForce) { r.shadowMap.needsUpdate = true; G.shadowForce = false; }
   r.setRenderTarget(G.rt);
   r.render(G.scene, G.camera);
   if (G.postMat.uniforms.uBloom.value > 0.01) {
@@ -750,7 +762,6 @@ function initWater() {
     G.sky.position.copy(rc.position);
     const sm = r.shadowMap.enabled; r.shadowMap.autoUpdate = false;
     r.setRenderTarget(G.rtRefl); r.render(G.scene, rc);
-    r.shadowMap.autoUpdate = true;
     G.sky.position.copy(sky);
     r.clippingPlanes = [];
     void sm;
@@ -817,7 +828,7 @@ function wrapPoints(n, opts) {
 }
 function initWeatherFX() {
   // Regen als Striche
-  const n = 2600;
+  const n = 1600;
   const pos = new Float32Array(n * 6), rnd = new Float32Array(n * 2), end = new Float32Array(n * 2);
   for (let i = 0; i < n; i++) {
     const x = Math.random(), y = Math.random(), z = Math.random(), r = Math.random();
@@ -830,10 +841,10 @@ function initWeatherFX() {
   G.rain = new THREE.LineSegments(g, wrapMat({ box: new THREE.Vector3(70, 40, 70), color: 0xb8b8e8, transparent: true, alpha: '0.55' }));
   G.rain.frustumCulled = false; G.rain.renderOrder = 3;
   G.scene.add(G.rain);
-  G.snow = wrapPoints(2400, { box: new THREE.Vector3(60, 36, 60), color: 0xffffff, size: 0.22, mode: 2 });
-  G.petals = wrapPoints(700, { box: new THREE.Vector3(50, 22, 50), color: 0xffffff, size: 0.2, mode: 2 });
-  G.flies = wrapPoints(600, { box: new THREE.Vector3(48, 8, 48), color: 0xfff0a0, size: 0.34, mode: 1, additive: true });
-  G.dust = wrapPoints(500, { box: new THREE.Vector3(46, 16, 46), color: 0xffe0a0, size: 0.12, mode: 2, transparent: true, alpha: '0.6' });
+  G.snow = wrapPoints(1500, { box: new THREE.Vector3(60, 36, 60), color: 0xffffff, size: 0.22, mode: 2 });
+  G.petals = wrapPoints(450, { box: new THREE.Vector3(50, 22, 50), color: 0xffffff, size: 0.2, mode: 2 });
+  G.flies = wrapPoints(380, { box: new THREE.Vector3(48, 8, 48), color: 0xfff0a0, size: 0.34, mode: 1, additive: true });
+  G.dust = wrapPoints(280, { box: new THREE.Vector3(46, 16, 46), color: 0xffe0a0, size: 0.12, mode: 2, transparent: true, alpha: '0.6' });
   G.fx = [G.rain, G.snow, G.petals, G.flies, G.dust];
 }
 
@@ -1047,7 +1058,7 @@ const WEATHERS = [
 
 const ATM = {
   zen: new THREE.Color(), hor: new THREE.Color(), sunC: new THREE.Color(), hSky: new THREE.Color(), hGround: new THREE.Color(), lightC: new THREE.Color(),
-  lightI: 0.5, hemiI: 0.6, night: 0, biomeFog: 0, tintW: 0, fogTint: new THREE.Color(), flyC: new THREE.Color(), desat: 0, cur: { cloud: 0.3, rain: 0, fog: 0, storm: 0, wind: 1 },
+  lightI: 0.5, hemiI: 0.6, forestK: 0, night: 0, biomeFog: 0, tintW: 0, fogTint: new THREE.Color(), flyC: new THREE.Color(), desat: 0, cur: { cloud: 0.3, rain: 0, fog: 0, storm: 0, wind: 1 },
   boltT: 3, drift: new THREE.Vector2(), offs: {}, tint: [0, 0, 0], fxAmt: { rain: 0, snow: 0, petals: 0, flies: 0, dust: 0 }, petalC: new THREE.Color(),
   sunDir: new THREE.Vector3(), moonDir: new THREE.Vector3(),
 };
@@ -1154,7 +1165,9 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   const dim = (1 - gloom * 0.4) * (1 - md.dunkel * 0.7);
   G.hemi.color.copy(ATM.hSky); G.hemi.groundColor.copy(ATM.hGround);
   const indoor = env.indoor || 0;
-  G.hemi.intensity = ATM.hemiI * (1 - stormE * 0.15) * (1 - md.dunkel * 0.6) * (1 - indoor * 0.78) + G.flash * 0.9 * (1 - indoor * 0.6);
+  // unter dichten Kronen bleibt es hell genug, um den Weg zu sehen
+  ATM.forestK += ((cave ? 0 : forestAt(player.x, player.z)) - ATM.forestK) * Math.min(1, dt * 0.8);
+  G.hemi.intensity = ATM.hemiI * (1 + 0.5 * ATM.forestK * (1 - ATM.night * 0.7)) * (1 - stormE * 0.15) * (1 - md.dunkel * 0.6) * (1 - indoor * 0.78) + G.flash * 0.9 * (1 - indoor * 0.6);
   G.sun.color.copy(ATM.lightC);
   G.sun.intensity = ATM.lightI * dim * (1 - cloudE * 0.35) * (1 + md.mond * 0.4) * (1 - indoor * 0.35);
   if (md.feen > 0.01) { G.hemi.color.lerp(_c1.setRGB(1, 0.85, 0.55), md.feen * 0.35); G.hemi.intensity += md.feen * (0.15 + ATM.night * 0.3); }
@@ -1190,25 +1203,19 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   // Nebel: auf Hügeln sieht man weiter
   const vs = VIEW_SETTINGS[G.view];
   const elevMult = 1 + clamp((env.elev || 0) / 22, 0, 1.7);
-  let far = vs.far * elevMult * (1 - fogE * 0.72) * (1 - c.rain * 0.15) * (1 - ATM.night * 0.12);
+  let far = vs.far * elevMult * (1 - fogE * 0.5) * (1 - c.rain * 0.15) * (1 - ATM.night * 0.12);
   let near = 6 + 30 * (1 - fogE);
   G.scene.fog.color.copy(ATM.hor).lerp(ATM.zen, 0.15);
   if (cave) { G.scene.fog.color.copy(cave.fog); near = 6; far = cave.far; }
   G.scene.fog.near = near; G.scene.fog.far = far;
   U.uNearCut.value = (vs.chunks - 0.6) * CHUNK;
+  U.uCanCut.value = canopyR(vs);
   U.uFarCut.value = vs.farR - 140;
   if (Math.abs(G.camera.far - (vs.ultraR + 700)) > 1) { G.camera.far = vs.ultraR + 700; G.camera.updateProjectionMatrix(); }
-  // Bodennebel
-  const mm = G.mistMats;
-  G.mistBase += (player.y - 0.7 - G.mistBase) * Math.min(1, dt * 0.25);
+  // Bodennebel: im Shader (Höhennebel), keine Flächen mehr
+  G.mistBase += (player.y - 0.7 - (G.mistBase || 0)) * Math.min(1, dt * 0.25);
   const mist = cave ? 0 : clamp01(0.06 + c.fog * 0.6 + ATM.biomeFog * 0.8 + ATM.night * 0.25 + md.fogBank * 0.8 + md.dunkel * 0.5 + md.hell * 0.25);
-  for (let i = 0; i < G.mists.length; i++) {
-    const m = G.mists[i];
-    m.position.set(Math.round(cam.x / 4) * 4, G.mistBase + 0.5 + i * 1.25, Math.round(cam.z / 4) * 4);
-    m.visible = mist > 0.01;
-    mm[i].uniforms.uMist.value = mist * (1 - i * 0.22);
-    mm[i].uniforms.uMistCol.value.copy(G.scene.fog.color).lerp(_c2.setRGB(0.8, 0.8, 0.85), 0.12);
-  }
+  U.uMistAmt.value = mist; U.uMistBase.value = G.mistBase;
   ATM.desat += (desat - ATM.desat) * Math.min(1, dt * 0.5);
   G.postMat.uniforms.uSat.value = cave ? cave.sat : clamp(1.08 - ATM.desat * 0.7 - ATM.night * 0.2 - stormE * 0.2 - fogE * 0.1 - md.dunkel * 0.35 + md.hell * 0.18 + md.feen * 0.2 + md.mond * 0.15, 0.35, 1.3);
   G.postMat.uniforms.uBloom.value = (cave ? cave.bloom * 0.7 : 0.34 + md.hell * 0.2 + md.mond * 0.35 + md.feen * 0.3 + ATM.night * 0.16);
@@ -1267,6 +1274,9 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
       u.uOffset.value.set(((u.uOffset.value.x % b.x) + b.x) % b.x, ((u.uOffset.value.y % b.y) + b.y) % b.y, ((u.uOffset.value.z % b.z) + b.z) % b.z);
     }
     o.visible = amt > 0.001;
+    // schwächere Wetter zeichnen auch weniger Teilchen
+    const tot = o.userData.tot || (o.userData.tot = o.geometry.attributes.position.count);
+    o.geometry.setDrawRange(0, (Math.ceil(tot * Math.min(1, 0.3 + amt)) >> 1) << 1);
   };
   const o = _v.copy(cam);
   setFx(G.rain, A.rain, _s.set(wd.x * ws * 6, -32, wd.y * ws * 6), o);
@@ -1399,10 +1409,10 @@ function buildChunk(ci, cj) {
       }
     }
   }
-  for (let k = 0; k < 5; k++) {
+  for (let k = 0; k < 3; k++) {
     const x = x0 + r() * CHUNK, z = z0 + r() * CHUNK;
     const h = chunkHeight(chunk, x, z);
-    if (r() < 0.45 || nearSite(x, z, 3)) continue;
+    if (r() < 0.55 || nearSite(x, z, 3)) continue;
     const w = chunkWeights(chunk, x, z, _tw);
     const B = BIOMES[sampleBiome(w, r())];
     const s = 0.5 + r() * r() * 2.6;
@@ -1416,7 +1426,7 @@ function buildChunk(ci, cj) {
   // Gebirge: Felsbrocken, Zacken und verschneite Blöcke
   const hMid = H[(N >> 1) * V + (N >> 1)];
   if (hMid > 22) {
-    const nR = Math.round(4 + smooth(22, 90, hMid) * 12);
+    const nR = Math.round(2 + smooth(22, 90, hMid) * 8);
     for (let k = 0; k < nR; k++) {
       const x = x0 + r() * CHUNK, z = z0 + r() * CHUNK, h = chunkHeight(chunk, x, z);
       if (nearSite(x, z, 4)) continue;
@@ -1518,7 +1528,7 @@ function makeGrassTuft() {
 const GRASS_TUFT = makeGrassTuft();
 function makeGrassMat() {
   const uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.lights, { uPlayerR: { value: 1.8 }, uLDir: { value: new THREE.Vector3(0, 1, 0) }, uAmb: { value: new THREE.Color() }, uAmbG: { value: new THREE.Color() }, uSunL: { value: new THREE.Color() } }]);
-  for (const k of ['uTime', 'uWind', 'uWindDir', 'uFogColor', 'uFogNear', 'uFogFar', 'uCam', 'uPlayer', 'uGrassFar', 'uNeon', 'uCDrift', 'uCShadow', 'uLanternPos', 'uLanternCol']) uniforms[k] = U[k];
+  for (const k of ['uTime', 'uWind', 'uWindDir', 'uFogColor', 'uFogNear', 'uFogFar', 'uCam', 'uPlayer', 'uGrassFar', 'uNeon', 'uCDrift', 'uCShadow', 'uLanternPos', 'uLanternCol', 'uMistAmt', 'uMistBase']) uniforms[k] = U[k];
   uniforms.uLDir = U.uLDir; uniforms.uAmb = U.uAmb; uniforms.uAmbG = U.uAmbG; uniforms.uSunL = U.uSunL;
   return new THREE.ShaderMaterial({
     uniforms, lights: true, side: THREE.DoubleSide,
@@ -1634,8 +1644,10 @@ function buildGrass(ch) {
   g.setAttribute('iStem', new THREE.InstancedBufferAttribute(new Float32Array(iStem), 3));
   g.setAttribute('iGlow', new THREE.InstancedBufferAttribute(new Float32Array(iGlow), 1));
   g.instanceCount = iPos.length / 3;
+  let gy0 = 1e9, gy1 = -1e9;
+  for (let i = 1; i < iPos.length; i += 3) { if (iPos[i] < gy0) gy0 = iPos[i]; if (iPos[i] > gy1) gy1 = iPos[i]; }
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(x0 + CHUNK / 2, (gy0 + gy1) / 2 + 0.8, z0 + CHUNK / 2), Math.hypot(CHUNK / 2, CHUNK / 2, (gy1 - gy0) / 2 + 2) + 1);
   const m = new THREE.Mesh(g, MAT.grass);
-  m.frustumCulled = false;
   m.receiveShadow = true;
   m.userData.cx = x0 + CHUNK / 2; m.userData.cz = z0 + CHUNK / 2;
   G.scene.add(m);
@@ -1671,6 +1683,10 @@ function disposeObj(o) {
   if (o.parent) o.parent.remove(o);
 }
 
+// Bäume werden nur in der Nähe einzeln gezeichnet; weiter weg zeigen die fernen Kacheln den Wald
+function canopyR(vs) {
+  return Math.min((vs.chunks - 0.6) * CHUNK, vs.leaf * QUALITY[G.quality].leaf + CHUNK * 0.5 + 56);
+}
 // Stücke rund um den Spieler laden und entfernen; gibt true zurück, wenn alles Nahe da ist
 function updateChunks(px, pz, budgetMs) {
   const vs = VIEW_SETTINGS[G.view];
@@ -1693,7 +1709,7 @@ function updateChunks(px, pz, budgetMs) {
     if (di * di + dj * dj > (R + 2) * (R + 2)) { disposeChunk(ch); if (G.grass.has(key)) { const gm = G.grass.get(key); if (gm) disposeObj(gm); G.grass.delete(key); } G.chunks.delete(key); }
   }
   // Gras und nahes Laub
-  const GR = vs.grass + CHUNK * 0.75, LR = vs.leaf * QUALITY[G.quality].leaf + CHUNK * 0.5;
+  const GR = vs.grass + CHUNK * 0.75, LR = vs.leaf * QUALITY[G.quality].leaf + CHUNK * 0.5, CAN_R = canopyR(vs);
   const gneed = [], lneed = [];
   for (const [key, ch] of G.chunks) {
     const cx = ch.ci * CHUNK + CHUNK / 2, cz = ch.cj * CHUNK + CHUNK / 2;
@@ -1701,10 +1717,12 @@ function updateChunks(px, pz, budgetMs) {
     const has = G.grass.has(key);
     if (d < GR && !has) gneed.push([d, key, ch]);
     else if (d > GR + 30 && has) { const gm = G.grass.get(key); if (gm) disposeObj(gm); G.grass.delete(key); }
+    if (!ch.layerNear && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.6;
     if (d < LR && !ch.layerNear) lneed.push([d, ch]);
     else if (ch.layerNear) {
       const wantNear = d < LR + (ch.near ? 14 : 0);
       if (wantNear !== ch.near) setChunkNear(ch, wantNear);
+      if (!ch.near && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.6;
       if (!wantNear && d > LR + 90) { disposeObj(ch.layerNear); ch.layerNear = null; if (ch.underObj) { disposeObj(ch.underObj); ch.underObj = null; } }
     }
   }
@@ -1796,19 +1814,20 @@ function buildFarTile(fi, fj, lv = FAR_LV[0]) {
   grp.add(new THREE.Mesh(g, lv.ultra ? MAT.ultraTerrain : MAT.farTerrain));
   // Baumkronen: Wälder bilden dunkle Bänder bis zum Horizont
   const r = mulberry32(hash2(fi, fj, World.seed + 777)), fm = new Merger();
-  for (let k = 0; k < (lv.ultra ? 0 : 110); k++) {
+  for (let k = 0; k < (lv.ultra ? 0 : 190); k++) {
     const x = x0 + r() * FAR, z = z0 + r() * FAR;
     const w = weightsAt(x, z, _fw);
     let td = 0; for (let b = 0; b < NB; b++) td += w[b] * BIOMES[b].trees;
     const fo = Math.max(forestAt(x, z) * Math.min(1, td * 1.5 + 0.1), td * 0.08);
-    if (r() > fo * 1.6) continue;
+    if (r() > fo * 2.2) continue;
     const h = heightAt(x, z, w) - lv.drop * 0.4;
     if (h < 0.6 || h > 45 + r() * 25) continue;
     const B = BIOMES[sampleBiome(w, r())];
     const c = B.canopyC[r() < 0.6 ? 0 : 1];
     const conif = B.tree === 'tanne' || B.tree === 'schneetanne';
-    const giant = r() < 0.08;
-    const hh = (conif ? 14 : 9) * (giant ? 3 : 1) * (0.8 + r() * 0.5), rr = (conif ? 3.6 : 6) * (giant ? 2.2 : 1) * (0.8 + r() * 0.5);
+    const gz = giantZone(x, z) * smooth(0.22, 0.55, forestAt(x, z));
+    const giant = r() < 0.04 + gz * 0.6;
+    const hh = (conif ? 22 : 15) * (giant ? 3.2 : 1) * (0.8 + r() * 0.5), rr = (conif ? 5.5 : 10) * (giant ? 2.4 : 1) * (0.8 + r() * 0.5);
     if (conif) fm.add('cone', M(x, h + hh * 0.18, z, rr, hh * 0.86, rr), c.map(v => v * 0.8), 0.15, r, 13);
     else fm.add('ico', M(x, h + hh * 0.72, z, rr, hh * 0.42, rr), c.map(v => v * 0.8), 0.15, r, 13);
   }
@@ -1842,40 +1861,6 @@ function updateFar(px, pz, t0, budgetMs) {
     if (d > (l ? vs.ultraR : vs.farR) + F * 1.6 || (l && d < vs.farR - F * 2.2)) { disposeObj(ft); G.far.delete(key); }
   }
 }
-
-// ---------- Bodennebel ----------
-function initMist() {
-  G.mists = []; G.mistMats = []; G.mistBase = 0;
-  for (let i = 0; i < 3; i++) {
-    const mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: U.uTime, uMist: { value: 0 }, uMistCol: { value: new THREE.Color() }, uLayer: { value: i }, uLanternPos: U.uLanternPos, uLanternCol: U.uLanternCol },
-      vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
-      fragmentShader: `
-        uniform float uTime, uMist, uLayer; uniform vec3 uMistCol, uLanternPos, uLanternCol;
-        varying vec3 vW;
-        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-        float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-          return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
-        void main(){
-          vec2 q = vW.xz + uLayer * 37.0;
-          float n = vn(q * 0.035 + vec2(uTime * 0.03, uTime * 0.012)) * 0.6 + vn(q * 0.11 - vec2(uTime * 0.05, -uTime * 0.02)) * 0.4;
-          float d = distance(vW.xz, cameraPosition.xz);
-          float a = smoothstep(0.3, 0.78, n) * uMist * smoothstep(3.0, 16.0, d) * (1.0 - smoothstep(120.0, 170.0, d));
-          float ld = distance(vW, uLanternPos);
-          vec3 col = uMistCol + uLanternCol * pow(max(0.0, 1.0 - ld / 10.0), 2.0) * 0.6;
-          gl_FragColor = vec4(col, a * 0.5);
-        }`,
-      transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(360, 360), mat);
-    m.rotation.x = -Math.PI / 2;
-    m.renderOrder = 5 + i;
-    m.frustumCulled = false;
-    G.scene.add(m);
-    G.mists.push(m); G.mistMats.push(mat);
-  }
-}
-
 
 // ---------- Wolkenmeer: von hohen Gipfeln sieht man auf ein Meer aus Wolken ----------
 const SEA_Y = 54;
