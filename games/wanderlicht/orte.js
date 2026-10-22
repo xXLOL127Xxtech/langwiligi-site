@@ -607,3 +607,39 @@ function buildKnights(s) {
   });
   return out;
 }
+
+// ---------- Ferne Silhouetten der Wahrzeichen (bis zum Horizont sichtbar) ----------
+function buildImpostor(L) {
+  const r = mulberry32(L.seed);
+  const S = LM_STYLE[L.kind];
+  const g = new THREE.Group(), mg = new Merger(), gps = new PointSet();
+  const cx = L.x, cz = L.z, y0 = L.baseH, R = L.R, ga = L.lakeAng;
+  for (let i = 0; i < S.n; i++) {
+    const a = ga - Math.PI / S.n + i * Math.PI * 2 / S.n, tx = cx + Math.cos(a) * R, tz = cz + Math.sin(a) * R;
+    const h = S.tower[0] + r() * (S.tower[1] - S.tower[0]), rad = 4.2;
+    mg.add('cyl6', M(tx, y0 - 4, tz, rad, h + 4, rad), S.stone);
+    mg.add('cone6', M(tx, y0 + h, tz, rad * 1.1, rad * 5.5, rad * 1.1), S.roof);
+    for (let q = 0; q < 4; q++) gps.add(tx + (r() - 0.5) * rad, y0 + 6 + r() * h * 0.9, tz + (r() - 0.5) * rad, S.win, 0.8);
+    const b = (i + 1) % S.n, bx = cx + Math.cos(a + Math.PI * 2 / S.n) * R, bz = cz + Math.sin(a + Math.PI * 2 / S.n) * R;
+    mg.add('box', M((tx + bx) / 2, y0 + S.wallH / 2 - 3, (tz + bz) / 2, Math.hypot(bx - tx, bz - tz), S.wallH + 6, 2.5, 0, -Math.atan2(bz - tz, bx - tx), 0), S.stone);
+    void b;
+  }
+  const kx = cx - Math.cos(ga) * R * 0.28, kz = cz - Math.sin(ga) * R * 0.28, kw = L.kind === 'dunkelfeste' ? 24 : 16, kh = S.keep;
+  mg.add('box', M(kx, y0 + kh / 2 - 3, kz, kw, kh + 6, kw * 0.85, 0, -ga, 0), S.stone);
+  mg.add('cone4', M(kx, y0 + kh, kz, kw * 0.72, kh * 0.55, kw * 0.62, 0, -ga + Math.PI / 4, 0), S.roof);
+  mg.add('cyl6', M(kx, y0 + kh * 1.3, kz, 2.2, 10, 2.2), S.stone2);
+  mg.add('cone6', M(kx, y0 + kh * 1.3 + 10, kz, 2.6, 26 + (L.kind === 'dunkelfeste' ? 30 : 0), 2.6), S.roof);
+  for (let q = 0; q < 4; q++) { const u = (q & 1 ? 1 : -1) * kw * 0.5, v = (q & 2 ? 1 : -1) * kw * 0.42, c = Math.cos(ga), sn = Math.sin(ga); const px = kx + u * c - v * sn, pz = kz + u * sn + v * c, th = kh + 6 + r() * 10; mg.add('cyl6', M(px, y0, pz, 2.6, th, 2.6), S.stone); mg.add('cone6', M(px, y0 + th, pz, 2.8, 14, 2.8), S.roof); }
+  for (let q = 0; q < 40; q++) gps.add(kx + (r() - 0.5) * kw, y0 + 8 + r() * (kh - 10), kz + (r() - 0.5) * kw, S.win, 0.9);
+  g.add(new THREE.Mesh(mg.build(), MAT.landmark));
+  g.add(new THREE.Points(gps.build(), MAT.landGlow));
+  if (L.kind !== 'dunkelfeste') {
+    const a = makeGlow(S.aura, L.kind === 'abendschloss' ? 230 : 160, L.kind === 'abendschloss' ? 0.28 : 0.18);
+    a.material.fog = false; a.position.set(kx, y0 + 45, kz); g.add(a);
+  } else {
+    const a = makeGlow(0xff2010, 110, 0.14); a.material.fog = false; a.position.set(kx, y0 + kh * 0.8, kz); g.add(a);
+  }
+  reflectable(g);
+  G.scene.add(g);
+  return g;
+}

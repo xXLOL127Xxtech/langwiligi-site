@@ -183,6 +183,17 @@ function naturalHeight(x, z, w) {
   const n3 = World.nD.noise(x * 0.05, z * 0.05);
   const cont = fbm(World.nD, x * 0.0009 + 40, z * 0.0009, 2);
   let h = n1 * a + r * mn + n3 * dt + off + cont * (2 + a * 0.3);
+  // Gewaltige Gebirge: weit sichtbar, besteigbar, mit Schneegipfeln
+  const mm = smooth(0.1, 0.48, fbm(World.nT, x * 0.00031 - 70, z * 0.00031 + 130, 2));
+  if (mm > 0) {
+    let rg = 1 - Math.abs(fbm(World.nH, x * 0.00125 - 900, z * 0.00125 + 400, 4));
+    rg = rg * rg;
+    const pk = fbm(World.nM, x * 0.004, z * 0.004, 3) * 0.5 + 0.5;
+    h += mm * mm * (rg * 165 + pk * 28 * rg);
+    // schroffe Felsrippen und Grate
+    const cr = 1 - Math.abs(World.nD.noise(x * 0.021 + 11, z * 0.021 - 7));
+    h += mm * smooth(15, 70, h) * (cr * cr * 9 + World.nM.noise(x * 0.06, z * 0.06) * 2.5);
+  }
   if (du > 0.02) {
     const dn = World.nD.noise(x * 0.008, z * 0.008);
     const ang = 0.6 + dn * 0.7;
@@ -364,7 +375,7 @@ function sitesNear(x, z, rad) {
 
 // ---------- Bodenfarbe ----------
 const SHORE = [0.62, 0.58, 0.5];
-const SNOWC = [0.93, 0.95, 1.0];
+const SNOWC = [0.84, 0.86, 0.93];
 function groundColor(x, z, h, slope, w, out) {
   let r = 0, g = 0, b = 0, rr = 0, rg = 0, rb = 0;
   const hi = smooth(2, 18, h);
@@ -377,10 +388,14 @@ function groundColor(x, z, h, slope, w, out) {
     rr += k * B.rockC[0]; rg += k * B.rockC[1]; rb += k * B.rockC[2];
   }
   const rock = smooth(0.55, 0.9, slope);
-  r = lerp(r, rr, rock); g = lerp(g, rg, rock); b = lerp(b, rb, rock);
+  // Gesteinsschichten an Felswänden
+  const strata = 0.84 + 0.16 * Math.sin(h * 0.55 + World.nD.noise(x * 0.01, z * 0.01) * 4);
+  r = lerp(r, rr * strata, rock); g = lerp(g, rg * strata, rock); b = lerp(b, rb * strata, rock);
   const shore = smooth(1.1, 0.2, h) * (1 - w[6] * 0.7);
   r = lerp(r, SHORE[0], shore * 0.6); g = lerp(g, SHORE[1], shore * 0.6); b = lerp(b, SHORE[2], shore * 0.6);
-  const snow = smooth(34, 44, h) * (1 - rock * 0.6);
+  let cold = 0; for (let i = 0; i < NB; i++) cold += w[i] * BIOMES[i].cold;
+  const sn = World.nM.noise(x * 0.02, z * 0.02) * 12;
+  const snow = smooth(lerp(72, 32, cold), lerp(96, 42, cold), h + sn) * (1 - rock * 0.5);
   r = lerp(r, SNOWC[0], snow); g = lerp(g, SNOWC[1], snow); b = lerp(b, SNOWC[2], snow);
   // feine Flecken
   const n = World.nD.noise(x * 0.09, z * 0.09) * 0.06 + World.nD.noise(x * 0.013 + 9, z * 0.013) * 0.08;

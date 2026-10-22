@@ -11,7 +11,7 @@ const SET = { pixel: 2, view: 1, sound: true, v: 2 };
 let S = null;         // Spielstand
 let P = null;         // Spielfigur
 let playerModel = null;
-const built = new Map();
+const built = new Map(), impostors = new Map();
 let enemies = [], orbs = [], rings = [], pickups = [];
 const keys = {};
 const cam = { yaw: 0, dist: 9, pitch: 0.18, manualT: 0, shake: 0, pos: new THREE.Vector3(), look: new THREE.Vector3(), restYaw: 0 };
@@ -58,6 +58,8 @@ function startWorld(state) {
   G.caveGround = null;
   for (const [, b] of built) unbuild(b);
   built.clear();
+  for (const [, g] of impostors) disposeObj(g);
+  impostors.clear();
   for (const e of enemies) e.remove();
   for (const o of orbs) o.remove();
   for (const r of rings) r.remove();
@@ -417,6 +419,14 @@ function updateSites(dt, px, pz) {
       built.set(s.key, b);
       builtOne = true;
     }
+    // ferne Schloss-Silhouetten
+    const uR = VIEW_SETTINGS[G.view].ultraR;
+    const seen = new Set();
+    for (const L of bigsNear(px, pz, uR)) {
+      seen.add(L.key);
+      if (!built.has(L.key) && !impostors.has(L.key)) impostors.set(L.key, buildImpostor(L));
+    }
+    for (const [k, g] of impostors) if (!seen.has(k) || built.has(k)) { disposeObj(g); impostors.delete(k); }
     for (const [key, b] of built) {
       const d = Math.hypot(b.site.x - px, b.site.z - pz);
       if (d > (b.site.type === 'wahrzeichen' ? 1650 : 600) && P.inCave !== b) { unbuild(b); built.delete(key); }
@@ -976,7 +986,7 @@ function updateCompass(dt) {
   compassT = 0.08;
   const marks = [...$('cstrip').querySelectorAll('.cmark')];
   const list = [];
-  for (const L of bigsNear(P.x, P.z, 1500)) {
+  for (const L of bigsNear(P.x, P.z, 2600)) {
     const d = Math.hypot(L.x - P.x, L.z - P.z);
     list.push([Math.atan2(L.x - P.x, L.z - P.z), '♛', d * 0.3, S.disc[L.key] ? 'burg' : 'hint']);
   }

@@ -16,13 +16,13 @@ const U = {
   uFogColor: { value: new THREE.Color() }, uFogNear: { value: 30 }, uFogFar: { value: 220 },
   uScale: { value: 150 }, uCam: { value: new THREE.Vector3() },
   uLanternPos: { value: new THREE.Vector3() }, uLanternCol: { value: new THREE.Color(0, 0, 0) },
-  uGrassFar: { value: 70 }, uNeon: { value: 0 }, uNearCut: { value: 0 },
+  uGrassFar: { value: 70 }, uNeon: { value: 0 }, uNearCut: { value: 0 }, uFarCut: { value: 0 },
 };
 
 const VIEW_SETTINGS = [
-  { name: 'Nah', chunks: 3, far: 240, grass: 45, grassMax: 2300, farR: 650 },
-  { name: 'Mittel', chunks: 4, far: 330, grass: 62, grassMax: 3300, farR: 900 },
-  { name: 'Weit', chunks: 5, far: 430, grass: 80, grassMax: 4300, farR: 1150 },
+  { name: 'Nah', chunks: 3, far: 950, grass: 45, grassMax: 2300, farR: 650, ultraR: 2000 },
+  { name: 'Mittel', chunks: 4, far: 1300, grass: 62, grassMax: 3300, farR: 900, ultraR: 3000 },
+  { name: 'Weit', chunks: 5, far: 1700, grass: 80, grassMax: 4300, farR: 1150, ultraR: 4200 },
 ];
 
 // ---------- Hilfen für zusammengefügte Geometrie ----------
@@ -113,7 +113,18 @@ function blob(ps, cx, cy, cz, rx, ry, rz, cols, rnd, dens = 11, flatBottom = 0.3
 }
 
 // ---------- Shader ----------
-const FOG_V = 'uniform float uFogNear; uniform float uFogFar; varying float vFog;';
+// Luftperspektive: dünn in der Nähe, dicht in der Ferne, Gipfel ragen aus dem Dunst
+const AERIAL = `
+float aerialF(float d, float y, float n, float f) {
+  float fd = max(d - n, 0.0) / max(f, 1.0);
+  float a = 1.0 - exp(-(fd * fd * 2.2 + fd * 0.45));
+  return a * mix(1.0, 0.42, smoothstep(6.0, 190.0, y));
+}`;
+const FOG_V = 'uniform float uFogNear; uniform float uFogFar; varying float vFog;' + AERIAL;
+THREE.ShaderChunk.fog_pars_vertex = '#ifdef USE_FOG\n varying float fogDepth; varying float vFogY;\n#endif';
+THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\n fogDepth = - mvPosition.z; vFogY = (modelMatrix * vec4(position, 1.0)).y;\n#endif';
+THREE.ShaderChunk.fog_pars_fragment = '#ifdef USE_FOG\n uniform vec3 fogColor; varying float fogDepth; varying float vFogY; uniform float fogNear; uniform float fogFar;' + AERIAL + '\n#endif';
+THREE.ShaderChunk.fog_fragment = '#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, aerialF(fogDepth, vFogY, fogNear, fogFar));\n#endif';
 const FOG_F = 'uniform vec3 uFogColor; varying float vFog;';
 
 function pointsMat(size, opts = {}) {
@@ -136,7 +147,7 @@ function pointsMat(size, opts = {}) {
         float ld = distance(wp.xyz, uLanternPos);
         vec3 li = uLight + uLanternCol * pow(max(0.0, 1.0 - ld / 13.0), 2.0);
         vCol = color * mix(li, vec3(1.0), uEmit);
-        vFog = smoothstep(uFogNear, uFogFar * uFarMul, -mv.z) * uFogCap;
+        vFog = aerialF(-mv.z / uFarMul, wp.y, uFogNear, uFogFar) * uFogCap;
       }`,
     fragmentShader: `
       ${FOG_F}
@@ -160,9 +171,10 @@ function initMaterials() {
   MAT.neonLeaves = pointsMat(0.62, { emit: 0 });
   MAT.neonGlow = pointsMat(0.32, { emit: 1, additive: true, sway: 0.4 });
   // Fernsicht: Wahrzeichen und fernes Gelände verschwinden erst viel später im Nebel
-  MAT.landmark = farLambert(3.2, false, 0.86);
-  MAT.farTerrain = farLambert(2.4, true, 1);
-  MAT.farCanopy = pointsMat(7, { sway: 0, farMul: 2.4, cut: true, maxPt: 6 });
+  MAT.landmark = farLambert(null, 0.86);
+  MAT.farTerrain = farLambert(U.uNearCut, 1);
+  MAT.ultraTerrain = farLambert(U.uFarCut, 1);
+  MAT.farCanopy = pointsMat(5, { sway: 0, cut: true, maxPt: 4 });
   MAT.landGlow = pointsMat(0.9, { emit: 1, additive: true, sway: 0, farMul: 3.2, maxPt: 14, fogCap: 0.7 });
   MAT.grass = new THREE.ShaderMaterial({
     uniforms: U,
@@ -193,7 +205,7 @@ function initMaterials() {
         vCol = base * li;
         float gl = iGlow * uNeon * smoothstep(0.5, 0.8, t) * (0.75 + 0.25 * sin(uTime * 2.0 + iPar.z * 3.0));
         vCol = mix(vCol, iTip * 1.25, gl);
-        vFog = smoothstep(uFogNear, uFogFar, -mv.z) * (1.0 - gl * 0.6);
+        vFog = aerialF(-mv.z, p.y, uFogNear, uFogFar) * (1.0 - gl * 0.6);
       }`,
     fragmentShader: `
       ${FOG_F}
@@ -203,16 +215,18 @@ function initMaterials() {
   });
 }
 
-function farLambert(mul, cut, cap) {
+let FAR_MATS = 0;
+function farLambert(cutU, cap) {
   const m = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const id = FAR_MATS++;
   m.onBeforeCompile = sh => {
-    sh.uniforms.uCam = U.uCam; sh.uniforms.uNearCut = U.uNearCut;
+    sh.uniforms.uCam = U.uCam; sh.uniforms.uCut = cutU || { value: 0 };
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = 'varying vec3 vWP; uniform vec3 uCam; uniform float uNearCut;\n' + sh.fragmentShader
-      .replace('void main() {', 'void main() {\n' + (cut ? ' if (distance(vWP.xz, uCam.xz) < uNearCut) discard;' : ''))
-      .replace('#include <fog_fragment>', '#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, smoothstep(fogNear, fogFar * ' + mul.toFixed(2) + ', fogDepth) * ' + cap.toFixed(2) + ');\n#endif');
+    sh.fragmentShader = 'varying vec3 vWP; uniform vec3 uCam; uniform float uCut;\n' + sh.fragmentShader
+      .replace('void main() {', 'void main() {\n' + (cutU ? ' if (distance(vWP.xz, uCam.xz) < uCut) discard;' : ''))
+      .replace('#include <fog_fragment>', '#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, min(aerialF(fogDepth, vWP.y, fogNear, fogFar), ' + cap.toFixed(2) + '));\n#endif');
   };
-  m.customProgramCacheKey = () => 'far' + mul + cut + cap;
+  m.customProgramCacheKey = () => 'far' + id;
   return m;
 }
 
@@ -236,7 +250,7 @@ function initGraphics(canvas) {
   G.renderer = r;
   G.scene = new THREE.Scene();
   G.scene.fog = new THREE.Fog(0x202040, 30, 220);
-  G.camera = new THREE.PerspectiveCamera(58, 1, 0.3, 1500);
+  G.camera = new THREE.PerspectiveCamera(58, 1, 0.45, 5000);
   G.hemi = new THREE.HemisphereLight(0x8080c0, 0x202020, 0.6);
   G.sun = new THREE.DirectionalLight(0xffffff, 0.6);
   G.lantern = new THREE.PointLight(0xffb070, 0, 13, 2);
@@ -245,10 +259,11 @@ function initGraphics(canvas) {
 
   G.rt = new THREE.WebGLRenderTarget(4, 4, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true });
   G.postMat = new THREE.ShaderMaterial({
-    uniforms: { tDiffuse: { value: G.rt.texture }, tBloom: { value: null }, uBloom: { value: 0.5 }, uSat: { value: 0.38 }, uFlash: { value: 0 }, uHurt: { value: 0 }, uFade: { value: 0 }, uLevels: { value: 15 }, uFadeCol: { value: new THREE.Color(0, 0, 0) } },
+    uniforms: { tDiffuse: { value: G.rt.texture }, tBloom: { value: null }, tRays: { value: null }, uBloom: { value: 0.5 }, uRays: { value: 0 }, uRayCol: { value: new THREE.Color(1, 0.8, 0.6) },
+      uShadowTint: { value: new THREE.Color(0.78, 0.8, 1.15) }, uHighTint: { value: new THREE.Color(0.22, 0.15, 0.05) }, uSat: { value: 0.38 }, uFlash: { value: 0 }, uHurt: { value: 0 }, uFade: { value: 0 }, uLevels: { value: 15 }, uFadeCol: { value: new THREE.Color(0, 0, 0) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `
-      uniform sampler2D tDiffuse, tBloom; uniform float uFlash, uHurt, uFade, uLevels, uSat, uBloom; uniform vec3 uFadeCol;
+      uniform sampler2D tDiffuse, tBloom, tRays; uniform float uFlash, uHurt, uFade, uLevels, uSat, uBloom, uRays; uniform vec3 uFadeCol, uRayCol, uShadowTint, uHighTint;
       varying vec2 vUv;
       float b2(vec2 a){ a = floor(a); return fract(dot(a, vec2(0.5, a.y * 0.75))); }
       float bayer(vec2 a){ return b2(0.5 * a) * 0.25 + b2(a); }
@@ -261,6 +276,13 @@ function initGraphics(canvas) {
         c = mix(gr, c, mix(uSat, 1.0, keep));
         vec3 bl = texture2D(tBloom, vUv).rgb;
         c += bl * uBloom * (1.0 - c * 0.5);
+        // Lichtstrahlen von Sonne und Mond
+        c += texture2D(tRays, vUv).rgb * uRayCol * uRays;
+        // Farbgebung: kühle Schatten, warme Lichter, sanfte Schulter
+        float lum = dot(c, vec3(0.3, 0.55, 0.15));
+        c = mix(c, c * uShadowTint, 1.0 - smoothstep(0.0, 0.5, lum));
+        c += uHighTint * smoothstep(0.4, 1.0, lum) * 0.5;
+        c = c * 1.06 / (1.0 + max(c - 0.85, 0.0) * 0.6);
         c = pow(max(c, 0.0), vec3(1.08));
         c += vec3(0.01, 0.015, 0.035) * (1.0 - c);
         c += uFlash * vec3(0.32, 0.3, 0.42);
@@ -279,12 +301,24 @@ function initGraphics(canvas) {
   G.rtB1 = new THREE.WebGLRenderTarget(4, 4, rtOpt);
   G.rtB2 = new THREE.WebGLRenderTarget(4, 4, rtOpt);
   G.postMat.uniforms.tBloom.value = G.rtB1.texture;
+  G.postMat.uniforms.tRays.value = G.rtB2.texture;
   const qv = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   G.brightMat = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: G.rt.texture }, uPx: { value: new THREE.Vector2() } }, vertexShader: qv,
     fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uPx; varying vec2 vUv;
       vec3 br(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; float l = max(c.r, max(c.g, c.b)); return c * smoothstep(0.55, 0.95, l); }
       void main(){ gl_FragColor = vec4((br(vec2(0.0)) + br(uPx * vec2(1.0, 0.0)) + br(uPx * vec2(0.0, 1.0)) + br(uPx)) * 0.25, 1.0); }`,
+    depthTest: false, depthWrite: false,
+  });
+  G.rayMat = new THREE.ShaderMaterial({
+    uniforms: { tDiffuse: { value: null }, uLight: { value: new THREE.Vector2(0.5, 0.5) }, uLen: { value: 0.9 } }, vertexShader: qv,
+    fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uLight; uniform float uLen; varying vec2 vUv;
+      void main(){
+        vec2 dl = (uLight - vUv) * uLen / 36.0, uv = vUv;
+        vec3 s = vec3(0.0); float w = 1.0;
+        for (int i = 0; i < 36; i++) { s += texture2D(tDiffuse, uv).rgb * w; w *= 0.95; uv += dl; }
+        gl_FragColor = vec4(s / 15.0, 1.0);
+      }`,
     depthTest: false, depthWrite: false,
   });
   G.blurMat = new THREE.ShaderMaterial({
@@ -348,6 +382,10 @@ function renderFrame() {
     r.setRenderTarget(G.rtB2); r.render(G.postScene, G.postCam);
     G.blurMat.uniforms.tDiffuse.value = G.rtB2.texture; G.blurMat.uniforms.uDir.value.set(0, px[1]);
     r.setRenderTarget(G.rtB1); r.render(G.postScene, G.postCam);
+    if (G.postMat.uniforms.uRays.value > 0.01) {
+      q.material = G.rayMat; G.rayMat.uniforms.tDiffuse.value = G.rtB1.texture;
+      r.setRenderTarget(G.rtB2); r.render(G.postScene, G.postCam);
+    }
     q.material = G.postMat;
   }
   r.setRenderTarget(null);
@@ -360,12 +398,12 @@ function initSky() {
     uniforms: {
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
       uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunCol: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
-      uStars: { value: 1 }, uMoonSize: { value: 0.9905 }, uTime: U.uTime, uFlash: { value: 0 }, uSunVis: { value: 1 }, uMoonVis: { value: 1 }, uCloudy: { value: 0 },
+      uStars: { value: 1 }, uMoonSize: { value: 0.9905 }, uAurora: { value: 0 }, uTime: U.uTime, uFlash: { value: 0 }, uSunVis: { value: 1 }, uMoonVis: { value: 1 }, uCloudy: { value: 0 },
     },
     vertexShader: 'varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }',
     fragmentShader: `
       uniform vec3 uZenith, uHorizon, uSunDir, uSunCol, uMoonDir;
-      uniform float uStars, uTime, uFlash, uSunVis, uMoonVis, uCloudy, uMoonSize;
+      uniform float uStars, uTime, uFlash, uSunVis, uMoonVis, uCloudy, uMoonSize, uAurora;
       varying vec3 vDir;
       float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
       void main(){
@@ -392,6 +430,26 @@ function initSky() {
         col += vec3(0.92, 0.88, 1.0) * step(0.9972, s) * tw * sv;
         float band = exp(-pow(dot(d, normalize(vec3(0.35, 0.45, 0.82))), 2.0) * 26.0) * smoothstep(0.0, 0.35, h);
         col += vec3(0.26, 0.17, 0.36) * band * sv * 0.4 * (0.55 + 0.45 * hash(floor(d * 80.0)));
+        // Polarlicht: wehende Vorhänge
+        if (uAurora > 0.01 && h > 0.02) {
+          float az = atan(d.z, d.x);
+          float bnd = 0.3 + sin(az * 2.0 + uTime * 0.03) * 0.07 + sin(az * 5.0 - uTime * 0.05) * 0.03;
+          float cur = smoothstep(-0.16, 0.0, h - bnd) * smoothstep(0.3, 0.0, h - bnd);
+          float rr = 0.5 + 0.5 * sin(az * 46.0 + sin(az * 6.0 + uTime * 0.25) * 5.0 + uTime * 0.35);
+          rr = 0.25 + pow(rr, 3.0) * 0.75;
+          vec3 ac = mix(vec3(0.15, 1.0, 0.55), vec3(0.65, 0.3, 1.0), smoothstep(bnd - 0.05, bnd + 0.25, h));
+          col += ac * cur * rr * uAurora * (1.0 - uCloudy) * 0.55;
+        }
+        // Sternschnuppen
+        float sl = floor(uTime / 5.0), sp = fract(uTime / 5.0);
+        if (uStars > 0.2 && hash(vec3(sl, 7.0, 3.0)) < 0.45 && sp < 0.22) {
+          vec3 s0 = normalize(vec3(hash(vec3(sl, 1.0, 2.0)) - 0.5, 0.45 + hash(vec3(sl, 3.0, 4.0)) * 0.4, hash(vec3(sl, 5.0, 6.0)) - 0.5));
+          vec3 dir = normalize(cross(s0, vec3(0.0, 1.0, 0.0)) * (hash(vec3(sl, 9.0, 1.0)) < 0.5 ? 1.0 : -1.0) + vec3(0.0, -0.45, 0.0));
+          vec3 head = normalize(s0 + dir * sp * 1.6);
+          vec3 v = d - head; float al = dot(v, dir); float pp = length(v - dir * al);
+          float st = smoothstep(0.0028, 0.0, pp) * smoothstep(-0.16, 0.0, al) * step(al, 0.002) * (1.0 - sp / 0.22);
+          col += vec3(0.95, 0.9, 1.0) * st * uStars * (1.0 - uCloudy) * 1.4;
+        }
         col += uFlash * vec3(0.42, 0.38, 0.6) * (0.35 + 0.65 * smoothstep(-0.1, 0.5, h));
         gl_FragColor = vec4(col, 1.0);
       }`,
@@ -481,7 +539,7 @@ function initWater() {
     vertexShader: `
       ${FOG_V}
       varying vec3 vW;
-      void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mv = viewMatrix * w; gl_Position = projectionMatrix * mv; vFog = smoothstep(uFogNear, uFogFar * 2.2, -mv.z); }`,
+      void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; vec4 mv = viewMatrix * w; gl_Position = projectionMatrix * mv; vFog = aerialF(-mv.z, 0.0, uFogNear, uFogFar); }`,
     fragmentShader: `
       ${FOG_F}
       uniform vec3 uDeep, uSky, uGlintDir, uGlintCol, uLanternPos, uLanternCol; uniform float uTime, uReflOn;
@@ -509,7 +567,7 @@ function initWater() {
       }`,
     transparent: true, depthWrite: false,
   });
-  G.water = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), G.waterMat);
+  G.water = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000), G.waterMat);
   G.water.rotation.x = -Math.PI / 2;
   G.water.position.y = WATER;
   G.water.renderOrder = 2;
@@ -518,7 +576,7 @@ function initWater() {
   // Spiegelung: eine zweite Kamera unter der Wasserfläche sieht nur Ebene 1 (Himmel, Burgen, Ferne)
   G.rtRefl = new THREE.WebGLRenderTarget(4, 4, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
   G.waterMat.uniforms.tRefl.value = G.rtRefl.texture;
-  G.reflCam = new THREE.PerspectiveCamera(58, 1, 0.3, 1500);
+  G.reflCam = new THREE.PerspectiveCamera(58, 1, 0.45, 5000);
   G.reflCam.layers.set(1);
   G.reflPlane = [new THREE.Plane(new THREE.Vector3(0, 1, 0), -WATER + 0.05)];
   G.reflOn = false;
@@ -576,7 +634,7 @@ function wrapMat(opts) {
         gl_PointSize = clamp(uSize * uScale / -mv.z, 1.0, uMode > 0.5 && uMode < 1.5 ? 4.0 : 3.0) * show * blink;
         vCol = uMode > 0.5 && uMode < 1.5 ? uColor : uColor * (0.45 + 0.55 * uLight);
         vA = show * blink;
-        vFog = smoothstep(uFogNear, uFogFar, -mv.z);
+        vFog = aerialF(-mv.z, p.y, uFogNear, uFogFar);
       }`,
     fragmentShader: `
       ${FOG_F}
@@ -863,6 +921,10 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   sm.uMoonVis.value = Math.max(1 - smooth(0.02, 0.3, ATM.sunDir.y), md.mond);
   sm.uMoonSize.value = lerp(0.9905, 0.972, md.mond);
   sm.uStars.value = ATM.night * (1 - fogE * 0.8);
+  let coldNow = 0; for (let i = 0; i < NB; i++) coldNow += bw[i] * BIOMES[i].cold;
+  const aur = ATM.night * clamp01(coldNow * 1.3 + md.mond * 0.9 + md.feen * 0.3 + 0.45 * smooth(0.2, 1, Math.sin(U.uTime.value * 0.0035 + World.seed % 7))) * (1 - cloudE * 0.85) * (1 - md.dunkel);
+  ATM.aur = lerp(ATM.aur || 0, aur, Math.min(1, dt * 0.3));
+  sm.uAurora.value = ATM.aur;
   sm.uCloudy.value = clamp01(cloudE * 0.7 + fogE * 0.3 + stormE * 0.2) * (1 - md.mond * 0.7);
   sm.uFlash.value = G.flash;
 
@@ -900,6 +962,8 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   if (cave) { G.scene.fog.color.copy(cave.fog); near = 6; far = cave.far; }
   G.scene.fog.near = near; G.scene.fog.far = far;
   U.uNearCut.value = (vs.chunks - 0.6) * CHUNK;
+  U.uFarCut.value = vs.farR - 140;
+  if (Math.abs(G.camera.far - (vs.ultraR + 700)) > 1) { G.camera.far = vs.ultraR + 700; G.camera.updateProjectionMatrix(); }
   // Bodennebel
   const mm = G.mistMats;
   G.mistBase += (player.y - 0.7 - G.mistBase) * Math.min(1, dt * 0.25);
@@ -978,6 +1042,28 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
     }
   }
   updateBolts(dt);
+
+  // Lichtstrahlen: Richtung der stärksten Lichtquelle auf dem Bildschirm
+  const pm = G.postMat.uniforms;
+  const useMoon = !(ATM.sunDir.y > -0.03 && md.mond < 0.5);
+  const L = useMoon ? ATM.moonDir : ATM.sunDir;
+  G.camera.getWorldDirection(_s);
+  const face = smooth(0.25, 0.85, _s.dot(L));
+  _v.copy(G.camera.position).addScaledVector(L, 900).project(G.camera);
+  G.rayMat.uniforms.uLight.value.set(_v.x * 0.5 + 0.5, _v.y * 0.5 + 0.5);
+  const low = 1 - smooth(0.05, 0.5, L.y);
+  let rs = useMoon ? sm.uMoonVis.value * (0.45 + md.mond * 0.6) : sunUp * (0.35 + low * 0.55 + md.hell * 0.4);
+  rs *= face * (1 - stormE * 0.6) * (1 - clamp01(fogE - 0.5) * 0.8) * (cave ? 0 : 1) * (L.y > -0.05 ? 1 : 0);
+  ATM.rays = lerp(ATM.rays || 0, rs, Math.min(1, dt * 3));
+  pm.uRays.value = ATM.rays;
+  pm.uRayCol.value.copy(useMoon ? _c1.setRGB(0.7, 0.8, 1.0) : _c1.copy(ATM.sunC).lerp(_c2.setRGB(1, 0.9, 0.75), 0.4));
+  // Farbstimmung je nach Ort
+  const st = pm.uShadowTint.value, ht = pm.uHighTint.value;
+  st.setRGB(0.8, 0.82, 1.12); ht.setRGB(0.2, 0.13, 0.04);
+  st.lerp(_c1.setRGB(1.05, 0.72, 0.75), md.dunkel); ht.lerp(_c1.setRGB(0.25, 0.03, 0.0), md.dunkel);
+  st.lerp(_c1.setRGB(0.72, 0.86, 1.3), Math.max(md.mond, ATM.night * 0.5)); ht.lerp(_c1.setRGB(0.08, 0.12, 0.25), md.mond);
+  st.lerp(_c1.setRGB(1.05, 0.78, 1.15), md.hell); ht.lerp(_c1.setRGB(0.32, 0.12, 0.22), md.hell);
+  if (cave) { st.copy(cave.amb).multiplyScalar(1.4).addScalar(0.3); ht.setRGB(0.1, 0.06, 0.12); }
 }
 
 // ---------- Gelände in Stücken ----------
@@ -1036,7 +1122,7 @@ function buildChunk(ci, cj) {
   const r = mulberry32(hash2(ci, cj, World.seed + 99));
   const mg = new Merger(), ps = new PointSet(), psN = new PointSet();
   const chunk = { ci, cj, H, WW, group, segs };
-  const psF = new PointSet();
+  const psF = new PointSet(), treeXZ = [];
   const tries = 44;
   const bigL = bigNear(x0 + CHUNK / 2, z0 + CHUNK / 2, 330);
   for (let k = 0; k < tries; k++) {
@@ -1049,11 +1135,12 @@ function buildChunk(ci, cj) {
     const pOpen = td * (0.15 + patch * patch * 1.6) * 0.5 * 18 / tries;
     if (r() > Math.max(pOpen, fo * 0.62)) continue;
     const h = chunkHeight(chunk, x, z);
-    if (h < 0.5) continue;
+    if (h < 0.5 || h > 46 + r() * 26) continue;
     if (nearSite(x, z, 5)) continue;
     if (segs.length && pathDist(x, z, segs) < 4.2) continue;
     if (bigL && Math.hypot(x - bigL.x, z - bigL.z) < bigL.R + 10) continue;
     const inForest = fo > 0.35;
+    treeXZ.push(x, z, inForest ? 3.4 : 2.8);
     BLOB_MUL = inForest ? 0.5 : 1;
     const tps = inForest ? psF : ps;
     const b = sampleBiome(w, r());
@@ -1065,6 +1152,19 @@ function buildChunk(ci, cj) {
     } else buildTree(dead ? DEAD_TREE : inForest && B0.tree !== 'knorrig' && r() < 0.3 ? Object.assign({}, B0, { canopyC: B0.canopyC.map(c => c.map(v => v * 0.72)) }) : B0, x, h, z, r, mg, tps);
   }
   BLOB_MUL = 1;
+  // weiche Schatten unter den Baumkronen
+  for (let t = 0; t < treeXZ.length; t += 3) {
+    const tx = treeXZ[t], tz = treeXZ[t + 1], rad = treeXZ[t + 2];
+    const i0 = Math.max(0, Math.floor((tx - rad - x0) / S)), i1 = Math.min(N - 1, Math.floor((tx + rad - x0) / S));
+    const j0 = Math.max(0, Math.floor((tz - rad - z0) / S)), j1 = Math.min(N - 1, Math.floor((tz + rad - z0) / S));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const d = Math.hypot(x0 + (i + 0.5) * S - tx, z0 + (j + 0.5) * S - tz);
+      const f = 1 - 0.42 * smooth(rad + S * 0.7, rad * 0.3, d);
+      const b = (j * N + i) * 18;
+      for (let q = 0; q < 18; q++) col[b + q] *= f;
+    }
+  }
+  if (treeXZ.length) g.attributes.color.needsUpdate = true;
   // Wegweiser: Laternenpfähle und Wegsteine am Pfad
   const wps = new PointSet();
   if (segs.length && r() < 0.5) {
@@ -1095,6 +1195,20 @@ function buildChunk(ci, cj) {
     const s = 0.6 + r() * r() * 3;
     mg.add('ico', M(x, h + s * 0.2, z, s * (1 + r() * 0.6), s * (0.6 + r() * 0.5), s, r(), r() * 6, r()), B.rockC, 0.18, r);
     if (r() < 0.4) mg.add('ico', M(x + s, h, z + s * 0.4, s * 0.5, s * 0.4, s * 0.5, r(), r() * 6, r()), B.rockC, 0.2, r);
+  }
+  // Gebirge: Felsbrocken, Zacken und verschneite Blöcke
+  const hMid = H[(N >> 1) * V + (N >> 1)];
+  if (hMid > 22) {
+    const nR = Math.round(4 + smooth(22, 90, hMid) * 12);
+    for (let k = 0; k < nR; k++) {
+      const x = x0 + r() * CHUNK, z = z0 + r() * CHUNK, h = chunkHeight(chunk, x, z);
+      if (nearSite(x, z, 4)) continue;
+      const w = chunkWeights(chunk, x, z, _tw), B = BIOMES[sampleBiome(w, r())];
+      const sc = smooth(40, 110, h), c = h > 60 + r() * 30 && r() < 0.6 ? [0.86, 0.88, 0.95] : B.rockC.map(v => v * (0.8 + r() * 0.3));
+      const sz = 0.9 + r() * r() * (2 + sc * 3);
+      if (r() < 0.12 + sc * 0.18) mg.add('cone6', M(x, h - sz * 0.4, z, sz * 0.75, sz * (1.6 + r() * 1.8), sz * 0.65, (r() - 0.5) * 0.3, r() * 6, (r() - 0.5) * 0.3), c, 0.2, r);
+      else mg.add('ico', M(x, h + sz * 0.15, z, sz * (1 + r() * 0.7), sz * (0.5 + r() * 0.6), sz, r(), r() * 6, r()), c, 0.2, r);
+    }
   }
   chunk.shrines = [];
   const gps = new PointSet();
@@ -1253,7 +1367,7 @@ function buildGrass(ch) {
     const patch = World.nD.noise(x * 0.03, z * 0.03) * 0.5 + 0.5;
     if (r() > dens * (0.35 + patch * 0.9)) continue;
     const h = chunkHeight(ch, x, z);
-    if (h < 0.15) continue;
+    if (h < 0.15 || h > 40 + r() * 14) continue;
     if (nearCampfire(x, z)) continue;
     if (ch.segs.length && pathDist(x, z, ch.segs) < (r() < 0.8 ? 1.7 : 0.8)) continue;
     if ((k & 3) === 0 && r() < forestAt(x, z) * 0.55) continue;
@@ -1351,14 +1465,18 @@ function clearChunks() {
 const FAR = 192, FAR_RES = 12;
 G.far = new Map();
 const _fw = new Float32Array(NB);
-function buildFarTile(fi, fj) {
-  const N = FAR_RES, S = FAR / N, V = N + 1, x0 = fi * FAR, z0 = fj * FAR;
+const FAR_LV = [
+  { size: 192, res: 12, drop: 1.1, ultra: false },
+  { size: 640, res: 14, drop: 3.5, ultra: true },
+];
+function buildFarTile(fi, fj, lv = FAR_LV[0]) {
+  const N = lv.res, FAR = lv.size, S = FAR / N, V = N + 1, x0 = fi * FAR, z0 = fj * FAR;
   const H = new Float32Array(V * V), WW = new Float32Array(V * V * NB);
   for (let j = 0; j < V; j++) for (let i = 0; i < V; i++) {
     const x = x0 + i * S, z = z0 + j * S;
     const w = weightsAt(x, z, _fw);
     WW.set(w, (j * V + i) * NB);
-    H[j * V + i] = heightAt(x, z, w) - 1.1;
+    H[j * V + i] = heightAt(x, z, w) - lv.drop;
   }
   const pos = new Float32Array(N * N * 18), col = new Float32Array(N * N * 18);
   const wavg = new Float32Array(NB);
@@ -1371,7 +1489,15 @@ function buildFarTile(fi, fj) {
     const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const slope = 1 - Math.abs(ny) / Math.sqrt(nx * nx + ny * ny + nz * nz);
     for (let b = 0; b < NB; b++) wavg[b] = (WW[ia * NB + b] + WW[ib * NB + b] + WW[ic * NB + b]) / 3;
-    groundColor((ax + bx + cx) / 3, (az + bz + cz) / 3, (ay + by + cy) / 3 + 1.1, slope * 2.2, wavg, _tc);
+    const mx = (ax + bx + cx) / 3, mz = (az + bz + cz) / 3, my = (ay + by + cy) / 3 + lv.drop;
+    groundColor(mx, mz, my, slope * 2.2, wavg, _tc);
+    {
+      // Wälder als dunkle Flächen bis zum Horizont
+      let td = 0; for (let b = 0; b < NB; b++) td += wavg[b] * BIOMES[b].trees;
+      const fo = Math.max(forestAt(mx, mz) * Math.min(1, td * 1.5 + 0.1), td * 0.15) * (1 - smooth(40, 70, my)) * (my > 0.5 ? 1 : 0);
+      const cc = BIOMES[dominantBiome(wavg)].canopyC[1];
+      for (let q = 0; q < 3; q++) _tc[q] = lerp(_tc[q], cc[q] * 0.75, fo * 0.8);
+    }
     for (let k = 0; k < 3; k++) col.set(_tc, o + k * 3);
     o += 9;
   };
@@ -1381,17 +1507,17 @@ function buildFarTile(fi, fj) {
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.computeVertexNormals(); g.computeBoundingSphere();
   const grp = new THREE.Group();
-  grp.add(new THREE.Mesh(g, MAT.farTerrain));
+  grp.add(new THREE.Mesh(g, lv.ultra ? MAT.ultraTerrain : MAT.farTerrain));
   // Baumkronen: Wälder bilden dunkle Bänder bis zum Horizont
   const r = mulberry32(hash2(fi, fj, World.seed + 777)), ps = new PointSet();
-  for (let k = 0; k < 260; k++) {
+  for (let k = 0; k < (lv.ultra ? 0 : 420); k++) {
     const x = x0 + r() * FAR, z = z0 + r() * FAR;
     const w = weightsAt(x, z, _fw);
     let td = 0; for (let b = 0; b < NB; b++) td += w[b] * BIOMES[b].trees;
-    const fo = Math.max(forestAt(x, z) * Math.min(1, td * 1.5 + 0.1), td * 0.12);
+    const fo = Math.max(forestAt(x, z) * Math.min(1, td * 1.5 + 0.1), td * 0.08);
     if (r() > fo) continue;
     const h = heightAt(x, z, w);
-    if (h < 0.6) continue;
+    if (h < 0.6 || h > 45 + r() * 25) continue;
     const B = BIOMES[sampleBiome(w, r())];
     const c = B.canopyC[r() < 0.6 ? 0 : 1];
     const tall = B.tree === 'tanne' || B.tree === 'schneetanne' ? 5 : 3.2;
@@ -1404,23 +1530,28 @@ function buildFarTile(fi, fj) {
   return grp;
 }
 function updateFar(px, pz, t0, budgetMs) {
-  const R = VIEW_SETTINGS[G.view].farR;
-  const fi0 = Math.floor((px - R) / FAR), fi1 = Math.floor((px + R) / FAR), fj0 = Math.floor((pz - R) / FAR), fj1 = Math.floor((pz + R) / FAR);
+  const vs = VIEW_SETTINGS[G.view];
   const need = [];
-  for (let i = fi0; i <= fi1; i++) for (let j = fj0; j <= fj1; j++) {
-    const d = Math.hypot((i + 0.5) * FAR - px, (j + 0.5) * FAR - pz);
-    if (d > R + FAR * 0.5) continue;
-    const key = i + ',' + j;
-    if (!G.far.has(key)) need.push([d, i, j, key]);
+  for (let l = 0; l < FAR_LV.length; l++) {
+    const lv = FAR_LV[l], F = lv.size, R = l ? vs.ultraR : vs.farR;
+    const fi0 = Math.floor((px - R) / F), fi1 = Math.floor((px + R) / F), fj0 = Math.floor((pz - R) / F), fj1 = Math.floor((pz + R) / F);
+    for (let i = fi0; i <= fi1; i++) for (let j = fj0; j <= fj1; j++) {
+      const d = Math.hypot((i + 0.5) * F - px, (j + 0.5) * F - pz);
+      if (d > R + F * 0.5 || (l && d < vs.farR - F)) continue;
+      const key = l + ':' + i + ',' + j;
+      // ferne Stufe erst laden, wenn die nahe Ferne steht
+      if (!G.far.has(key)) need.push([d + l * 600, i, j, key, lv]);
+    }
   }
   need.sort((a, b) => a[0] - b[0]);
-  for (const [, i, j, key] of need) {
+  for (const [, i, j, key, lv] of need) {
     if (performance.now() - t0 > budgetMs) break;
-    G.far.set(key, buildFarTile(i, j));
+    G.far.set(key, buildFarTile(i, j, lv));
   }
   for (const [key, ft] of G.far) {
-    const [i, j] = key.split(',').map(Number);
-    if (Math.hypot((i + 0.5) * FAR - px, (j + 0.5) * FAR - pz) > R + FAR * 1.6) { disposeObj(ft); G.far.delete(key); }
+    const l = +key[0], [i, j] = key.slice(2).split(',').map(Number), F = FAR_LV[l].size;
+    const d = Math.hypot((i + 0.5) * F - px, (j + 0.5) * F - pz);
+    if (d > (l ? vs.ultraR : vs.farR) + F * 1.6 || (l && d < vs.farR - F * 2.2)) { disposeObj(ft); G.far.delete(key); }
   }
 }
 
