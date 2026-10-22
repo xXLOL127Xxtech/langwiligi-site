@@ -62,6 +62,8 @@ function startWorld(state) {
   impostors.clear();
   for (const e of enemies) e.remove();
   for (const o of orbs) o.remove();
+  for (const f of fireballs) f.remove();
+  fireballs.length = 0;
   for (const r of rings) r.remove();
   for (const p of pickups) p.remove();
   enemies = []; orbs = []; rings = []; pickups = [];
@@ -179,28 +181,66 @@ function attack() {
   if (P.broom) { if (!P.broomHint) { P.broomHint = true; toast('Zum Kämpfen erst vom Besen absteigen (B).'); } return; }
   P.atkT = 0.34; P.atkCd = 0.44; P.hitDone = false;
   // sanft zum nächsten Gegner drehen
-  let best = null, bd = 5.5;
+  let best = null, bd = 14;
   for (const e of enemies) { if (e.dead) continue; const d = Math.hypot(e.x - P.x, e.z - P.z); if (d < bd) { bd = d; best = e; } }
   if (best) P.face = Math.atan2(best.x - P.x, best.z - P.z);
   Ton.sfx('swing');
 }
+// Feuerball: fliegt auf den nächsten Gegner vor der Figur und lenkt leicht nach
+const fireballs = [];
+class Fireball {
+  constructor(x, y, z, face, target, dmg, crit) {
+    this.x = x; this.y = y; this.z = z; this.dir = face; this.target = target; this.dmg = dmg; this.crit = crit;
+    this.life = 2.2; this.gone = false; this.trailT = 0;
+    this.o = new THREE.Group();
+    this.o.add(makeGlow(0xff7a20, 2.4, 0.9), makeGlow(0xffe08a, 1.0, 1));
+    G.scene.add(this.o);
+  }
+  update(dt) {
+    this.life -= dt;
+    const e = this.target;
+    let ty = this.y;
+    if (e && !e.dead && !e.gone) {
+      const want = Math.atan2(e.x - this.x, e.z - this.z);
+      let da = want - this.dir; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
+      this.dir += clamp(da, -dt * 7, dt * 7);
+      ty = e.y + 1.1 * e.scale;
+    } else this.target = null;
+    const sp = 24;
+    this.x += Math.sin(this.dir) * sp * dt; this.z += Math.cos(this.dir) * sp * dt;
+    this.y += (ty - this.y) * Math.min(1, dt * 6);
+    this.o.position.set(this.x, this.y, this.z);
+    this.o.children[0].material.opacity = 0.75 + Math.random() * 0.25;
+    this.trailT -= dt;
+    if (this.trailT <= 0) { this.trailT = 0.03; burst(this.x, this.y, this.z, 1, [1, 0.5 + Math.random() * 0.3, 0.15], 0.8, 0.28, 0.45, -0.5, 0.1); }
+    let hit = null;
+    for (const en of enemies) {
+      if (en.dead || en.gone) continue;
+      if (Math.hypot(en.x - this.x, en.z - this.z) < en.radius + 0.55 && Math.abs(en.y + 1 * en.scale - this.y) < 2.4 * en.scale + 0.8) { hit = en; break; }
+    }
+    if (hit) {
+      hit.hit(this.dmg, P.x, P.z, ctx);
+      burst(this.x, this.y, this.z, this.crit ? 26 : 16, [1, 0.55, 0.15], 6, 0.3, 0.6, 2);
+      Ton.sfx('hit'); hitStop = 0.05; cam.shake = Math.max(cam.shake, 0.15);
+      this.life = 0;
+    } else if (this.y < groundY(this.x, this.z) + 0.1) { burst(this.x, this.y, this.z, 8, [1, 0.5, 0.2], 4, 0.25, 0.5); this.life = 0; }
+    if (this.life <= 0) this.remove();
+  }
+  remove() { if (!this.gone) { this.gone = true; this.o.children.forEach(c => c.material.dispose()); if (this.o.parent) this.o.parent.remove(this.o); } }
+}
 function doHits() {
-  const W = WEAPONS[S.weapon];
-  const reach = W.len + 1.5;
-  let any = false;
+  let best = null, bd = 24;
   for (const e of enemies) {
     if (e.dead) continue;
     const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz);
-    if (d > reach + e.radius) continue;
     let da = Math.atan2(dx, dz) - P.face; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
-    if (Math.abs(da) > 1.15 && d > 1.2) continue;
-    const crit = Math.random() < 0.12;
-    const dmg = playerDmg() * (0.88 + Math.random() * 0.24) * (crit ? 1.8 : 1);
-    e.hit(dmg, P.x, P.z, ctx);
-    any = true;
-    if (crit) burst(e.x, e.y + 1.4 * e.scale, e.z, 14, [1, 0.95, 0.7], 7, 0.25, 0.5);
+    if (Math.abs(da) > 1.3 && d > 2) continue;
+    if (d < bd) { bd = d; best = e; }
   }
-  if (any) { Ton.sfx('hit'); hitStop = 0.05; cam.shake = Math.max(cam.shake, 0.15); }
+  const crit = Math.random() < 0.12;
+  const dmg = playerDmg() * (0.88 + Math.random() * 0.24) * (crit ? 1.8 : 1);
+  fireballs.push(new Fireball(P.x + Math.sin(P.face) * 0.8, P.y + 1.3, P.z + Math.cos(P.face) * 0.8, P.face, best, dmg, crit));
+  burst(P.x + Math.sin(P.face) * 0.8, P.y + 1.3, P.z + Math.cos(P.face) * 0.8, 8, [1, 0.6, 0.2], 3, 0.25, 0.4);
 }
 function drinkPotion() {
   if (P.dead || mode !== 'play') return;
@@ -687,6 +727,8 @@ function updateEnemies(dt) {
     if (!e.gone) e.update(dt, P, ctx);
   }
   enemies = enemies.filter(e => !e.gone);
+  for (const f of fireballs) f.update(dt);
+  for (let i = fireballs.length - 1; i >= 0; i--) if (fireballs[i].gone) fireballs.splice(i, 1);
   for (const o of orbs) o.update(dt, P, ctx);
   orbs = orbs.filter(o => !o.gone);
   for (const r of rings) r.update(dt);

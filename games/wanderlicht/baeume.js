@@ -295,14 +295,14 @@ function pickSpecies(bi, r) {
 
 // ---------- Riesenwälder: Gebiete, in denen fast nur gewaltige Bäume stehen ----------
 function giantZone(x, z) {
-  return smooth(0.02, 0.3, fbm(World.nD, x * 0.0021 + 1300, z * 0.0021 - 700, 3));
+  return smooth(-0.12, 0.2, fbm(World.nD, x * 0.0021 + 1300, z * 0.0021 - 700, 3));
 }
 
 // ---------- Wälder: Planung je Geländestück ----------
 function planTrees(ch, r, segs, bigL) {
   const x0 = ch.ci * CHUNK, z0 = ch.cj * CHUNK;
   ch.trees = []; ch.col = []; ch.under = null;
-  const tries = 135;
+  const tries = 175;
   const placed = [];
   const w = new Float32Array(NB);
   for (let k = 0; k < tries; k++) {
@@ -313,7 +313,7 @@ function planTrees(ch, r, segs, bigL) {
     const fo = forestAt(x, z) * Math.min(1, td * 1.5 + 0.1);
     const pOpen = td * (0.12 + patch * patch * 1.3) * 0.2;
     const gz = giantZone(x, z) * smooth(0.22, 0.55, fo);
-    if (r() > Math.max(pOpen, Math.max(fo * 0.58, gz * 0.7) + 0.03 * td)) continue;
+    if (r() > Math.max(pOpen, Math.max(fo * 0.72, gz * 0.9) + 0.03 * td)) continue;
     const h = chunkHeight(ch, x, z);
     if (h < 0.5 || h > 46 + r() * 26) continue;
     if (nearSite(x, z, 5)) continue;
