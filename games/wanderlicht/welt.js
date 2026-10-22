@@ -287,10 +287,11 @@ function makeSite(ci, cj, key) {
   else return null;
   if (type === 'burg' && distSpawn < 420) type = 'ritter';
   // Platz für die grossen Wahrzeichen lassen
-  const L = bigNear(cx, cz, 330);
+  const L = bigNear(cx, cz, 470);
   if (L && !spawnCell) return null;
 
-  const M = 64;
+  const radius0 = 52 + r() * 20, gateAng0 = r() * Math.PI * 2;
+  const M = type === 'burg' ? radius0 + 39 : 64;
   let x = ox + M + r() * (CELL - 2 * M), z = oz + M + r() * (CELL - 2 * M);
   if (spawnCell) {
     x = clamp(World.spawnX + 14, ox + M, ox + CELL - M);
@@ -316,13 +317,13 @@ function makeSite(ci, cj, key) {
     s.name = pick(r, VIEW_NAMES);
     s.discR = 10;
   } else if (type === 'burg') {
-    s.radius = 18 + r() * 12;
-    s.flatR = s.radius + 7;
+    s.radius = radius0; s.gateAng = gateAng0;
+    s.flatR = s.radius + 7; s.flatF = 28;
     s.baseH = Math.max(nat, 1.6);
     s.name = pick(r, CASTLE_KIND) + ' ' + pick(r, NAME_A) + pick(r, NAME_B);
     const c = r();
     s.content = c < 0.36 ? 'boss' : c < 0.72 ? 'wachen' : 'leer';
-    s.discR = s.radius + 16;
+    s.discR = s.radius + 30;
   } else if (type === 'wunder') {
     let wk;
     if (spawnCell) wk = 'steinkreis';
@@ -447,11 +448,11 @@ function bigAt(bi, bj) {
     const def = LANDMARKS[type];
     const nat = naturalHeight(x, z);
     L = { key: 'L' + key, type: 'wahrzeichen', kind: type, mood: def.mood, x, z, seed: hash2(bi, bj, World.seed + 31),
-      name: pick(r, def.names), sub: def.sub, R: type === 'dunkelfeste' ? 46 : type === 'koloss' ? 30 : 52, F: type === 'dunkelfeste' ? 22 : 34 };
+      name: pick(r, def.names), sub: def.sub, R: type === 'dunkelfeste' ? 92 : type === 'koloss' ? 30 : type === 'mondschloss' ? 100 : 104, F: type === 'dunkelfeste' ? 40 : type === 'koloss' ? 34 : 54 };
     L.baseH = type === 'dunkelfeste' ? Math.max(nat, 4) + 14 : Math.max(nat, 2) + 3;
     L.lakeAng = r() * Math.PI * 2;
     L.lake = type !== 'dunkelfeste' && type !== 'koloss';
-    L.lakeA = type === 'mondschloss' ? 70 : 58; L.lakeB = type === 'mondschloss' ? 44 : 36;
+    L.lakeA = type === 'mondschloss' ? 120 : 104; L.lakeB = type === 'mondschloss' ? 80 : 66;
     L.lx = x + Math.cos(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6); L.lz = z + Math.sin(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6);
     // Damm mit Laternen über den See bis zum Tor
     L.lakeD = L.R + L.lakeB * 0.9 + 6; L.dam = L.lake ? L.lakeD + L.lakeB * 1.5 : 0;
@@ -483,7 +484,7 @@ function bigsNear(x, z, rad) {
   return out;
 }
 function applyBig(x, z, h) {
-  const i0 = Math.floor((x - 230) / BIG), i1 = Math.floor((x + 230) / BIG), j0 = Math.floor((z - 230) / BIG), j1 = Math.floor((z + 230) / BIG);
+  const i0 = Math.floor((x - 460) / BIG), i1 = Math.floor((x + 460) / BIG), j0 = Math.floor((z - 460) / BIG), j1 = Math.floor((z + 460) / BIG);
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) h = applyOneBig(x, z, h, bigAt(i, j));
   // der Startort darf sein Schloss auch ausserhalb seines Feldes haben
   const sb = bigAt(Math.floor(World.spawnX / BIG), Math.floor(World.spawnZ / BIG));
@@ -493,7 +494,7 @@ function applyBig(x, z, h) {
 function applyOneBig(x, z, h, L) {
   if (!L) return h;
   const dx = x - L.x, dz = z - L.z;
-  if (Math.abs(dx) > 230 || Math.abs(dz) > 230) return h;
+  if (Math.abs(dx) > 460 || Math.abs(dz) > 460) return h;
   const d = Math.sqrt(dx * dx + dz * dz);
   if (L.lake) {
     const lx = x - L.lx, lz = z - L.lz, ca = Math.cos(L.lakeAng), sa = Math.sin(L.lakeAng);

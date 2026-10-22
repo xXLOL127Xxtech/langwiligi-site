@@ -848,7 +848,7 @@ class Enemy {
       let da = ta - this.face; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
       this.face += da * Math.min(1, dt * 5);
     }
-    const gy = groundY(this.x, this.z);
+    const gy = walkY(this.x, this.z, this.y);
     this.y = Math.max(gy, WATER - 0.6);
     const tm = U.uTime.value;
     const bob = D.hover ? D.hover + Math.sin(tm * 2 + this.homeX) * 0.2 : (moving ? Math.abs(Math.sin(tm * 9)) * 0.08 : 0);

@@ -37,19 +37,20 @@ function tube(mg, pts, rads, col, seg = 8, mt = MT.bark, col2 = null, rnd = Math
       const dx = R.u[0] * ca + R.v[0] * sa, dy = R.u[1] * ca + R.v[1] * sa, dz = R.u[2] * ca + R.v[2] * sa;
       let nx = dx + R.t[0] * R.sl, ny = dy + R.t[1] * R.sl, nz = dz + R.t[2] * R.sl;
       const nl = Math.hypot(nx, ny, nz) || 1;
-      row.push({ p: [R.p[0] + dx * R.r, R.p[1] + dy * R.r, R.p[2] + dz * R.r], n: [nx / nl, ny / nl, nz / nl], c: [c[0] * f, c[1] * f, c[2] * f] });
+      row.push({ p: [R.p[0] + dx * R.r, R.p[1] + dy * R.r, R.p[2] + dz * R.r], n: [nx / nl, ny / nl, nz / nl], c: [c[0] * f, c[1] * f, c[2] * f], u: j / seg * 6.2832 * Math.max(0.15, R.r) });
     }
     verts.push(row);
   }
   const tr = (A, B, C) => {
     const ex = B.p[0] - A.p[0], ey = B.p[1] - A.p[1], ez = B.p[2] - A.p[2], fx = C.p[0] - A.p[0], fy = C.p[1] - A.p[1], fz = C.p[2] - A.p[2];
     const cx = ey * fz - ez * fy, cy = ez * fx - ex * fz, cz = ex * fy - ey * fx;
-    if (cx * A.n[0] + cy * A.n[1] + cz * A.n[2] < 0) mg.tri(A.p, C.p, B.p, A.n, C.n, B.n, A.c, C.c, B.c, mt);
-    else mg.tri(A.p, B.p, C.p, A.n, B.n, C.n, A.c, B.c, C.c, mt);
+    if (cx * A.n[0] + cy * A.n[1] + cz * A.n[2] < 0) mg.tri(A.p, C.p, B.p, A.n, C.n, B.n, A.c, C.c, B.c, mt, A.u, C.u, B.u);
+    else mg.tri(A.p, B.p, C.p, A.n, B.n, C.n, A.c, B.c, C.c, mt, A.u, B.u, C.u);
   };
   for (let i = 0; i < n - 1; i++) for (let j = 0; j < seg; j++) {
     const j2 = (j + 1) % seg;
-    const a = verts[i][j], b = verts[i][j2], c = verts[i + 1][j], d = verts[i + 1][j2];
+    const wrap0 = j2 === 0 ? 6.2832 * Math.max(0.15, ring[i].r) : 0, wrap1 = j2 === 0 ? 6.2832 * Math.max(0.15, ring[i + 1].r) : 0;
+    const a = verts[i][j], b = j2 === 0 ? { ...verts[i][j2], u: verts[i][j2].u + wrap0 } : verts[i][j2], c = verts[i + 1][j], d = j2 === 0 ? { ...verts[i + 1][j2], u: verts[i + 1][j2].u + wrap1 } : verts[i + 1][j2];
     tr(a, c, b); tr(b, c, d);
   }
 }
@@ -273,7 +274,6 @@ function buildTree(B, x, y, z, r, mg, ls) {
   const spec = { B, sp, x, y, z, s: 0.8 + r() * 0.5, seed: Math.floor(r() * 1e9), giant: false, leafy: true };
   makeTree(spec, mg, ls, true);
 }
-function twig() { /* alt */ }
 
 // ---------- Baumwahl nach Biom ----------
 const TREE_TABLE = [
@@ -346,23 +346,21 @@ function planTrees(ch, r, segs, bigL) {
 function buildTreeLayer(ch, near) {
   const grp = new THREE.Group();
   if (!ch.trees.length) return grp;
-  const mg = new Merger(), leaves = [];
-  const fmg = new Merger();
-  for (const spec of ch.trees) {
-    const ls = new LeafSet(spec.neon);
-    ls.noCards = !near;
-    makeTree(spec, mg, ls, near);
-    if (near) leaves.push(ls);
-    ls.addFarTo(fmg);
+  const mg = new Merger(), fmg = new Merger();
+  const ls = new LeafSet(false), lsN = new LeafSet(true);
+  ls.noCards = lsN.noCards = !near;
+  for (const spec of ch.trees) makeTree(spec, mg, spec.neon ? lsN : ls, near);
+  ls.addFarTo(fmg); lsN.addFarTo(fmg);
+  if (!mg.empty) for (const g of mg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.flat); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
+  if (!fmg.empty) {
+    for (const g of fmg.buildBuckets(64)) {
+      // Laubkugeln: in der Ferne sichtbar, in der Nähe nur als Schattenwerfer
+      const m = new THREE.Mesh(g, near ? MAT.shadowOnly : MAT.leafFar);
+      m.castShadow = true; m.receiveShadow = !near;
+      grp.add(m);
+    }
   }
-  if (!mg.empty) {
-    for (const g of mg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.flat); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
-  }
-  if (near) {
-    for (const ls of leaves) { const lo = leafObj(ls); grp.add(lo); }
-  } else if (!fmg.empty) {
-    for (const g of fmg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.leafFar); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
-  }
+  if (near) { if (!ls.empty) grp.add(leafObj(ls)); if (!lsN.empty) grp.add(leafObj(lsN)); }
   return grp;
 }
 
@@ -371,12 +369,13 @@ const FLOWER_COLS = [[1, 0.86, 0.95], [1, 0.95, 0.55], [0.82, 0.82, 1], [1, 0.62
 function planUnderwood(ch, r, segs) {
   const x0 = ch.ci * CHUNK, z0 = ch.cj * CHUNK;
   const items = [], w = new Float32Array(NB);
+  const castles = castlesNear(x0 + CHUNK / 2, z0 + CHUNK / 2);
   const tries = Math.round(130 * QUALITY[G.quality].leaf);
   for (let k = 0; k < tries; k++) {
     const x = x0 + r() * CHUNK, z = z0 + r() * CHUNK;
     const h = chunkHeight(ch, x, z);
     if (h < 0.6 || h > 52) continue;
-    if (nearSite(x, z, 2)) continue;
+    if (nearSite(x, z, 2) || inCastle(castles, x, z)) continue;
     if (segs.length && pathDist(x, z, segs) < 2.2) continue;
     chunkWeights(ch, x, z, w);
     const bi = sampleBiome(w, r()), B = BIOMES[bi];
@@ -438,9 +437,8 @@ function buildUnderwood(ch) {
         for (let q = 0; q < n; q++) {
           const a = r() * 6.28, d = Math.sqrt(r()) * 1.5, fx = x + Math.cos(a) * d, fz = z + Math.sin(a) * d, fy = chunkHeight(ch, fx, fz);
           const hh = 0.28 + r() * 0.34, c = r() < 0.8 ? pal : alt;
-          mg.add('cyl6', M(fx, fy - 0.02, fz, 0.012, hh, 0.012), [0.2, 0.4, 0.14], 0, r, MT.gen);
-          mg.add('sph', M(fx, fy + hh, fz, 0.075, 0.035, 0.075, (r() - 0.5) * 0.5, 0, (r() - 0.5) * 0.5), c, 0.1, r, MT.gen);
-          mg.add('sph', M(fx, fy + hh + 0.012, fz, 0.03, 0.025, 0.03), [1, 0.85, 0.3], 0, r, MT.gen);
+          mg.add('cone4', M(fx, fy - 0.02, fz, 0.012, hh, 0.012), [0.2, 0.4, 0.14], 0, r, MT.gen);
+          mg.add('oct', M(fx, fy + hh, fz, 0.07, 0.03, 0.07, (r() - 0.5) * 0.5, r() * 3, (r() - 0.5) * 0.5), c, 0.1, r, MT.gen);
         }
         break;
       }
@@ -452,9 +450,9 @@ function buildUnderwood(ch) {
         for (let q = 0; q < n; q++) {
           const a = r() * 6.28, d = r() * 0.5, fx = x + Math.cos(a) * d, fz = z + Math.sin(a) * d, fy = chunkHeight(ch, fx, fz);
           const rs = (0.08 + r() * 0.12) * (0.8 + s * 0.4), hs = rs * (1.6 + r() * 1.4);
-          mg.add('cyl6', M(fx, fy - 0.02, fz, rs * 0.32, hs, rs * 0.32), [0.88, 0.85, 0.76], 0, r, MT.plaster);
-          mg.add('sph', M(fx, fy + hs, fz, rs, rs * 0.55, rs), cap, 0.05, r, glow ? MT.emit : MT.gen);
-          if (!glow && cap[0] > 0.7 && cap[1] < 0.2) for (let sp = 0; sp < 4; sp++) { const sa = r() * 6.28, sr = rs * 0.62 * Math.sqrt(r()); mg.add('sph', M(fx + Math.cos(sa) * sr, fy + hs + rs * 0.5 * Math.sqrt(Math.max(0, 1 - (sr / rs) ** 2)), fz + Math.sin(sa) * sr, rs * 0.14, rs * 0.07, rs * 0.14), [0.96, 0.95, 0.9], 0, r, MT.gen); }
+          mg.add('cone4', M(fx, fy - 0.02, fz, rs * 0.4, hs, rs * 0.4), [0.88, 0.85, 0.76], 0, r, MT.plaster);
+          mg.add('sphS', M(fx, fy + hs, fz, rs, rs * 0.55, rs), cap, 0.05, r, glow ? MT.emit : MT.gen);
+          if (!glow && cap[0] > 0.7 && cap[1] < 0.2) for (let sp = 0; sp < 4; sp++) { const sa = r() * 6.28, sr = rs * 0.62 * Math.sqrt(r()); mg.add('sphS', M(fx + Math.cos(sa) * sr, fy + hs + rs * 0.5 * Math.sqrt(Math.max(0, 1 - (sr / rs) ** 2)), fz + Math.sin(sa) * sr, rs * 0.14, rs * 0.07, rs * 0.14), [0.96, 0.95, 0.9], 0, r, MT.gen); }
           if (glow) gl.add(fx, fy + hs + rs * 0.3, fz, nc, 0.6);
         }
         break;
@@ -467,7 +465,7 @@ function buildUnderwood(ch) {
         tube(mg, [[x, y - 0.2, z], [x + (r() - 0.5) * 0.3, y + hs * 0.5, z], [x, y + hs, z]], [s * 0.38, s * 0.28, s * 0.26], [0.85, 0.82, 0.74], 10, MT.plaster, [0.8, 0.78, 0.7], r);
         mg.add('sph', M(x, y + hs, z, rs, rs * 0.5, rs), cap, 0.05, r, glow ? MT.emit : MT.gen);
         mg.add('cyl', M(x, y + hs - 0.05, z, rs * 0.95, 0.12, rs * 0.95), [0.6, 0.55, 0.5], 0, r, MT.plaster);
-        for (let q = 0; q < 9; q++) { const a = r() * 6.28, d = rs * 0.7 * Math.sqrt(r()); mg.add('sph', M(x + Math.cos(a) * d, y + hs + rs * 0.5 * Math.sqrt(Math.max(0, 1 - (d / rs) ** 2)) * 0.95, z + Math.sin(a) * d, rs * 0.1, rs * 0.04, rs * 0.1), glow ? [1, 1, 1] : [0.95, 0.9, 0.8], 0, r, MT.gen); }
+        for (let q = 0; q < 9; q++) { const a = r() * 6.28, d = rs * 0.7 * Math.sqrt(r()); mg.add('sphS', M(x + Math.cos(a) * d, y + hs + rs * 0.5 * Math.sqrt(Math.max(0, 1 - (d / rs) ** 2)) * 0.95, z + Math.sin(a) * d, rs * 0.1, rs * 0.04, rs * 0.1), glow ? [1, 1, 1] : [0.95, 0.9, 0.8], 0, r, MT.gen); }
         if (glow) { for (let q = 0; q < 16; q++) { const a = r() * 6.28, d = rs * Math.sqrt(r()); gl.add(x + Math.cos(a) * d, y + hs - 0.1, z + Math.sin(a) * d, nc, 0.9); } }
         break;
       }
@@ -476,7 +474,7 @@ function buildUnderwood(ch) {
         tube(mg, [[x, y - 0.3, z], [x + (r() - 0.5) * 0.1, y + hh * 0.5, z], [x, y + hh, z]], [rr * 1.25, rr * 1.05, rr], B.trunkC.map(v => v * 1.1), 11, MT.bark, null, r);
         mg.add('cyl', M(x, y + hh - 0.02, z, rr * 0.98, 0.05, rr * 0.98), [0.62, 0.48, 0.32], 0, r, MT.wood);
         mg.add('ico', M(x + rr * 0.3, y + hh * 0.9, z, rr * 0.6, 0.12, rr * 0.5), B.stemC.map(v => v * 0.8), 0, r, MT.gen);
-        for (let q = 0; q < 3; q++) { const a = r() * 6.28; mg.add('sph', M(x + Math.cos(a) * rr * 1.1, y + 0.08, z + Math.sin(a) * rr * 1.1, 0.06, 0.05, 0.06), [0.9, 0.55, 0.3], 0, r, MT.gen); }
+        for (let q = 0; q < 3; q++) { const a = r() * 6.28; mg.add('sphS', M(x + Math.cos(a) * rr * 1.1, y + 0.08, z + Math.sin(a) * rr * 1.1, 0.06, 0.05, 0.06), [0.9, 0.55, 0.3], 0, r, MT.gen); }
         break;
       }
       case 'stamm': {
@@ -520,7 +518,7 @@ function planFinds(ch, r, segs) {
     for (let k = 0; k < 30; k++) {
       const x = x0 + 8 + r() * (CHUNK - 16), z = z0 + 8 + r() * (CHUNK - 16);
       const h = chunkHeight(ch, x, z);
-      if (h < 0.9 || h > 40 || nearSite(x, z, 12)) continue;
+      if (h < 0.9 || h > 40 || nearSite(x, z, 12) || inCastle(castlesNear(x, z), x, z)) continue;
       if (segs.length && pathDist(x, z, segs) < 5) continue;
       let ok = true;
       for (const c of ch.col) { if (c.seg) continue; if (Math.hypot(c.x - x, c.z - z) < c.r + rad) { ok = false; break; } }
@@ -603,8 +601,8 @@ function buildFinds(ch, grp) {
         for (let q = 0; q < n; q++) {
           const a = q / n * 6.2832 + (r() - 0.5) * 0.2, d = 2.3 + (r() - 0.5) * 0.3, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d, py = chunkHeight(ch, px, pz);
           const rs = 0.14 + r() * 0.12, hs = rs * (1.6 + r());
-          mg.add('cyl6', M(px, py - 0.02, pz, rs * 0.3, hs, rs * 0.3), [0.9, 0.88, 0.8], 0, r, MT.plaster);
-          mg.add('sph', M(px, py + hs, pz, rs, rs * 0.55, rs), nc, 0.05, r, glow ? MT.emit : MT.gen);
+          mg.add('cone4', M(px, py - 0.02, pz, rs * 0.4, hs, rs * 0.4), [0.9, 0.88, 0.8], 0, r, MT.plaster);
+          mg.add('sphS', M(px, py + hs, pz, rs, rs * 0.55, rs), nc, 0.05, r, glow ? MT.emit : MT.gen);
           gl.add(px, py + hs + 0.1, pz, nc, 0.9);
         }
         mg.add('cyl', M(x, y - 0.1, z, 0.5, 0.45, 0.5), stone, 0.1, r, MT.stone);

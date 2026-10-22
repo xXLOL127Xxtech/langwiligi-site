@@ -168,6 +168,7 @@ function initFoliageMats() {
   MAT.leafFar = worldMat({ shine: 2, spec: 0x000000 });
   MAT.leafFar.userData.far = true;
   MAT.leafNeon = { emit: 0 };
+  MAT.shadowOnly = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
 }
 
 const _lq = new THREE.Quaternion();
@@ -202,10 +203,10 @@ class LeafSet {
   // Laubmasse als Ellipsoid aus vielen Karten
   clump(cx, cy, cz, rx, ry, rz, cols, rnd, opts = {}) {
     const kind = opts.kind || 0;
-    const base = opts.size || Math.min(2.4, 0.62 + Math.max(rx, rz) * 0.11);
+    const base = opts.size || Math.min(2.8, 0.85 + Math.max(rx, rz) * 0.14);
     const flat = opts.flat == null ? 0.35 : opts.flat;
     const area = 4 * Math.PI * Math.pow((Math.pow(rx * ry, 1.6) + Math.pow(rx * rz, 1.6) + Math.pow(ry * rz, 1.6)) / 3, 1 / 1.6);
-    let n = Math.floor(area * (opts.cover || 2.6) * (opts.dens || 1) * QUALITY[G.quality].leaf / (base * base));
+    let n = Math.floor(area * (opts.cover || 1.7) * (opts.dens || 1) * QUALITY[G.quality].leaf / (base * base));
     n = Math.min(n, 2600);
     this.far.push([cx, cy, cz, rx, ry, rz, cols[0], cols[1], cols[2], opts.kind || 0]);
     if (this.noCards) return;
@@ -228,9 +229,9 @@ class LeafSet {
   }
   // Kegelförmige Nadelmasse (Tannenstockwerk)
   cone(cx, cy, cz, rad, h, cols, rnd, opts = {}) {
-    const base = opts.size || Math.min(1.7, 0.55 + rad * 0.12);
+    const base = opts.size || Math.min(2.0, 0.75 + rad * 0.14);
     const area = Math.PI * rad * Math.hypot(rad, h);
-    let n = Math.floor(area * (opts.cover || 2.8) * QUALITY[G.quality].leaf / (base * base));
+    let n = Math.floor(area * (opts.cover || 1.8) * QUALITY[G.quality].leaf / (base * base));
     n = Math.min(n, 1800);
     this.far.push([cx, cy, cz, rad, h, rad, cols[0], cols[1], cols[2], 100]);
     if (this.noCards) return;
@@ -275,7 +276,7 @@ class LeafSet {
       const mat = leafMaterial(kind, this.neon);
       const mesh = new THREE.Mesh(g, mat);
       mesh.customDepthMaterial = LEAF_DEPTH[kind + (this.neon ? 'n' : '')];
-      mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.castShadow = !!this.shadow; mesh.receiveShadow = true;
       grp.add(mesh);
     }
     return grp;

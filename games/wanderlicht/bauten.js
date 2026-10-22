@@ -12,15 +12,14 @@ function initBauten() {
   MAT.whale = pointsMat(1.15, { emit: 0.3, sway: 0 });
   MAT.fall = pointsMat(0.5, { emit: 0.6, sway: 0 });
   MAT.unlit = new THREE.MeshBasicMaterial({ vertexColors: true });
-  G.fireLight = new THREE.PointLight(0xff9050, 0, 16, 2);
-  G.scene.add(G.fireLight);
 }
 
 function newBuilt(s) {
   return { site: s, group: new THREE.Group(), colliders: [], interact: [], spawns: [], chests: [], fires: [], updaters: [], gate: null };
 }
-function segCollider(out, ax, az, bx, bz, r) { out.colliders.push({ seg: true, ax, az, bx, bz, r }); }
-function circCollider(out, x, z, r) { const c = { seg: false, x, z, r }; out.colliders.push(c); return c; }
+function defTop(out) { const s = out.site, b = s.baseH != null ? s.baseH : 0; return b + (s.type === 'wunder' ? 60 : s.type === 'wahrzeichen' ? 90 : s.type === 'burg' ? 70 : s.type === 'fund' ? 14 : 9); }
+function segCollider(out, ax, az, bx, bz, r) { out.colliders.push({ seg: true, ax, az, bx, bz, r, top: defTop(out) }); }
+function circCollider(out, x, z, r) { const c = { seg: false, x, z, r, top: defTop(out) }; out.colliders.push(c); return c; }
 function boxCollider(out, cx, cz, w, d, ang) {
   const c = Math.cos(ang), s = Math.sin(ang);
   const pts = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [cx + u * c - v * s, cz + u * s + v * c]);
@@ -38,6 +37,7 @@ function addFire(out, x, y, z, col = 0xff9a50, size = 1) {
 }
 function updateFires(out, dt) {
   for (const f of out.fires) {
+    if (!f.g1) continue;
     const k = 0.85 + Math.random() * 0.3;
     f.g1.scale.setScalar(3.2 * f.size * k); f.g2.scale.setScalar(1.4 * f.size * (0.8 + Math.random() * 0.4));
     f.sparkT -= dt;
@@ -83,196 +83,6 @@ function updateChests(out, dt) {
     if (c.opened && c.open < 1) { c.open = Math.min(1, c.open + dt * 2.5); c.lid.rotation.x = -1.9 * (1 - Math.pow(1 - c.open, 3)); }
     if (!c.opened) c.glow.material.opacity = (c.locked ? 0.12 : 0.3) + Math.sin(U.uTime.value * 3) * 0.08;
   }
-}
-
-// ---------- Burgen ----------
-function buildCastle(s, st) {
-  const r = mulberry32(s.seed);
-  const B = BIOMES[s.biome];
-  const out = newBuilt(s);
-  const mg = new Merger(), ps = new LeafSet();
-  const stone = pick(r, STONES).map((v, i) => lerp(v, B.rockC[i], 0.25));
-  const roof = pick(r, ROOFS);
-  const R = s.radius, round = r() < 0.2, n = round ? 10 : 4 + Math.floor(r() * 4);
-  const wallH = 6 + r() * 5, th = 1.6;
-  const ruin = r() * 0.85;
-  const rot0 = r() * Math.PI * 2, y0 = s.baseH, cx = s.x, cz = s.z;
-  const boss = s.content === 'boss';
-  const ivyCols = B.canopyC.map(c => c.map(v => v * 0.85));
-  const corners = [];
-  for (let i = 0; i < n; i++) { const a = rot0 + i / n * Math.PI * 2; corners.push([cx + Math.cos(a) * R, cz + Math.sin(a) * R]); }
-  // Tor liegt in der Mitte der ersten Seite
-  const gateX = (corners[0][0] + corners[1][0]) / 2, gateZ = (corners[0][1] + corners[1][1]) / 2;
-  const gA = Math.atan2(gateZ - cz, gateX - cx);
-  for (let i = 0; i < n; i++) {
-    const [ax, az] = corners[i], [bx, bz] = corners[(i + 1) % n];
-    const len = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax);
-    const pieces = Math.max(2, Math.round(len / 3));
-    const pl = len / pieces;
-    const nx = Math.sin(ang), nz = -Math.cos(ang);
-    let arch = false;
-    for (let k = 0; k < pieces; k++) {
-      const t0 = k / pieces, t1 = (k + 1) / pieces, tm = (t0 + t1) / 2;
-      const px = ax + (bx - ax) * tm, pz = az + (bz - az) * tm;
-      const isGate = i === 0 && Math.abs(tm - 0.5) * len < 2.7;
-      const nearCorner = tm * len < 3.2 || (1 - tm) * len < 3.2;
-      let h = wallH, present = true;
-      if (isGate) present = false;
-      else if (!nearCorner && r() < ruin * 0.45) present = false;
-      else h = wallH * (1 - ruin * r() * 0.7);
-      if (isGate && !arch) {
-        arch = true;
-        if (ruin < 0.55) {
-          mg.add('box', M(gateX, y0 + wallH - 0.6, gateZ, 6, 1.6, th * 1.1, 0, -ang, 0), stone, 0.1, r);
-          for (const sx of [-1, 1]) mg.add('box', M(gateX + Math.cos(ang) * 3 * sx, y0 + wallH / 2 - 1, gateZ + Math.sin(ang) * 3 * sx, 1.4, wallH + 2, th * 1.4, 0, -ang, 0), stone.map(v => v * 0.92), 0.1, r);
-        }
-      }
-      if (!present) {
-        if (!isGate) for (let q = 0; q < 3; q++) mg.add('box', M(px + (r() - 0.5) * 3, y0 + 0.2, pz + (r() - 0.5) * 3, 0.5 + r(), 0.5 + r() * 0.6, 0.5 + r(), r(), r() * 3, r()), stone, 0.15, r);
-        continue;
-      }
-      mg.add('box', M(px, y0 + h / 2 - 1, pz, pl + 0.08, h + 2, th, 0, -ang, 0), stone, 0.12, r);
-      if (h > wallH * 0.9) {
-        for (const o of [-0.25, 0.25]) mg.add('box', M(px + Math.cos(ang) * pl * o, y0 + h + 0.3, pz + Math.sin(ang) * pl * o, pl * 0.32, 0.6, th * 1.05, 0, -ang, 0), stone, 0.1, r);
-      }
-      if (r() < 0.4) {
-        for (let q = 0; q < 50; q++) {
-          const tt = t0 + r() * (t1 - t0), side = r() < 0.5 ? 1 : -1, hh = Math.pow(r(), 1.5) * h * 0.9;
-          const qx = ax + (bx - ax) * tt + nx * side * (th / 2 + 0.06), qz = az + (bz - az) * tt + nz * side * (th / 2 + 0.06);
-          ps.add(qx, y0 + hh, qz, ivyCols[q % 3], 0.8 + r() * 0.3);
-        }
-      }
-      const p0x = ax + (bx - ax) * t0, p0z = az + (bz - az) * t0, p1x = ax + (bx - ax) * t1, p1z = az + (bz - az) * t1;
-      segCollider(out, p0x, p0z, p1x, p1z, th / 2 + 0.3);
-    }
-  }
-  // Fackeln am Tor
-  const torchCol = boss ? 0xb070ff : 0xff9a50;
-  for (const sx of [-1, 1]) {
-    const ax = gateX + Math.cos(gA - Math.PI / 2) * 3.6 * sx + Math.cos(gA) * 1.3, az = gateZ + Math.sin(gA - Math.PI / 2) * 3.6 * sx + Math.sin(gA) * 1.3;
-    mg.add('cyl6', M(ax, y0 - 0.3, az, 0.1, 3, 0.1), WOOD);
-    mg.add('cyl6', M(ax, y0 + 2.7, az, 0.25, 0.2, 0.25), [0.3, 0.28, 0.3]);
-    addFire(out, ax, y0 + 2.8, az, torchCol, 0.55);
-  }
-  // Türme
-  for (const [tx, tz] of corners) {
-    const tr = 2.2 + r() * 1.3;
-    let tH = wallH + 6 + r() * 15;
-    const broken = r() < ruin * 0.8;
-    if (broken) tH *= 0.45 + r() * 0.4;
-    const square = r() < 0.3, rotT = r() * Math.PI;
-    if (square) mg.add('box', M(tx, y0 + tH / 2 - 0.5, tz, tr * 1.7, tH + 1, tr * 1.7, 0, rotT, 0), stone, 0.12, r);
-    else mg.add('cyl', M(tx, y0 - 1, tz, tr, tH + 1, tr, 0, rotT, 0), stone, 0.12, r);
-    if (!broken && r() > 0.2) {
-      const rh = tr * (2.4 + r() * 1.8) + r() * 4;
-      if (square) {
-        mg.add('cone4', M(tx, y0 + tH, tz, tr * 1.3, rh, tr * 1.3, 0, rotT + Math.PI / 4, 0), roof, 0.08, r);
-        for (let q = 0; q < 4; q++) { const a = rotT + q * Math.PI / 2 + Math.PI / 4; mg.add('cone4', M(tx + Math.cos(a) * tr * 1.15, y0 + tH - 0.5, tz + Math.sin(a) * tr * 1.15, 0.35, 2.5 + r() * 1.5, 0.35), roof, 0.08, r); }
-      } else mg.add('cone', M(tx, y0 + tH, tz, tr * 1.12, rh, tr * 1.12), roof, 0.08, r);
-      if (r() < 0.5) {
-        mg.add('cyl6', M(tx, y0 + tH + rh - 0.2, tz, 0.05, 2.2, 0.05), [0.3, 0.3, 0.32]);
-        mg.add('box', M(tx + 0.55, y0 + tH + rh + 1.6, tz, 1.0, 0.55, 0.05), roof.map(v => Math.min(1, v * 1.5)));
-      }
-    } else {
-      for (let q = 0; q < 6; q++) {
-        if (broken && r() < 0.5) continue;
-        const a = q / 6 * Math.PI * 2;
-        mg.add('box', M(tx + Math.cos(a) * tr * 0.85, y0 + tH + 0.3, tz + Math.sin(a) * tr * 0.85, 0.7, 0.6, 0.7, 0, -a, 0), stone, 0.1, r);
-      }
-    }
-    // Fenster
-    const oa = Math.atan2(tz - cz, tx - cx);
-    for (let q = 0; q < 2; q++) {
-      const wy = y0 + 3 + q * 3.5;
-      if (wy > y0 + tH - 1) break;
-      const wx = tx + Math.cos(oa) * (tr * (square ? 0.86 : 0.98)), wz = tz + Math.sin(oa) * (tr * (square ? 0.86 : 0.98));
-      mg.add('box', M(wx, wy, wz, 0.5, 1.0, 0.3, 0, -oa + Math.PI / 2, 0), DARK);
-      if (boss ? r() < 0.6 : r() < 0.18) { const gw = makeGlow(boss ? 0xb080ff : pick(r, [0xffa040, 0xd8ff70]), 1.6, 0.7); gw.position.set(wx, wy, wz); out.group.add(gw); }
-    }
-    circCollider(out, tx, tz, tr + 0.3);
-  }
-  // Bergfried
-  let keepFront = null;
-  if (r() < 0.85) {
-    const kx = cx - Math.cos(gA) * R * 0.3, kz = cz - Math.sin(gA) * R * 0.3;
-    const kw = 5 + r() * 3.5, kd = 5 + r() * 3.5;
-    let kh = 14 + r() * 16;
-    if (ruin > 0.55) kh *= 0.6;
-    const ka = -gA + Math.PI / 2;
-    mg.add('box', M(kx, y0 + kh / 2 - 1, kz, kw, kh + 2, kd, 0, ka, 0), stone.map(v => v * 0.95), 0.1, r);
-    if (ruin < 0.5) {
-      mg.add('cone4', M(kx, y0 + kh, kz, kw * 0.74, 8 + r() * 9, kd * 0.74, 0, ka + Math.PI / 4, 0), roof, 0.08, r);
-      for (let q = 0; q < 4; q++) {
-        const u = (q & 1 ? 1 : -1) * kw * 0.48, v = (q & 2 ? 1 : -1) * kd * 0.48, c = Math.cos(-ka), sn = Math.sin(-ka);
-        mg.add('cone4', M(kx + u * c - v * sn, y0 + kh - 1, kz + u * sn + v * c, 0.5, 4 + r() * 3, 0.5, 0, ka + Math.PI / 4, 0), roof, 0.08, r);
-      }
-    }
-    else for (let q = 0; q < 8; q++) { if (r() < ruin * 0.6) continue; const a = q / 8 * Math.PI * 2; mg.add('box', M(kx + Math.cos(a) * kw * 0.45, y0 + kh + 0.3, kz + Math.sin(a) * kd * 0.45, 0.8, 0.6, 0.8, 0, ka, 0), stone, 0.1, r); }
-    // Seitentürmchen
-    if (r() < 0.6) {
-      const sx = kx + Math.cos(-ka + 0.8) * kw * 0.6, sz = kz + Math.sin(-ka + 0.8) * kd * 0.6;
-      const sh = kh + 6 + r() * 9;
-      mg.add('cyl', M(sx, y0 - 1, sz, 1.3, sh + 1, 1.3), stone, 0.1, r);
-      if (ruin < 0.6) mg.add('cone', M(sx, y0 + sh, sz, 1.5, 6 + r() * 5, 1.5), roof, 0.08, r);
-    }
-    const fx = kx + Math.cos(gA) * (kd / 2 + 0.05), fz = kz + Math.sin(gA) * (kd / 2 + 0.05);
-    mg.add('box', M(fx, y0 + 1.2, fz, 2, 2.6, 0.3, 0, ka, 0), DARK);
-    for (let q = 0; q < 3; q++) {
-      const wy = y0 + 5 + q * 3.2; if (wy > y0 + kh - 1) break;
-      for (const o of [-1, 1]) {
-        const wx = fx + Math.cos(ka) * o * kw * 0.28, wz = fz - Math.sin(ka) * o * kw * 0.28;
-        mg.add('box', M(wx, wy, wz, 0.55, 1.1, 0.3, 0, ka, 0), DARK);
-      }
-    }
-    boxCollider(out, kx, kz, kw + 0.4, kd + 0.4, -ka);
-    keepFront = [kx + Math.cos(gA) * (kd / 2 + 3), kz + Math.sin(gA) * (kd / 2 + 3)];
-  }
-  // Kisten, Fässer, Steine im Hof
-  for (let q = 0; q < 4 + Math.floor(r() * 4); q++) {
-    const a = r() * Math.PI * 2, d = R * (0.6 + r() * 0.25);
-    const px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
-    if (Math.abs(Math.atan2(Math.sin(a - gA), Math.cos(a - gA))) < 0.5) continue;
-    if (r() < 0.5) mg.add('cyl', M(px, y0 - 0.1, pz, 0.45, 1.1, 0.45), WOOD.map(v => v * 0.9), 0.1, r);
-    else mg.add('box', M(px, y0 + 0.4, pz, 1, 1, 1, 0, r() * 3, 0), WOOD, 0.1, r);
-  }
-  // Truhen
-  const nCh = 1 + Math.floor(r() * 2);
-  for (let k = 0; k < nCh; k++) {
-    let a = gA + Math.PI * (0.45 + r() * 1.1) * (r() < 0.5 ? 1 : -1);
-    const d = R * (0.5 + r() * 0.2);
-    const px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
-    const key = s.key + ':c' + k;
-    makeChest(out, key, px, pz, Math.atan2(cx - px, cz - pz), false, st.opened(key));
-  }
-  if (boss) {
-    const [bx, bz] = keepFront || [cx, cz];
-    const key = s.key + ':boss';
-    makeChest(out, key, bx, bz, Math.atan2(Math.cos(gA), Math.sin(gA)), true, st.opened(key), !st.cleared(s.key));
-  }
-  // Bewohner
-  if (!st.cleared(s.key)) {
-    const types = s.biome === 3 || s.biome === 0 ? ['ritter', 'schatten', 'waechter'] : ['waechter', 'ritter', 'dornling', 'schatten'];
-    if (s.content === 'wachen') {
-      const cnt = 2 + Math.floor(r() * 3);
-      for (let k = 0; k < cnt; k++) {
-        const a = r() * Math.PI * 2, d = R * (0.2 + r() * 0.4);
-        out.spawns.push({ type: pick(r, types), x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, boss: false });
-      }
-    } else if (boss) {
-      const bt = pick(r, types);
-      const [bx, bz] = keepFront || [cx, cz];
-      out.spawns.push({ type: bt, x: (bx + cx) / 2, z: (bz + cz) / 2, boss: true, name: pick(r, BOSS_TITLES[bt]) });
-      const minions = Math.floor(r() * 3);
-      for (let k = 0; k < minions; k++) {
-        const a = r() * Math.PI * 2, d = R * 0.45;
-        out.spawns.push({ type: bt === 'waechter' ? 'schatten' : 'waechter', x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, boss: false });
-      }
-    }
-  }
-  out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  if (!ps.empty) out.group.add(leafObj(ps));
-  out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
-  return out;
 }
 
 // ---------- Wunder ----------

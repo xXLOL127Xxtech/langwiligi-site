@@ -243,6 +243,42 @@ function respawn() {
   saveGame();
 }
 
+// Höhe des begehbaren Bodens (Gelände oder Boden eines Gebäudes)
+function walkY(x, z, yHint) {
+  let best = groundY(x, z);
+  if (P && P.inCave) return best;
+  for (const [, b] of built) {
+    if (!b.surfaces || !b.surfaces.length) continue;
+    const s = b.site, rr = b.reach || 90;
+    if (Math.abs(s.x - x) > rr || Math.abs(s.z - z) > rr) continue;
+    for (const f of b.surfaces) {
+      const dx = x - f.x, dz = z - f.z;
+      const u = dx * f.c - dz * f.s, v = dx * f.s + dz * f.c;
+      if (u > f.hx || u < -f.hx || v > f.hz || v < -f.hz) continue;
+      const t = f.axis === 'x' ? (u + f.hx) / (2 * f.hx) : (v + f.hz) / (2 * f.hz);
+      const y = f.ya + (f.yb - f.ya) * t;
+      if (y <= yHint + 1.0 && y > best) best = y;
+    }
+  }
+  return best;
+}
+// Raum, in dem ein Punkt liegt (für Decke, Licht und Kamera)
+function roomAt(x, y, z) {
+  for (const [, b] of built) {
+    if (!b.rooms || !b.rooms.length) continue;
+    const s = b.site, rr = b.reach || 90;
+    if (Math.abs(s.x - x) > rr || Math.abs(s.z - z) > rr) continue;
+    let best = null;
+    for (const m of b.rooms) {
+      if (y < m.yf - 0.3 || y > m.yc + 0.3) continue;
+      const dx = x - m.cx, dz = z - m.cz, lx = dx * m.c - dz * m.s, lz = dx * m.s + dz * m.c;
+      if (lx < m.lx0 || lx > m.lx1 || lz < m.lz0 || lz > m.lz1) continue;
+      if (!best || m.yc - m.yf < best.yc - best.yf) best = m;
+    }
+    if (best) return best;
+  }
+  return null;
+}
 function updatePlayer(dt) {
   const parts = playerModel.userData.parts;
   P.atkCd = Math.max(0, P.atkCd - dt); P.hurtCd = Math.max(0, P.hurtCd - dt);
@@ -274,7 +310,7 @@ function updatePlayer(dt) {
     P.face += da * Math.min(1, dt * 12);
   }
   // Höhe
-  const gNow = groundY(P.x, P.z);
+  const gNow = walkY(P.x, P.z, P.y);
   if (P.broom) {
     const tgt = (keys[' '] ? 8 : 0) - (keys.Shift ? 8 : 0);
     P.vy += (tgt - P.vy) * Math.min(1, dt * 3);
@@ -313,7 +349,7 @@ function updatePlayer(dt) {
   playerModel.position.set(P.x, P.y, P.z);
   playerModel.rotation.y = P.face;
   animatePlayer(dt, { moving: Math.min(1.2, P.moving), sprint, onGround: P.onGround, swim: P.swim, vy: P.vy, atkT: P.atkT, resting: P.resting, broom: P.broom, bank: P.bank });
-  playerModel.visible = !(P.hurtCd > 0 && Math.floor(t * 20) % 2 === 0);
+  playerModel.visible = !(P.hurtCd > 0 && Math.floor(t * 20) % 2 === 0) && !(window.DEBUGCAM && window.DEBUGCAM.hide);
   if (P.broom && Math.random() < dt * 40) burst(P.x - Math.sin(P.face) * 1.3, P.y + 0.6, P.z - Math.cos(P.face) * 1.3, 1, [1, 0.8, 0.45], 0.6, 0.14, 0.9, -0.5, 0.2);
   // Heilen beim Rasten
   if (P.resting) P.hp = Math.min(maxHp(), P.hp + maxHp() * dt * 0.08);
@@ -406,6 +442,10 @@ function updateCamera(dt) {
   let tz = P.z - Math.cos(yaw) * dist * Math.cos(pitch);
   let ty = P.y + 1.6 + Math.sin(pitch) * dist;
   ty = Math.max(ty, groundY(tx, tz) + 0.8, P.inCave ? -1e9 : WATER + 0.5);
+  if (!P.inCave) {
+    const tc = clipCamera(P.x, P.y + 1.6, P.z, tx, ty, tz);
+    if (tc < 1) { tx = P.x + (tx - P.x) * tc; ty = P.y + 1.6 + (ty - P.y - 1.6) * tc; tz = P.z + (tz - P.z) * tc; }
+  }
   if (P.inCave) {
     const cv = P.inCave.cave;
     ty = Math.min(ty, cv.y + cv.ceil - 2);
@@ -423,6 +463,42 @@ function updateCamera(dt) {
   cam.look.set(P.x, P.y + lookUp, P.z);
   G.camera.lookAt(cam.look);
   U.uCam.value.copy(G.camera.position);
+}
+
+// Kamera: nicht durch Wände, Stämme und Decken
+const _cc = [];
+function clipCamera(hx, hy, hz, tx, ty, tz) {
+  _cc.length = 0;
+  const reach = 22;
+  for (const [, b] of built) {
+    const s = b.site, rr = (b.reach || 90) + reach;
+    if (Math.abs(s.x - hx) > rr || Math.abs(s.z - hz) > rr) continue;
+    for (const c of b.colliders) if (!c.cave) _cc.push(c);
+  }
+  const ci = Math.floor(hx / CHUNK), cj = Math.floor(hz / CHUNK);
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ch = G.chunks.get((ci + di) + ',' + (cj + dj)); if (!ch) continue; for (const c of ch.col) _cc.push(c); if (ch.out) for (const c of ch.out.colliders) _cc.push(c); }
+  const room = roomAt(hx, hy, hz);
+  const len = Math.hypot(tx - hx, ty - hy, tz - hz);
+  const steps = Math.max(4, Math.ceil(len / 0.5));
+  let tm = 1;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps, x = hx + (tx - hx) * t, y = hy + (ty - hy) * t, z = hz + (tz - hz) * t;
+    if (len * t < 0.9) continue;
+    let bad = false;
+    if (room && (y > room.yc - 0.4 || y < room.yf + 0.3)) bad = true;
+    if (!bad) for (const c of _cc) {
+      const top = c.top != null ? c.top : c.y1, bot = c.y0 != null ? c.y0 : -1e9;
+      if (top != null && y > top + 0.2) continue;
+      if (y < bot - 0.2) continue;
+      let px, pz;
+      if (c.ring) continue;
+      if (c.seg) { const ex = c.bx - c.ax, ez = c.bz - c.az, l2 = ex * ex + ez * ez; const k = clamp(((x - c.ax) * ex + (z - c.az) * ez) / l2, 0, 1); px = c.ax + ex * k; pz = c.az + ez * k; } else { px = c.x; pz = c.z; }
+      const dd = (x - px) * (x - px) + (z - pz) * (z - pz), rr = c.r + 0.3;
+      if (dd < rr * rr) { bad = true; break; }
+    }
+    if (bad) { tm = (i - 1) / steps; break; }
+  }
+  return Math.max(0.12, tm);
 }
 
 // ---------- Orte ----------
@@ -469,15 +545,17 @@ function updateSites(dt, px, pz) {
       if (d > (b.site.type === 'wahrzeichen' ? 1650 : 600) && P.inCave !== b) { unbuild(b); built.delete(key); }
     }
   }
-  // Feuerlicht beim nächsten Lager
-  let fl = null, fd = 45, fk = 1;
+  // Fackeln und Feuer: die vier nächsten leuchten wirklich
   P.safe = false;
+  const near4 = [];
   for (const [, b] of built) {
     for (const u of b.updaters) u(dt);
     const s = b.site, d = Math.hypot(s.x - px, s.z - pz);
     for (const f of b.fires) {
-      const dd = Math.hypot(f.x - px, f.z - pz);
-      if (dd < fd) { fd = dd; fl = [f.x, f.y + 0.8, f.z]; fk = f.size; }
+      const dd = (f.x - px) * (f.x - px) + (f.y - (P.y + 1)) * (f.y - (P.y + 1)) + (f.z - pz) * (f.z - pz);
+      if (dd > 2500) continue;
+      if (near4.length < 4) { near4.push([dd, f]); near4.sort((p, q) => p[0] - q[0]); }
+      else if (dd < near4[3][0]) { near4[3] = [dd, f]; near4.sort((p, q) => p[0] - q[0]); }
     }
     if ((s.type === 'lager' || s.type === 'ritter') && d < 16) P.safe = true;
     if (mode === 'play' && !S.disc[s.key] && s.discR > 0 && d < s.discR) discover(s);
@@ -497,7 +575,11 @@ function updateSites(dt, px, pz) {
       saveGame();
     }
   }
-  if (fl) { G.fireLight.position.set(fl[0], fl[1], fl[2]); G.fireLight.intensity = (1.2 + Math.random() * 0.5) * (0.55 + fk * 0.6); G.fireLight.distance = 10 + fk * 10; } else G.fireLight.intensity = 0;
+  for (let i = 0; i < G.torches.length; i++) {
+    const l = G.torches[i], e = near4[i];
+    if (e) { const f = e[1]; l.position.set(f.x, f.y + 0.4, f.z); l.color.copy(f.col); l.intensity = (1.0 + Math.random() * 0.45) * (0.5 + Math.min(f.size, 1.6) * 0.55); l.distance = 12 + f.size * 7; }
+    else l.intensity = 0;
+  }
 }
 function siteSub(s) {
   if (s.type === 'wunder' || s.type === 'wahrzeichen' || s.type === 'lichtung') return s.sub;
@@ -642,6 +724,7 @@ function findInteract() {
   const inCave = !!P.inCave;
   for (const [, b] of built) for (const it of b.interact) {
     if (!!it.cave !== inCave) continue;
+    if (it.y != null && Math.abs(it.y - P.y) > 3.2) continue;
     const d = Math.hypot(it.x - P.x, it.z - P.z);
     if (d < it.r && d < bd) {
       if (it.kind === 'chest' && it.chest.opened) continue;
@@ -656,6 +739,7 @@ function interactLabel(n) {
     case 'shop': return 'Mit ' + it.name + ' handeln';
     case 'fire': return 'Am Feuer rasten';
     case 'rest': return it.label;
+    case 'lore': return it.label;
     case 'view': return 'Auf der Bank rasten';
     case 'npc': return 'Mit ' + n.b.site.npc + ' sprechen';
     case 'lantern': return it.label;
@@ -720,6 +804,7 @@ function interact() {
       saveGame();
       break;
     }
+    case 'lore': dialogPages = [it.text]; dialogName = 'Ein altes Buch'; showDialog(); break;
     case 'cave': enterCave(b); break;
     case 'caveExit': leaveCave(false); break;
     case 'feen': {
@@ -766,7 +851,7 @@ function leaveCave(silent) {
 
 // ---------- Stimmung: Orte färben die Welt ----------
 const mood = { hell: 0, dunkel: 0, mond: 0, fogBank: 0, feen: 0, hellDir: new THREE.Vector3(1, 0.06, 0), mondDir: new THREE.Vector3(1, 0.35, 0) };
-const env = { mood, cave: null, elev: 0, dunkelYaw: null };
+const env = { mood, cave: null, elev: 0, dunkelYaw: null, indoor: 0 };
 let moodTick = 0, elevBase = 0, lakeNear = false;
 function updateMood(dt, x, y, z) {
   moodTick -= dt;
@@ -801,6 +886,8 @@ function updateMood(dt, x, y, z) {
   const k = Math.min(1, dt * 0.7);
   for (const key in tg) mood[key] += (tg[key] - mood[key]) * k;
   env.cave = P && P.inCave ? P.inCave.cave.env : null;
+  const inRoom = P && !P.inCave && !P.dead ? roomAt(P.x, P.y + 1.2, P.z) : null;
+  env.indoor += ((inRoom ? 1 : 0) - env.indoor) * Math.min(1, dt * 2.5);
   env.elev = env.cave ? 0 : y - elevBase;
   G.reflOn = !env.cave && lakeNear && G.quality >= 1;
 }
