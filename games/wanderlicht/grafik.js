@@ -217,7 +217,7 @@ function initMaterials() {
         // Gegenlicht: Rispen leuchten, wenn man in die tiefe Sonne schaut
         vec3 vd = normalize(p - uCam);
         float back = pow(max(dot(vd, uSunDirW), 0.0), 5.0) * smoothstep(0.45, 0.85, t);
-        li += uSunCol * back * 1.6;
+        li += uSunCol * back * 1.05;
         // Windwellen laufen hell über die Wiese
         li *= 1.0 + max(gust, 0.0) * 0.16 * t * uWind;
         vCol = base * li * cloudSh(p.xz);
@@ -279,7 +279,7 @@ function initGraphics(canvas) {
   G.rt = new THREE.WebGLRenderTarget(4, 4, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true });
   G.postMat = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: G.rt.texture }, tBloom: { value: null }, tRays: { value: null }, uBloom: { value: 0.5 }, uRays: { value: 0 }, uRayCol: { value: new THREE.Color(1, 0.8, 0.6) },
-      uShadowTint: { value: new THREE.Color(0.78, 0.8, 1.15) }, uHighTint: { value: new THREE.Color(0.22, 0.15, 0.05) }, uSat: { value: 0.38 }, uFlash: { value: 0 }, uHurt: { value: 0 }, uFade: { value: 0 }, uLevels: { value: 15 }, uFadeCol: { value: new THREE.Color(0, 0, 0) } },
+      uShadowTint: { value: new THREE.Color(0.78, 0.8, 1.15) }, uHighTint: { value: new THREE.Color(0.22, 0.15, 0.05) }, uSat: { value: 0.38 }, uFlash: { value: 0 }, uHurt: { value: 0 }, uFade: { value: 0 }, uLevels: { value: 22 }, uFadeCol: { value: new THREE.Color(0, 0, 0) } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
     fragmentShader: `
       uniform sampler2D tDiffuse, tBloom, tRays; uniform float uFlash, uHurt, uFade, uLevels, uSat, uBloom, uRays; uniform vec3 uFadeCol, uRayCol, uShadowTint, uHighTint;
@@ -570,9 +570,9 @@ function initWater() {
         float fres = pow(1.0 - max(v.y, 0.0), 2.5);
         vec3 col = mix(uDeep, uSky, 0.3 + 0.6 * fres);
         if (uReflOn > 0.5) {
-          vec4 rc = uReflVP * vec4(vW.x + sin(vW.z * 0.9 + uTime * 1.3) * 0.25, vW.y, vW.z + sin(vW.x * 0.7 + uTime) * 0.2, 1.0);
+          vec4 rc = uReflVP * vec4(vW.x + sin(vW.z * 0.9 + uTime * 1.3) * 0.12, vW.y, vW.z + sin(vW.x * 0.7 + uTime) * 0.1, 1.0);
           vec2 ru = rc.xy / rc.w * 0.5 + 0.5;
-          if (rc.w > 0.0 && ru.x > 0.0 && ru.x < 1.0 && ru.y > 0.0 && ru.y < 1.0) col = mix(col, texture2D(tRefl, ru).rgb * 0.92, 0.35 + 0.5 * fres);
+          if (rc.w > 0.0 && ru.x > 0.0 && ru.x < 1.0 && ru.y > 0.0 && ru.y < 1.0) col = mix(col, texture2D(tRefl, ru).rgb * 0.9 + uDeep * 0.08, 0.55 + 0.38 * fres);
         }
         vec2 g = floor(vW.xz * 1.2);
         float n = hash(vec3(g, floor(uTime * 2.5 + hash(vec3(g, 3.0)) * 9.0)));

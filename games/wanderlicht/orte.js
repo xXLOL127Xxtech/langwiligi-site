@@ -219,10 +219,10 @@ function buildLandmark(L, st) {
   }
   // Leuchtende Aura
   if (L.kind === 'abendschloss') {
-    const a1 = makeGlow(S.aura, 230, 0.32), a2 = makeGlow(0xffa0c0, 120, 0.25);
+    const a1 = makeGlow(S.aura, 230, 0.2), a2 = makeGlow(0xffa0c0, 120, 0.14);
     for (const a of [a1, a2]) { a.material.fog = false; a.position.set(kx, y0 + 40, kz); out.group.add(a); }
     risingMotes(out, 120, cx, y0, cz, R * 1.3, 50, [[1, 0.7, 0.95], [1, 0.85, 0.6], [0.85, 0.7, 1]], 1.4, 0.45);
-    out.updaters.push(() => { const t = U.uTime.value; a1.material.opacity = 0.26 + Math.sin(t * 0.4) * 0.06; });
+    out.updaters.push(() => { const t = U.uTime.value; a1.material.opacity = 0.17 + Math.sin(t * 0.4) * 0.04; });
   } else if (L.kind === 'mondschloss') {
     const a1 = makeGlow(S.aura, 160, 0.22);
     a1.material.fog = false; a1.position.set(kx, y0 + 50, kz); out.group.add(a1);

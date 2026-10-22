@@ -432,7 +432,7 @@ function bigAt(bi, bj) {
   let L = null;
   const sbi = Math.floor(World.spawnX / BIG), sbj = Math.floor(World.spawnZ / BIG);
   const spawnBig = bi === sbi && bj === sbj;
-  if (spawnBig || r() < 0.85) {
+  if (spawnBig || r() < 0.6) {
     let x = bi * BIG + 230 + r() * (BIG - 460), z = bj * BIG + 230 + r() * (BIG - 460);
     let type = pick(r, ['abendschloss', 'dunkelfeste', 'mondschloss', 'koloss']);
     if (spawnBig) {
