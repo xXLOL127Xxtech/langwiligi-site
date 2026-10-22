@@ -138,7 +138,7 @@ function leafMaterial(kind, neon) {
   const id = WORLD_MATS++;
   m.onBeforeCompile = sh => {
     leafPatch(sh);
-    sh.uniforms.uEmitK = emit; sh.uniforms.uSunCol = U.uSunCol; sh.uniforms.uSunDirW = U.uSunDirW; sh.uniforms.uCam = U.uCam; sh.uniforms.uCDrift = U.uCDrift; sh.uniforms.uCShadow = U.uCShadow;
+    sh.uniforms.uEmitK = emit; sh.uniforms.uSunCol = U.uSunCol; sh.uniforms.uSunDirW = U.uSunDirW; sh.uniforms.uCam = U.uCam; sh.uniforms.uCDrift = U.uCDrift; sh.uniforms.uCShadow = U.uCShadow; sh.uniforms.uMistAmt = U.uMistAmt; sh.uniforms.uMistBase = U.uMistBase;
     sh.fragmentShader = 'varying vec3 vLC; varying vec3 vLWP; varying float vLSw; uniform float uEmitK; uniform vec3 uSunCol, uSunDirW, uCam;\n' + CLOUD_SH + sh.fragmentShader
       .replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;')
       .replace('#include <color_fragment>', 'diffuseColor.rgb *= vLC * (0.9 + 0.2 * dh2(floor(vLWP.xz * 3.0) + floor(vLWP.y * 3.0)));')
@@ -203,10 +203,10 @@ class LeafSet {
   // Laubmasse als Ellipsoid aus vielen Karten
   clump(cx, cy, cz, rx, ry, rz, cols, rnd, opts = {}) {
     const kind = opts.kind || 0;
-    const base = opts.size || Math.min(2.8, 0.85 + Math.max(rx, rz) * 0.14);
+    const base = opts.size || Math.min(4.2, 0.9 + Math.max(rx, rz) * 0.19);
     const flat = opts.flat == null ? 0.35 : opts.flat;
     const area = 4 * Math.PI * Math.pow((Math.pow(rx * ry, 1.6) + Math.pow(rx * rz, 1.6) + Math.pow(ry * rz, 1.6)) / 3, 1 / 1.6);
-    let n = Math.floor(area * (opts.cover || 1.7) * (opts.dens || 1) * QUALITY[G.quality].leaf / (base * base));
+    let n = Math.floor(area * (opts.cover || 1.4) * (opts.dens || 1) * QUALITY[G.quality].leaf / (base * base));
     n = Math.min(n, 2600);
     this.far.push([cx, cy, cz, rx, ry, rz, cols[0], cols[1], cols[2], opts.kind || 0]);
     if (this.noCards) return;
@@ -215,7 +215,8 @@ class LeafSet {
       do { x = rnd() * 2 - 1; y = rnd() * 2 - 1; z = rnd() * 2 - 1; l = x * x + y * y + z * z; } while (l > 1 || l < 0.01);
       const inv = 1 / Math.sqrt(l);
       x *= inv; y *= inv; z *= inv;
-      const s = 0.5 + 0.5 * Math.cbrt(rnd());
+      // Blätter sitzen auf der Hülle; der dunkle Kern darunter macht die Krone dicht
+      const q = rnd(), s = opts.sparse ? 0.5 + 0.5 * Math.cbrt(q) : 0.84 + 0.2 * q;
       let py = y; if (py < -flat) py = -flat - (py + flat) * 0.3;
       const px = cx + x * rx * s, pyy = cy + py * ry * s, pz = cz + z * rz * s;
       // Kugelnormale mit Aufwärtstendenz
@@ -224,14 +225,17 @@ class LeafSet {
       const top = y * 0.5 + 0.5;
       const c = top < 0.4 && rnd() < 0.7 ? cols[1] : top > 0.6 && rnd() < 0.5 ? cols[2] : cols[0];
       const ao = (0.5 + 0.5 * s) * (0.72 + 0.28 * top) * (0.88 + rnd() * 0.24);
-      this.add(px, pyy, pz, c, ao * 1.12, nx, ny, nz, base * (0.78 + rnd() * 0.5), kind);
+      // nur die äusseren Blätter bewegen sich im Wind, das Innere bleibt ruhig
+      const hg = clamp01(0.3 + 0.7 * (pyy - this.sb) / Math.max(1, this.sh));
+      const sw = opts.sparse ? hg : (0.04 + 0.96 * q * q) * hg;
+      this.add(px, pyy, pz, c, ao * 1.12, nx, ny, nz, base * (0.78 + rnd() * 0.5), kind, sw);
     }
   }
   // Kegelförmige Nadelmasse (Tannenstockwerk)
   cone(cx, cy, cz, rad, h, cols, rnd, opts = {}) {
-    const base = opts.size || Math.min(2.0, 0.75 + rad * 0.14);
+    const base = opts.size || Math.min(2.6, 0.85 + rad * 0.14);
     const area = Math.PI * rad * Math.hypot(rad, h);
-    let n = Math.floor(area * (opts.cover || 1.8) * QUALITY[G.quality].leaf / (base * base));
+    let n = Math.floor(area * (opts.cover || 2.0) * QUALITY[G.quality].leaf / (base * base));
     n = Math.min(n, 1800);
     this.far.push([cx, cy, cz, rad, h, rad, cols[0], cols[1], cols[2], 100]);
     if (this.noCards) return;
@@ -239,13 +243,14 @@ class LeafSet {
     for (let i = 0; i < n; i++) {
       const t = Math.pow(rnd(), 0.75);          // 0 = Spitze, 1 = Rand
       const a = rnd() * 6.2832;
-      const rr = rad * t * (0.62 + 0.38 * Math.sqrt(rnd()));
+      const rr = rad * t * (0.6 + 0.42 * Math.sqrt(rnd()));
       const yy = cy + h * (1 - t) - (rnd() * 0.2) * h * t * 0.3;
       let nx = Math.cos(a), nz = Math.sin(a), ny = slope * 0.9 - 0.15;
       const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
       const c = rnd() < 0.2 ? cols[2] : rnd() < 0.5 ? cols[1] : cols[0];
       const ao = (0.55 + 0.45 * t) * (0.85 + rnd() * 0.3);
-      this.add(cx + Math.cos(a) * rr, yy, cz + Math.sin(a) * rr, c, ao * 1.12, nx, ny, nz, base * (0.8 + rnd() * 0.5), 1);
+      const hg = clamp01(0.3 + 0.7 * (yy - this.sb) / Math.max(1, this.sh));
+      this.add(cx + Math.cos(a) * rr, yy, cz + Math.sin(a) * rr, c, ao * 1.12, nx, ny, nz, base * (0.8 + rnd() * 0.5), 1, (0.05 + 0.95 * t * t) * hg);
     }
   }
   // Karten als Objekt
@@ -282,14 +287,16 @@ class LeafSet {
     return grp;
   }
   // Laubkugeln für die Ferne
-  addFarTo(mg) {
+  // core: in der Nähe nur der dichte Kern unter den Blattkarten (kleiner und dunkler)
+  addFarTo(mg, core) {
+    const k = core ? 0.86 : 1, dk = core ? 0.72 : 1;
     for (const f of this.far) {
       const c = f[6];
       if (f[9] === 100) {
         // Kegel
-        mg.add('cone', M(f[0], f[1], f[2], f[3], f[4], f[5]), c.map(v => v * 0.9), 0.15, Math.random, 13);
+        mg.add('cone', M(f[0], f[1] + (core ? f[4] * 0.05 : 0), f[2], f[3] * (core ? 0.7 : 1), f[4] * (core ? 0.9 : 1), f[5] * (core ? 0.7 : 1)), c.map(v => v * 0.9 * dk), 0.15, Math.random, 13);
       } else {
-        mg.add('ico', M(f[0], f[1], f[2], f[3] * 0.97, f[4] * 0.95, f[5] * 0.97, 0, 0, 0), c.map(v => v * 0.92), 0.2, Math.random, 13);
+        mg.add('ico', M(f[0], f[1], f[2], f[3] * 0.97 * k, f[4] * 0.95 * k, f[5] * 0.97 * k, 0, 0, 0), c.map(v => v * 0.92 * dk), 0.2, Math.random, 13);
       }
     }
   }
