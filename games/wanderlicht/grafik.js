@@ -417,11 +417,11 @@ function initSky() {
     uniforms: {
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() },
       uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uSunCol: { value: new THREE.Color() }, uMoonDir: { value: new THREE.Vector3(0, 1, 0) },
-      uStars: { value: 1 }, uMoonSize: { value: 0.9905 }, uAurora: { value: 0 }, uTime: U.uTime, uFlash: { value: 0 }, uSunVis: { value: 1 }, uMoonVis: { value: 1 }, uCloudy: { value: 0 },
+      uStars: { value: 1 }, uMoonSize: { value: 0.9905 }, uAurora: { value: 0 }, uMoonCol: { value: new THREE.Color(0.93, 0.9, 0.84) }, uMoonGlow: { value: new THREE.Color(0.42, 0.38, 0.6) }, uTime: U.uTime, uFlash: { value: 0 }, uSunVis: { value: 1 }, uMoonVis: { value: 1 }, uCloudy: { value: 0 },
     },
     vertexShader: 'varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }',
     fragmentShader: `
-      uniform vec3 uZenith, uHorizon, uSunDir, uSunCol, uMoonDir;
+      uniform vec3 uZenith, uHorizon, uSunDir, uSunCol, uMoonDir, uMoonCol, uMoonGlow;
       uniform float uStars, uTime, uFlash, uSunVis, uMoonVis, uCloudy, uMoonSize, uAurora;
       varying vec3 vDir;
       float hash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -440,8 +440,8 @@ function initSky() {
         moon *= 1.0 - smoothstep(ms, ms + mw, md2) * 0.92 * smoothstep(0.985, 0.99, ms);
         float spots = 0.82 + 0.18 * hash(floor(d * 160.0));
         float mv = uMoonVis * (1.0 - uCloudy * 0.6);
-        col = mix(col, vec3(0.93, 0.9, 0.84) * spots, moon * mv);
-        col += vec3(0.42, 0.38, 0.6) * (pow(max(md, 0.0), 14.0) * 0.22 + pow(max(md, 0.0), 120.0) * 0.25 + pow(max(md, 0.0), 30.0) * (1.0 - smoothstep(0.972, 0.99, ms)) * 0.5) * mv;
+        col = mix(col, uMoonCol * spots, moon * mv);
+        col += uMoonGlow * (pow(max(md, 0.0), 14.0) * 0.22 + pow(max(md, 0.0), 120.0) * 0.25 + pow(max(md, 0.0), 30.0) * (1.0 - smoothstep(0.972, 0.99, ms)) * 0.5) * mv;
         vec3 q = floor(d * 240.0);
         float s = hash(q);
         float tw = 0.55 + 0.45 * sin(uTime * 2.3 + s * 90.0);
@@ -923,6 +923,10 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   if (ATM.tintW > 0.01) { _gray.copy(ATM.fogTint).multiplyScalar(1.05 - ATM.night * 0.2); ATM.hor.lerp(_gray, clamp01(ATM.tintW * 1.7)); }
   if (md.dunkel > 0.01) { _gray.setRGB(0.16, 0.09, 0.11); ATM.hor.lerp(_gray, md.dunkel * 0.85); ATM.zen.lerp(_gray.multiplyScalar(0.35), md.dunkel * 0.75); }
   if (md.hell > 0.01) { _gray.setRGB(0.95, 0.5, 0.75); ATM.hor.lerp(_gray, md.hell * 0.25); }
+  // Blutmond
+  const blood = (env.blood || 0) * (1 - smooth(-0.05, 0.1, Math.sin((dayT - 0.25) * Math.PI * 2)));
+  ATM.blood = blood;
+  if (blood > 0.01) { _gray.setRGB(0.32, 0.05, 0.07); ATM.hor.lerp(_gray, blood * 0.55); ATM.zen.lerp(_gray.multiplyScalar(0.3), blood * 0.4); }
 
   const ang = (dayT - 0.25) * Math.PI * 2;
   ATM.sunDir.set(Math.cos(ang) * 0.85, Math.sin(ang), 0.42).normalize();
@@ -938,7 +942,9 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   sm.uSunDir.value.copy(ATM.sunDir); sm.uMoonDir.value.copy(ATM.moonDir);
   sm.uSunCol.value.copy(ATM.sunC); sm.uSunVis.value = sunUp * (1 - md.mond);
   sm.uMoonVis.value = Math.max(1 - smooth(0.02, 0.3, ATM.sunDir.y), md.mond);
-  sm.uMoonSize.value = lerp(0.9905, 0.972, md.mond);
+  sm.uMoonSize.value = lerp(0.9905, 0.972, Math.max(md.mond, blood * 0.42));
+  sm.uMoonCol.value.setRGB(0.93, 0.9, 0.84).lerp(_c1.setRGB(1, 0.22, 0.12), blood);
+  sm.uMoonGlow.value.setRGB(0.42, 0.38, 0.6).lerp(_c1.setRGB(0.8, 0.1, 0.08), blood);
   sm.uStars.value = ATM.night * (1 - fogE * 0.8);
   let coldNow = 0; for (let i = 0; i < NB; i++) coldNow += bw[i] * BIOMES[i].cold;
   const aur = ATM.night * clamp01(coldNow * 1.3 + md.mond * 0.9 + md.feen * 0.3 + 0.45 * smooth(0.2, 1, Math.sin(U.uTime.value * 0.0035 + World.seed % 7))) * (1 - cloudE * 0.85) * (1 - md.dunkel);
@@ -1078,13 +1084,14 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   rs *= face * (1 - stormE * 0.6) * (1 - clamp01(fogE - 0.5) * 0.8) * (cave ? 0 : 1) * (L.y > -0.05 ? 1 : 0);
   ATM.rays = lerp(ATM.rays || 0, rs, Math.min(1, dt * 3));
   pm.uRays.value = ATM.rays;
-  pm.uRayCol.value.copy(useMoon ? _c1.setRGB(0.7, 0.8, 1.0) : _c1.copy(ATM.sunC).lerp(_c2.setRGB(1, 0.9, 0.75), 0.4));
+  pm.uRayCol.value.copy(useMoon ? _c1.setRGB(0.7, 0.8, 1.0).lerp(_c2.setRGB(1, 0.2, 0.15), ATM.blood) : _c1.copy(ATM.sunC).lerp(_c2.setRGB(1, 0.9, 0.75), 0.4));
   // Farbstimmung je nach Ort
   const st = pm.uShadowTint.value, ht = pm.uHighTint.value;
   st.setRGB(0.8, 0.82, 1.12); ht.setRGB(0.2, 0.13, 0.04);
   st.lerp(_c1.setRGB(1.05, 0.72, 0.75), md.dunkel); ht.lerp(_c1.setRGB(0.25, 0.03, 0.0), md.dunkel);
   st.lerp(_c1.setRGB(0.72, 0.86, 1.3), Math.max(md.mond, ATM.night * 0.5)); ht.lerp(_c1.setRGB(0.08, 0.12, 0.25), md.mond);
   st.lerp(_c1.setRGB(1.05, 0.78, 1.15), md.hell); ht.lerp(_c1.setRGB(0.32, 0.12, 0.22), md.hell);
+  st.lerp(_c1.setRGB(1.2, 0.6, 0.62), ATM.blood); ht.lerp(_c1.setRGB(0.3, 0.02, 0.02), ATM.blood);
   if (cave) { st.copy(cave.amb).multiplyScalar(1.4).addScalar(0.3); ht.setRGB(0.1, 0.06, 0.12); }
 }
 

@@ -542,7 +542,7 @@ function roamSpawn(dt) {
   roamTick = 5 + Math.random() * 5;
   const roaming = enemies.filter(e => !e.site && !e.dead).length;
   const night = ATM.night, storm = ATM.cur.storm;
-  const max = Math.round(1 + night * 3 + storm * 2);
+  const max = Math.round(1 + night * 3 + storm * 2 + (ATM.blood || 0) * 3);
   const dSpawn = Math.hypot(P.x - World.spawnX, P.z - World.spawnZ);
   if (roaming >= max || dSpawn < 140 || P.resting || P.inCave) return;
   for (let tries = 0; tries < 6; tries++) {
@@ -1151,7 +1151,13 @@ function frame(now) {
   show('loading', !worldReady);
   if (live) {
     const timeSpeed = mode === 'rest' ? 32 : 1;
-    S.dayT = (S.dayT + dt * timeSpeed / DAY_LEN) % 1;
+    S.dayT += dt * timeSpeed / DAY_LEN;
+    if (S.dayT >= 1) { S.dayT -= 1; S.days = (S.days || 0) + 1; }
+    // jede fünfte Nacht steigt der Blutmond auf
+    const bloodNow = Math.floor((S.days || 0) + S.dayT + 0.25) % 5 === 3 ? 1 : 0;
+    env.blood = lerp(env.blood || 0, bloodNow, Math.min(1, dt * 0.2));
+    if (bloodNow && !S.bloodSeen && ATM.night > 0.6 && mode === 'play') { S.bloodSeen = true; card('Blutmond', 'Heute Nacht ist die Welt nicht freundlich. Bleib nah am Feuer.'); Ton.sfx('boss'); }
+    if (!bloodNow) S.bloodSeen = false;
     if (mode !== 'title') {
       updateWeather(dt * timeSpeed);
       updatePlayer(dt);
