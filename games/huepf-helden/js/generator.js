@@ -3,20 +3,24 @@
 //  Level-Generator: baut aus Bausteinen ein Level (gleicher Seed = gleiches Level)
 // =====================================================================
 const SEG_WEIGHTS = {
-  base:   { flat: 2, blocks: 4, pit: 3, step: 2, pillars: 2, stairs: 1.4, islands: 2, moving: 1.2, falling: .8, spring: .8, bees: .8, spikes: .8, group: 1.8, hidden: .5, urnen: .9, kanonen: .8, wichte: .8 },
-  wiese:  { urnen: 1.2 },
-  strand: { urnen: 1.4, islands: 2.5, bees: .4 },
-  hoehle: { tunnel: 2.2, spikes: 1.3, spring: .3, urnen: 1.2 },
-  wueste: { pillars: 3, spikes: 1.2, bees: 1.2, kanonen: 1.2 },
+  base:   { flat: 2, blocks: 4, pit: 3, step: 2, pillars: 2, stairs: 1.4, islands: 2, moving: 1.2, falling: .8, spring: .8, bees: .8, spikes: .8, group: 1.8, hidden: .5, urnen: .9, kanonen: .8, wichte: .8, pool: .7 },
+  wiese:  { urnen: 1.2, pool: 1.2 },
+  strand: { urnen: 1.4, islands: 2.5, bees: .4, pool: 2 },
+  hoehle: { tunnel: 2.2, spikes: 1.3, spring: .3, urnen: 1.2, pool: 1 },
+  wueste: { pillars: 3, spikes: 1.2, bees: 1.2, kanonen: 1.2, pool: 1.2 },
   wolken: { islands: 5, moving: 3, falling: 2.2, pit: 3.5, flat: 1, pillars: 1.4, step: 1, stairs: .6, spikes: .3, urnen: 0, kanonen: .5 },
-  schnee: { stairs: 2.2, pit: 3.2, step: 3, bees: .4, kanonen: 1 },
+  schnee: { stairs: 2.2, pit: 3.2, step: 3, bees: .4, kanonen: 1, pool: .5 },
   abend:  { group: 2.2, spring: 1.4, bees: 1.4 },
-  nebel:  { wichte: 2.2, group: 2, urnen: 1.4, ghosts: 2, falling: 1.4 },
+  nebel:  { wichte: 2.2, group: 2, urnen: 1.4, ghosts: 2, falling: 1.4, pool: 1 },
   spuk:   { ghosts: 4, falling: 2.5, moving: 2, spikes: 1.4, tunnel: 1.5, pit: 2, bees: 0, urnen: 0, kanonen: 0, islands: 1.4 },
   turm:   { crusher: 2.6, feuerkette: 3, lavapit: 2.4, spikes: 1.5, pit: 1.2, moving: 1.5, stairs: 1.5, falling: 1.5, bees: 0, spring: .3, wichte: 1.5, kanonen: 1.4, urnen: 0, islands: .5 },
   burg:   { crusher: 2.6, feuerkette: 2.6, lavapit: 3, spikes: 1.5, pit: 2, moving: 1.5, stairs: 1.5, islands: 1, falling: 1.5, bees: 0, spring: .4, pillars: 1.2, kanonen: 1.6, wichte: 1.4, urnen: 0 },
   schatten: { lavapit: 2.4, feuerkette: 1.6, kanonen: 2, wichte: 2.4, crusher: 1.2, ghosts: 1, islands: 1.6, falling: 1.6 },
   sterne: { islands: 4, moving: 3, falling: 2.5, pit: 3, kanonen: 1.6, wichte: 1, flat: .5, bees: 1.2, feuerkette: 1.2 },
+  dschungel: { pillars: 2.6, bees: 2, spikes: 1.2, pool: 1.8, spring: 1.4, islands: 2.2, moving: 1.4, urnen: 1.2, kanonen: .4, wichte: .3 },
+  vulkan: { lavapit: 3.2, feuerkette: 2, spikes: 1.4, pillars: 2.4, moving: 2.2, falling: 1.8, pit: 1.6, kanonen: 1.2, wichte: .6, islands: 1.6, bees: .5, urnen: 0 },
+  zucker: { islands: 2.6, spring: 2.2, group: 2, bees: 1.2, pillars: 2.6, moving: 1.6, falling: 1.2, stairs: 1.8, pool: .8, spikes: .3, kanonen: .5, urnen: .6 },
+  himmel: { islands: 5, moving: 3, falling: 2.2, pit: 3.5, flat: 1, pillars: 1.4, step: 1, stairs: .6, spikes: .3, spring: 1.4, urnen: 0, kanonen: 1 },
 };
 const WATER_WEIGHTS = { wflat: 2, wrocks: 3, wpillars: 2.5, wfish: 2.5, wjelly: 1.6, wurchin: 1.6, wblocks: 2, wpit: 1.4 };
 
@@ -27,8 +31,8 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   const g = new Uint8Array(MAXW * H);
   const L = {
     w: MAXW, h: H, g, theme: th, themeKey, seed, kind, ents: [], deko: [], content: new Map(), stars: [],
-    spawn: null, checkpoint: null, arena: null, water: th.water ? 2 * T : null,
-    time: kind === 'burg' || kind === 'final' ? 400 : 300,
+    spawn: null, checkpoint: null, arena: null, water: th.water ? 2 * T : null, pools: [],
+    time: kind === 'burg' || kind === 'final' || kind === 'stern' ? 400 : 300,
   };
   const ceil = th.ceiling ? 2 : 0;
   const GY_MIN = th.ceiling ? 9 : 8, GY_MAX = 12;
@@ -265,6 +269,22 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
       set(hx, gy - 4, TILE.H); content(hx, gy - 4, 'life');
       return [x + len, gy];
     },
+    // Wasserstelle: Becken im Boden, in dem man schwimmt (Sprungtaste = Schwimmzug)
+    pool(x, gy) {
+      const ng = gy > 10 ? gy - 2 : gy;
+      x = flatRun(x, 3, ng);
+      const w = rng.i(6, 9), floor = ng + 3;
+      for (let i = 0; i < w; i++) ground(x + i, floor);
+      L.pools.push({ x0: x * T, x1: (x + w) * T, y: ng * T + 10, floor });
+      for (let i = 0; i < w; i++) { if (i % 2 === 0) coin(x + i, ng + 1 + (i % 4 === 0 ? 0 : 1)); }
+      if (rng.chance(.5 + diff * .3)) enemy('fisch', x + 2, ng + 2);
+      if (diff > .35 && rng.chance(.5)) enemy('qualle', x + w - 2, ng + 1);
+      if (ng - 3 > ceil && rng.chance(.6)) { set(x + Math.floor(w / 2), ng - 3, TILE.Q); content(x + Math.floor(w / 2), ng - 3, blockContent()); }
+      starSpot(x + Math.floor(w / 2), floor - 1, 2);
+      x += w;
+      x = flatRun(x, 3, ng);
+      return [x, ng];
+    },
     tunnel(x, gy) {
       const len = rng.i(8, 12);
       flatRun(x, len, gy, { noDeko: true });
@@ -479,6 +499,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   const water = !!th.water;
   const weights = water ? Object.assign({}, WATER_WEIGHTS) : Object.assign({}, SEG_WEIGHTS.base, SEG_WEIGHTS[themeKey] || {});
   if (!water) {
+    if (th.lava || th.bottomless || th.ceiling && themeKey !== 'hoehle') delete weights.pool;
     if (!th.ceiling) delete weights.tunnel;
     if (!th.lava) { delete weights.lavapit; delete weights.crusher; }
     if (!th.ceiling && !th.lava) delete weights.feuerkette;
@@ -487,7 +508,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   x = flatRun(x, 10, gy);
   L.spawn = { x: 3 * T, y: gy * T };
   if (water) [x, gy] = WS.wblocks(x, gy); else [x, gy] = S.blocks(x, gy, true);
-  const boss = kind === 'turm' ? 'krax' : kind === 'burg' ? 'koloss' : kind === 'final' ? 'morvax' : null;
+  const boss = kind === 'turm' ? 'krax' : kind === 'burg' || kind === 'stern' ? 'koloss' : kind === 'final' ? 'morvax' : null;
   const target = (kind === 'turm' ? 120 : kind === 'normal' ? 165 : 190) + Math.round(diff * 50) + (boss ? -20 : 0);
   let last = 'blocks';
   while (x < target) {

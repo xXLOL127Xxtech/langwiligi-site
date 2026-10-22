@@ -114,7 +114,13 @@ function moveBody(b, dt, hidden) {
   return r;
 }
 const overlap = (a, b) => a.x + a.w / 2 > b.x - b.w / 2 && a.x - a.w / 2 < b.x + b.w / 2 && a.y > b.y - b.h && a.y - a.h < b.y;
-const inWater = (y) => G.L && G.L.water !== null && y > G.L.water;
+// Oberkante des Wassers an dieser Stelle (ganzes Level unter Wasser oder Wasserstelle), sonst null
+const waterTop = (x, y) => {
+  const L = G.L; if (!L) return null;
+  if (L.water !== null && y > L.water) return L.water;
+  if (L.pools) for (const q of L.pools) if (x > q.x0 && x < q.x1 && y > q.y) return q.y;
+  return null;
+};
 
 // ---------------------------------------------------------------------
 //  Partikel und Punkte
@@ -189,7 +195,7 @@ function die(p, fell) {
   dropCarry(p);
   if (p.carried) { p.carried.carry = null; p.carried = null; }
   p.state = 'dead'; p.deadT = 0; p.fell = fell; p.vx = 0; p.vy = fell ? 0 : -900;
-  p.pounding = false; p.floating = false; p.dashT = p.rammT = p.tongueT = 0; p.slide = false;
+  p.pounding = false; p.floating = false; p.dashT = p.rammT = p.tongueT = 0; p.slide = false; p.spinJ = false;
   p.ls.deaths++; G.lives--;
   setPower(p, 0); p.starT = 0;
   if (G.solo || G.players.every(q => q === p || q.state !== 'play')) Music.stop();
@@ -251,8 +257,8 @@ function playPhysics(p, inp, dt) {
   if (p.starT > 0) { p.starT -= dt; if (Math.random() < .3) sparkle(p.x, p.y - p.h / 2, 1, `hsl(${Math.random() * 360},100%,75%)`); if (p.starT <= 0) Music.speed = G.hurry ? 1.3 : 1; }
   if (p.dashCd > 0) p.dashCd -= dt;
   if (p.stunT > 0) { p.stunT -= dt; inp = NOINPUT; }
-  const water = inWater(p.y - p.h * .45);
-  if (water !== p.swim) { p.swim = water; if (water) { p.vy *= .35; p.pounding = false; dust(p.x, p.y - p.h, 6, 'rgba(220,245,255,.9)'); } }
+  const wTop = waterTop(p.x, p.y - p.h * .45), water = wTop !== null; p.wTop = wTop;
+  if (water !== p.swim) { p.swim = water; if (water) { p.vy *= .35; p.pounding = false; p.spinJ = false; dust(p.x, p.y - p.h, 6, 'rgba(220,245,255,.9)'); } }
   if (inp.aP) doAction(p, inp);
   let dir = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
   if (p.wallLock > 0) { p.wallLock -= dt; if (dir === p.wallDir) dir = 0; }
@@ -295,7 +301,7 @@ function playPhysics(p, inp, dt) {
   p.coyote = p.onGround ? PH.coyote : Math.max(0, p.coyote - dt);
   if (water) {
     if (inp.jP) {
-      const nearTop = p.y - p.h < G.L.water + 34;
+      const nearTop = p.y - p.h < wTop + 34;
       p.vy = nearTop ? -780 : -(bear ? 400 : 330);
       p.onGround = false; p.sy = 1.1; p.ls.jumps++; G.totalJumps++;
       SFX.swim(); part({ x: p.x, y: p.y - p.h, vx: 0, vy: -60, life: .8, size: 5, color: 'rgba(220,245,255,.8)', kind: 'bubble' });
@@ -305,7 +311,10 @@ function playPhysics(p, inp, dt) {
       p.vy = -(PH.jump + PH.jumpRun * Math.abs(p.vx)) * ch.jump;
       p.onGround = false; p.coyote = 0; p.jumpBuf = 0; p.onPlat = null;
       p.sx = .78; p.sy = 1.25; p.ls.jumps++; G.totalJumps++;
-      SFX.jump(p.power > 0); dust(p.x, p.y, 3);
+      if (inp.d && !p.carry && !p.slide) {      // Drehsprung: Stampfen-Taste halten und springen
+        p.spinJ = true; p.spinGrace = .15; p.vy *= .94; p.sx = .9; p.sy = 1.12;
+        SFX.whirl(); for (let i = 0; i < 6; i++) part({ x: p.x + (Math.random() - .5) * 30, y: p.y - 4, vx: (Math.random() - .5) * 220, vy: -40, life: .35, size: 6, color: 'rgba(255,240,170,.9)', kind: 'star', vr: 6 });
+      } else { SFX.jump(p.power > 0); dust(p.x, p.y, 3); }
     } else if (p.wallSlide && !p.carry) {
       p.vx = -p.wallDir * 340; p.vy = -830 * ch.jump; p.face = -p.wallDir; p.wallLock = .16; p.wallSlide = false; p.jumpBuf = 0;
       p.sx = .8; p.sy = 1.2; p.ls.jumps++; G.totalJumps++; SFX.jump(p.power > 0);
@@ -322,6 +331,11 @@ function playPhysics(p, inp, dt) {
   if (p.vy >= 0) p.springT = false;
   if (p.power === 4 && p.whirlUsed && p.vy > 0 && (inp.j || inp.a)) { g = 1200; maxFall = 115; }
   if (p.whirlT > 0) g = 900;
+  if (p.spinJ) {
+    if (p.spinGrace > 0) p.spinGrace -= dt;
+    if (p.vy > 0) { g = 1500; maxFall = 330; }
+    if (Math.random() < .35) part({ x: p.x + (Math.random() - .5) * 26, y: p.y - p.h * .5 + (Math.random() - .5) * 26, vx: 0, vy: 0, life: .3, size: 4, color: 'rgba(255,240,170,.9)', kind: 'star', vr: 5 });
+  }
   p.floating = false;
   if (ch.special === 'schweben' && p.power < 2 && inp.a && !p.onGround && p.floatFuel > 0 && !p.pounding && !p.carry && !water) {
     p.floating = true; p.floatFuel -= dt; g = 0; p.vy += (35 - p.vy) * Math.min(1, dt * 7);
@@ -330,12 +344,12 @@ function playPhysics(p, inp, dt) {
   if (water) {
     g = inp.d ? 900 : 520; maxFall = inp.d ? 260 : 140;
   } else {
-    if (inp.dP && !p.onGround && !p.pounding && p.dashT <= 0 && !p.carry) { p.pounding = true; p.poundT = .17; p.rammT = 0; p.whirlT = 0; }
+    if (inp.dP && !p.onGround && !p.pounding && p.dashT <= 0 && !p.carry && !(p.spinGrace > 0)) { p.pounding = true; p.poundT = .17; p.rammT = 0; p.whirlT = 0; p.spinJ = false; }
     if (p.pounding) { g = 0; if (p.poundT > 0) { p.poundT -= dt; p.vy = 0; p.vx = 0; } else p.vy = 1200; }
   }
   if (p.dashT > 0) g = 0;
   p.vy = Math.min(maxFall, p.vy + g * dt);
-  if (water && p.vy < -420 && p.y - p.h > G.L.water + 34) p.vy = -420;
+  if (water && p.vy < -420 && p.y - p.h > wTop + 34) p.vy = -420;
   if (p.wallSlide && p.vy > 170) { p.vy = 170; if (Math.random() < .2) dust(p.x + p.wallDir * 14, p.y - 10, 1); }
   if (p.onPlat) { p.x += p.onPlat.dx; p.y += p.onPlat.dy; }
   const prevBottom = p.y, wasGround = p.onGround;
@@ -349,7 +363,7 @@ function playPhysics(p, inp, dt) {
     else if (p.dashT > 0) p.dashT = 0;
     if (p.slide) { const c = tAt(r.wx, r.wy); if (c === TILE.B || c === TILE.Q) hitBlock(r.wx, r.wy, p, 'side'); p.slide = false; }
     if (!p.onGround && !water && dir === wd && p.vy > 0 && !p.pounding && !p.carry) { p.wallSlide = true; p.wallDir = wd; }
-    p.vx = 0;
+    p.vx = 0; p.spinJ = false;
   }
   if (r.u) {
     let tx = r.hx[0];
@@ -370,6 +384,11 @@ function playPhysics(p, inp, dt) {
 }
 function land(p) {
   p.sx = 1.22; p.sy = .78; p.combo = 0; p.canDouble = true; p.floatFuel = 1.3; p.whirlUsed = false;
+  if (p.spinJ) {      // Drehsprung-Landung zerbricht Backsteine unter den Füssen
+    p.spinJ = false;
+    const ty = Math.floor((p.y + 2) / T), lx = Math.floor((p.x - p.w / 2 + 2) / T), rx = Math.floor((p.x + p.w / 2 - 2) / T);
+    for (let tx = lx; tx <= rx; tx++) if (tAt(tx, ty) === TILE.B && !G.L.content.get(ty * G.L.w + tx)) { breakBrick(tx, ty, p); p.onGround = false; p.vy = 300; }
+  }
   if (!p.pounding) dust(p.x, p.y, 3);
 }
 function platformCollide(p, prevBottom) {
@@ -597,9 +616,11 @@ const ENEMY_SIZE = {
   kaefer: [36, 32], flugkaefer: [36, 32], schnecke: [34, 44], igel: [38, 32], hummel: [36, 34], lavaball: [28, 30], crusher: [2 * T - 8, 2 * T - 8],
   magma: [24, 24], kugel: [36, 36], kanone: [40, 40], pflanze: [30, 60], wicht: [30, 48], stein: [18, 18], irrlicht: [34, 40],
   fisch: [40, 30], qualle: [36, 40], seeigel: [40, 40], schattenball: [30, 30],
+  saeule: [48, 170], zapfen: [22, 46], welle: [48, 38], wolke: [84, 52], scherbe: [24, 24],
 };
-const SPIKY = { igel: 1, lavaball: 1, magma: 1, pflanze: 1, irrlicht: 1, qualle: 1, seeigel: 1, stein: 1, schattenball: 1 };
-const INVULN = { crusher: 1, kanone: 1, lavaball: 1, magma: 1, stein: 1, schattenball: 1 };
+const HAZARD = { saeule: 1, zapfen: 1, welle: 1, wolke: 1, scherbe: 1 };    // Boss-Gefahren
+const SPIKY = Object.assign({ igel: 1, lavaball: 1, magma: 1, pflanze: 1, irrlicht: 1, qualle: 1, seeigel: 1, stein: 1, schattenball: 1 }, HAZARD);
+const INVULN = Object.assign({ crusher: 1, kanone: 1, lavaball: 1, magma: 1, stein: 1, schattenball: 1 }, HAZARD);
 function makeEnemy(d) {
   const [w, h] = ENEMY_SIZE[d.kind] || [32, 32];
   const e = Object.assign({ w, h, vx: 0, vy: 0, dir: -1, active: false, dead: false, walk: 0, t: Math.random() * 9 }, d);
@@ -737,7 +758,24 @@ function updateEnemy(e, dt) {
       if (Math.abs(e.x - e.x0) > 4 * T || SOLID[tAt(Math.floor((e.x + e.dir * 22) / T), Math.floor((e.y - 15) / T))]) e.dir = -e.dir;
       break;
     }
-    case 'qualle': e.y = e.y0 + Math.sin(e.t * 1.4) * 60; break;
+    case 'qualle': {
+      // Pulsschlag: Schirm zieht sich zusammen (Stoss nach oben), dann sinkt die Qualle und treibt zur Person hin
+      const ph = (e.t * 1.25) % 1;
+      if (e.lastPh !== undefined && ph < e.lastPh) { e.vy = -190; e.pulse = 1; }
+      e.lastPh = ph; e.pulse = Math.max(0, (e.pulse || 0) - dt * 3);
+      e.vy += (e.y < e.y0 - 70 ? 380 : 210) * dt; e.vy = clamp(e.vy, -220, 110);
+      if (e.y > e.y0 + 80) e.vy = Math.min(e.vy, -70);
+      if (near) {
+        const dx = near.x - e.x, d = Math.abs(dx);
+        if (d < 8 * T && d > 14) e.vx += sign(dx) * (ph < .35 ? 150 : 25) * dt;
+      }
+      e.vx *= Math.pow(.55, dt); e.vx = clamp(e.vx, -90, 90);
+      const nx = e.x + e.vx * dt, ny = e.y + e.vy * dt;
+      if (SOLID[tAt(Math.floor((nx + sign(e.vx) * 20) / T), Math.floor((e.y - 20) / T))] || Math.abs(nx - e.x0) > 5 * T) e.vx = -e.vx * .6; else e.x = nx;
+      if (SOLID[tAt(Math.floor(e.x / T), Math.floor((ny - 44) / T))] || SOLID[tAt(Math.floor(e.x / T), Math.floor((ny + 2) / T))]) e.vy = -e.vy * .5; else e.y = ny;
+      e.dir = sign(e.vx) || e.dir;
+      break;
+    }
     case 'seeigel': break;
     case 'lavaball': {
       if (e.state === 'wait') { e.wait -= dt; e.y = e.home; e.vy = 0; if (e.wait <= 0) { e.state = 'jump'; e.vy = -Math.sqrt(2 * 1800 * (e.home - e.top)); } }
@@ -751,10 +789,40 @@ function updateEnemy(e, dt) {
     case 'magma': case 'stein': {
       e.vy += 1600 * dt; e.x += e.vx * dt; e.y += e.vy * dt; e.life -= dt;
       const floor = L.arena && e.kind === 'magma' ? L.arena.gy * T : null;
+      if (floor && e.y >= floor && e.toCloud) { e.remove = true; G.enemies.push(Object.assign(makeEnemy({ kind: 'wolke', x: e.x, y: floor }), { active: true, life: 6.5, warn: .4, age: 0 })); sparkle(e.x, floor - 10, 6, '#b0f060'); break; }
       if (floor && e.y >= floor) { e.y = floor; e.vy = -e.vy * .5; e.bounces = (e.bounces || 0) + 1; if (e.bounces > 2) e.remove = true; }
       if (e.kind === 'stein' && e.vy > 0 && SOLID[tAt(Math.floor(e.x / T), Math.floor((e.y - 2) / T))]) { e.remove = true; dust(e.x, e.y, 3, 'rgba(160,150,140,.8)'); }
       if (e.kind === 'magma' && Math.random() < .4) part({ x: e.x, y: e.y - 12, vx: 0, vy: -20, life: .35, size: 5, color: '#ff9a2a', kind: 'ember' });
       if (e.life <= 0) e.remove = true;
+      break;
+    }
+    case 'saeule': {
+      if (e.warn > 0) { e.warn -= dt; if (e.warn <= 0) { shake(e.style === 'blitz' ? 8 : 4); if (e.style === 'blitz') { SFX.thunder(); G.flash = Math.max(G.flash || 0, .25); } else SFX.quake(); } }
+      else { e.hotT = (e.hotT || 0) + dt; if (e.hotT > e.hotLeft) e.remove = true; if (e.style === 'lava' && Math.random() < .5) part({ x: e.x + (Math.random() - .5) * 40, y: e.y - Math.random() * 120, vx: 0, vy: -60, life: .5, size: 6, color: '#ffb02a', kind: 'ember' }); }
+      break;
+    }
+    case 'zapfen': {
+      if (e.warn > 0) { e.warn -= dt; e.vy = 0; break; }
+      e.vy = Math.min(1000, e.vy + 2200 * dt); e.y += e.vy * dt;
+      if (L.arena && e.y >= L.arena.gy * T) { e.remove = true; SFX.brick(); sparkle(e.x, e.y - 6, 5, e.fall === 'stern' ? '#ffe066' : e.fall === 'zucker' ? '#ff9ad0' : e.fall === 'fels' ? '#c8a070' : '#d8f6ff'); }
+      break;
+    }
+    case 'welle': {
+      if (e.warn > 0) { e.warn -= dt; if (e.warn <= 0) { e.x = e.startX; SFX.quake(); shake(4); } break; }
+      e.x += e.vx * dt; e.walk += dt * 10;
+      if (Math.random() < .5) part({ x: e.x + (Math.random() - .5) * e.w, y: e.y - e.h * Math.random(), vx: -e.dir * 60, vy: -80, life: .4, size: 5, color: e.wave === 'sand' ? '#f0d08a' : e.wave === 'lava' ? '#ffb02a' : '#e8fbff', kind: 'dust' });
+      if (L.arena && (e.x < L.arena.x0 - 80 || e.x > L.arena.x1 + 80)) e.remove = true;
+      break;
+    }
+    case 'wolke': {
+      e.age = (e.age || 0) + dt; e.life -= dt; if (e.warn > 0) e.warn -= dt;
+      if (e.life <= 0) e.remove = true;
+      break;
+    }
+    case 'scherbe': {
+      e.x += e.vx * dt; e.y += e.vy * dt; e.life -= dt;
+      if (Math.random() < .5) part({ x: e.x, y: e.y - 12, vx: 0, vy: 0, life: .3, size: 5, color: e.col === 'kristall' ? '#e0a0ff' : e.col === 'eis' ? '#c8f0ff' : e.col === 'lava' ? '#ffb02a' : e.col === 'zucker' ? '#ff9ad0' : '#ffe066', kind: 'star', vr: 3 });
+      if (e.life <= 0 || (L.arena && (e.y >= L.arena.gy * T || e.x < L.arena.x0 - 40 || e.x > L.arena.x1 + 40))) e.remove = true;
       break;
     }
     case 'schattenball': {
@@ -823,12 +891,15 @@ function nearestPlayer(x, y) {
 function enemyBox(e) {
   if (e.kind === 'pflanze') return { x: e.x, y: e.base, w: 30, h: e.h };
   if (e.kind === 'kanone') return { x: e.x, y: e.y, w: 44, h: 44 };
+  if (e.kind === 'saeule') return { x: e.x, y: e.y, w: e.w * .7, h: e.h * Math.min(1, (e.hotT || 0) / .12 + .15) };
+  if (e.kind === 'wolke') return { x: e.x, y: e.y, w: 70, h: 44 };
   return e;
 }
 function playerVsEnemies(p) {
   if (p.state !== 'play' || p.carried) return;
   for (const e of G.enemies) {
     if (e.dead || !e.active || e.carried) continue;
+    if (e.warn > 0) continue;
     if (e.kind === 'crusher') {
       if (p.vy >= 0 && p.prevBottom <= e.y - e.h + 4 + Math.max(0, -e.dy) && p.y >= e.y - e.h && p.x + p.w / 2 > e.x - e.w / 2 && p.x - p.w / 2 < e.x + e.w / 2) {
         p.y = e.y - e.h; p.vy = 0; p.onGround = true; p.onPlat = { dx: 0, dy: e.state === 'rise' ? -130 * STEP : 0 };
@@ -858,7 +929,8 @@ function playerVsEnemies(p) {
       continue;
     }
     const fromAbove = p.vy > 0 && p.prevBottom <= box.y - box.h * .45 + 6;
-    if (fromAbove && !SPIKY[e.kind]) {
+    const spinOk = p.spinJ && (e.kind === 'igel' || e.kind === 'seeigel' || e.kind === 'qualle');
+    if (fromAbove && (!SPIKY[e.kind] || spinOk)) {
       if (e.shell && e.vx) { e.vx = 0; e.wake = 7; SFX.stomp(); addScore(p, 100, e.x, e.y - 40); }
       else if (e.kind === 'kugel') { e.dead = 'flip'; e.vy = 0; e.vx = 0; SFX.stomp(); addScore(p, 200, e.x, e.y - 50); p.ls.stomps++; hitstop(.045); }
       else killEnemy(e, 'stomp', p);
@@ -930,7 +1002,7 @@ function makeBoss(d) {
     return { type: 'morvax', x: d.x, y: d.y, w: 90, h: 200, vx: 0, vy: 0, dir: -1, hp, maxHp: hp, state: 'sleep', t: 0, hurtT: 0, walk: 0, dead: false, timer: 0, name: 'Morvax, der Schattenkönig' };
   }
   const look = d.look || w;
-  const hp = Math.min(8, 3 + multi + Math.floor((w - 1) / 2));
+  const hp = look === 9 ? 9 + multi : Math.min(8, 3 + multi + Math.floor((w - 1) / 2));
   return { type: 'koloss', look, x: d.x, y: d.y, w: 140, h: 150, vx: 0, vy: 0, dir: -1, hp, maxHp: hp, state: 'sleep', t: 0, hurtT: 0, walk: 0, squash: 0, dead: false, timer: 0, onGround: true, name: (BOSS_LOOK[look] || BOSS_LOOK[1]).name };
 }
 function bossLand(b) {
@@ -985,14 +1057,46 @@ function updateBoss(b, dt) {
     else { hurt(p); p.vx = sign(p.x - b.x) * 420; p.vy = -420; }
   }
 }
+// Spezialangriffe der Burg-Bosse (welche, steht in BOSS_LOOK[look].atk)
+const SPECIAL_DUR = { eruption: 3, wellen: 3, zapfen: 2.8, blitze: 3.2, scherben: 2.2, gift: 1.8, flut: 2.8 };
+function spawnHaz(kind, x, y, extra) { const e = Object.assign(makeEnemy({ kind, x, y }), { active: true }, extra); G.enemies.push(e); return e; }
+function startSpecial(b, name) {
+  b.state = name; b.atk = true; b.vx = 0; b.k = 0; b.next = .5; b.timer = SPECIAL_DUR[name];
+  SFX.shadow(); sparkle(b.x, b.y - 140, 10, '#ffffff');
+}
+function runSpecial(b, dt, tgt, tier) {
+  const A = G.L.arena, look = BOSS_LOOK[b.look] || BOSS_LOOK[1], gy = A.gy * T;
+  const n = 3 + tier, mid = (A.x0 + A.x1) / 2;
+  const randX = () => A.x0 + T * 1.5 + Math.random() * (A.x1 - A.x0 - T * 3);
+  b.vx = 0; b.walk += dt * 3;
+  if (tgt && b.state !== 'flut') b.dir = tgt.x < b.x ? -1 : 1;
+  b.next -= dt;
+  if (b.next <= 0) {
+    switch (b.state) {
+      case 'eruption': if (b.k < n) { const x = b.k % 2 === 0 && tgt ? tgt.x : randX(); spawnHaz('saeule', clamp(x, A.x0 + T, A.x1 - T), gy, { style: look.pil || 'lava', w: 52, h: 170, warn: .9 - tier * .1, warn0: .9 - tier * .1, hotLeft: .55 }); b.k++; b.next = .55 - tier * .06; } break;
+      case 'blitze': if (b.k < n + 1) { const x = tgt ? tgt.x + (Math.random() - .5) * T * (b.k ? 3 : 0) : randX(); spawnHaz('saeule', clamp(x, A.x0 + T, A.x1 - T), gy, { style: 'blitz', w: 46, h: 720, warn: .95 - tier * .1, warn0: .95 - tier * .1, hotLeft: .3 }); b.k++; b.next = .7 - tier * .06; } break;
+      case 'zapfen': if (b.k < 6 + tier * 2) { const w0 = .85 - tier * .1; spawnHaz('zapfen', randX(), G.cam.top + 8, { fall: look.fall || 'eis', warn: w0, warn0: w0 }); b.k++; b.next = .3; } break;
+      case 'wellen': if (b.k < 2 + (tier > 0 ? 1 : 0)) { const d = tgt ? sign(tgt.x - b.x) || b.dir : b.dir; spawnHaz('welle', b.x + d * 70, gy, { wave: look.wave || 'sand', w: 52, h: 38, vx: d * (300 + tier * 40), dir: d }); SFX.dash(); b.k++; b.next = .85; } break;
+      case 'scherben': if (b.k < 2) { const cnt = 3 + tier * 2; for (let i = 0; i < cnt; i++) { const ang = (tgt ? Math.atan2((tgt.y - tgt.h / 2) - (b.y - 100), tgt.x - b.x) : b.dir > 0 ? 0 : Math.PI) + (i - (cnt - 1) / 2) * .26; spawnHaz('scherbe', b.x + b.dir * 50, b.y - 100, { col: look.shot || 'stern', vx: Math.cos(ang) * 340, vy: Math.sin(ang) * 340, life: 4 }); } SFX.fire(); b.k++; b.next = 1; } break;
+      case 'gift': if (b.k < 2 + (tier > 0 ? 1 : 0)) { const dx = tgt ? tgt.x - b.x : b.dir * 300; spawnHaz('magma', b.x + b.dir * 50, b.y - 120, { col: 'gift', toCloud: true, vx: clamp(dx * .8 + (Math.random() - .5) * 220, -480, 480), vy: -760, life: 5 }); SFX.fire(); b.k++; b.next = .55; } break;
+      case 'flut': if (b.k < 1) { const fromRight = tgt ? tgt.x < mid : Math.random() < .5, d = fromRight ? -1 : 1; spawnHaz('welle', fromRight ? A.x1 - 50 : A.x0 + 50, gy, { wave: look.wave || 'wasser', w: 70, h: 100, vx: d * 340, dir: d, warn: 1.1, warn0: 1.1, startX: fromRight ? A.x1 + 50 : A.x0 - 50 }); b.k++; b.next = 9; } break;
+    }
+  }
+  if (b.timer <= 0) { b.atk = false; b.state = 'walk'; b.timer = 1.5 + Math.random(); }
+}
 function updateKoloss(b, dt, tgt, angry) {
   const speed = 85 + (b.maxHp - b.hp) * 28;
+  const tier = angry ? (b.hp <= b.maxHp / 4 ? 2 : 1) : 0;
+  const look = BOSS_LOOK[b.look] || BOSS_LOOK[1];
   if (b.state === 'intro') { b.vx = 0; if (b.timer <= 0) { b.state = 'walk'; b.timer = 2; } return; }
+  if (SPECIAL_DUR[b.state]) { runSpecial(b, dt, tgt, tier); return; }
   if (b.state === 'walk') {
     b.walk += dt * 5;
     if (tgt && Math.random() < dt * .8) b.dir = tgt.x < b.x ? -1 : 1;
     b.vx = b.dir * speed;
     if (b.timer <= 0) {
+      const atk = look.atk || [];
+      if (atk.length && Math.random() < (tier ? .5 : .38)) { startSpecial(b, atk[Math.floor(Math.random() * atk.length)]); return; }
       const r = Math.random();
       if (r < .4) { b.state = 'jump'; b.vy = -1150; b.onGround = false; b.vx = tgt ? clamp((tgt.x - b.x) * .8, -320, 320) : 0; }
       else if (r < .75 || !angry) { b.state = 'throw'; b.timer = 1.1; b.thrown = 0; b.vx = 0; }
@@ -1003,7 +1107,7 @@ function updateKoloss(b, dt, tgt, angry) {
     if (b.thrown < n && b.timer < 1 - b.thrown * .22) {
       b.thrown++;
       const dx = tgt ? tgt.x - b.x : b.dir * 300;
-      G.enemies.push(Object.assign(makeEnemy({ kind: 'magma', x: b.x + b.dir * 50, y: b.y - 120 }), { active: true, vx: clamp(dx * .9 + (Math.random() - .5) * 200, -520, 520), vy: -700 - Math.random() * 200, life: 4 }));
+      G.enemies.push(Object.assign(makeEnemy({ kind: 'magma', x: b.x + b.dir * 50, y: b.y - 120 }), { active: true, col: look.shot || 'lava', vx: clamp(dx * .9 + (Math.random() - .5) * 200, -520, 520), vy: -700 - Math.random() * 200, life: 4 }));
       SFX.fire();
     }
     if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.6 + Math.random() * 1.5; }
@@ -1087,7 +1191,7 @@ function bossDamage(n, p, stomp) {
   }
   if (b.hp <= 0) {
     b.dead = true; b.deadT = 0; b.vx = 0; Music.stop(); SFX.bossHit(); if (p) p.ls.stomps += 3;
-    for (const e of G.enemies) if (e.kind === 'magma' || e.kind === 'schattenball' || e.kind === 'wicht') e.remove = true;
+    for (const e of G.enemies) if (e.kind === 'magma' || e.kind === 'schattenball' || e.kind === 'wicht' || HAZARD[e.kind]) e.remove = true;
   }
 }
 function bossOrb(p, princess) {
@@ -1164,11 +1268,11 @@ function loadLevel(L) {
   for (let i = 0; i < L.theme.clouds; i++) G.clouds.push({ x: rng.f(), y: .05 + rng.f() * .45, s: .5 + rng.f() * .9, sp: .002 + rng.f() * .004 });
   G.ambient = [];
 }
-function levelKindOf(nd) { return nd.type === 'turm' ? 'turm' : nd.type === 'burg' ? (WORLD_SPECS[nd.world - 1].final ? 'final' : 'burg') : 'normal'; }
+function levelKindOf(nd) { return nd.type === 'turm' ? 'turm' : nd.type === 'burg' ? (WORLD_SPECS[nd.world - 1].final ? 'final' : WORLD_SPECS[nd.world - 1].sternFinale ? 'stern' : 'burg') : 'normal'; }
 function startLevel() {
   const nd = G.node;
   const kind = levelKindOf(nd);
-  const themeKey = kind === 'turm' ? 'turm' : kind === 'final' ? 'schatten' : kind === 'burg' ? 'burg' : nd.theme;
+  const themeKey = kind === 'turm' ? 'turm' : kind === 'final' ? 'schatten' : kind === 'stern' ? 'sterne' : kind === 'burg' ? 'burg' : nd.theme;
   const diff = Prog.levelDiff(nd);
   G.levelDiffNow = diff;
   loadLevel(generateLevel({ themeKey, seed: Prog.levelSeed(nd.id), diff, kind, secret: !!nd.secret, bossLook: nd.world }));
@@ -1391,7 +1495,7 @@ function updateParticles(dt) {
   for (const q of G.parts) {
     q.t += dt; q.vy += q.grav * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.rot += q.vr * dt;
     if (q.kind === 'dust') { q.vx *= .9; q.vy *= .9; }
-    if (q.kind === 'bubble') { q.x += Math.sin(q.t * 8) * 30 * dt; if (G.L.water !== null && q.y < G.L.water) q.t = q.life; }
+    if (q.kind === 'bubble') { q.x += Math.sin(q.t * 8) * 30 * dt; const wt = waterTop(q.x, q.y + 4); if (wt === null || q.y < wt) q.t = q.life; }
   }
   G.parts = G.parts.filter(q => q.t < q.life);
   for (const pp of G.pops) pp.t += dt;
@@ -1523,6 +1627,7 @@ function render(dt) {
   for (const f of G.fbs) drawShot(ctx, f, t);
   drawParticles(ctx);
   if (L.water !== null) drawWater(ctx, L, t);
+  if (L.pools) for (const q of L.pools) drawPool(ctx, L, q, t);
   ctx.textAlign = 'center'; ctx.font = '26px ' + FONT;
   for (const pp of G.pops) {
     ctx.globalAlpha = 1 - Math.max(0, pp.t - .7) / .5;
@@ -1569,6 +1674,22 @@ function drawWater(g, L, t) {
   for (let i = 0; i < 6; i++) { const bx = x0 + ((i * 260 + t * 20) % (cam.vw + 300)) - 150; g.beginPath(); g.moveTo(bx, wy); g.lineTo(bx + 60, wy); g.lineTo(bx + 220, y1); g.lineTo(bx + 120, y1); g.fill(); }
   g.restore();
 }
+function drawPool(g, L, q, t) {
+  const cam = G.cam;
+  if (q.x1 < cam.left - 20 || q.x0 > cam.left + cam.vw + 20) return;
+  const y1 = q.floor * T;
+  const grd = g.createLinearGradient(0, q.y, 0, y1);
+  grd.addColorStop(0, 'rgba(60,190,240,.42)'); grd.addColorStop(1, 'rgba(10,60,130,.62)');
+  g.fillStyle = grd;
+  g.beginPath(); g.moveTo(q.x0, y1);
+  for (let x = q.x0; x <= q.x1; x += 12) g.lineTo(x, q.y + Math.sin(t * 2.4 + x * .05) * 3);
+  g.lineTo(q.x1, q.y); g.lineTo(q.x1, y1); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(230,252,255,.85)'; g.lineWidth = 3;
+  g.beginPath(); for (let x = q.x0; x <= q.x1; x += 12) { const y = q.y + Math.sin(t * 2.4 + x * .05) * 3; if (x === q.x0) g.moveTo(x, y); else g.lineTo(x, y); } g.stroke();
+  g.save(); g.globalAlpha = .12; g.fillStyle = '#fff';
+  for (let i = 0; i < 3; i++) { const bx = q.x0 + ((i * 90 + t * 14) % (q.x1 - q.x0)); g.beginPath(); g.moveTo(bx, q.y); g.lineTo(bx + 26, q.y); g.lineTo(bx + 60, y1); g.lineTo(bx + 30, y1); g.fill(); }
+  g.restore();
+}
 function drawLava(g, L, tx0, tx1, t) {
   const ty = L.h - 2, y = ty * T;
   for (let tx = tx0; tx <= tx1; tx++) {
@@ -1612,6 +1733,7 @@ function drawPlayer(g, p, t, carriedNow) {
   let rot = 0;
   if (p.pounding && p.poundT > 0) rot = (1 - p.poundT / .17) * TAU * p.face;
   if (p.spin > 0) rot = (1 - p.spin) * TAU * p.face;
+  if (p.spinJ && !p.onGround) rot = p.t * 22 * p.face;
   if (st === 'dash') rot = .22 * p.face;
   if (st === 'whirl' && p.whirlT > 0) rot = Math.sin(t * 40) * .1;
   const alpha = p.inv > 0 && Math.floor(t * 18) % 2 ? .35 : 1;
@@ -1696,7 +1818,7 @@ function nodeTitle(nd) {
   if (!nd) return '';
   if (nd.type === 'level') return 'Level ' + nd.title;
   if (nd.type === 'turm') return 'Turm ' + nd.world;
-  return WORLD_SPECS[nd.world - 1].final ? 'Schattenburg' : 'Burg ' + nd.world;
+  return burgName(nd.world);
 }
 function drawHUD() {
   const g = ctx;

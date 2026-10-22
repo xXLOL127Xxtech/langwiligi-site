@@ -185,6 +185,60 @@ const THEMES = {
     ambient: 'gluehw', clouds: 0,
     music: { scale: 'dorisch', root: 59, bpm: 146, lead: 'triangle' },
   },
+  dschungel: {
+    name: 'Dschungeltal', sky: ['#1f7a52', '#6ccf8a', '#e4f8b4'], sun: { x: .8, y: .16, r: 44, c: '#fffbc0' },
+    layers: [
+      { style: 'berge', c1: '#2f8a68', c2: '#86cfa8', cap: null, base: .5, amp: .3, f: .05, seed: 41 },
+      { style: 'baeume', c1: '#1c6a3a', c2: '#3a9a52', base: .66, amp: .12, f: .2, seed: 42 },
+      { style: 'baeume', c1: '#0f4a28', c2: '#217a3c', base: .8, amp: .09, f: .36, seed: 43 },
+    ],
+    ground: { style: 'gras', top: '#58d65a', top2: '#2a9a3a', body: '#9a6a3a', body2: '#4a2a14', dot: '#6e4424', dot2: '#c89a62' },
+    stone: ['#a8bf98', '#5f7a52'], brick: ['#d68a4a', '#8a4a1a'], plat: 'holz',
+    enemies: { kaefer: 4, schnecke: 2, hummel: 3, flugkaefer: 2, pflanze: 3 },
+    deko: { back: ['dschungelbaum', 'dschungelbaum', 'baum'], front: ['farn', 'farn', 'busch', 'blume', 'pilz'] },
+    ambient: 'pollen', clouds: 3,
+    music: { scale: 'mixo', root: 60, bpm: 126, lead: 'triangle' },
+  },
+  vulkan: {
+    name: 'Glutkrater', sky: ['#2a0c0a', '#8a2a12', '#ff9a40'], sun: { x: .3, y: .32, r: 90, c: '#ffcf7a' }, lava: true, dark: .08,
+    layers: [
+      { style: 'berge', c1: '#3a1a18', c2: '#6a2a20', cap: '#ff8a2a', base: .5, amp: .34, f: .05, seed: 51 },
+      { style: 'berge', c1: '#2a1210', c2: '#4a2018', cap: null, base: .74, amp: .2, f: .16, seed: 52 },
+    ],
+    ground: { style: 'asche', top: '#6a5a58', top2: '#3a2e2c', body: '#4a3434', body2: '#1a0e0e', dot: '#2a1a1a', dot2: '#a04a22' },
+    stone: ['#8a6a5a', '#3a2620'], brick: ['#d0602a', '#6a2a10'], plat: 'stein',
+    enemies: { kaefer: 3, igel: 4, hummel: 2, flugkaefer: 2, wicht: 1 },
+    deko: { back: [], front: ['obsidian', 'obsidian', 'stein', 'fackel'] },
+    ambient: 'funken', clouds: 0,
+    music: { scale: 'moll', root: 55, bpm: 132, lead: 'sawtooth' },
+  },
+  zucker: {
+    name: 'Zuckerland', sky: ['#ff8ac8', '#ffc8e8', '#fff4fb'], sun: { x: .75, y: .2, r: 50, c: '#fff6c2' },
+    layers: [
+      { style: 'huegel', c1: '#ff8ac0', c2: '#ffc4e2', base: .56, amp: .2, f: .06, seed: 61 },
+      { style: 'huegel', c1: '#8ae8c8', c2: '#c0ffe8', base: .7, amp: .14, f: .18, seed: 62 },
+      { style: 'huegel', c1: '#c8a0ff', c2: '#e8d0ff', base: .82, amp: .08, f: .34, seed: 63 },
+    ],
+    ground: { style: 'zucker', top: '#ff9ad0', top2: '#e8508e', body: '#c88a56', body2: '#7a4a28', dot: '#6a3a1e', dot2: '#f0c08a' },
+    stone: ['#ffe8f4', '#e8a0c8'], brick: ['#a86a3a', '#6a3a1a'], plat: 'wolke',
+    enemies: { kaefer: 4, schnecke: 3, igel: 2, hummel: 2, flugkaefer: 2 },
+    deko: { back: ['lolli', 'stange'], front: ['stange', 'lolli', 'muffin', 'muffin'] },
+    ambient: 'pollen', clouds: 5,
+    music: { scale: 'dur', root: 67, bpm: 140, lead: 'triangle' },
+  },
+  himmel: {
+    name: 'Himmelsreich', sky: ['#3a8cf0', '#a8d8ff', '#fff6d8'], sun: { x: .5, y: .16, r: 80, c: '#fff6c8' }, bottomless: true,
+    layers: [
+      { style: 'wolkenbank', c1: '#fff4d0', c2: '#ffffff', base: .6, amp: .14, f: .05, seed: 71, alpha: .8 },
+      { style: 'wolkenbank', c1: '#ffe9b0', c2: '#fff8e4', base: .82, amp: .09, f: .15, seed: 72, alpha: .9 },
+    ],
+    ground: { style: 'wolke', top: '#fff8e0', top2: '#ffe8a8', body: '#fffaf0', body2: '#e8cd7a', dot: '#fff0c0', dot2: '#ffffff' },
+    stone: ['#fff0b0', '#d8a838'], brick: ['#f2a65a', '#b8652a'], plat: 'wolke',
+    enemies: { hummel: 3, flugkaefer: 4, kaefer: 2, schnecke: 1 },
+    deko: { back: [], front: ['saeule', 'puff', 'puff'] },
+    ambient: 'pollen', clouds: 14,
+    music: { scale: 'dur', root: 67, bpm: 126, lead: 'sine', legato: 1.3 },
+  },
 };
 
 // ---------------------------------------------------------------------
@@ -492,6 +546,12 @@ function paintTop(g, tx, ty, isG, th) {
       g.fillStyle = '#c4fff6';
       g.beginPath(); g.arc(x + h * 40 + 4, y + 6, 2, 0, TAU); g.fill();
     }
+  } else if (gr.style === 'asche') {
+    g.strokeStyle = 'rgba(255,120,30,.85)'; g.lineWidth = 2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x + 6 + h * 10, y + 4); g.lineTo(x + 16 + h * 10, y + 9); g.lineTo(x + 24 + h * 8, y + 5); g.lineTo(x + 36, y + 10); g.stroke();
+  } else if (gr.style === 'zucker') {
+    const cols = ['#ffffff', '#7fe8ff', '#ffe066', '#a8ff8a', '#c88aff'];
+    for (let i = 0; i < 4; i++) { const hh = hash2(tx * 5 + i, ty); if (hh < .35) continue; g.save(); g.translate(x + 5 + i * 11 + hh * 4, y + 3 + hh * 4); g.rotate(hh * 6); g.fillStyle = cols[Math.floor(hh * 5)]; g.fillRect(-3, -1, 6, 2.4); g.restore(); }
   } else if (gr.style === 'schnee') {
     g.fillStyle = 'rgba(160,200,240,.5)';
     g.beginPath(); g.arc(x + h * 40 + 4, y + 7, 1.8, 0, TAU); g.fill();
@@ -729,6 +789,63 @@ function paintDeko(g, d, th) {
     case 'kerze': {
       g.fillStyle = '#3a2a2a'; rr(g, -14, -6, 28, 6, 2); g.fill();
       for (const [cx, hh] of [[-8, 22], [0, 30], [8, 18]]) { g.fillStyle = '#efe6d0'; rr(g, cx - 3, -6 - hh, 6, hh, 2); g.fill(); }
+      break;
+    }
+    case 'dschungelbaum': {
+      g.fillStyle = '#6a4226'; g.beginPath(); g.moveTo(-18, 0); g.quadraticCurveTo(-10, -50, -8, -150); g.lineTo(8, -150); g.quadraticCurveTo(10, -50, 20, 0); g.fill();
+      g.strokeStyle = '#2f8a3a'; g.lineWidth = 4; g.lineCap = 'round';
+      for (const lx of [-34, 28, 52]) { g.beginPath(); g.moveTo(lx, -150); g.bezierCurveTo(lx - 8, -110, lx + 8, -90, lx, -60); g.stroke(); }
+      const bl = [[-54, -178, 44], [0, -196, 56], [58, -176, 46], [-20, -150, 40], [30, -150, 40]];
+      g.fillStyle = '#1f6a34'; for (const [bx, by, r] of bl) { g.beginPath(); g.arc(bx + 3, by + 6, r, 0, TAU); g.fill(); }
+      g.fillStyle = '#34a050'; for (const [bx, by, r] of bl) { g.beginPath(); g.arc(bx, by, r, 0, TAU); g.fill(); }
+      g.fillStyle = '#7fe08a'; g.globalAlpha = .55; for (const [bx, by, r] of bl) { g.beginPath(); g.arc(bx - r * .3, by - r * .35, r * .42, 0, TAU); g.fill(); }
+      break;
+    }
+    case 'farn': {
+      for (let i = -3; i <= 3; i++) {
+        g.save(); g.rotate(i * .32);
+        g.fillStyle = i % 2 ? '#2f9a46' : '#4cc060';
+        g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(-8, -34, 0, -56 + Math.abs(i) * 5); g.quadraticCurveTo(8, -34, 0, 0); g.fill();
+        g.restore();
+      }
+      break;
+    }
+    case 'obsidian': {
+      const cr = [[-16, 40, -.25], [0, 62, 0], [16, 34, .3]];
+      for (const [cx, ch, a] of cr) {
+        g.save(); g.translate(cx, 0); g.rotate(a);
+        const grd = g.createLinearGradient(-8, 0, 8, 0); grd.addColorStop(0, '#4a3a4e'); grd.addColorStop(1, '#14101a');
+        g.fillStyle = grd; g.beginPath(); g.moveTo(-9, 0); g.lineTo(-7, -ch + 14); g.lineTo(0, -ch); g.lineTo(7, -ch + 14); g.lineTo(9, 0); g.fill();
+        g.fillStyle = 'rgba(255,110,30,.8)'; g.beginPath(); g.moveTo(-2, -4); g.lineTo(-1, -ch + 18); g.lineTo(2, -ch + 20); g.lineTo(2, -4); g.fill();
+        g.restore();
+      }
+      break;
+    }
+    case 'lolli': {
+      const col = [['#ff6aa8', '#ffffff'], ['#6ad8ff', '#ffffff'], ['#ffd23a', '#ff8a2a']][Math.floor(h * 3)];
+      g.strokeStyle = '#fff0f4'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -90); g.stroke();
+      g.fillStyle = col[0]; g.beginPath(); g.arc(0, -112, 30, 0, TAU); g.fill();
+      g.strokeStyle = col[1]; g.lineWidth = 6; g.beginPath(); for (let a = 0; a < 12; a += .2) { const r = a * 2.3; if (a) g.lineTo(Math.cos(a) * r, -112 + Math.sin(a) * r); else g.moveTo(0, -112); } g.stroke();
+      break;
+    }
+    case 'stange': {
+      g.lineCap = 'round'; g.strokeStyle = '#ffffff'; g.lineWidth = 13;
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -70); g.arc(-16, -70, 16, 0, -Math.PI, true); g.stroke();
+      g.strokeStyle = '#ff3a7a'; g.lineWidth = 6; g.setLineDash([8, 10]);
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -70); g.arc(-16, -70, 16, 0, -Math.PI, true); g.stroke(); g.setLineDash([]);
+      break;
+    }
+    case 'muffin': {
+      g.fillStyle = '#c8863a'; g.beginPath(); g.moveTo(-18, -24); g.lineTo(18, -24); g.lineTo(13, 0); g.lineTo(-13, 0); g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 2; for (const lx of [-8, 0, 8]) { g.beginPath(); g.moveTo(lx, -24); g.lineTo(lx * .8, 0); g.stroke(); }
+      g.fillStyle = ['#ff8ac8', '#8ae8c8', '#c8a0ff'][Math.floor(h * 3)]; g.beginPath(); g.arc(0, -30, 20, Math.PI, TAU); g.arc(10, -30, 10, 0, Math.PI); g.arc(-10, -30, 10, 0, Math.PI); g.fill();
+      g.fillStyle = '#ff3a5a'; g.beginPath(); g.arc(0, -50, 5, 0, TAU); g.fill();
+      break;
+    }
+    case 'saeule': {
+      g.fillStyle = '#fff6d8'; g.fillRect(-14, -84, 28, 84);
+      g.fillStyle = 'rgba(200,160,60,.35)'; for (const lx of [-8, 0, 8]) g.fillRect(lx - 1, -84, 2, 84);
+      g.fillStyle = '#ffe9a0'; rr(g, -20, -96, 40, 14, 4); g.fill(); rr(g, -19, -8, 38, 10, 3); g.fill();
       break;
     }
     case 'fackel': case 'laterne': {

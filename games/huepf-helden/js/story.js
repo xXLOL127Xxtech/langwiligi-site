@@ -162,5 +162,74 @@ const STORY = {
         heroLine(g, W * .42, H * .84, Math.min(1.6, H / 320), t, 'goal');
         drawPrincess(g, W * .78, H * .86, Math.min(1.8, H / 300), t, 'froh', -1);
       } },
+    { text: 'Doch am Nachthimmel zieht ein Komet seine Bahn. Sein Schweif weckt vier neue Länder: Dschungeltal, Glutkrater, Zuckerland und das Himmelsreich. Das Abenteuer geht weiter!',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#05061a', '#2a2a6a');
+        for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(hash2(i, 5) * W, hash2(i, 6) * H * .7, 2, 2); }
+        const k = (t * .25) % 1, cx = W * (1.1 - k * 1.3), cy = H * (.1 + k * .35);
+        const tail = g.createLinearGradient(cx, cy, cx + 260, cy - 110); tail.addColorStop(0, 'rgba(255,240,170,.9)'); tail.addColorStop(1, 'rgba(255,200,100,0)');
+        g.strokeStyle = tail; g.lineWidth = 16; g.lineCap = 'round'; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + 260, cy - 110); g.stroke();
+        g.fillStyle = '#fffbe0'; g.beginPath(); g.arc(cx, cy, 14, 0, TAU); g.fill();
+        drawHill(g, W, H, '#14243a', H * .84);
+        heroLine(g, W * .5, H * .86, Math.min(1.6, H / 320), t);
+      } },
+  ],
+  castleNeu: (n) => [
+    { text: `${(BOSS_LOOK[n] || BOSS_LOOK[1]).name} ist besiegt! Ein Splitter des Kometen leuchtet auf und zeigt den Weg nach ${WORLD_SPECS[nextWorldOf(n) - 1].name}.`,
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#10163a', '#4a3a7a');
+        for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(hash2(i, 3) * W, hash2(i, 4) * H * .6, 2, 2); }
+        drawHill(g, W, H, '#1e2a44', H * .82);
+        const px = W * .5, py = H * .3 + Math.sin(t * 2) * 8;
+        const gl = g.createRadialGradient(px, py, 4, px, py, 90); gl.addColorStop(0, 'rgba(255,245,180,.95)'); gl.addColorStop(1, 'rgba(255,220,100,0)'); g.fillStyle = gl; g.beginPath(); g.arc(px, py, 90, 0, TAU); g.fill();
+        starPath(g, px, py, 24, 10); g.fillStyle = '#ffe066'; g.fill();
+        heroLine(g, W * .5, H * .84, Math.min(1.7, H / 310), t, 'goal');
+      } },
+  ],
+  ende9: () => [
+    { text: 'Der Sternenkönig zerfällt zu glitzerndem Staub. Aus ihm steigen tausend kleine Sterne auf und malen neue Bilder an den Himmel.',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#02020e', '#2a1a5e');
+        for (let i = 0; i < 70; i++) { const tw = .5 + .5 * Math.sin(t * 3 + i); g.fillStyle = `rgba(255,240,170,${.3 + tw * .6})`; starPath(g, hash2(i, 1) * W, (hash2(i, 2) * H * .75 - t * 14 * (.4 + hash2(i, 3)) + H) % (H * .8), 3 + hash2(i, 4) * 5, 1.4); g.fill(); }
+        drawHill(g, W, H, '#14143a', H * .84);
+        heroLine(g, W * .5, H * .86, Math.min(1.7, H / 310), t, 'goal');
+      } },
+    { text: 'Die Sternenwelt ist gerettet. Ihr seid jetzt echte Sternenhelden! Wer noch nicht alle Geheimwege gefunden hat, sucht weiter – und die neuen Welten warten auch.',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#0a0a2a', '#4a3a8a');
+        for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(hash2(i, 3) * W, hash2(i, 4) * H * .6, 2, 2); }
+        drawHill(g, W, H, '#1a1a4a', H * .84);
+        heroLine(g, W * .5, H * .86, Math.min(1.7, H / 310), t);
+      } },
+  ],
+  ende13: () => [
+    { text: 'Der Himmels-Koloss löst sich in Wolken auf. Über allen Reichen geht die Sonne auf, und auch der letzte Winkel erstrahlt in goldenem Licht.',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#3a8cf0', '#fff6d8');
+        const gl = g.createRadialGradient(W / 2, H * .35, 10, W / 2, H * .35, W * .6); gl.addColorStop(0, 'rgba(255,250,210,.95)'); gl.addColorStop(1, 'rgba(255,240,180,0)'); g.fillStyle = gl; g.fillRect(0, 0, W, H);
+        for (let i = 0; i < 6; i++) { g.drawImage(getCloudSprite(), (i * 280 + t * 20) % (W + 300) - 150, H * (.15 + (i % 3) * .18), 200, 94); }
+        drawHill(g, W, H, '#ffffff', H * .86);
+        heroLine(g, W * .5, H * .88, Math.min(1.7, H / 310), t, 'goal');
+      } },
+    { text: 'Dschungel, Vulkan, Zuckerland, Himmel – alles ist wieder friedlich. Prinzessin Lunara lädt zum grössten Fest, das das Sonnenreich je gesehen hat!',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#ffb36b', '#ffe0a8');
+        drawHill(g, W, H, '#5ab84a', H * .82);
+        drawSonnenschloss(g, W * .75, H * .82, Math.min(.8, H / 700), false);
+        drawPrincess(g, W * .58, H * .86, Math.min(2, H / 280), t, 'froh', -1);
+        heroLine(g, W * .28, H * .86, Math.min(1.6, H / 320), t, 'goal');
+        for (let i = 0; i < 14; i++) { const x = (i * 131 + t * 24) % W, y = H * .15 + Math.sin(t * 2 + i) * 26 + (i % 3) * 36; g.fillStyle = ['#ffd23a', '#ff7aa8', '#7fd8ff', '#7ef08a'][i % 4]; starPath(g, x, y, 6, 2.6); g.fill(); }
+      } },
+    { text: 'ENDE – danke fürs Spielen! Sammelt weiter alle Sternmünzen, findet jeden Geheimweg und holt euch Gold in jedem Level.',
+      draw(g, t, W, H) {
+        skyGrad(g, W, H, '#0a0a2a', '#3a2a6a');
+        for (let i = 0; i < 6; i++) {
+          const ft = (t * .8 + i * .37) % 2, fx = W * (.15 + (i * .17) % .7), fy = H * (.2 + (i % 3) * .1);
+          if (ft < 1) for (let k = 0; k < 14; k++) { const a = k / 14 * TAU; g.fillStyle = ['#ffd23a', '#ff7aa8', '#7fd8ff', '#7ef08a'][(i + k) % 4]; g.globalAlpha = 1 - ft; g.beginPath(); g.arc(fx + Math.cos(a) * ft * 90, fy + Math.sin(a) * ft * 90, 4, 0, TAU); g.fill(); }
+          g.globalAlpha = 1;
+        }
+        drawHill(g, W, H, '#1a3a2a', H * .84);
+        heroLine(g, W * .5, H * .86, Math.min(1.6, H / 320), t, 'goal');
+      } },
   ],
 };
