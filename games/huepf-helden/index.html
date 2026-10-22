@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Hüpf-Helden</title>
-<meta name="description" content="Rettet Prinzessin Lunara! Jump and Run für 1–4: 13 Welten, Geheimwege, Drehsprung und Bosse mit eigenen Angriffen.">
+<meta name="description" content="Rettet Prinzessin Lunara! Jump and Run für 1–4 (ab 3 mit Gamepads): 13 Welten, Geheimwege, Drehsprung und Bosse mit eigenen Angriffen.">
 <meta name="theme-color" content="#ffb627">
 <meta name="spiel-modi" content="Lokal,Solo">
 <meta name="spiel-tags" content="Bis 4,Weltkarte,Bosse">
@@ -140,7 +140,7 @@ input.txt:focus{border-color:var(--gold)}
     <canvas id="titelHelden" width="920" height="260"></canvas>
     <button class="btn haupt" id="bSpielen" autofocus>Spielen</button>
     <button class="btn" id="bHilfe">Steuerung und Tipps</button>
-    <p class="hinweis">1 bis 4 Spieler an einer Tastatur oder mit Gamepads · der Fortschritt wird gespeichert</p>
+    <p class="hinweis">1 bis 2 Spieler an einer Tastatur, Spieler 3 und 4 mit Gamepads · der Fortschritt wird gespeichert</p>
   </div>
 </div>
 
@@ -166,9 +166,9 @@ input.txt:focus{border-color:var(--gold)}
       <button class="btn" id="bLobbyZurueck" style="flex:0 0 130px">Zurück</button>
       <button class="btn haupt" id="bLos">Los geht's!</button>
     </div>
-    <p class="hinweis">Beitreten: eigene <b>Springen-Taste</b> drücken (<kbd>W</kbd> <kbd>↑</kbd> <kbd>I</kbd> <kbd>T</kbd> oder Gamepad <kbd>A</kbd>) oder ein freies Feld anklicken.<br>
+    <p class="hinweis">Beitreten: eigene <b>Springen-Taste</b> drücken (<kbd>W</kbd> <kbd>↑</kbd> oder Gamepad <kbd>A</kbd>) oder ein freies Feld anklicken.<br>
       Laufen-Tasten wechseln die Figur · Stampfen-Taste verlässt den Platz · <kbd>Leertaste</kbd> startet.<br>
-      Im Spiel: <b>Spezial</b> (<kbd>E</kbd>, <kbd>Enter</kbd>, <kbd>U</kbd>, <kbd>R</kbd>) = hochheben und werfen, Extra-Kraft oder Fähigkeit der Figur · <b>Drehsprung</b> = Stampfen-Taste halten und Springen · auf der Weltkarte öffnet <kbd>E</kbd> das Inventar.</p>
+      Im Spiel: <b>Spezial</b> (<kbd>E</kbd>, <kbd>Enter</kbd>) = hochheben und werfen, Extra-Kraft oder Fähigkeit der Figur · <b>Drehsprung</b> = Stampfen-Taste halten und Springen · auf der Weltkarte öffnet <kbd>E</kbd> das Inventar.</p>
   </div>
 </div>
 
@@ -210,10 +210,9 @@ input.txt:focus{border-color:var(--gold)}
     <table>
       <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen / ducken · <kbd>E</kbd> Spezial · <kbd>S</kbd>+<kbd>W</kbd> Drehsprung</td></tr>
       <tr><td style="color:#ef5350">Spieler 2</td><td><kbd>←</kbd> <kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> oder <kbd>-</kbd> Spezial · <kbd>↓</kbd>+<kbd>↑</kbd> Drehsprung</td></tr>
-      <tr><td style="color:#3fbf5a">Spieler 3</td><td><kbd>J</kbd> <kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial · <kbd>K</kbd>+<kbd>I</kbd> Drehsprung</td></tr>
-      <tr><td style="color:#ffc531">Spieler 4</td><td><kbd>F</kbd> <kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial · <kbd>G</kbd>+<kbd>T</kbd> Drehsprung</td></tr>
+      <tr><td style="color:#3fbf5a">Spieler 3 und 4</td><td>Nur mit Gamepad (auf einem Laptop passen höchstens zwei Personen an die Tastatur)</td></tr>
       <tr><td>Gamepad</td><td>Stick laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · unten + <kbd>A</kbd> Drehsprung · Start = Pause</td></tr>
-      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, dazu <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial. Auf der Karte öffnet <kbd>E</kbd> das Inventar.</td></tr>
+      <tr><td>Allein</td><td>Beide Tastenfelder steuern dich, dazu <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial. Auf der Karte öffnet <kbd>E</kbd> das Inventar.</td></tr>
     </table>
     <h3>Die Spezial-Taste (E)</h3>
     <p style="margin:4px 0">Sie macht immer das Passende: Schneckenhäuser, Eisblöcke oder <b>Mitspieler hochheben und werfen</b> · mit einem Extra dessen Kraft nutzen · sonst die Fähigkeit eurer Figur.</p>

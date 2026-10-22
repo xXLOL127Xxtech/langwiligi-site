@@ -140,7 +140,8 @@
   }
 
   const ERR = { 'not-found': 'Kein Spiel mit diesem Code gefunden.', 'full': 'Das Spiel ist schon voll.',
-    'wrong-game': 'Dieser Code gehört zu einem anderen Spiel.', 'timeout': 'Der Server antwortet nicht.' };
+    'wrong-game': 'Dieser Code gehört zu einem anderen Spiel.', 'timeout': 'Der Server antwortet nicht.',
+    'busy': 'Der Server ist gerade ausgelastet. Bitte gleich nochmal versuchen.' };
   function errorText(e) { return ERR[e && e.message] || (e && e.message) || 'Unbekannter Fehler'; }
 
   // Basis-Stil für die Rangliste (Spiele können ihn überschreiben)

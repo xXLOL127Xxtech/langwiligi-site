@@ -12,6 +12,10 @@ const DATA_DIR = process.env.DATA_DIR || '/var/lib/game-hub';
 const BOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL = 6 * 3600 * 1000;
+// Schutz vor Überlastung. Eine Schulklasse hinter einer IP soll noch gehen, ein einzelner Angreifer nicht den Server füllen.
+const MAX_ROOMS = 3000, MAX_ROOMS_PER_IP = 40;
+const MAX_CONN_PER_IP = 80;             // offene WebSockets pro IP
+const MSG_RATE = 150, MSG_BURST = 600;  // Nachrichten pro Sekunde und Spitze (Spiele schicken ~20–60 pro Sekunde)
 const GAMES_DIR = process.env.GAMES_DIR || '/var/www/games';
 const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
 
@@ -484,7 +488,11 @@ function onMessage(ws, raw) {
   switch (m.t) {
     case 'create': {
       leave(ws);
-      const room = { code: newCode(), game: cleanGame(m.game), max: Math.min(8, Math.max(2, m.max | 0 || 2)),
+      if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
+      let mine = 0;
+      for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
+      if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
+      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(8, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
       room.players[0] = { ws, name: cleanName(m.name) };
       rooms.set(room.code, room); ws.room = room;
@@ -495,7 +503,14 @@ function onMessage(ws, raw) {
     case 'join': {
       const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       const room = rooms.get(code);
-      if (!room) return send(ws, { t: 'error', msg: 'not-found' });
+      if (!room) {
+        // Codes durchprobieren bremsen: zu viele Fehlversuche in einer Minute trennen die Verbindung
+        const t = Date.now();
+        ws.misses = (ws.misses || []).filter(x => t - x < 60000);
+        ws.misses.push(t);
+        if (ws.misses.length > 15) return ws.close(1008);
+        return send(ws, { t: 'error', msg: 'not-found' });
+      }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
@@ -606,29 +621,35 @@ function notifyFriends(code) {
   const f = stateOf(code);
   acc.friends.forEach(c => sendTo(c, { t: 'friend', f }));
 }
-function lobbyOf(game, code) {
-  const mine = accounts[code], list = [], seen = new Set([code]);
+// Wer gerade in der Lobby eines Spiels ist (auf der Seite, aber in keinem Raum): einmal pro Spiel gesammelt, dann pro Empfänger angepasst
+function lobbyBase(game) {
+  const base = [];
   for (const [c, set] of online) {
-    if (seen.has(c)) continue;
     for (const w of set) {
       const p = w.pres;
       if (p.game !== game || !p.visible || (p.room && rooms.has(p.room))) continue;
-      seen.add(c);
-      list.push({ code: c, name: p.name, friend: !!mine && mine.friends.includes(c), onlyFriends: p.onlyFriends });
+      base.push({ code: c, name: p.name, onlyFriends: p.onlyFriends });
       break;
     }
-    if (list.length >= 200) break;
+    if (base.length >= 300) break;
   }
+  return base;
+}
+function lobbyFor(base, code) {
+  const mine = accounts[code];
+  const list = base.filter(b => b.code !== code).map(b => ({ code: b.code, name: b.name, friend: !!mine && mine.friends.includes(b.code), onlyFriends: b.onlyFriends }));
   // Freunde zuerst, dann nach Name
   list.sort((a, b) => (b.friend - a.friend) || a.name.localeCompare(b.name));
   return list.slice(0, MAX_LOBBY);
 }
 function flushLobbies() {
   if (!dirtyGames.size) return;
-  const games = [...dirtyGames];
+  const bases = new Map();
+  dirtyGames.forEach(g => bases.set(g, lobbyBase(g)));
   dirtyGames.clear();
   for (const [code, set] of online) set.forEach(w => {
-    if (w.pres.game && games.includes(w.pres.game)) send(w, { t: 'lobby', game: w.pres.game, list: lobbyOf(w.pres.game, code) });
+    const base = bases.get(w.pres.game);
+    if (base) send(w, { t: 'lobby', game: w.pres.game, list: lobbyFor(base, code) });
   });
 }
 setInterval(flushLobbies, 1000);
@@ -941,13 +962,28 @@ const server = http.createServer((req, res) => {
   res.writeHead(404); res.end();
 });
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
+const connPerIp = new Map();
 wss.on('connection', (ws, req) => {
   ws.alive = true;
   ws.ip = clientIp(req);
-  ws.on('pong', () => { ws.alive = true; });
-  ws.on('message', raw => onMessage(ws, raw));
-  ws.on('close', () => { leave(ws); dropPresence(ws); });
   ws.on('error', () => {});
+  const open = (connPerIp.get(ws.ip) || 0) + 1;
+  if (open > MAX_CONN_PER_IP) { ws.close(1013); return; }
+  connPerIp.set(ws.ip, open);
+  ws.tokens = MSG_BURST; ws.tokenAt = Date.now();
+  ws.on('pong', () => { ws.alive = true; });
+  ws.on('message', raw => {
+    // Wer mehr schickt als erlaubt (Flut), wird getrennt
+    const now = Date.now();
+    ws.tokens = Math.min(MSG_BURST, ws.tokens + (now - ws.tokenAt) * MSG_RATE / 1000); ws.tokenAt = now;
+    if (--ws.tokens < 0) return ws.close(1008);
+    onMessage(ws, raw);
+  });
+  ws.on('close', () => {
+    const n = (connPerIp.get(ws.ip) || 1) - 1;
+    if (n > 0) connPerIp.set(ws.ip, n); else connPerIp.delete(ws.ip);
+    leave(ws); dropPresence(ws);
+  });
 });
 setInterval(() => {
   wss.clients.forEach(ws => { if (!ws.alive) return ws.terminate(); ws.alive = false; ws.ping(); });

@@ -355,6 +355,7 @@
       b.addEventListener('click', function () { close(); a.fn(); });
       el.querySelector('.lw-fr-btns').appendChild(b);
     });
+    while (box.children.length >= 3) box.firstChild.remove();   // nie mehr als 3 Karten auf einmal (Schutz vor Einladungs-Spam)
     box.appendChild(el);
     requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add('lw-in'); }); });
     if (o.ttl) setTimeout(close, o.ttl);

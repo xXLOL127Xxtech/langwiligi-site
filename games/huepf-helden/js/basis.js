@@ -47,22 +47,18 @@ function store(key, val) {
 }
 
 // =====================================================================
-//  Eingabe: 4 Tastatur-Bereiche und bis zu 4 Gamepads
+//  Eingabe: 2 Tastatur-Bereiche (mehr passen auf einem Laptop nicht) und bis zu 4 Gamepads
 // =====================================================================
 const SCHEMES = {
   wasd:   { name: 'WASD',   l: ['KeyA'], r: ['KeyD'], j: ['KeyW'], d: ['KeyS'], a: ['KeyE', 'KeyQ'],
             html: '<kbd>A</kbd><kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen · <kbd>E</kbd> Spezial · <kbd>S</kbd>+<kbd>W</kbd> Drehsprung' },
   pfeile: { name: 'Pfeile', l: ['ArrowLeft'], r: ['ArrowRight'], j: ['ArrowUp'], d: ['ArrowDown'], a: ['Enter', 'Slash', 'Period', 'Numpad0'],
             html: '<kbd>←</kbd><kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> Spezial · <kbd>↓</kbd>+<kbd>↑</kbd> Drehsprung' },
-  ijkl:   { name: 'IJKL',   l: ['KeyJ'], r: ['KeyL'], j: ['KeyI'], d: ['KeyK'], a: ['KeyU', 'KeyO'],
-            html: '<kbd>J</kbd><kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial · <kbd>K</kbd>+<kbd>I</kbd> Drehsprung' },
-  tfgh:   { name: 'TFGH',   l: ['KeyF'], r: ['KeyH'], j: ['KeyT'], d: ['KeyG'], a: ['KeyR', 'KeyY'],
-            html: '<kbd>F</kbd><kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial · <kbd>G</kbd>+<kbd>T</kbd> Drehsprung' },
   // Zusatztasten, wenn nur eine Person spielt
   solo:   { name: 'Solo',   l: [], r: [], j: ['Space'], d: [], a: ['KeyX', 'KeyC'] },
 };
 for (let i = 0; i < 4; i++) SCHEMES['pad' + i] = { name: 'Gamepad ' + (i + 1), pad: i, html: 'Gamepad ' + (i + 1) + ': Stick laufen · <kbd>A</kbd> springen · <kbd>B</kbd>/<kbd>X</kbd> Spezial' };
-const KB_SCHEMES = ['wasd', 'pfeile', 'ijkl', 'tfgh'];
+const KB_SCHEMES = ['wasd', 'pfeile'];
 const GAME_KEYS = new Set(Object.values(SCHEMES).flatMap(s => [].concat(s.l || [], s.r || [], s.j || [], s.d || [], s.a || [])));
 
 const keys = new Set();

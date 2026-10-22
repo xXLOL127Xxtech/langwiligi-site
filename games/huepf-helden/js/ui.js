@@ -124,7 +124,7 @@ function renderLobby() {
     } else {
       d.style.setProperty('--f', ['#4f8ff7', '#ef5350', '#3fbf5a', '#ffc531'][i]);
       d.innerHTML = `<div class="ptag">${PLAYER_TAG[i]}</div><canvas class="pfig" width="260" height="260" style="opacity:.25"></canvas>
-        <div class="pleer"><b>Frei</b>Springen-Taste drücken<br>oder hier klicken</div>`;
+        <div class="pleer"><b>Frei</b>${i < 2 ? 'Springen-Taste drücken<br>oder hier klicken' : 'Gamepad: <b>A</b> drücken'}</div>`;
       d.onclick = () => { const sc = KB_SCHEMES.find(k => !UI.slots.some(x => x && x.scheme === k)); if (sc) join(sc); };
       UI.previews.push({ c: d.querySelector('canvas'), ch: null, i });
     }

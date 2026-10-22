@@ -72,8 +72,8 @@ for versuch in 1 2 3; do
     | ssh -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=10 "$SERVER" "$AUF_DEM_SERVER" || status=$?
   [ "$status" = 0 ] && break
   # 255 = Verbindung kam nicht zustande oder brach ab; alles andere = Fehler auf dem Server
-  [ "$status" = 255 ] || fehler "Auf dem Server hat etwas nicht geklappt (siehe oben). Bitte alle Meldungen an Claude schicken."
-  [ "$versuch" = 3 ] && fehler "Keine Verbindung zum Server ($SERVER). Ist dein SSH-Schlüssel eingerichtet? Bitte alle Meldungen an Claude schicken."
+  [ "$status" = 255 ] || fehler "Auf dem Server hat etwas nicht geklappt (siehe oben). Bitte alle Meldungen kopieren und an den Betreiber der Seite schicken."
+  [ "$versuch" = 3 ] && fehler "Keine Verbindung zum Server ($SERVER). Ist dein SSH-Schlüssel eingerichtet? Bitte alle Meldungen kopieren und an den Betreiber der Seite schicken."
   echo "Verbindung abgebrochen, neuer Versuch in 40 Sekunden ..."
   sleep 40
 done

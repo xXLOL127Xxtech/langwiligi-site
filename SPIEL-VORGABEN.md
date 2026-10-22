@@ -171,7 +171,7 @@ Hochladen über GitHub (Schritt für Schritt in [MITMACHEN.md](MITMACHEN.md)) od
 Bei GitHub prüft eine automatische Kontrolle die Punkte unten und sagt dir, was noch fehlt.
 
 **Sobald ein Spiel fertig gebaut oder geändert ist, sofort einen Pull Request erstellen**, nicht erst sammeln.
-Das gilt auch für KI-Assistenten (Claude, Codex usw.): Spiel bauen → testen → committen → pushen → Pull Request.
+Ablauf: Spiel bauen → testen → committen → pushen → Pull Request.
 
 Liefere einen **Ordner `<spiel-id>/`** mit:
 1. `index.html` mit dem Pflicht-Kopf aus Abschnitt 2,

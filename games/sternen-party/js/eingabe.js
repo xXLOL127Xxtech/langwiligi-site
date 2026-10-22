@@ -1,5 +1,5 @@
 // Sternen-Party – Eingabe
-// Lokal teilen sich bis zu 4 Spieler eine Tastatur: jeder hat einen eigenen Tastenblock (Richtungen + Aktion).
+// Lokal teilen sich höchstens 2 Spieler eine Tastatur (Haupt.maxMenschen): jeder hat einen eigenen Tastenblock (Richtungen + Aktion).
 // e.code ist die Position der Taste, funktioniert also auch auf Schweizer Tastaturen (QWERTZ).
 // Online kommt zusätzlich das Touchpad dazu (Zeiger in Weltkoordinaten der Minispiele).
 'use strict';
