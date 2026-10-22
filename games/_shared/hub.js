@@ -94,7 +94,7 @@
     const emit = (ev, ...a) => (handlers[ev] || []).forEach(f => { try { f(...a); } catch (e) { console.error(e); } });
     let ws = null, pending = null, closedByMe = false;
     const api = {
-      game, code: null, you: -1, players: [],
+      game, code: null, you: -1, players: [], max: 0,
       on(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); return api; },
       create(name, max = 2) { return open({ t: 'create', game, name, max }); },
       join(code, name) { return open({ t: 'join', game, code: cleanCode(code), name }); },
@@ -116,7 +116,7 @@
           let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
           switch (m.t) {
             case 'joined':
-              api.code = m.code; api.you = m.you; api.players = m.players;
+              api.code = m.code; api.you = m.you; api.players = m.players; api.max = m.max;
               clearTimeout(timer); if (pending) { pending.resolve(m); pending = null; }
               break;
             case 'error':
@@ -140,7 +140,8 @@
   }
 
   const ERR = { 'not-found': 'Kein Spiel mit diesem Code gefunden.', 'full': 'Das Spiel ist schon voll.',
-    'wrong-game': 'Dieser Code gehört zu einem anderen Spiel.', 'timeout': 'Der Server antwortet nicht.' };
+    'wrong-game': 'Dieser Code gehört zu einem anderen Spiel.', 'timeout': 'Der Server antwortet nicht.',
+    'busy': 'Der Server ist gerade ausgelastet. Bitte gleich nochmal versuchen.' };
   function errorText(e) { return ERR[e && e.message] || (e && e.message) || 'Unbekannter Fehler'; }
 
   // Basis-Stil für die Rangliste (Spiele können ihn überschreiben)

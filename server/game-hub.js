@@ -12,6 +12,10 @@ const DATA_DIR = process.env.DATA_DIR || '/var/lib/game-hub';
 const BOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL = 6 * 3600 * 1000;
+// Schutz vor Überlastung. Eine Schulklasse hinter einer IP soll noch gehen, ein einzelner Angreifer nicht den Server füllen.
+const MAX_ROOMS = 3000, MAX_ROOMS_PER_IP = 40;
+const MAX_CONN_PER_IP = 80;             // offene WebSockets pro IP
+const MSG_RATE = 150, MSG_BURST = 600;  // Nachrichten pro Sekunde und Spitze (Spiele schicken ~20–60 pro Sekunde)
 const GAMES_DIR = process.env.GAMES_DIR || '/var/www/games';
 const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
 
@@ -475,6 +479,7 @@ function leave(ws) {
   if (idx >= 0) room.players[idx] = null;
   room.players.forEach(p => p && send(p.ws, { t: 'peer-left', idx }));
   if (room.players.every(p => !p)) rooms.delete(room.code);
+  roomChanged(room);
 }
 
 function onMessage(ws, raw) {
@@ -483,25 +488,38 @@ function onMessage(ws, raw) {
   switch (m.t) {
     case 'create': {
       leave(ws);
-      const room = { code: newCode(), game: cleanGame(m.game), max: Math.min(8, Math.max(2, m.max | 0 || 2)),
+      if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
+      let mine = 0;
+      for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
+      if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
+      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(8, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
       room.players[0] = { ws, name: cleanName(m.name) };
       rooms.set(room.code, room); ws.room = room;
-      send(ws, { t: 'joined', code: room.code, you: 0, players: names(room) });
+      send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
+      roomChanged(room);
       break;
     }
     case 'join': {
       const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       const room = rooms.get(code);
-      if (!room) return send(ws, { t: 'error', msg: 'not-found' });
+      if (!room) {
+        // Codes durchprobieren bremsen: zu viele Fehlversuche in einer Minute trennen die Verbindung
+        const t = Date.now();
+        ws.misses = (ws.misses || []).filter(x => t - x < 60000);
+        ws.misses.push(t);
+        if (ws.misses.length > 15) return ws.close(1008);
+        return send(ws, { t: 'error', msg: 'not-found' });
+      }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
       leave(ws);
       room.players[idx] = { ws, name: cleanName(m.name) }; ws.room = room;
-      send(ws, { t: 'joined', code: room.code, you: idx, players: names(room) });
+      send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
+      roomChanged(room);
       break;
     }
     case 'relay': {
@@ -530,7 +548,289 @@ function onMessage(ws, raw) {
     case 'leaderboard':
       send(ws, { t: 'leaderboard', game: cleanGame(m.game), rows: rows(cleanGame(m.game)) });
       break;
+    default:
+      social(ws, m);
   }
+}
+
+// ---------- Freunde, Online-Status und Einladungen ----------
+// Kein Login: Jedes Gerät hat ein geheimes Kennwort (localStorage "lw-pid"). Der Server leitet daraus den öffentlichen Freundescode ab
+// (8 Zeichen, z.B. K7QD-93MX) und speichert nur diesen Code, den Namen und die Freunde. Wer online ist, weiss der Server nur im Arbeitsspeicher.
+// Freundschaft: Anfrage per Code, die andere Person nimmt an. Einladungen gehen an Freunde und an Leute, die gerade in der
+// Lobby desselben Spiels sind (ausser sie haben "Nur Freunde" gewählt oder sich unsichtbar gestellt).
+const FRIENDS_FILE = path.join(DATA_DIR, 'freunde.json');
+const MAX_FRIENDS = 100, MAX_REQ = 50, MAX_LOBBY = 40, ACCOUNT_DAYS = 180, MAX_ACCOUNTS = 100000;
+let accounts = {};
+try { accounts = JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8')); } catch (e) { accounts = {}; }
+{
+  const oldest = Date.now() - ACCOUNT_DAYS * 86400000;
+  Object.keys(accounts).forEach(c => { if ((accounts[c].seen || 0) < oldest) delete accounts[c]; });
+}
+let accountsTimer = null;
+function saveAccounts() {
+  clearTimeout(accountsTimer);
+  accountsTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(FRIENDS_FILE + '.tmp', JSON.stringify(accounts));
+      fs.renameSync(FRIENDS_FILE + '.tmp', FRIENDS_FILE);
+    } catch (e) { console.error('Freunde nicht gespeichert:', e.message); }
+  }, 1000);
+}
+const online = new Map();            // Freundescode -> Set der offenen Seiten (WebSocket)
+const dirtyGames = new Set();        // Spiele, deren Lobby-Liste neu verschickt werden muss
+const newAccountPosts = new Map();   // ip -> Zeitpunkte neuer Konten der letzten Stunde
+function friendCode(secret) {
+  const h = crypto.createHash('sha256').update('lwf|' + secret).digest();
+  let c = '';
+  for (let i = 0; i < 8; i++) c += CODE_CHARS[h[i] % CODE_CHARS.length];
+  return c;
+}
+function cleanFriendCode(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); }
+function freeSeats(room) { return room.max - room.players.filter(Boolean).length; }
+// So sehen andere eine Person: online (mit Spiel und offenem Raum) oder offline. Unsichtbare zählen als offline.
+function stateOf(code) {
+  const acc = accounts[code];
+  if (!acc) return null;
+  let best = null;
+  const set = online.get(code);
+  if (set) for (const w of set) {
+    const p = w.pres;
+    if (p.visible && (!best || (p.room && !best.room))) best = p;
+  }
+  if (!best) return { code, name: acc.name, online: false };
+  const r = best.room ? rooms.get(best.room) : null;
+  const mine = r && r.game === best.game ? r : null;
+  const free = mine ? freeSeats(mine) : 0;
+  return { code, name: acc.name, online: true, game: best.game, gameName: best.game ? gameTitle(best.game) : '',
+    inRoom: !!mine, room: mine && free > 0 ? { code: mine.code, free, max: mine.max } : null };
+}
+function sendTo(code, msg) { const set = online.get(code); if (set) set.forEach(w => send(w, msg)); }
+function pushFriends(code) {
+  const acc = accounts[code];
+  if (!acc || !online.has(code)) return;
+  const nameOf = c => (accounts[c] ? accounts[c].name : null);
+  sendTo(code, { t: 'friends', list: acc.friends.map(stateOf).filter(Boolean),
+    requests: acc.req.filter(nameOf).map(c => ({ code: c, name: nameOf(c) })),
+    sent: acc.out.filter(nameOf).map(c => ({ code: c, name: nameOf(c) })) });
+}
+// Etwas an der Person hat sich geändert (online, Spiel, Raum): nur ihre Freunde bekommen die neue Zeile
+function notifyFriends(code) {
+  const acc = accounts[code];
+  if (!acc) return;
+  const f = stateOf(code);
+  acc.friends.forEach(c => sendTo(c, { t: 'friend', f }));
+}
+// Wer gerade in der Lobby eines Spiels ist (auf der Seite, aber in keinem Raum): einmal pro Spiel gesammelt, dann pro Empfänger angepasst
+function lobbyBase(game) {
+  const base = [];
+  for (const [c, set] of online) {
+    for (const w of set) {
+      const p = w.pres;
+      if (p.game !== game || !p.visible || (p.room && rooms.has(p.room))) continue;
+      base.push({ code: c, name: p.name, onlyFriends: p.onlyFriends });
+      break;
+    }
+    if (base.length >= 300) break;
+  }
+  return base;
+}
+function lobbyFor(base, code) {
+  const mine = accounts[code];
+  const list = base.filter(b => b.code !== code).map(b => ({ code: b.code, name: b.name, friend: !!mine && mine.friends.includes(b.code), onlyFriends: b.onlyFriends }));
+  // Freunde zuerst, dann nach Name
+  list.sort((a, b) => (b.friend - a.friend) || a.name.localeCompare(b.name));
+  return list.slice(0, MAX_LOBBY);
+}
+function flushLobbies() {
+  if (!dirtyGames.size) return;
+  const bases = new Map();
+  dirtyGames.forEach(g => bases.set(g, lobbyBase(g)));
+  dirtyGames.clear();
+  for (const [code, set] of online) set.forEach(w => {
+    const base = bases.get(w.pres.game);
+    if (base) send(w, { t: 'lobby', game: w.pres.game, list: lobbyFor(base, code) });
+  });
+}
+setInterval(flushLobbies, 1000);
+// Raum hat sich verändert (jemand rein/raus): Freunde sehen neu, wie viele Plätze frei sind
+function roomChanged(room) {
+  for (const [code, set] of online) {
+    for (const w of set) if (w.pres.room === room.code) { notifyFriends(code); dirtyGames.add(w.pres.game); break; }
+  }
+}
+function dropPresence(ws) {
+  const p = ws.pres;
+  if (!p) return;
+  ws.pres = null;
+  const set = online.get(p.code);
+  if (set) { set.delete(ws); if (!set.size) online.delete(p.code); }
+  const acc = accounts[p.code];
+  if (acc) { acc.seen = Date.now(); saveAccounts(); }
+  if (p.game) dirtyGames.add(p.game);
+  notifyFriends(p.code);
+}
+function makeFriends(a, b) {
+  const A = accounts[a], B = accounts[b];
+  [[A, b], [B, a]].forEach(([x, other]) => {
+    if (!x.friends.includes(other)) x.friends.push(other);
+    ['req', 'out'].forEach(k => { x[k] = x[k].filter(c => c !== other); });
+  });
+}
+function applyStatus(ws, m) {
+  const p = ws.pres, acc = accounts[p.code], oldGame = p.game;
+  if (m.name !== undefined) { p.name = cleanName(m.name); acc.name = p.name; saveAccounts(); }
+  if (m.game !== undefined) p.game = cleanGame(m.game);
+  if (m.room !== undefined) p.room = String(m.room || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+  if (m.visible !== undefined) p.visible = m.visible !== false;
+  if (m.onlyFriends !== undefined) p.onlyFriends = !!m.onlyFriends;
+  if (oldGame) dirtyGames.add(oldGame);
+  if (p.game) dirtyGames.add(p.game);
+  notifyFriends(p.code);
+}
+function social(ws, m) {
+  const p = ws.pres, now = Date.now();
+  if (m.t === 'hello') {
+    if (p) return;
+    const secret = String(m.secret || '');
+    if (!/^[A-Za-z0-9]{16,64}$/.test(secret)) return;
+    const code = friendCode(secret);
+    let acc = accounts[code];
+    if (!acc) {
+      const ip = ws.ip, list = (newAccountPosts.get(ip) || []).filter(t => now - t < 3600000);
+      if (list.length >= 30 || Object.keys(accounts).length >= MAX_ACCOUNTS) return send(ws, { t: 'error', msg: 'too-fast' });
+      list.push(now); newAccountPosts.set(ip, list);
+      if (newAccountPosts.size > 5000) newAccountPosts.clear();
+      acc = accounts[code] = { name: cleanName(m.name), friends: [], req: [], out: [], seen: now };
+    }
+    acc.out = acc.out || [];
+    ws.pres = { code, name: cleanName(m.name), game: cleanGame(m.game), room: '', visible: m.visible !== false, onlyFriends: !!m.onlyFriends,
+      lastInvite: new Map(), invites: [] };
+    acc.name = ws.pres.name; acc.seen = now; saveAccounts();
+    if (!online.has(code)) online.set(code, new Set());
+    online.get(code).add(ws);
+    send(ws, { t: 'me', code, name: acc.name, feat: 2 });
+    pushFriends(code);
+    if (ws.pres.game) dirtyGames.add(ws.pres.game);
+    notifyFriends(code);
+    return;
+  }
+  if (!p) return;
+  const acc = accounts[p.code];
+  switch (m.t) {
+    case 'status': applyStatus(ws, m); break;
+    case 'friend-add': {
+      const to = cleanFriendCode(m.code), b = accounts[to];
+      p.adds = (p.adds || []).filter(t => now - t < 60000);
+      if (p.adds.length >= 10) return send(ws, { t: 'friend-error', msg: 'too-fast' });
+      p.adds.push(now);
+      if (to === p.code) return send(ws, { t: 'friend-error', msg: 'self' });
+      if (!b) return send(ws, { t: 'friend-error', msg: 'not-found' });
+      if (acc.friends.includes(to)) return send(ws, { t: 'friend-error', msg: 'already' });
+      if (acc.friends.length >= MAX_FRIENDS || b.friends.length >= MAX_FRIENDS) return send(ws, { t: 'friend-error', msg: 'limit' });
+      if (acc.req.includes(to)) {                     // die Person hat mich schon angefragt: sofort Freunde
+        makeFriends(p.code, to);
+        pushFriends(p.code); pushFriends(to); notifyFriends(p.code); notifyFriends(to);
+        sendTo(to, { t: 'friend-new', code: p.code, name: acc.name });
+        send(ws, { t: 'friend-new', code: to, name: b.name });
+      } else {
+        if (!b.req.includes(p.code)) {
+          if (b.req.length >= MAX_REQ) return send(ws, { t: 'friend-error', msg: 'limit' });
+          b.req.push(p.code);
+        }
+        if (!acc.out.includes(to)) acc.out.push(to);
+        send(ws, { t: 'friend-sent', code: to, name: b.name });
+        pushFriends(p.code); pushFriends(to);
+        sendTo(to, { t: 'friend-request', code: p.code, name: acc.name });
+      }
+      saveAccounts();
+      break;
+    }
+    case 'friend-accept': {
+      const from = cleanFriendCode(m.code);
+      if (!accounts[from] || !acc.req.includes(from)) return pushFriends(p.code);
+      if (acc.friends.length >= MAX_FRIENDS) return send(ws, { t: 'friend-error', msg: 'limit' });
+      makeFriends(p.code, from);
+      saveAccounts();
+      pushFriends(p.code); pushFriends(from); notifyFriends(p.code); notifyFriends(from);
+      sendTo(from, { t: 'friend-new', code: p.code, name: acc.name });
+      break;
+    }
+    case 'friend-decline': {
+      const from = cleanFriendCode(m.code);
+      acc.req = acc.req.filter(c => c !== from);
+      if (accounts[from]) accounts[from].out = (accounts[from].out || []).filter(c => c !== p.code);
+      saveAccounts(); pushFriends(p.code); pushFriends(from);
+      break;
+    }
+    case 'friend-remove': {
+      const other = cleanFriendCode(m.code);
+      acc.friends = acc.friends.filter(c => c !== other);
+      acc.out = acc.out.filter(c => c !== other);
+      const o = accounts[other];
+      if (o) { o.friends = o.friends.filter(c => c !== p.code); o.out = (o.out || []).filter(c => c !== p.code); o.req = o.req.filter(c => c !== p.code); }
+      acc.req = acc.req.filter(c => c !== other);
+      saveAccounts(); pushFriends(p.code); pushFriends(other);
+      break;
+    }
+    case 'invite': {
+      const to = cleanFriendCode(m.to), room = rooms.get(String(m.room || '').toUpperCase().replace(/[^A-Z0-9]/g, ''));
+      const fail = msg => send(ws, { t: 'invite-error', to, msg });
+      if (!room || !p.game || room.game !== p.game || p.room !== room.code || freeSeats(room) <= 0) return fail('no-room');
+      if (to === p.code || !accounts[to]) return fail('not-found');
+      p.recent = (p.recent || []).filter(t => now - t < 600000);
+      if (p.recent.length >= 30 || now - (p.lastInvite.get(to) || 0) < 8000) return fail('too-fast');
+      const targets = [...(online.get(to) || [])];
+      if (!targets.length) return fail('offline');
+      const friend = acc.friends.includes(to);
+      // Fremde nur, wenn sie gerade in der Lobby dieses Spiels sind und Einladungen von allen zulassen
+      const open = targets.some(w => w.pres.game === p.game && !(w.pres.room && rooms.has(w.pres.room)) && w.pres.visible && !w.pres.onlyFriends);
+      if (!friend && !open) return fail('denied');
+      p.lastInvite.set(to, now); p.recent.push(now);
+      if (p.lastInvite.size > 200) p.lastInvite.clear();
+      targets.forEach(w => send(w, { t: 'invite', from: { code: p.code, name: p.name, friend }, game: room.game, gameName: gameTitle(room.game),
+        room: room.code, free: freeSeats(room) }));
+      send(ws, { t: 'invite-sent', to });
+      break;
+    }
+  }
+}
+
+// ---------- Einladungs-Seite: Vorschau für WhatsApp, Discord & Co., dann weiter ins Spiel ----------
+function htmlEsc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function inviteImage(game) {
+  for (const f of ['_shared/einladung/' + game + '.jpg', game + '/cover.webp', game + '/cover.png', game + '/cover.jpg']) {
+    try { return { path: '/' + f, v: Math.floor(fs.statSync(path.join(GAMES_DIR, f)).mtimeMs / 1000) }; } catch (e) { /* nächste */ }
+  }
+  return { path: '/vorschau.jpg', v: 1 };
+}
+function gameBlurb(game) {
+  try {
+    const m = fs.readFileSync(path.join(GAMES_DIR, game, 'index.html'), 'utf8').slice(0, 8000).match(/<meta name="description" content="([^"]*)"/i);
+    if (m) return m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').slice(0, 140);
+  } catch (e) { /* ohne Beschreibung */ }
+  return '';
+}
+function invitePage(req, game, code, from) {
+  const host = String(req.headers.host || '').toLowerCase();
+  const base = /(^|\.)langwiligi\.site$/.test(host) ? 'https://' + host : /^[0-9.]+(:\d+)?$/.test(host) ? 'http://' + host : 'https://langwiligi.site';
+  const name = gameTitle(game), img = inviteImage(game), blurb = gameBlurb(game);
+  const title = from ? from + ' lädt dich zu ' + name + ' ein!' : 'Du wurdest zu ' + name + ' eingeladen!';
+  const desc = 'Komm in die Lobby ' + code + ' und spiel mit: direkt im Browser, ohne Download und ohne Login.' + (blurb ? ' ' + blurb : '');
+  const target = '/' + game + '/#' + code;
+  return `<!doctype html><html lang="de-CH"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${htmlEsc(title)} | KEI Langwiligi site</title><meta name="robots" content="noindex"><meta name="theme-color" content="#07060d">
+<meta name="description" content="${htmlEsc(desc)}">
+<meta property="og:type" content="website"><meta property="og:site_name" content="KEI Langwiligi site"><meta property="og:locale" content="de_CH">
+<meta property="og:url" content="${htmlEsc(base + '/api/e/' + game + '/' + code)}">
+<meta property="og:title" content="${htmlEsc(title)}"><meta property="og:description" content="${htmlEsc(desc)}">
+<meta property="og:image" content="${htmlEsc(base + img.path + '?v=' + img.v)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${htmlEsc(title)}"><meta name="twitter:card" content="summary_large_image">
+<style>html{background:#07060d}body{margin:0;min-height:100vh;display:grid;place-items:center;color:#ecebf5;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}
+a{display:inline-block;margin-top:18px;padding:12px 22px;background:#22e4ff;color:#07060d;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.06em}
+code{color:#ffe14d;font-size:1.4em;letter-spacing:.2em}</style></head>
+<body><main><p>${htmlEsc(title)}</p><p>Lobby <code>${htmlEsc(code)}</code></p><a href="${htmlEsc(target)}">Jetzt beitreten</a></main>
+<script>location.replace(${JSON.stringify(target)});</script></body></html>`;
 }
 
 // ---------- HTTP + WebSocket ----------
@@ -542,6 +842,14 @@ function json(res, status, obj) {
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  const inv = url.pathname.match(/^\/api\/e\/([a-z0-9-]{1,40})\/([A-Za-z0-9]{4})$/);
+  if (inv) {
+    const game = inv[1], code = inv[2].toUpperCase();
+    if (!isKnownGame(game)) { res.writeHead(302, { Location: '/' }); return res.end(); }
+    const von = cleanName(url.searchParams.get('von') || '').replace(/^Spieler$/, '');
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Robots-Tag': 'noindex' });
+    return res.end(invitePage(req, game, code, von));
+  }
   if (url.pathname === '/api/leaderboard') {
     const game = cleanGame(url.searchParams.get('game'));
     return json(res, 200, { game, rows: rows(game) });
@@ -654,12 +962,28 @@ const server = http.createServer((req, res) => {
   res.writeHead(404); res.end();
 });
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
-wss.on('connection', ws => {
+const connPerIp = new Map();
+wss.on('connection', (ws, req) => {
   ws.alive = true;
-  ws.on('pong', () => { ws.alive = true; });
-  ws.on('message', raw => onMessage(ws, raw));
-  ws.on('close', () => leave(ws));
+  ws.ip = clientIp(req);
   ws.on('error', () => {});
+  const open = (connPerIp.get(ws.ip) || 0) + 1;
+  if (open > MAX_CONN_PER_IP) { ws.close(1013); return; }
+  connPerIp.set(ws.ip, open);
+  ws.tokens = MSG_BURST; ws.tokenAt = Date.now();
+  ws.on('pong', () => { ws.alive = true; });
+  ws.on('message', raw => {
+    // Wer mehr schickt als erlaubt (Flut), wird getrennt
+    const now = Date.now();
+    ws.tokens = Math.min(MSG_BURST, ws.tokens + (now - ws.tokenAt) * MSG_RATE / 1000); ws.tokenAt = now;
+    if (--ws.tokens < 0) return ws.close(1008);
+    onMessage(ws, raw);
+  });
+  ws.on('close', () => {
+    const n = (connPerIp.get(ws.ip) || 1) - 1;
+    if (n > 0) connPerIp.set(ws.ip, n); else connPerIp.delete(ws.ip);
+    leave(ws); dropPresence(ws);
+  });
 });
 setInterval(() => {
   wss.clients.forEach(ws => { if (!ws.alive) return ws.terminate(); ws.alive = false; ws.ping(); });

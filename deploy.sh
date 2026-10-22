@@ -46,6 +46,7 @@ find "$BUILD" -mindepth 1 -maxdepth 1 -type f -delete
 version() { cksum "$1" | cut -d' ' -f1; }
 # Zurück-Knopf und Bewertung (games/_shared/back.js) in jedes Spiel einbauen
 BACK_V="$(version "$SRC/_shared/back.js")"
+FREUNDE_V="$(version "$SRC/_shared/freunde.js")"
 # data-v = Version des Spiels (Tag der letzten Änderung). Ändert sie sich, fragt die Bewertung nochmal nach.
 game_version() {
   local t=""
@@ -76,6 +77,8 @@ for f in "$BUILD"/*/index.html; do
   name="$(title_raw "$src")"
   [ -n "$name" ] || name="$slug"
   grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s" data-name="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" "$(printf '%s' "$name" | html_escape)" >> "$f"
+  # Freunde, Online-Status und Einladungen (games/_shared/freunde.js)
+  grep -q '_shared/freunde.js' "$f" || printf '<script src="../_shared/freunde.js?v=%s"></script>\n' "$FREUNDE_V" >> "$f"
   # Für Google: Suchbegriffe in Titel und Beschreibung, die Hauptadresse (canonical), damit die IP nicht als zweite Seite zählt,
   # Vorschau für geteilte Links und strukturierte Daten (schema.org). Der Name auf der Startseite bleibt kurz,
   # er kommt aus games/ und nicht aus dieser Kopie.
@@ -296,7 +299,8 @@ ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile
   done
   echo '</urlset>'
 } > "$BUILD/sitemap.xml"
-printf 'User-agent: *\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n' "$SITE" > "$BUILD/robots.txt"
+# /api/e/ = Einladungsseiten mit Vorschaubild, die WhatsApp, Discord & Co. lesen dürfen müssen
+printf 'User-agent: *\nAllow: /api/e/\nDisallow: /api/\n\nSitemap: %s/sitemap.xml\n' "$SITE" > "$BUILD/robots.txt"
 # Bestätigungs-Dateien für Google Search Console und Bing Webmaster Tools (z.B. startseite/google1234abcd.html, startseite/BingSiteAuth.xml)
 for v in "$START"/google*.html "$START"/BingSiteAuth.xml; do
   [ -f "$v" ] && cp "$v" "$BUILD/"
@@ -334,7 +338,7 @@ fi
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
 ver="$(cat "$START/start.css" "$START/start.js" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" awk '
+CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" FREUNDEV="$FREUNDE_V" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -342,7 +346,7 @@ CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ti
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--FREUNDE-V-->", ENVIRON["FREUNDEV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat

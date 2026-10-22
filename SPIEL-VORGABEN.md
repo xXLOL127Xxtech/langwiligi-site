@@ -67,6 +67,7 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
   - ID `lw-back`
   - CSS-Klassen, die mit `lw-` beginnen
   - die globalen Variablen `window.GameHub` und `window.LW`
+- **Freunde und Einladungen** übernimmt die Webseite komplett (`games/_shared/freunde.js`): Unter dem „Alle Spiele“-Knopf (linker Rand, Mitte) sitzt ein „Freunde“-Knopf. Sobald das Spiel über `GameHub.connect()` einen Online-Raum erstellt, klappt links ein Panel auf (Einladungslink mit Vorschaubild, Freunde, Leute aus der Lobby). Einladungen von anderen erscheinen als Karte oben in der Mitte. Das Spiel muss dafür nichts einbauen und diesen Bereich frei lassen.
 - **Unten rechts** blendet die Webseite am Ende einer Runde eine kleine Bewertung (1–5 Sterne und ein Textfeld) ein. Sobald wieder gespielt wird, verschwindet sie.
 - **localStorage**: Eigene Schlüssel beginnen immer mit der Spiel-ID, z.B. `panzer-pong-settings`. Der Schlüssel `lw-name` gehört allen Spielen gemeinsam. Lies und schreib ihn nur über `GameHub.getName()` und `GameHub.setName()`.
 - Das Spiel darf nicht die ganze Seite neu laden oder auf andere Domains umleiten.
@@ -170,7 +171,7 @@ Hochladen über GitHub (Schritt für Schritt in [MITMACHEN.md](MITMACHEN.md)) od
 Bei GitHub prüft eine automatische Kontrolle die Punkte unten und sagt dir, was noch fehlt.
 
 **Sobald ein Spiel fertig gebaut oder geändert ist, sofort einen Pull Request erstellen**, nicht erst sammeln.
-Das gilt auch für KI-Assistenten (Claude, Codex usw.): Spiel bauen → testen → committen → pushen → Pull Request.
+Ablauf: Spiel bauen → testen → committen → pushen → Pull Request.
 
 Liefere einen **Ordner `<spiel-id>/`** mit:
 1. `index.html` mit dem Pflicht-Kopf aus Abschnitt 2,

@@ -52,7 +52,7 @@ const Memory = {
     }
     if (this.phase !== 'play') return;
     const inp = miniInput();
-    const held = { l: inp.l, r: inp.r, u: anyKey(['KeyW', 'ArrowUp', 'KeyI', 'KeyT']) || pads.some(p => p.on && p.ly < 0), d: inp.d };
+    const held = { l: inp.l, r: inp.r, u: anyKey(['KeyW', 'ArrowUp']) || pads.some(p => p.on && p.ly < 0), d: inp.d };
     const mv = { l: [-1, 0], r: [1, 0], u: [0, -1], d: [0, 1] };
     for (const k in mv) if (held[k] && !this.prev[k]) {
       const cx = this.sel % 6, cy = Math.floor(this.sel / 6);
