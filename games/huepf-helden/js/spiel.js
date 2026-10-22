@@ -18,7 +18,7 @@ const NOINPUT = { l: 0, r: 0, j: false, jP: false, d: false, dP: false, a: false
 
 const G = {
   mode: 'title', t: 0, L: null, players: [], enemies: [], items: [], fbs: [], parts: [], pops: [], plats: [], springs: [],
-  checks: [], starEnts: [], bumps: new Map(), coinPops: [], goals: [], boss: null, decoDyn: [], chains: [],
+  checks: [], starEnts: [], toadEnts: [], bumps: new Map(), coinPops: [], goals: [], boss: null, decoDyn: [], chains: [],
   cam: { cx: 0, cy: 0, zoom: 1, shake: 0, left: 0, top: 0, vw: 0, vh: 0 },
   lives: 5, node: null, diffSet: 'normal', starGot: [false, false, false], checkReached: false,
   goalTimer: -1, goalHow: 'normal', introT: 0, wipeT: -1, arenaLocked: false, solo: true, totalJumps: 0,
@@ -616,9 +616,9 @@ const ENEMY_SIZE = {
   kaefer: [36, 32], flugkaefer: [36, 32], schnecke: [34, 44], igel: [38, 32], hummel: [36, 34], lavaball: [28, 30], crusher: [2 * T - 8, 2 * T - 8],
   magma: [24, 24], kugel: [36, 36], kanone: [40, 40], pflanze: [30, 60], wicht: [30, 48], stein: [18, 18], irrlicht: [34, 40],
   fisch: [40, 30], qualle: [36, 40], seeigel: [40, 40], schattenball: [30, 30],
-  saeule: [48, 170], zapfen: [22, 46], welle: [48, 38], wolke: [84, 52], scherbe: [24, 24],
+  saeule: [48, 170], zapfen: [22, 46], welle: [48, 38], wolke: [84, 52], scherbe: [24, 24], flamme: [230, 40],
 };
-const HAZARD = { saeule: 1, zapfen: 1, welle: 1, wolke: 1, scherbe: 1 };    // Boss-Gefahren
+const HAZARD = { saeule: 1, zapfen: 1, welle: 1, wolke: 1, scherbe: 1, flamme: 1 };    // Boss-Gefahren
 const SPIKY = Object.assign({ igel: 1, lavaball: 1, magma: 1, pflanze: 1, irrlicht: 1, qualle: 1, seeigel: 1, stein: 1, schattenball: 1 }, HAZARD);
 const INVULN = Object.assign({ crusher: 1, kanone: 1, lavaball: 1, magma: 1, stein: 1, schattenball: 1 }, HAZARD);
 function makeEnemy(d) {
@@ -814,6 +814,11 @@ function updateEnemy(e, dt) {
       if (L.arena && (e.x < L.arena.x0 - 80 || e.x > L.arena.x1 + 80)) e.remove = true;
       break;
     }
+    case 'flamme': {
+      e.age = (e.age || 0) + dt; e.life -= dt;
+      if (e.life <= 0) e.remove = true;
+      break;
+    }
     case 'wolke': {
       e.age = (e.age || 0) + dt; e.life -= dt; if (e.warn > 0) e.warn -= dt;
       if (e.life <= 0) e.remove = true;
@@ -893,6 +898,7 @@ function enemyBox(e) {
   if (e.kind === 'kanone') return { x: e.x, y: e.y, w: 44, h: 44 };
   if (e.kind === 'saeule') return { x: e.x, y: e.y, w: e.w * .7, h: e.h * Math.min(1, (e.hotT || 0) / .12 + .15) };
   if (e.kind === 'wolke') return { x: e.x, y: e.y, w: 70, h: 44 };
+  if (e.kind === 'flamme') return { x: e.x, y: e.y, w: e.w * Math.min(1, (e.age || 0) / .15) * .9, h: 34 };
   return e;
 }
 function playerVsEnemies(p) {
@@ -1002,6 +1008,10 @@ function makeBoss(d) {
     return { type: 'morvax', x: d.x, y: d.y, w: 90, h: 200, vx: 0, vy: 0, dir: -1, hp, maxHp: hp, state: 'sleep', t: 0, hurtT: 0, walk: 0, dead: false, timer: 0, name: 'Morvax, der Schattenkönig' };
   }
   const look = d.look || w;
+  const base = { look, x: d.x, y: d.y, vx: 0, vy: 0, dir: -1, state: 'sleep', t: 0, hurtT: 0, walk: 0, squash: 0, dead: false, timer: 0, onGround: true, name: (BOSS_LOOK[look] || BOSS_LOOK[1]).name };
+  if (d.boss === 'drache') { const hp = 3 + multi + (w > 6 ? 1 : 0); return Object.assign(base, { type: 'drache', w: 130, h: 140, hp, maxHp: hp }); }
+  if (d.boss === 'hexe') { const hp = 3 + multi + (w > 6 ? 1 : 0); return Object.assign(base, { type: 'hexe', w: 80, h: 125, hp, maxHp: hp, fly: true, shield: true, y: G.L.arena.gy * T - 170 }); }
+  if (d.boss === 'speier') { const hp = 4 + multi; return Object.assign(base, { type: 'speier', w: 110, h: 110, hp, maxHp: hp, fly: true, shield: true, x: G.L.arena.x1 - 70, y: G.L.arena.gy * T - 110 }); }
   const hp = look === 9 ? 9 + multi : Math.min(8, 3 + multi + Math.floor((w - 1) / 2));
   return { type: 'koloss', look, x: d.x, y: d.y, w: 140, h: 150, vx: 0, vy: 0, dir: -1, hp, maxHp: hp, state: 'sleep', t: 0, hurtT: 0, walk: 0, squash: 0, dead: false, timer: 0, onGround: true, name: (BOSS_LOOK[look] || BOSS_LOOK[1]).name };
 }
@@ -1032,7 +1042,11 @@ function updateBoss(b, dt) {
   const angry = b.hp <= b.maxHp / 2;
   if (b.type === 'krax') updateKrax(b, dt, tgt, angry);
   else if (b.type === 'morvax') updateMorvax(b, dt, tgt, angry);
+  else if (b.type === 'drache') updateDrache(b, dt, tgt, angry);
+  else if (b.type === 'hexe') updateHexe(b, dt, tgt, angry);
+  else if (b.type === 'speier') updateSpeier(b, dt, tgt, angry);
   else updateKoloss(b, dt, tgt, angry);
+  if (!b.fly) {
   b.vy += 2600 * dt;
   b.y += b.vy * dt;
   if (b.y >= A.gy * T) {
@@ -1041,19 +1055,23 @@ function updateBoss(b, dt) {
     b.vy = 0; b.onGround = true;
   } else b.onGround = false;
   b.x += b.vx * dt;
+  }
   const minX = A.x0 + b.w / 2 + 10, maxX = A.x1 - b.w / 2 - 10;
   const bounce = d => { b.dir = d; if (b.state === 'spin') { b.vx = d * Math.abs(b.vx); shake(5); SFX.bump(); } else if (b.state === 'charge') { b.vx = 0; b.state = 'walk'; b.timer = 1; shake(6); SFX.bump(); } };
-  if (b.x < minX) { b.x = minX; bounce(1); }
-  if (b.x > maxX) { b.x = maxX; bounce(-1); }
+  if (!b.fly) {
+    if (b.x < minX) { b.x = minX; bounce(1); }
+    if (b.x > maxX) { b.x = maxX; bounce(-1); }
+  }
   for (const p of G.players) {
     if (p.state !== 'play' || p.carried) continue;
     const box = { x: b.x, y: b.y, w: b.w - 20, h: b.h - 10 };
     if (!overlap(p, box)) continue;
     if (p.vy > 0 && p.prevBottom <= b.y - b.h + 40) {
       p.vy = -950; p.y = b.y - b.h + 10; p.whirlUsed = false;
-      if (b.type === 'krax' && b.state === 'spin') { SFX.bump(); continue; }
+      if ((b.type === 'krax' && b.state === 'spin') || b.shield) { SFX.bump(); continue; }
       if (b.hurtT <= 0) bossDamage(1, p, true);
-    } else if (p.starT > 0) { if (b.hurtT <= 0) bossDamage(1, p); }
+    } else if (b.harmless) { /* erschöpft: ungefährlich */ }
+    else if (p.starT > 0) { if (b.hurtT <= 0) bossDamage(1, p); }
     else { hurt(p); p.vx = sign(p.x - b.x) * 420; p.vy = -420; }
   }
 }
@@ -1118,6 +1136,119 @@ function updateKoloss(b, dt, tgt, angry) {
     if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.5; }
   }
 }
+// ---- Drachenkönig: Feuer, Hämmer, Sprung ----
+function updateDrache(b, dt, tgt, angry) {
+  const A = G.L.arena, gy = A.gy * T, look = BOSS_LOOK[b.look] || BOSS_LOOK[1];
+  if (b.state === 'intro') { b.vx = 0; if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.6; } return; }
+  if (b.state === 'walk') {
+    b.walk += dt * 5;
+    if (tgt && Math.random() < dt * 1.2) b.dir = tgt.x < b.x ? -1 : 1;
+    b.vx = b.dir * (70 + (b.maxHp - b.hp) * 22);
+    if (b.timer <= 0) {
+      const r = Math.random();
+      if (r < .4) { b.state = 'feuer'; b.timer = 2.1; b.wind = .8; b.fired = false; b.vx = 0; if (tgt) b.dir = tgt.x < b.x ? -1 : 1; }
+      else if (r < .65) { b.state = 'jump'; b.vy = -1200; b.onGround = false; b.vx = tgt ? clamp((tgt.x - b.x) * .8, -320, 320) : 0; }
+      else { b.state = 'haemmer'; b.timer = 1.6; b.thrown = 0; b.vx = 0; }
+    }
+  } else if (b.state === 'feuer') {
+    b.vx = 0; b.wind -= dt;
+    if (b.wind <= 0 && !b.fired) { b.fired = true; SFX.fire(); spawnHaz('flamme', b.x + b.dir * (62 + 115), gy, { dir: b.dir, life: 1.1 + (angry ? .3 : 0), age: 0 }); }
+    if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.4 + Math.random(); }
+  } else if (b.state === 'haemmer') {
+    const n = angry ? 4 : 3;
+    if (b.thrown < n && b.timer < 1.5 - b.thrown * .3) {
+      b.thrown++;
+      const dx = tgt ? tgt.x - b.x : b.dir * 300;
+      G.enemies.push(Object.assign(makeEnemy({ kind: 'stein', x: b.x + b.dir * 50, y: b.y - 120 }), { active: true, vx: clamp(dx * .8 + (Math.random() - .5) * 160, -460, 460), vy: -820, life: 3 }));
+      SFX.kick();
+    }
+    if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.4 + Math.random(); }
+  }
+}
+// ---- Hexe: schwebt (geschützt), stürzt ab und ist dann erschöpft (verwundbar) ----
+function updateHexe(b, dt, tgt, angry) {
+  const A = G.L.arena, gy = A.gy * T, hov = gy - 170, look = BOSS_LOOK[b.look] || BOSS_LOOK[3];
+  const go = (tx, ty, sp) => { b.x += clamp(tx - b.x, -sp * dt, sp * dt); b.y += clamp(ty - b.y, -sp * dt, sp * dt); };
+  b.x = clamp(b.x, A.x0 + T * 2, A.x1 - T * 2);
+  if (b.state === 'intro') { go(b.x, hov, 200); if (b.timer <= 0) { b.state = 'schweben'; b.timer = 1.6; } return; }
+  if (tgt && b.state !== 'sturz') b.dir = tgt.x < b.x ? -1 : 1;
+  const tier = angry ? 1 : 0;
+  if (b.state === 'schweben') {
+    b.shield = true; b.harmless = false;
+    go(tgt ? clamp(tgt.x + Math.sin(b.t * 1.3) * 200, A.x0 + T * 2, A.x1 - T * 2) : b.x, hov + Math.sin(b.t * 2.5) * 16, 150 + tier * 50);
+    if (b.timer <= 0) {
+      const helpers = G.enemies.filter(e => e.kind === 'hummel' && !e.dead).length, r = Math.random();
+      if (r < .38) { b.state = 'zauber'; b.timer = 1.7; b.cast = 0; }
+      else if (r < .55 && helpers < 3) { b.state = 'beschwoeren'; b.timer = 1.2; b.cast = 0; }
+      else { b.state = 'sturz'; b.timer = 1; b.dive = false; }
+    }
+  } else if (b.state === 'zauber') {
+    go(b.x, hov, 100);
+    if (b.cast < 2 && b.timer < 1.3 - b.cast * .6) {
+      b.cast++; const cnt = 3 + tier;
+      for (let i = 0; i < cnt; i++) { const ang = (tgt ? Math.atan2((tgt.y - tgt.h / 2) - (b.y - 50), tgt.x - b.x) : Math.PI / 2) + (i - (cnt - 1) / 2) * .3; spawnHaz('scherbe', b.x + b.dir * 30, b.y - 50, { col: look.shot || 'kristall', vx: Math.cos(ang) * 300, vy: Math.sin(ang) * 300, life: 4 }); }
+      SFX.shadow();
+    }
+    if (b.timer <= 0) { b.state = 'schweben'; b.timer = 1.4; }
+  } else if (b.state === 'beschwoeren') {
+    go(b.x, hov, 100);
+    if (b.cast < 1 && b.timer < .8) { b.cast = 1; for (const dx of [-90, 90]) { const e = makeEnemy({ kind: 'hummel', x: clamp(b.x + dx, A.x0 + T, A.x1 - T), y: hov + 10 }); e.active = true; G.enemies.push(e); sparkle(e.x, e.y - 30, 8, '#c88aff'); } SFX.shadow(); }
+    if (b.timer <= 0) { b.state = 'schweben'; b.timer = 1.4; }
+  } else if (b.state === 'sturz') {
+    b.shield = true;
+    if (!b.dive) {       // Ziel anvisieren, dann abstürzen
+      if (tgt && b.timer > .3) b.lockX = tgt.x;
+      b.x += ((b.lockX === undefined ? b.x : b.lockX) - b.x) * Math.min(1, dt * 3);
+      b.y = hov - (1 - b.timer) * 20;
+      if (b.timer <= 0) { b.dive = true; b.vy = 0; SFX.dash(); }
+    } else {
+      b.vy += 3200 * dt; b.y += b.vy * dt;
+      if (b.y >= gy) { b.y = gy; bossLand(b); b.state = 'erschoepft'; b.timer = 3 - tier * .4; b.shield = false; b.harmless = true; b.vy = 0; }
+    }
+  } else if (b.state === 'erschoepft') {
+    b.y = gy; b.shield = false; b.harmless = true;
+    if (b.timer <= 0) { b.state = 'aufstieg'; b.shield = true; b.harmless = false; b.timer = 3; }
+  } else if (b.state === 'aufstieg') {
+    b.shield = true; b.harmless = false;
+    go(b.x, hov, 300);
+    if (b.y <= hov + 2 || b.timer <= 0) { b.state = 'schweben'; b.timer = 1.3; }
+  }
+}
+// ---- Feuerspeier: Kopf an der Wand, speit Feuer, beisst zu und ist dann erschöpft ----
+function updateSpeier(b, dt, tgt, angry) {
+  const A = G.L.arena, gy = A.gy * T, look = BOSS_LOOK[b.look] || BOSS_LOOK[4];
+  const homeX = A.x1 - 70, homeY = gy - 110, tier = angry ? 1 : 0;
+  const go = (tx, ty, sp) => { const dx = tx - b.x, dy = ty - b.y, d = Math.hypot(dx, dy) || 1, st = Math.min(d, sp * dt); b.x += dx / d * st; b.y += dy / d * st; return d <= sp * dt; };
+  b.dir = -1;
+  if (b.state === 'intro') { go(homeX, homeY, 300); if (b.timer <= 0) { b.state = 'ruhe'; b.timer = 1.2; } return; }
+  if (b.state === 'ruhe') {
+    b.shield = true; b.harmless = false; go(homeX, homeY + Math.sin(b.t * 2) * 12, 200);
+    if (b.timer <= 0) { if (Math.random() < .55) { b.state = 'speien'; b.timer = 3.2; b.k = 0; b.next = .6; } else { b.state = 'beissen'; b.phase = 'ziel'; b.timer = 1; b.biteX = tgt ? tgt.x : (A.x0 + A.x1) / 2; } }
+  } else if (b.state === 'speien') {
+    go(homeX, homeY, 200); b.next -= dt;
+    const n = 4 + tier * 2;
+    if (b.next <= 0 && b.k < n) {
+      const lane = [gy - 7, gy - 82, gy - 157][Math.floor(Math.random() * 3)];
+      spawnHaz('scherbe', b.x - 60, lane, { col: look.shot || 'lava', vx: -(300 + tier * 50), vy: 0, life: 6 });
+      SFX.fire(); b.k++; b.next = .6 - tier * .08;
+    }
+    if (b.timer <= 0) { b.state = 'ruhe'; b.timer = 1.4; }
+  } else if (b.state === 'beissen') {
+    if (b.phase === 'ziel') {
+      go(homeX, homeY - 30, 200); if (tgt && b.timer > .35) b.biteX = tgt.x;
+      if (b.timer <= 0) { b.phase = 'sturz'; SFX.dash(); }
+    } else if (b.phase === 'sturz') {
+      b.shield = true;
+      if (go(b.biteX, gy, 1100)) { b.phase = 'rast'; b.state = 'erschoepft'; b.timer = 3 - tier * .4; b.shield = false; b.harmless = true; bossLand(b); }
+    }
+  } else if (b.state === 'erschoepft') {
+    b.shield = false; b.harmless = true; b.y = gy;
+    if (b.timer <= 0) { b.state = 'zurueck'; b.shield = true; b.harmless = false; b.timer = 4; }
+  } else if (b.state === 'zurueck') {
+    b.shield = true; b.harmless = false;
+    if (go(homeX, homeY, 450) || b.timer <= 0) { b.state = 'ruhe'; b.timer = 1.2; }
+  }
+}
 function updateKrax(b, dt, tgt, angry) {
   if (b.state === 'intro') { b.vx = 0; if (b.timer <= 0) { b.state = 'walk'; b.timer = 1.6; } return; }
   if (b.state === 'walk') {
@@ -1179,10 +1310,13 @@ function updateMorvax(b, dt, tgt, angry) {
 }
 function bossDamage(n, p, stomp) {
   const b = G.boss;
-  if (!b || b.dead || b.state === 'sleep' || b.state === 'intro') return;
+  if (!b || b.dead || b.state === 'sleep' || b.state === 'intro' || b.shield) return;
   if (stomp || n >= 1) { if (b.hurtT > 0) return; b.hurtT = 1.3; b.squash = 1; b.angry = true; SFX.bossHit(); shake(8); hitstop(.1); }
   b.hp -= n;
   if (p) addScore(p, n >= 1 ? 2000 : 100, b.x, b.y - b.h - 20);
+  if (b.type === 'hexe' && b.hp > 0) { b.state = 'aufstieg'; b.shield = true; b.harmless = false; b.timer = 3; }
+  if (b.type === 'speier' && b.hp > 0) { b.state = 'zurueck'; b.shield = true; b.harmless = false; b.timer = 4; }
+  if (b.type === 'drache' && b.hp > 0) { b.state = 'walk'; b.timer = 1.2; b.vx = 0; }
   if (b.type === 'krax' && stomp && b.hp > 0) { b.state = 'spin'; b.timer = 2.6; b.vx = (Math.random() < .5 ? -1 : 1) * 480; b.h = 80; }
   if (b.type === 'morvax' && stomp && b.hp > 0) {
     const A = G.L.arena;
@@ -1249,7 +1383,7 @@ function loadLevel(L) {
   G.L = L;
   chunkCache.clear(); G.bg = null;
   G.enemies = []; G.items = []; G.fbs = []; G.parts = []; G.pops = []; G.plats = []; G.springs = []; G.checks = []; G.chains = [];
-  G.starEnts = []; G.bumps.clear(); G.coinPops = []; G.goals = []; G.boss = null; G.cage = null;
+  G.starEnts = []; G.toadEnts = []; G.bumps.clear(); G.coinPops = []; G.goals = []; G.boss = null; G.cage = null;
   G.goalTimer = -1; G.wipeT = -1; G.arenaLocked = false; G.goalHow = 'normal'; G.timeBonusDone = false; G.flash = 0; G.hitstop = 0;
   G.decoDyn = L.deko.filter(d => d.dyn);
   for (const d of L.ents) {
@@ -1257,6 +1391,7 @@ function loadLevel(L) {
     else if (d.type === 'plat') G.plats.push(Object.assign({ dx: 0, dy: 0, t: 0, dirp: 1, state: 'idle', ox: d.x, oy: d.y }, d));
     else if (d.type === 'feder') G.springs.push({ x: d.x, y: d.y, comp: 0, superf: !!d.superf, power: d.power || 1320 });
     else if (d.type === 'check') G.checks.push({ x: d.x, y: d.y, on: G.checkReached });
+    else if (d.type === 'toad') G.toadEnts.push({ x: d.x, y: d.y, got: !!(Prog.save && Prog.save.toad && G.node && Prog.save.toad[G.node.id]) });
     else if (d.type === 'sternmuenze') G.starEnts.push({ x: d.x, y: d.y, idx: d.idx, got: G.starGot[d.idx], prev: G.starPrev && G.starPrev[d.idx] });
     else if (d.type === 'ziel') G.goals.push({ x: d.x, y: d.y, top: d.top, taken: false, secret: !!d.secret });
     else if (d.type === 'boss') G.boss = makeBoss(d);
@@ -1275,7 +1410,7 @@ function startLevel() {
   const themeKey = kind === 'turm' ? 'turm' : kind === 'final' ? 'schatten' : kind === 'stern' ? 'sterne' : kind === 'burg' ? 'burg' : nd.theme;
   const diff = Prog.levelDiff(nd);
   G.levelDiffNow = diff;
-  loadLevel(generateLevel({ themeKey, seed: Prog.levelSeed(nd.id), diff, kind, secret: !!nd.secret, bossLook: nd.world }));
+  loadLevel(generateLevel({ themeKey, seed: Prog.levelSeed(nd.id), diff, kind, secret: !!nd.secret, tunnel: !!nd.tunnel, bossLook: nd.world }));
   const L = G.L;
   const sp = G.checkReached && L.checkpoint ? L.checkpoint : L.spawn;
   G.players.forEach((p, i) => {
@@ -1409,6 +1544,11 @@ function update(dt) {
   }
   for (const s of G.starEnts) if (!s.got) for (const p of G.players) if (p.state === 'play' && Math.abs(p.x - s.x) < 34 && p.y - p.h < s.y + 26 && p.y > s.y - 26) {
     s.got = true; G.starGot[s.idx] = true; p.ls.stars++; addScore(p, 2000, s.x, s.y - 40); SFX.starcoin(); sparkle(s.x, s.y, 18);
+    break;
+  }
+  for (const k of G.toadEnts) if (!k.got) for (const p of G.players) if (p.state === 'play' && Math.abs(p.x - k.x) < 34 && p.y - p.h < k.y + 26 && p.y > k.y - 26) {
+    k.got = true; if (!Prog.save.toad) Prog.save.toad = {}; Prog.save.toad[G.node.id] = 1; UI.autosave();
+    addScore(p, 1000, k.x, k.y - 40); SFX.secret(); sparkle(k.x, k.y, 22, '#ffd23a'); popup(k.x, k.y - 70, 'Tunnelschlüssel! Ein Toad-Haus erscheint', '#ffd23a');
     break;
   }
   for (const z of G.goals) for (const p of G.players) if (p.state === 'play' && !p.carried && Math.abs(p.x - z.x) < p.w / 2 + 6 && p.y - p.h < z.y && p.y > z.top) touchGoal(p, z);
@@ -1600,6 +1740,7 @@ function render(dt) {
   for (const c of G.checks) drawCheckpoint(ctx, c, t);
   for (const z of G.goals) drawGoal(ctx, z, t);
   for (const st of G.starEnts) if (!st.got) drawStarCoin(ctx, st.x, st.y, t, !!st.prev);
+  for (const k of G.toadEnts) if (!k.got) drawToadKey(ctx, k.x, k.y, t);
   for (const it of G.items) if (!it.emerge) {
     if (it.kind === 'orb') drawOrb(ctx, it, t);
     else if (it.kind === 'prinzessin') drawPrincess(ctx, it.x, it.y, 1.1, t, 'froh');
@@ -1615,6 +1756,9 @@ function render(dt) {
     const b = G.boss;
     if (b.type === 'krax') drawKrax(ctx, b, t);
     else if (b.type === 'morvax') drawMorvax(ctx, b.x, b.y, 1, t, { face: b.dir, hurt: b.hurtT > 0, angry: b.angry, cast: b.state === 'cast' || b.state === 'summon' });
+    else if (b.type === 'drache') drawDrache(ctx, b, t);
+    else if (b.type === 'hexe') drawHexe(ctx, b, t);
+    else if (b.type === 'speier') drawSpeier(ctx, b, t);
     else drawKoloss(ctx, b, t);
   }
   if (G.mode !== 'attract') for (const p of G.players) drawPlayer(ctx, p, t);

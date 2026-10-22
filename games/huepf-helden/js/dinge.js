@@ -311,3 +311,14 @@ function drawShot(g, f, t) {
   else { g.beginPath(); g.arc(0, 0, 9, 0, TAU); fs(g, radial(g, 0, 0, 9, '#fffbe0', '#ffb02a', '#e04a10'), 1.6); }
   g.restore();
 }
+
+// Tunnelschlüssel: goldener Pilz (öffnet ein Toad-Haus auf der Karte)
+function drawToadKey(g, x, y, t) {
+  g.save(); g.translate(x, y + Math.sin(t * 3) * 4);
+  const gl = g.createRadialGradient(0, 0, 6, 0, 0, 46); gl.addColorStop(0, 'rgba(255,230,120,.6)'); gl.addColorStop(1, 'rgba(255,200,60,0)');
+  g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 46, 0, TAU); g.fill();
+  rr(g, -7, -2, 14, 16, 5); fs(g, '#fff4d8', 2.2);
+  g.beginPath(); g.ellipse(0, -2, 20, 15, 0, Math.PI, TAU); fs(g, '#ffc21a', 2.4);
+  g.fillStyle = '#fff'; for (const [dx, dy, r] of [[-9, -9, 4], [4, -12, 3.4], [11, -6, 2.8]]) { g.beginPath(); g.arc(dx, dy, r, 0, TAU); g.fill(); }
+  g.restore();
+}
