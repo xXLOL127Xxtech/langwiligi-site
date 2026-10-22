@@ -90,7 +90,7 @@ function buildCastle(s, st) {
   const r = mulberry32(s.seed);
   const B = BIOMES[s.biome];
   const out = newBuilt(s);
-  const mg = new Merger(), ps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet();
   const stone = pick(r, STONES).map((v, i) => lerp(v, B.rockC[i], 0.25));
   const roof = pick(r, ROOFS);
   const R = s.radius, round = r() < 0.2, n = round ? 10 : 4 + Math.floor(r() * 4);
@@ -270,7 +270,7 @@ function buildCastle(s, st) {
     }
   }
   out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  if (!ps.empty) out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  if (!ps.empty) out.group.add(leafObj(ps));
   out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
   return out;
 }
@@ -308,8 +308,7 @@ function buildWonder(s, st) {
   const B = BIOMES[s.biome];
   const out = newBuilt(s);
   const x = s.x, z = s.z, y0 = s.baseH;
-  const mg = new Merger(), ps = new PointSet();
-  let psMat = MAT.leaves;
+  const mg = new Merger(), ps = new LeafSet();
   switch (s.wonder) {
     case 'lichtbaum': {
       const bark = [0.24, 0.2, 0.3];
@@ -327,7 +326,7 @@ function buildWonder(s, st) {
         }
       }
       blob(ps, x, y0 + 21, z, 6, 3.4, 6, cols, r, 7);
-      psMat = MAT.lichtLeaves;
+      ps.neon = true;
       const halo = makeGlow(cols[0][2] > 0.95 ? 0x90d0ff : 0xffa0d8, 46, 0.16); halo.position.set(x, y0 + 17, z); out.group.add(halo);
       risingMotes(out, 160, x, y0, z, 16, 30, cols, 0.9, 0.35);
       circCollider(out, x, z, 2.2);
@@ -339,7 +338,7 @@ function buildWonder(s, st) {
         const a = i / cnt * 6.283 + r(), d = 8 + r() * 22;
         const ix = x + Math.cos(a) * d, iz = z + Math.sin(a) * d, iy = y0 + 20 + r() * 32, rad = 4 + r() * 6;
         const ig = new THREE.Group(); ig.position.set(ix, iy, iz);
-        const img = new Merger(), ips = new PointSet();
+        const img = new Merger(), ips = new LeafSet();
         img.add('cone6', M(0, 0, 0, rad, rad * 1.7, rad, Math.PI, r(), 0), B.rockC, 0.15, r);
         for (let q = 0; q < 4; q++) img.add('ico', M((r() - 0.5) * rad, -rad * (0.3 + r() * 0.6), (r() - 0.5) * rad, rad * 0.4, rad * 0.5, rad * 0.4, r(), r(), r()), B.rockC.map(v => v * 0.85), 0.2, r);
         img.add('cyl6', M(0, -0.5, 0, rad * 1.04, 0.8, rad * 1.04, 0, r(), 0), B.fieldC.map(v => Math.min(1, v * 1.15)), 0.1, r);
@@ -347,7 +346,7 @@ function buildWonder(s, st) {
         buildTree(tb, (r() - 0.5) * rad * 0.6, 0.2, (r() - 0.5) * rad * 0.6, r, img, ips);
         for (let q = 0; q < rad * 25; q++) { const qa = r() * 6.283, qd = Math.sqrt(r()) * rad * 0.95; ips.add(Math.cos(qa) * qd, 0.1 + r() * 0.5, Math.sin(qa) * qd, r() < 0.5 ? tb.tipC : tb.stemC, 1); }
         ig.add(new THREE.Mesh(img.build(), MAT.flat));
-        ig.add(new THREE.Points(ips.build(), MAT.leaves));
+        ig.add(leafObj(ips));
         out.group.add(ig);
         const ph = r() * 6.283;
         // Wasserfall
@@ -499,7 +498,7 @@ function buildWonder(s, st) {
     }
     case 'riese': {
       const g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = r() * 6.283;
-      const lm = new Merger(), lps = new PointSet();
+      const lm = new Merger(), lps = new LeafSet();
       const c = pick(r, STONES).map(v => v * 0.95), c2 = c.map(v => v * 0.82);
       lm.add('box', M(-1.6, 0.6, -1.8, 1.8, 1.5, 5), c2, 0.1, r);
       lm.add('box', M(-1.6, 3.0, 0.6, 1.9, 4.5, 2.0, -0.25, 0, 0), c, 0.1, r);
@@ -520,7 +519,7 @@ function buildWonder(s, st) {
       lm.add('ico', M(0, 11.8, 5.4, 0.5, 0.5, 0.5), [0.6, 0.5, 0.3]);
       for (const [px, py, pz, rx, rz] of [[-3.2, 13.4, 0.6, 1.6, 1.6], [3.2, 13.4, 0.6, 1.6, 1.6], [0, 15.4, 1, 1.2, 1.2], [1.7, 6.1, 1.8, 1.2, 2], [-1.6, 1.4, -1.8, 1, 2.4]]) blob(lps, px, py, pz, rx, 0.35, rz, B.canopyC, r, 14, 0.2);
       for (let i = 0; i < 300; i++) lps.add((r() - 0.5) * 5, 7 + r() * 5.5, 2.05 + r() * 0.1, B.canopyC[i % 3], 0.8);
-      g.add(new THREE.Mesh(lm.build(), MAT.flat), new THREE.Points(lps.build(), MAT.leaves));
+      g.add(new THREE.Mesh(lm.build(), MAT.flat), leafObj(lps));
       for (const sx of [-1, 1]) { const e = makeGlow(0x90e0ff, 0.9, 0.9); e.position.set(sx * 0.45, 14.05, 2.25); g.add(e); }
       out.group.add(g);
       const ry = g.rotation.y, cs = Math.cos(ry), sn = Math.sin(ry);
@@ -731,7 +730,7 @@ function buildWonder(s, st) {
     }
   }
   if (!mg.empty) out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  if (!ps.empty) out.group.add(new THREE.Points(ps.build(), psMat));
+  if (!ps.empty) out.group.add(leafObj(ps));
   out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
   return out;
 }
@@ -752,7 +751,7 @@ function buildCamp(s, st) {
   const r = mulberry32(s.seed);
   const out = newBuilt(s);
   const x = s.x, z = s.z, y0 = s.baseH;
-  const mg = new Merger(), ps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet();
   const a0 = r() * 6.283;
   // Feuerstelle
   for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283; mg.add('ico', M(x + Math.cos(a) * 1.0, y0 + 0.1, z + Math.sin(a) * 1.0, 0.3, 0.22, 0.3, r(), r(), r()), [0.45, 0.43, 0.48], 0.2, r); }
@@ -796,11 +795,11 @@ function buildCamp(s, st) {
   circCollider(out, x, z, 1.1);
   circCollider(out, mx, mz, 0.5);
   out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  out.group.add(leafObj(ps));
   out.updaters.push(dt => {
     updateFires(out, dt);
     const t = U.uTime.value;
-    npc.children[0].scale.y = 1 + Math.sin(t * 1.8) * 0.015;
+    if (npc.userData.anim) npc.userData.anim(dt);
   });
   return out;
 }
@@ -810,7 +809,7 @@ function buildView(s) {
   const r = mulberry32(s.seed);
   const out = newBuilt(s);
   const x = s.x, z = s.z, y0 = groundY(x, z);
-  const mg = new Merger(), ps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet();
   // Blick in Richtung der tiefsten Stelle
   let best = 0, low = 1e9;
   for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, h = heightAt(x + Math.cos(a) * 70, z + Math.sin(a) * 70); if (h < low) { low = h; best = a; } }
@@ -831,7 +830,7 @@ function buildView(s) {
   flag.add(new THREE.Mesh(fm.build(), MAT.flat));
   out.group.add(flag);
   for (let i = 0; i < 50; i++) { const a = r() * 6.283, d = 1.5 + r() * 4; ps.add(x + Math.cos(a) * d, groundY(x + Math.cos(a) * d, z + Math.sin(a) * d) + 0.18, z + Math.sin(a) * d, pick(r, [[1, 0.85, 0.95], [0.95, 0.95, 1], [1, 0.9, 0.6]])); }
-  out.group.add(new THREE.Mesh(mg.build(), MAT.flat), new THREE.Points(ps.build(), MAT.leaves));
+  out.group.add(new THREE.Mesh(mg.build(), MAT.flat), leafObj(ps));
   out.interact.push({ kind: 'view', x, z, r: 2.8, yaw: best });
   out.updaters.push(() => { const t = U.uTime.value, w = U.uWindDir.value; flag.rotation.y = Math.atan2(-w.y, w.x) + Math.sin(t * 3) * 0.25; flag.rotation.z = Math.sin(t * 5) * 0.05; });
   return out;
@@ -847,17 +846,17 @@ function buildWanderer(s) {
   npc.rotation.y = r() * 6.283;
   out.group.add(npc);
   out.npc = npc;
-  const mg = new Merger(), ps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet();
   const w = weightsAt(x, z, new Float32Array(NB));
   const B = BIOMES[dominantBiome(w)];
   const tx = x + 2.5, tz = z + 1.5;
   buildTree(B, tx, groundY(tx, tz), tz, r, mg, ps);
   mg.add('box', M(x - 1, y0 + 0.25, z + 0.6, 0.6, 0.5, 0.4, 0, r(), 0), [0.5, 0.36, 0.24]);
   if (!mg.empty) out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  if (!ps.empty) out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  if (!ps.empty) out.group.add(leafObj(ps));
   out.interact.push({ kind: 'npc', x, z, r: 2.8 });
   circCollider(out, x, z, 0.5);
-  out.updaters.push(() => { npc.children[0].scale.y = 1 + Math.sin(U.uTime.value * 1.6 + 1) * 0.015; });
+  out.updaters.push(dt => { if (npc.userData.anim) npc.userData.anim(dt); });
   return out;
 }
 

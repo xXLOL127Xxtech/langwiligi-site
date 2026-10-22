@@ -1,49 +1,6 @@
 'use strict';
 // Wanderlicht – besondere Orte: grosse Wahrzeichen-Schlösser, Höhlen, Feenlichtung, Ritterlager
 
-// ---------- Figuren: Ritter und Zwerge ----------
-function makeKnight(seed, sitting) {
-  const r = mulberry32(seed);
-  const g = new THREE.Group(), mg = new Merger();
-  const steel = pick(r, [[0.62, 0.64, 0.7], [0.5, 0.5, 0.55], [0.7, 0.66, 0.58]]);
-  const cloth = pick(r, [[0.55, 0.12, 0.14], [0.16, 0.22, 0.45], [0.2, 0.36, 0.24], [0.45, 0.36, 0.14], [0.3, 0.16, 0.4]]);
-  const sy = sitting ? -0.35 : 0;
-  mg.add('taper', M(0, sitting ? 0.35 : 0, 0, 0.42, sitting ? 0.85 : 1.15, 0.42), cloth);
-  mg.add('box', M(0, 0.95 + sy, 0, 0.62, 0.5, 0.42), steel, 0.08, r);
-  mg.add('cyl', M(0, 1.15 + sy, 0, 0.24, 0.42, 0.24), steel.map(v => v * 0.9));
-  mg.add('box', M(0, 1.38 + sy, 0.2, 0.3, 0.05, 0.05), DARK);
-  if (r() < 0.6) mg.add('cone', M(0, 1.57 + sy, -0.05, 0.05, 0.4, 0.2, -0.4, 0, 0), cloth.map(v => Math.min(1, v * 1.4)));
-  for (const sx of [-1, 1]) mg.add('ico', M(0.36 * sx, 1.12 + sy, 0, 0.2, 0.16, 0.2), steel);
-  mg.add('box', M(0, 0.75 + sy, -0.28, 0.66, 1.1, 0.06), cloth.map(v => v * 0.7));
-  if (sitting) for (const sx of [-1, 1]) mg.add('box', M(0.16 * sx, 0.22, 0.32, 0.18, 0.18, 0.6), steel.map(v => v * 0.8));
-  g.add(new THREE.Mesh(mg.build(), MAT.flat));
-  g.add(makeShadow(0.55));
-  return g;
-}
-function makeDwarf(seed) {
-  const r = mulberry32(seed);
-  const g = new THREE.Group(), mg = new Merger();
-  const coat = pick(r, [[0.45, 0.28, 0.18], [0.3, 0.32, 0.4], [0.5, 0.2, 0.18], [0.32, 0.4, 0.26]]);
-  const beard = pick(r, [[0.85, 0.5, 0.25], [0.9, 0.88, 0.85], [0.4, 0.26, 0.16], [0.75, 0.3, 0.12]]);
-  mg.add('taper', M(0, 0, 0, 0.42, 0.75, 0.42), coat);
-  mg.add('ico', M(0, 0.92, 0, 0.21, 0.21, 0.21), [0.92, 0.74, 0.6]);
-  mg.add('cone', M(0, 0.82, 0.14, 0.2, 0.42, 0.12, Math.PI, 0, 0), beard);
-  mg.add('cyl', M(0, 1.04, 0, 0.25, 0.12, 0.25), [0.55, 0.55, 0.58]);
-  mg.add('box', M(0, 0.45, 0, 0.88, 0.1, 0.5), [0.25, 0.16, 0.1]);
-  g.add(new THREE.Mesh(mg.build(), MAT.flat));
-  // Arm mit Hammer
-  const arm = new THREE.Group(); arm.position.set(0.32, 0.72, 0.05);
-  const am = new Merger();
-  am.add('box', M(0, 0.05, 0.28, 0.08, 0.08, 0.6), [0.42, 0.3, 0.2]);
-  am.add('box', M(0, 0.05, 0.6, 0.22, 0.16, 0.14), [0.45, 0.45, 0.5]);
-  arm.add(new THREE.Mesh(am.build(), MAT.flat));
-  g.add(arm);
-  const lamp = makeGlow(0xffa040, 1.1, 0.8); lamp.position.set(0, 1.14, 0.18); g.add(lamp);
-  g.add(makeShadow(0.45));
-  g.userData.arm = arm;
-  return g;
-}
-
 // ---------- Hilfen für gotische Türme ----------
 function gothicTower(mg, gps, x, y, z, rad, h, st, r, winCol, lit) {
   mg.add('cyl', M(x, y - 2, z, rad, h + 2, rad, 0, r() * 3, 0), st.stone, 0.1, r);
@@ -79,7 +36,7 @@ function buildLandmark(L, st) {
   const r = mulberry32(L.seed);
   const out = newBuilt(L);
   const S = LM_STYLE[L.kind];
-  const mg = new Merger(), gps = new PointSet(), ps = new PointSet();
+  const mg = new Merger(), gps = new PointSet(), ps = new LeafSet();
   const cx = L.x, cz = L.z, y0 = L.baseH, R = L.R, n = S.n, ga = L.lakeAng;
   const dunkel = L.kind === 'dunkelfeste';
   // Mauerring mit Tor zur Seeseite
@@ -232,7 +189,7 @@ function buildLandmark(L, st) {
   }
   out.group.add(new THREE.Mesh(mg.build(), MAT.landmark));
   if (!gps.empty) out.group.add(new THREE.Points(gps.build(), MAT.landGlow));
-  if (!ps.empty) out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  if (!ps.empty) out.group.add(leafObj(ps));
   out.front = front;
   out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
   reflectable(out.group);
@@ -292,7 +249,7 @@ function buildCave(s, st) {
 
   // Innenraum (tief unter dem Eingang, eigene Welt)
   const inner = new THREE.Group();
-  const cy = CAVE_Y, img = new Merger(), ips = new PointSet(), ins = new PointSet(), igl = new PointSet();
+  const cy = CAVE_Y, img = new Merger(), ips = new LeafSet(), ins = new LeafSet(true), igl = new PointSet();
   const cave = { x, z, y: cy, kind: s.cave, flick: 0, inner };
   out.cave = cave;
   if (kristall) {
@@ -421,7 +378,7 @@ function buildCave(s, st) {
   out.interact.push({ kind: 'caveExit', x: x + fx * (cave.R - 1.5), z: z + fz * (cave.R - 1.5), r: 3, label: 'Zurück ans Tageslicht', cave: true });
   out.colliders.push({ ring: true, x, z, r: cave.R, cave: true });
   if (!img.empty) inner.add(new THREE.Mesh(img.build(), MAT.flat));
-  if (!ins.empty) inner.add(new THREE.Points(ins.build(), MAT.neonLeaves));
+  if (!ins.empty) inner.add(leafObj(ins));
   if (!igl.empty) inner.add(new THREE.Points(igl.build(), MAT.glowBig));
   // die Truhen der Höhle hängen am Innenraum
   for (const c of out.chests) if (c.y === cy) { c.lid.parent.position.y = cy; c.cave = true; }
@@ -453,7 +410,7 @@ function buildCave(s, st) {
       }
       for (const d of cave.dwarves) {
         const ph = t * 3 + d.ph, sw = Math.max(0, Math.sin(ph));
-        d.g.userData.arm.rotation.x = -1.2 + sw * 1.5;
+        animHumanoid(d.g, dt, { work: sw });
         if (Math.sin(ph - dt * 3) < 0.98 && Math.sin(ph) >= 0.98) {
           burst(d.ox, cy + 1, d.oz, 5, [1, 0.7, 0.3], 3, 0.1, 0.5, 6);
           if (out.onClink) out.onClink(d);
@@ -470,7 +427,7 @@ function buildClearing(s, st) {
   const r = mulberry32(s.seed);
   const out = newBuilt(s);
   const x = s.x, z = s.z, y0 = s.baseH;
-  const mg = new Merger(), ps = new PointSet(), gps = new PointSet(), fl = new PointSet();
+  const mg = new Merger(), ps = new LeafSet(), gps = new PointSet(), fl = new LeafSet();
   const B = BIOMES[s.biome];
   const bark = [0.3, 0.22, 0.18], leaf = [[0.32, 0.55, 0.3], [0.2, 0.36, 0.22], [0.7, 0.85, 0.45]];
   // Stamm, Wurzeln, Äste
@@ -541,9 +498,9 @@ function buildClearing(s, st) {
   });
   out.interact.push({ kind: 'feen', x: x + 4.5, z, r: 6, label: 'Die Feen grüssen' });
   out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  out.group.add(new THREE.Points(ps.build(), MAT.leavesBig));
+  out.group.add(leafObj(ps));
   out.group.add(new THREE.Points(gps.build(), MAT.glowBig));
-  out.group.add(new THREE.Points(fl.build(), MAT.leaves));
+  out.group.add(leafObj(fl));
   const halo = makeGlow(0xfff0b0, 46, 0.22); halo.position.set(x, y0 + 14, z); out.group.add(halo);
   const base = makeGlow(0xb0ffd8, 16, 0.3); base.position.set(x, y0 + 1.5, z); out.group.add(base);
   void B;
@@ -603,7 +560,7 @@ function buildKnights(s) {
     updateFires(out, dt);
     const t = U.uTime.value, w = U.uWindDir.value;
     flag.rotation.y = Math.atan2(-w.y, w.x) + Math.sin(t * 3) * 0.2;
-    out.knights.forEach((k, i) => { k.children[0].rotation.x = Math.sin(t * 0.9 + i * 2) * 0.04; });
+    out.knights.forEach(k => { if (k.userData.anim) k.userData.anim(dt); });
     horse.rotation.y = hr + Math.sin(t * 0.3) * 0.08;
   });
   return out;
@@ -694,7 +651,7 @@ function colossusParts(mg, L, r, moss) {
 function buildColossus(L, st) {
   const r = mulberry32(L.seed);
   const out = newBuilt(L);
-  const mg = new Merger(), ps = new PointSet(), gps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet(), gps = new PointSet();
   const moss = [[0.26, 0.38, 0.2], [0.18, 0.28, 0.15], [0.36, 0.5, 0.26]];
   const C = colossusParts(mg, L, r, (x, y, z) => ps.add(x, y, z, moss[Math.floor(r() * 3)], 0.8 + r() * 0.3));
   const y0 = L.baseH;
@@ -728,7 +685,7 @@ function buildColossus(L, st) {
   });
   risingMotes(out, 50, sx, y0, sz, 6, 14, [[1, 0.8, 0.5], [0.8, 0.9, 1]], 0.7, 0.35);
   out.group.add(new THREE.Mesh(mg.build(), MAT.landmark));
-  out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  out.group.add(leafObj(ps));
   out.group.add(new THREE.Points(gps.build(), MAT.landGlow));
   reflectable(out.group);
   return out;

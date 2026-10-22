@@ -2,7 +2,7 @@
 // Wanderlicht – Welt: Zufall, Rauschen, Biome, Höhen und Orte (ohne Grafik)
 
 const WATER = 0;
-const CHUNK = 48, CHUNK_RES = 16;
+const CHUNK = 48, CHUNK_RES = 32;
 const CELL = 280;
 
 // ---------- Zufall ----------

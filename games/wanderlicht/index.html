@@ -26,7 +26,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b16; color: var(--text); font-family: 'Pixelify Sans', system-ui, sans-serif; user-select: none; }
-#spiel { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: grab; }
+#spiel { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; }
 #spiel:active { cursor: grabbing; }
 button { font-family: inherit; }
 kbd { display: inline-block; min-width: 1.5em; padding: 1px 6px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 4px; background: rgba(255,255,255,0.06); font-family: inherit; font-size: 0.9em; text-align: center; color: var(--accent2); }
@@ -173,6 +173,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
     <kbd>W A S D</kbd><span>gehen</span><kbd>Shift</kbd><span>rennen</span>
     <kbd>Leertaste</kbd><span>springen</span><kbd>F</kbd><span>oder Klick: schlagen</span>
     <kbd>E</kbd><span>sprechen, öffnen, rasten</span><kbd>Q</kbd><span>Heiltrank</span>
+    <kbd>B</kbd><span>Besen reiten</span><kbd>Leertaste · Shift</kbd><span>auf dem Besen steigen · sinken</span>
     <kbd>← → ↑ ↓</kbd><span>oder ziehen: umsehen</span><kbd>+ −</kbd><span>oder scrollen: Zoom</span>
     <kbd>Tab</kbd><span>Tagebuch</span><kbd>Esc</kbd><span>Menü · <kbd>H</kbd> Bild ohne Anzeigen</span>
   </div>
@@ -198,7 +199,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
   <div class="list">
     <button class="opt" id="mResume">Weiterwandern</button>
     <button class="opt" id="mJournal">Tagebuch</button>
-    <button class="opt" id="mPixel">Pixelgrösse</button>
+    <button class="opt" id="mQuality">Grafik</button>
     <button class="opt" id="mView">Sichtweite</button>
     <button class="opt" id="mSound">Ton</button>
     <button class="opt" id="mTitle">Zum Titelbild</button>
@@ -221,6 +222,8 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="welt.js"></script>
 <script src="grafik.js"></script>
+<script src="laub.js"></script>
+<script src="baeume.js"></script>
 <script src="wesen.js"></script>
 <script src="bauten.js"></script>
 <script src="orte.js"></script>

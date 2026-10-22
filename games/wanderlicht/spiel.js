@@ -7,7 +7,7 @@ const DAY_LEN = 960;
 const $ = id => document.getElementById(id);
 
 // ---------- Zustand ----------
-const SET = { pixel: 2, view: 1, sound: true, v: 2 };
+const SET = { quality: 2, view: 1, sound: true, v: 3 };
 let S = null;         // Spielstand
 let P = null;         // Spielfigur
 let playerModel = null;
@@ -24,8 +24,8 @@ const _bw = new Float32Array(NB);
 
 function loadSettings() {
   try { Object.assign(SET, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) { /* egal */ }
-  if ((SET.v | 0) < 2) { SET.v = 2; SET.pixel = Math.min(SET.pixel | 0 || 2, 2); }
-  SET.pixel = clamp(SET.pixel | 0 || 2, 2, 5); SET.view = clamp(SET.view | 0, 0, 2);
+  if ((SET.v | 0) < 3) { SET.v = 3; SET.quality = 2; }
+  SET.quality = clamp(SET.quality | 0, 0, 2); SET.view = clamp(SET.view | 0, 0, 2);
 }
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) { /* egal */ } }
 
@@ -135,6 +135,7 @@ window.addEventListener('keydown', e => {
     case ' ': jump(); break;
     case 'e': case 'Enter': interact(); break;
     case 'q': drinkPotion(); break;
+    case 'b': toggleBroom(); break;
     case 'Tab': case 'i': openJournal(); break;
     case 'Escape': case 'p': openMenu(); break;
     case 'm': toggleSound(); break;
@@ -153,12 +154,28 @@ function toggleSound() {
 }
 
 // ---------- Spielfigur ----------
+function toggleBroom() {
+  if (P.dead || mode !== 'play' || P.inCave) return;
+  if (P.broom) {
+    P.broom = false; P.glide = true;
+    toast('Du steigst vom Besen ab.');
+    return;
+  }
+  if (P.swim || P.resting) return;
+  P.broom = true; P.onGround = false; P.vy = 3; P.y += 0.3;
+  burst(P.x, P.y + 0.6, P.z, 24, [1, 0.8, 0.5], 3, 0.18, 1, -1, 0.8);
+  Ton.sfx('jump');
+  if (!S.broomSeen) { S.broomSeen = true; card('Der Besen', 'Leertaste steigt, Shift sinkt, B steigt ab.'); }
+  else toast('Besen: Leertaste steigen · Shift sinken · B absteigen');
+}
 function jump() {
+  if (P.broom) return;
   if (!P.onGround || P.dead || P.swim) return;
   P.vy = 7.8; P.onGround = false; Ton.sfx('jump');
 }
 function attack() {
   if (P.dead || P.atkCd > 0 || mode !== 'play') return;
+  if (P.broom) { if (!P.broomHint) { P.broomHint = true; toast('Zum Kämpfen erst vom Besen absteigen (B).'); } return; }
   P.atkT = 0.34; P.atkCd = 0.44; P.hitDone = false;
   // sanft zum nächsten Gegner drehen
   let best = null, bd = 5.5;
@@ -238,11 +255,11 @@ function updatePlayer(dt) {
   const ml = Math.hypot(mx, mz);
   if (ml > 0) { mx /= ml; mz /= ml; }
   const ground = groundY(P.x, P.z);
-  P.swim = !P.inCave && ground < WATER - 0.9;
-  const sprint = keys.Shift && !P.swim;
-  let sp = playerSpeed() * (sprint ? 1.55 : 1) * (P.swim ? 0.55 : 1) * (P.atkT > 0 ? 0.45 : 1);
+  P.swim = !P.inCave && !P.broom && ground < WATER - 0.9;
+  const sprint = keys.Shift && !P.swim && !P.broom;
+  let sp = playerSpeed() * (sprint ? 1.55 : 1) * (P.swim ? 0.55 : 1) * (P.atkT > 0 ? 0.45 : 1) * (P.broom ? 2.6 : 1);
   const tvx = mx * sp, tvz = mz * sp;
-  const acc = Math.min(1, dt * (P.onGround ? 10 : 3));
+  const acc = Math.min(1, dt * (P.broom ? 2.6 : P.onGround ? 10 : 3));
   // Rückstoss klingt ab, Laufen wird angeglichen
   P.vx += (tvx - P.vx) * acc; P.vz += (tvz - P.vz) * acc;
   const ox = P.x, oz = P.z;
@@ -258,11 +275,22 @@ function updatePlayer(dt) {
   }
   // Höhe
   const gNow = groundY(P.x, P.z);
-  P.vy -= 24 * dt;
-  P.y += P.vy * dt;
-  const floor = P.swim ? WATER - 1.05 : gNow;
-  if (P.y <= floor) { P.y = floor; P.vy = 0; P.onGround = true; } else if (P.y > floor + 0.25) P.onGround = false;
-  if (P.swim && P.vy < 0 && P.y < WATER - 1.05) { P.y = WATER - 1.05; P.vy = 0; }
+  if (P.broom) {
+    const tgt = (keys[' '] ? 8 : 0) - (keys.Shift ? 8 : 0);
+    P.vy += (tgt - P.vy) * Math.min(1, dt * 3);
+    P.y += P.vy * dt;
+    const fl = Math.max(gNow, WATER) + 1.1;
+    if (P.y < fl) { P.y = fl; if (P.vy < 0) P.vy = 0; }
+    P.y = Math.min(P.y, 700);
+    P.onGround = false;
+  } else {
+    P.vy -= 24 * dt;
+    if (P.glide) P.vy = Math.max(P.vy, -6);
+    P.y += P.vy * dt;
+    const floor = P.swim ? WATER - 1.05 : gNow;
+    if (P.y <= floor) { P.y = floor; P.vy = 0; P.onGround = true; P.glide = false; } else if (P.y > floor + 0.25) P.onGround = false;
+    if (P.swim && P.vy < 0 && P.y < WATER - 1.05) { P.y = WATER - 1.05; P.vy = 0; }
+  }
   // Angriff
   if (P.atkT > 0) {
     P.atkT -= dt;
@@ -279,23 +307,14 @@ function updatePlayer(dt) {
   if (P.swim && P.moving > 0.2 && Math.random() < dt * 8) burst(P.x, WATER + 0.1, P.z, 2, [0.8, 0.85, 1], 1.5, 0.15, 0.6, 4);
   // Modell
   const t = U.uTime.value;
-  playerModel.position.set(P.x, P.y + (P.onGround && P.moving > 0.1 ? Math.abs(Math.sin(t * 10 * (sprint ? 1.3 : 1))) * 0.07 : 0), P.z);
+  const dFace = P.face - (P.lastFace == null ? P.face : P.lastFace); P.lastFace = P.face;
+  let dF = dFace; while (dF > Math.PI) dF -= 6.283; while (dF < -Math.PI) dF += 6.283;
+  P.bank = (P.bank || 0) + (clamp(-dF / Math.max(dt, 0.001) * 0.18, -0.5, 0.5) - (P.bank || 0)) * Math.min(1, dt * 5);
+  playerModel.position.set(P.x, P.y, P.z);
   playerModel.rotation.y = P.face;
-  parts.body.rotation.x = P.moving * 0.1 * (sprint ? 1.6 : 1);
-  parts.body.scale.y = P.resting ? 0.85 : 1;
-  parts.scarfTail.rotation.x = -0.15 - P.moving * 0.35 + Math.sin(t * 7) * 0.12 * (0.3 + P.moving) + (P.onGround ? 0 : 0.4);
-  parts.scarfTail.rotation.y = Math.sin(t * 3.1) * 0.25;
-  parts.lantern.rotation.x = Math.sin(t * 6) * 0.15 * P.moving;
-  parts.lanGlow.material.opacity = 0.2 + ATM.night * 0.75;
-  if (P.atkT > 0) {
-    const p = 1 - P.atkT / 0.34, e = p < 0.3 ? p / 0.3 : 1;
-    parts.pivot.rotation.x = p < 0.3 ? lerp(0.3, -2.4, e) : lerp(-2.4, 1.6, Math.min(1, (p - 0.3) / 0.35));
-    parts.pivot.rotation.z = p < 0.3 ? -0.3 : lerp(-0.3, 0.6, Math.min(1, (p - 0.3) / 0.35));
-  } else {
-    parts.pivot.rotation.x += (Math.sin(t * 6) * 0.12 * P.moving - parts.pivot.rotation.x) * Math.min(1, dt * 8);
-    parts.pivot.rotation.z += (0 - parts.pivot.rotation.z) * Math.min(1, dt * 8);
-  }
+  animatePlayer(dt, { moving: Math.min(1.2, P.moving), sprint, onGround: P.onGround, swim: P.swim, vy: P.vy, atkT: P.atkT, resting: P.resting, broom: P.broom, bank: P.bank });
   playerModel.visible = !(P.hurtCd > 0 && Math.floor(t * 20) % 2 === 0);
+  if (P.broom && Math.random() < dt * 40) burst(P.x - Math.sin(P.face) * 1.3, P.y + 0.6, P.z - Math.cos(P.face) * 1.3, 1, [1, 0.8, 0.45], 0.6, 0.14, 0.9, -0.5, 0.2);
   // Heilen beim Rasten
   if (P.resting) P.hp = Math.min(maxHp(), P.hp + maxHp() * dt * 0.08);
 }
@@ -305,32 +324,50 @@ function chunkW(x, z) {
 }
 
 // ---------- Kollision ----------
-function collide(o, rad) {
-  const inCave = !!o.inCave;
-  for (const [, b] of built) {
-    const s = b.site;
-    if (Math.abs(s.x - o.x) > 90 || Math.abs(s.z - o.z) > 90) continue;
-    for (const c of b.colliders) {
-      if (!!c.cave !== inCave) continue;
-      if (c.ring) {
-        const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz), m = c.r - rad;
-        if (d > m) { o.x = c.x + dx / d * m; o.z = c.z + dz / d * m; }
-        continue;
-      }
-      let px, pz;
-      if (c.seg) {
-        const ex = c.bx - c.ax, ez = c.bz - c.az;
-        const t = clamp(((o.x - c.ax) * ex + (o.z - c.az) * ez) / (ex * ex + ez * ez), 0, 1);
-        px = c.ax + ex * t; pz = c.az + ez * t;
-      } else { px = c.x; pz = c.z; }
-      const dx = o.x - px, dz = o.z - pz, d = Math.hypot(dx, dz), m = c.r + rad;
-      if (d < m && d > 1e-5) { o.x = px + dx / d * m; o.z = pz + dz / d * m; }
+function collideList(o, rad, list, oy) {
+  for (const c of list) {
+    if (c.top != null && oy > c.top) continue;
+    if (c.y0 != null && (oy + 1.5 < c.y0 || oy > c.y1)) continue;
+    if (c.ring) {
+      const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz), m = c.r - rad;
+      if (d > m) { o.x = c.x + dx / d * m; o.z = c.z + dz / d * m; }
+      continue;
     }
+    let px, pz;
+    if (c.seg) {
+      const ex = c.bx - c.ax, ez = c.bz - c.az;
+      const t = clamp(((o.x - c.ax) * ex + (o.z - c.az) * ez) / (ex * ex + ez * ez), 0, 1);
+      px = c.ax + ex * t; pz = c.az + ez * t;
+    } else { px = c.x; pz = c.z; }
+    const dx = o.x - px, dz = o.z - pz, d = Math.hypot(dx, dz), m = c.r + rad;
+    if (d < m && d > 1e-5) { o.x = px + dx / d * m; o.z = pz + dz / d * m; }
   }
 }
+const _cl = [];
+function collide(o, rad) {
+  const inCave = !!o.inCave;
+  const oy = o.y == null ? 0 : o.y;
+  for (const [, b] of built) {
+    const s = b.site;
+    if (Math.abs(s.x - o.x) > (b.reach || 90) || Math.abs(s.z - o.z) > (b.reach || 90)) continue;
+    _cl.length = 0;
+    for (const c of b.colliders) if (!!c.cave === inCave) _cl.push(c);
+    collideList(o, rad, _cl, oy);
+  }
+  if (inCave) return;
+  const ci = Math.floor(o.x / CHUNK), cj = Math.floor(o.z / CHUNK);
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const ch = G.chunks.get((ci + di) + ',' + (cj + dj));
+    if (!ch) continue;
+    if (ch.col.length) collideList(o, rad, ch.col, oy);
+    if (ch.out && ch.out.colliders.length) collideList(o, rad, ch.out.colliders, oy);
+  }
+}
+function clearGrass() { for (const [, gm] of G.grass) if (gm) disposeObj(gm); G.grass.clear(); }
 
 // ---------- Kamera ----------
 function updateCamera(dt) {
+  if (window.DEBUGCAM) { const d = window.DEBUGCAM; G.camera.position.copy(d.pos); G.camera.lookAt(d.look); U.uCam.value.copy(d.pos); return; }
   if (mode === 'title') {
     cam.yaw += dt * 0.035;
     const d = 15;
@@ -584,12 +621,23 @@ let nearI = null;
 const prayed = {};
 function findInteract() {
   nearI = null;
-  if (mode !== 'play' || P.dead) return;
+  if (mode !== 'play' || P.dead || P.broom) return;
   let bd = 1e9;
-  const ch = G.chunks.get(Math.floor(P.x / CHUNK) + ',' + Math.floor(P.z / CHUNK));
-  if (ch && ch.shrines) for (const sh of ch.shrines) {
-    const d = Math.hypot(sh.x - P.x, sh.z - P.z);
-    if (d < 2.6 && d < bd) { bd = d; nearI = { it: { kind: 'shrine', x: sh.x, z: sh.z, sh }, b: null }; }
+  const pci = Math.floor(P.x / CHUNK), pcj = Math.floor(P.z / CHUNK);
+  for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    const ch = G.chunks.get((pci + di) + ',' + (pcj + dj));
+    if (!ch) continue;
+    if (ch.shrines) for (const sh of ch.shrines) {
+      const d = Math.hypot(sh.x - P.x, sh.z - P.z);
+      if (d < 2.6 && d < bd) { bd = d; nearI = { it: { kind: 'shrine', x: sh.x, z: sh.z, sh }, b: null }; }
+    }
+    if (ch.out) for (const it of ch.out.interact) {
+      const d = Math.hypot(it.x - P.x, it.z - P.z);
+      if (d < it.r && d < bd) {
+        if (it.kind === 'chest' && it.chest.opened) continue;
+        bd = d; nearI = { it, b: ch.out };
+      }
+    }
   }
   const inCave = !!P.inCave;
   for (const [, b] of built) for (const it of b.interact) {
@@ -612,6 +660,8 @@ function interactLabel(n) {
     case 'npc': return 'Mit ' + n.b.site.npc + ' sprechen';
     case 'lantern': return it.label;
     case 'shrine': return 'Am Schrein innehalten';
+    case 'ring': return 'Im Pilzring verweilen';
+    case 'quelle': return 'Eine Münze in die Quelle werfen';
     case 'cave': case 'caveExit': case 'feen': return it.label;
   }
   return '';
@@ -642,6 +692,32 @@ function interact() {
       burst(it.x, it.sh.y + 1, it.z, 24, [1, 0.75, 0.4], 2, 0.18, 1.6, -1.2, 1);
       Ton.sfx('lantern');
       toast(pick(Math.random, ['Jemand hat hier lange gebetet. Du fühlst dich leichter.', 'Ein kleines Licht in einer grossen Dunkelheit.', 'Die Kerzen flackern, als würden sie dich kennen.']));
+      break;
+    }
+    case 'ring': {
+      const now = U.uTime.value;
+      if (prayed[it.key] && now - prayed[it.key] < 240) { toast('Die Pilze leuchten still. Sie brauchen noch Ruhe.'); break; }
+      prayed[it.key] = now;
+      P.hp = Math.min(maxHp(), P.hp + maxHp() * 0.5);
+      burst(it.x, it.y + 0.8, it.z, 40, it.col, 2.5, 0.16, 2, -1.2, 2.2);
+      Ton.sfx('lantern');
+      if (!S.opened[it.key]) { S.opened[it.key] = 1; S.splinters++; card('Der Pilzring', 'Ein Sternsplitter liegt zwischen den Kappen.'); saveGame(); }
+      else toast(pick(Math.random, ['Ein warmes Kribbeln fliesst durch deine Füsse.', 'Die Pilze summen leise im Takt deines Herzens.', 'Für einen Moment tanzt der ganze Wald.']));
+      break;
+    }
+    case 'quelle': {
+      const now = U.uTime.value;
+      if (S.gold < 5) { toast('Du hast keine Münze übrig.'); break; }
+      if (prayed[it.key] && now - prayed[it.key] < 300) { toast('Die Quelle schweigt. Vielleicht später wieder.'); break; }
+      S.gold -= 5; prayed[it.key] = now;
+      burst(it.x, it.y + 0.8, it.z, 30, [0.6, 0.85, 1], 2.5, 0.15, 1.6, -1, 1.2);
+      Ton.sfx('lantern');
+      const q = Math.random();
+      if (q < 0.45) { P.hp = maxHp(); toast('Das Wasser leuchtet auf. Du fühlst dich ganz.'); }
+      else if (q < 0.7) { S.potions++; toast('Aus der Tiefe steigt ein kleiner Trank.'); }
+      else if (q < 0.85) { S.splinters++; toast('✦ Ein Sternsplitter glitzert im Wasser.'); }
+      else { const g = 20 + Math.floor(Math.random() * 30); S.gold += g; toast('Die Quelle gibt dir ' + g + ' Gold zurück.'); }
+      saveGame();
       break;
     }
     case 'cave': enterCave(b); break;
@@ -726,7 +802,7 @@ function updateMood(dt, x, y, z) {
   for (const key in tg) mood[key] += (tg[key] - mood[key]) * k;
   env.cave = P && P.inCave ? P.inCave.cave.env : null;
   env.elev = env.cave ? 0 : y - elevBase;
-  G.reflOn = !env.cave && lakeNear && G.pixel <= 3;
+  G.reflOn = !env.cave && lakeNear && G.quality >= 1;
 }
 
 function openChest(c, b) {
@@ -930,14 +1006,14 @@ function openMenu() {
   openPanel('menu', fillMenu);
 }
 function fillMenu() {
-  $('mPixel').textContent = 'Pixelgrösse: ' + ['', '', 'Fein', 'Mittel', 'Grob', 'Sehr grob'][SET.pixel];
+  $('mQuality').textContent = 'Grafik: ' + QUALITY[SET.quality].name;
   $('mView').textContent = 'Sichtweite: ' + VIEW_SETTINGS[SET.view].name;
   $('mSound').textContent = 'Ton: ' + (SET.sound ? 'An' : 'Aus');
 }
 $('mResume').onclick = closePanel;
 $('mJournal').onclick = () => { closePanel(); openJournal(); };
-let pixelManual = false;
-$('mPixel').onclick = () => { pixelManual = true; SET.pixel = SET.pixel >= 5 ? 2 : SET.pixel + 1; G.pixel = SET.pixel; resizeGraphics(); saveSettings(); fillMenu(); };
+let qualityManual = false;
+$('mQuality').onclick = () => { qualityManual = true; SET.quality = (SET.quality + 2) % 3; G.quality = SET.quality; applyQuality(); clearGrass(); saveSettings(); fillMenu(); };
 $('mView').onclick = () => { SET.view = (SET.view + 1) % 3; G.view = SET.view; clearChunks(); worldReady = false; saveSettings(); fillMenu(); };
 $('mSound').onclick = () => { toggleSound(); fillMenu(); };
 $('mTitle').onclick = () => { saveGame(); show('menu', false); panel = null; goTitle(); };
@@ -1139,7 +1215,7 @@ function frame(now) {
   if (mode !== 'play' || !worldReady) { fpsAcc = 0; fpsN = 0; }
   else if (fpsAcc > 6) {
     const fps = fpsN / fpsAcc;
-    if (fps < 22 && !pixelManual && G.pixel < 4) { G.pixel++; resizeGraphics(); toast('Das Bild wird etwas gröber, damit alles flüssig läuft.'); }
+    if (fps < 24 && !qualityManual && G.quality > 0) { G.quality--; SET.quality = G.quality; applyQuality(); clearGrass(); toast('Die Grafik wurde etwas reduziert, damit alles flüssig läuft.'); }
     fpsAcc = 0; fpsN = 0;
   }
   if (hitStop > 0) { hitStop -= dt; dt *= 0.15; }
@@ -1177,6 +1253,11 @@ function frame(now) {
     let cold = 0; for (let b = 0; b < NB; b++) cold += w[b] * BIOMES[b].cold;
     Ton.update(dt, { wind: ATM.cur.wind * (P && P.inCave ? 0.1 : 1), rain: P && P.inCave ? 0 : ATM.cur.rain, night: ATM.night, storm: ATM.cur.storm, cold, hell: mood.hell, dunkel: mood.dunkel, mond: mood.mond, feen: mood.feen, cave: P && P.inCave ? 1 : 0 });
   }
+  if (S && P) {
+    U.uPlayer.value.set(P.x, P.y, P.z);
+    const pci = Math.floor(P.x / CHUNK), pcj = Math.floor(P.z / CHUNK);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ch = G.chunks.get((pci + di) + ',' + (pcj + dj)); if (ch && ch.out) for (const u of ch.out.updaters) u(dt); }
+  }
   if (mode === 'play' || mode === 'rest') { findInteract(); updateHud(dt); }
   else if (mode === 'panel' && P) { nearI = null; updateHud(0); }
   if (mode === 'play' || mode === 'rest') updateEyes(dt);
@@ -1192,7 +1273,7 @@ function frame(now) {
 // ---------- Start ----------
 function boot() {
   loadSettings();
-  G.pixel = SET.pixel; G.view = SET.view;
+  G.quality = SET.quality; G.view = SET.view;
   Ton.on = SET.sound;
   $('btnSound').textContent = SET.sound ? '♪' : '×';
   initGraphics(canvas);
