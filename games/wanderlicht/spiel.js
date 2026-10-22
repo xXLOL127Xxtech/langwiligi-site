@@ -1169,7 +1169,7 @@ function frame(now) {
     G.sky.position.copy(G.camera.position);
     updateBurst(dt);
     let cold = 0; for (let b = 0; b < NB; b++) cold += w[b] * BIOMES[b].cold;
-    Ton.update(dt, { wind: ATM.cur.wind, rain: ATM.cur.rain, night: ATM.night, storm: ATM.cur.storm, cold });
+    Ton.update(dt, { wind: ATM.cur.wind * (P && P.inCave ? 0.1 : 1), rain: P && P.inCave ? 0 : ATM.cur.rain, night: ATM.night, storm: ATM.cur.storm, cold, hell: mood.hell, dunkel: mood.dunkel, mond: mood.mond, feen: mood.feen, cave: P && P.inCave ? 1 : 0 });
   }
   if (mode === 'play' || mode === 'rest') { findInteract(); updateHud(dt); }
   else if (mode === 'panel' && P) { nearI = null; updateHud(0); }

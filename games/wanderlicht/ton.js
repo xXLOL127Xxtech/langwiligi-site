@@ -4,7 +4,7 @@
 const Ton = {
   ctx: null, master: null, music: null, fx: null, amb: null, rev: null, noise: null,
   on: true, chordT: 0, bellT: 2, chord: 0, cricketT: 1,
-  env: { wind: 0.5, rain: 0, night: 0, storm: 0 },
+  env: { wind: 0.5, rain: 0, night: 0, storm: 0, hell: 0, dunkel: 0, mond: 0, feen: 0, cave: 0 },
 
   start() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
@@ -37,6 +37,15 @@ const Ton = {
     };
     this.wind = loop('bandpass', 420, 0.7, 0);
     this.rain = loop('highpass', 1400, 0.3, 0);
+    // tiefes Dröhnen nahe der dunklen Feste
+    this.drone = [];
+    const dfl = c.createBiquadFilter(); dfl.type = 'lowpass'; dfl.frequency.value = 240;
+    this.droneG = c.createGain(); this.droneG.gain.value = 0;
+    dfl.connect(this.droneG); this.droneG.connect(this.music); this.droneG.connect(this.rev);
+    for (const [f, type] of [[this.hz(31), 'sawtooth'], [this.hz(31) * 1.006, 'sawtooth'], [this.hz(38), 'triangle']]) {
+      const o = c.createOscillator(); o.type = type; o.frequency.value = f; o.connect(dfl); o.start(); this.drone.push(o);
+    }
+    this.dripT = 1;
     this.chordT = 0;
   },
   impulse(sec) {
@@ -54,6 +63,18 @@ const Ton = {
   CH_DAY: [[50, 57, 61, 64, 66], [47, 54, 57, 61, 62], [43, 50, 54, 59, 61], [45, 52, 57, 59, 64]],
   CH_NIGHT: [[40, 47, 54, 55, 62], [36, 43, 50, 52, 59], [45, 52, 55, 59, 64], [43, 50, 54, 57, 62]],
   PENTA: [62, 64, 66, 69, 71, 74, 76, 78, 81],
+  // Stimmungen der grossen Orte
+  CH_HELL: [[53, 60, 64, 67, 71], [55, 62, 66, 69, 74], [57, 64, 67, 71, 76], [52, 59, 64, 67, 71]],
+  CH_DARK: [[38, 45, 50, 53], [37, 44, 49, 53], [36, 43, 48, 51], [38, 45, 48, 53]],
+  CH_MOND: [[45, 52, 59, 64, 71], [41, 48, 55, 60, 67], [43, 50, 57, 62, 69], [48, 55, 62, 67, 74]],
+  CH_CAVE: [[33, 40, 47, 52], [31, 38, 45, 50], [34, 41, 46, 53]],
+  moodSet() {
+    const e = this.env;
+    if (e.cave) return 'cave';
+    const best = Math.max(e.hell, e.dunkel, e.mond);
+    if (best < 0.35) return null;
+    return best === e.dunkel ? 'dark' : best === e.mond ? 'mond' : 'hell';
+  },
 
   update(dt, env) {
     if (!this.ctx) return;
@@ -63,10 +84,19 @@ const Ton = {
     this.wind.fl.frequency.setTargetAtTime(300 + Math.sin(t * 0.23) * 120 + e.wind * 150, t, 1);
     this.rain.g.gain.setTargetAtTime(e.rain * 0.16, t, 1);
     this.musicFilter.frequency.setTargetAtTime(700 + (1 - e.night) * 700 - e.storm * 200, t, 2);
+    this.droneG.gain.setTargetAtTime(e.dunkel * 0.06 + (e.cave ? 0.015 : 0), t, 2);
+    const ms = this.moodSet();
     this.chordT -= dt;
-    if (this.chordT <= 0) { this.chordT = 9; this.playChord(); }
+    if (this.chordT <= 0) { this.chordT = ms === 'dark' ? 12 : ms === 'mond' ? 11 : 9; this.playChord(); }
     this.bellT -= dt;
-    if (this.bellT <= 0) { this.bellT = 1.8 + Math.random() * 4; if (Math.random() < 0.75) this.bell(); }
+    if (this.bellT <= 0) {
+      this.bellT = ms === 'hell' ? 0.9 + Math.random() * 2 : ms === 'dark' ? 5 + Math.random() * 6 : 1.8 + Math.random() * 4;
+      if (Math.random() < 0.75) this.bell();
+    }
+    if (e.cave) {
+      this.dripT -= dt;
+      if (this.dripT <= 0) { this.dripT = 0.6 + Math.random() * 2.4; this.tone(900 + Math.random() * 900, t, 0.25, 0.02, 'sine', this.musicFilter, 0.002, 380); }
+    }
     if (e.night > 0.6 && e.rain < 0.2 && e.cold < 0.5) {
       this.cricketT -= dt;
       if (this.cricketT <= 0) { this.cricketT = 0.5 + Math.random() * 2.5; this.cricket(); }
@@ -74,7 +104,8 @@ const Ton = {
   },
   playChord() {
     const c = this.ctx, t = c.currentTime;
-    const set = this.env.night > 0.5 ? this.CH_NIGHT : this.CH_DAY;
+    const ms = this.moodSet();
+    const set = ms === 'hell' ? this.CH_HELL : ms === 'dark' ? this.CH_DARK : ms === 'mond' ? this.CH_MOND : ms === 'cave' ? this.CH_CAVE : this.env.night > 0.5 ? this.CH_NIGHT : this.CH_DAY;
     this.chord = (this.chord + (Math.random() < 0.8 ? 1 : 2)) % set.length;
     const notes = set[this.chord];
     for (const m of notes) {
@@ -103,7 +134,11 @@ const Ton = {
   },
   bell() {
     const c = this.ctx, t = c.currentTime;
-    const m = this.PENTA[Math.floor(Math.random() * this.PENTA.length)] + (this.env.night > 0.5 ? -2 : 0);
+    const ms = this.moodSet();
+    let m = this.PENTA[Math.floor(Math.random() * this.PENTA.length)] + (this.env.night > 0.5 ? -2 : 0);
+    if (ms === 'dark') m = [50, 51, 55, 58][Math.floor(Math.random() * 4)];
+    else if (ms === 'mond') m += 5;
+    else if (ms === 'hell') m += [0, 5, 7][Math.floor(Math.random() * 3)] - 2;
     const g = this.tone(this.hz(m), t, 2.6, 0.035, 'sine', this.musicFilter, 0.01);
     void g;
     if (Math.random() < 0.35) this.tone(this.hz(m + 7), t + 0.35, 2.2, 0.02, 'sine', this.musicFilter, 0.01);
