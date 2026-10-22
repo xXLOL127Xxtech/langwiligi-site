@@ -557,7 +557,7 @@ function planFinds(ch, r, segs) {
   const cx = x0 + CHUNK / 2, cz = z0 + CHUNK / 2;
   const fo = forestAt(cx, cz);
   const roll = r();
-  const chance = 0.1 + fo * 0.3;
+  const chance = 0.15 + fo * 0.35;
   if (roll > chance) return;
   const w = new Float32Array(NB);
   const place = (rad) => {
@@ -576,19 +576,20 @@ function planFinds(ch, r, segs) {
   };
   let type;
   const v = r();
-  if (giants.length && v < 0.55) type = r() < 0.6 ? 'wurzelhoehle' : 'baumhaus';
-  else type = pick(r, ['pilzring', 'lagerruine', 'steinbogen', 'quelle', 'pilzring', 'lagerruine']);
+  if (giants.length && v < 0.6) type = r() < 0.4 ? 'wurzelhoehle' : 'baumhaus';
+  else type = pick(r, ['pilzring', 'lagerruine', 'steinbogen', 'quelle', 'einsiedelei', 'ruinenturm', 'blitzbaum', 'blitzbaum', 'einsiedelei']);
   const f = { type, seed: Math.floor(r() * 1e9), idx: ch.finds.length };
   if (type === 'wurzelhoehle' || type === 'baumhaus') {
     const t = giants[Math.floor(r() * giants.length)];
     f.tree = t; f.x = t.x; f.z = t.z; f.y = t.y; f.B = t.B; f.ang = r() * 6.28;
   } else {
-    const p = place(4);
+    const p = place(type === 'blitzbaum' ? 9 : type === 'ruinenturm' ? 7 : type === 'einsiedelei' ? 7 : 4);
     if (!p) return;
     Object.assign(f, p);
     f.ang = r() * 6.28;
     if (type === 'steinbogen') { ch.col.push({ x: f.x + Math.cos(f.ang) * 2.2, z: f.z + Math.sin(f.ang) * 2.2, r: 0.7, top: f.y + 5 }, { x: f.x - Math.cos(f.ang) * 2.2, z: f.z - Math.sin(f.ang) * 2.2, r: 0.7, top: f.y + 5 }); }
     if (type === 'quelle') ch.col.push({ x: f.x, z: f.z, r: 1.45, top: f.y + 1.1 });
+    if (type === 'blitzbaum') ch.col.push({ x: f.x, z: f.z, r: 2.6, top: f.y + 30 });
     if (type === 'pilzring') ch.col.push({ x: f.x, z: f.z, r: 0.6, top: f.y + 0.5 });
   }
   ch.finds.push(f);
@@ -599,7 +600,8 @@ function buildFinds(ch, grp) {
   const site = { key: 'F' + ch.ci + ',' + ch.cj, type: 'fund', content: 'leer', level: 1 + dist / 700, x: ch.ci * CHUNK + CHUNK / 2, z: ch.cj * CHUNK + CHUNK / 2, seed: 1 };
   const out = newBuilt(site);
   ch.out = out;
-  const mg = new Merger(), gl = new PointSet();
+  ch.fires = ch.fires.filter(f => !f.find);
+  const mg = new Merger(), gl = new PointSet(), fl = new PointSet();
   const warm = [1, 0.7, 0.35];
   for (const f of ch.finds) {
     const r = mulberry32(f.seed), { x, z, y, B } = f;
@@ -670,6 +672,102 @@ function buildFinds(ch, grp) {
         const lg = makeGlow(0xffb060, 2.2, 0.35); lg.position.set(x, y + 0.5, z); out.group.add(lg);
         break;
       }
+      case 'blitzbaum': {
+        // Riesiger toter Baum mit Blitzadern; alle 5 Sekunden schlägt ein Blitz in die Krone und das Licht läuft durch die Adern
+        const H = 26 + r() * 6, tr0 = 2.3 + r() * 0.5, la = r() * 6.28, N = 9;
+        const tp = [], trr = [];
+        for (let i = 0; i <= N; i++) { const t = i / N, sw = Math.sin(t * 2.4) * 1.3; tp.push([x + Math.cos(la) * sw, y - 0.5 + t * H, z + Math.sin(la) * sw]); trr.push(tr0 * (1.1 - 0.62 * t) * (1 + 0.55 * Math.exp(-t * 9))); }
+        const bark = [0.17, 0.14, 0.16];
+        tube(mg, tp, trr, bark, 12, MT.bark, [0.1, 0.09, 0.12], r);
+        for (let q = 0; q < 7; q++) { const a = q / 7 * 6.28 + r() * 0.4, ca = Math.cos(a), sa = Math.sin(a); tube(mg, [[x + ca * tr0 * 0.5, y + tr0 * 1.6, z + sa * tr0 * 0.5], [x + ca * tr0 * 1.4, y + tr0 * 0.6, z + sa * tr0 * 1.4], [x + ca * tr0 * 2.6, y + 0.1, z + sa * tr0 * 2.6], [x + ca * tr0 * 3.4, y - 0.4, z + sa * tr0 * 3.4]], [tr0 * 0.5, tr0 * 0.34, tr0 * 0.18, tr0 * 0.07], bark, 7, MT.bark, null, r); }
+        const vmg = new Merger(), VC = [0.62, 0.85, 1];
+        const vein = (pts, rad) => tube(vmg, pts, pts.map((p, i) => rad * (1 - 0.5 * i / pts.length)), VC, 5, MT.gen, null, r);
+        const at = t => { const f = Math.min(N - 1e-6, t * N), i = Math.floor(f), u = f - i; return [0, 1, 2].map(k => tp[i][k] + (tp[i + 1][k] - tp[i][k]) * u).concat([trr[i] + (trr[i + 1] - trr[i]) * u]); };
+        for (let v = 0; v < 4; v++) {
+          const pts = [];
+          for (let i = 0; i <= 22; i++) { const t = i / 22 * 0.97, c = at(t), a = v * 1.571 + t * 5.5 + Math.sin(t * 9 + v) * 0.3; pts.push([c[0] + Math.cos(a) * c[3] * 1.04, c[1], c[2] + Math.sin(a) * c[3] * 1.04]); }
+          vein(pts, 0.28);
+        }
+        // Äste mit Adern auf der Oberseite
+        const nB = 8;
+        for (let q = 0; q < nB; q++) {
+          const t0 = 0.5 + 0.47 * (q / nB), s0 = at(t0), a = q * 2.4 + r(), ca = Math.cos(a), sa = Math.sin(a), L = (7 + r() * 6) * (1.1 - t0 * 0.5);
+          const bp = [], brad = [];
+          for (let i = 0; i <= 5; i++) { const u = i / 5; bp.push([s0[0] + ca * L * u + (r() - 0.5) * 0.6, s0[1] + L * (0.25 * u + 0.4 * u * u) * (t0 > 0.85 ? 1.4 : 1) - u * 0.6, s0[2] + sa * L * u + (r() - 0.5) * 0.6]); brad.push(Math.max(0.1, 0.55 * (1 - u) * (1.2 - t0))); }
+          tube(mg, bp, brad, bark, 7, MT.bark, null, r);
+          vein(bp.map((p, i) => [p[0], p[1] + brad[i] * 0.85, p[2]]), 0.17);
+          if (q % 2 === 0) { const e = bp[4]; const sub = [[e[0], e[1], e[2]], [e[0] + ca * 2.2 + sa, e[1] + 1.4, e[2] + sa * 2.2 - ca], [e[0] + ca * 3.6 + sa * 2, e[1] + 2.6, e[2] + sa * 3.6 - ca * 2]]; tube(mg, sub, [0.2, 0.13, 0.05], bark, 5, MT.bark, null, r); vein(sub.map(p => [p[0], p[1] + 0.12, p[2]]), 0.07); }
+        }
+        // Adern: eigenes Netz, Helligkeit pro Eckpunkt wird im Takt verändert
+        const vg = vmg.build(), nv = vg.attributes.position.count, hs = new Float32Array(nv), top = tp[N];
+        for (let i = 0; i < nv; i++) hs[i] = clamp((vg.attributes.position.getY(i) - (y - 0.5)) / H, 0, 1);
+        const vm = new THREE.Mesh(vg, new THREE.MeshBasicMaterial({ vertexColors: true, fog: true }));
+        vm.frustumCulled = false; grp.add(vm);
+        const col = vg.attributes.color;
+        const paint = (pulse, front) => { for (let i = 0; i < nv; i++) { const d = (hs[i] - front) / 0.14, b = 0.55 + pulse * 0.5 + 1.3 * Math.exp(-d * d) * Math.min(1, pulse * 2); col.setXYZ(i, VC[0] * b, VC[1] * b, VC[2] * b); } col.needsUpdate = true; };
+        paint(0, -1);
+        const g1 = makeGlow(0x80c0ff, 14, 0.5), g2 = makeGlow(0xdff4ff, 5, 0.7);
+        g1.position.set(top[0], top[1], top[2]); g2.position.copy(g1.position); out.group.add(g1, g2);
+        const lf = { x: top[0], y: top[1] - 4, z: top[2], g1, g2, size: 2.4, col: new THREE.Color(0x80c0ff), noFlick: true, pulse: 0.4, sparkT: 9, find: true };
+        ch.fires.push(lf);
+        for (let q = 0; q < 40; q++) { const c = at(r() * 0.95); gl.add(c[0] + (r() - 0.5) * 2, c[1], c[2] + (r() - 0.5) * 2, VC, 0.8); }
+        const st = { t: 2.5 + r() * 2.5, since: 9 };
+        out.updaters.push(dt => {
+          st.t += dt; st.since += dt;
+          if (st.t >= 5) {
+            st.t -= 5; st.since = 0;
+            strikeBoltAt(new THREE.Vector3(top[0], top[1] + 1.5, top[2]));
+            burst(top[0], top[1] + 1, top[2], 22, [0.75, 0.92, 1], 8, 0.3, 0.6, 2);
+            const dp = Math.hypot(P.x - top[0], P.z - top[2]); if (dp < 160) Ton.thunder(Math.max(40, dp));
+          }
+          const p = st.since;
+          if (p < 2.2) {
+            const k = Math.exp(-p * 1.6);
+            paint(k, 1 - p / 1.5);
+            lf.pulse = 0.4 + 2.4 * k; g1.material.opacity = 0.5 + 0.5 * k; g2.material.opacity = 0.7 + 0.3 * k;
+          } else if (p < 2.4) { paint(0, -1); lf.pulse = 0.4; g1.material.opacity = 0.5; g2.material.opacity = 0.7; }
+        });
+        break;
+      }
+      case 'einsiedelei': {
+        const a = f.ang, ca = Math.cos(a), sa = Math.sin(a), ry = -a + Math.PI / 2, wood = [0.4, 0.27, 0.17];
+        mg.add('box', M(x, y + 1.3, z, 3.4, 2.5, 3.0, 0, ry, 0), wood, 0.1, r, MT.wood);
+        mg.add('cone4', M(x, y + 2.4, z, 3.1, 1.7, 2.9, 0, ry + Math.PI / 4, 0), [0.34, 0.24, 0.16], 0.05, r, MT.roof);
+        mg.add('box', M(x + ca * 1.72, y + 1.0, z + sa * 1.72, 0.08, 1.7, 0.9, 0, ry, 0), [0.12, 0.08, 0.06], 0, r, MT.wood);
+        mg.add('box', M(x - sa * 1.2 + ca * 1.7, y + 1.5, z + ca * 1.2 + sa * 1.7, 0.06, 0.6, 0.6, 0, ry, 0), [1, 0.78, 0.4], 0, r, MT.emit);
+        mg.add('cyl', M(x - ca * 0.9, y + 3.0, z - sa * 0.9, 0.3, 1.6, 0.3), [0.34, 0.32, 0.34], 0.1, r, MT.stone);
+        circCollider(out, x, z, 2.0);
+        // Holzstapel und Feuerstelle vor der Hütte
+        for (let q = 0; q < 6; q++) mg.add('cyl6', M(x + ca * 0.3 - sa * 2.0, y + 0.2 + (q > 2 ? 0.35 : 0), z + sa * 0.3 + ca * 2.0 + (q % 3 - 1) * 0.3, 0.16, 1.3, 0.16, 0, ry, Math.PI / 2), [0.34, 0.23, 0.15], 0.1, r, MT.bark);
+        const fx = x + ca * 4.2, fz = z + sa * 4.2, fy = chunkHeight(ch, fx, fz);
+        for (let q = 0; q < 8; q++) { const b2 = q / 8 * 6.283; mg.add('ico', M(fx + Math.cos(b2) * 0.8, fy + 0.1, fz + Math.sin(b2) * 0.8, 0.25, 0.2, 0.25, r(), r(), r()), [0.4, 0.38, 0.42], 0.2, r); }
+        for (let q = 0; q < 3; q++) mg.add('box', M(fx, fy + 0.16, fz, 1.2, 0.15, 0.15, 0, q * 1.05, 0.1), [0.28, 0.18, 0.12], 0.1, r, MT.wood);
+        wildFire(ch, fl, fx, fy + 0.1, fz, 1.1, 0xff9050, out.group);
+        circCollider(out, fx, fz, 0.9);
+        // Laternenpfahl und Kräutergarten
+        const lx = x - sa * 3.4 + ca * 2.2, lz = z + ca * 3.4 + sa * 2.2;
+        mg.add('cyl6', M(lx, chunkHeight(ch, lx, lz) - 0.2, lz, 0.07, 2.6, 0.07), [0.26, 0.18, 0.12], 0, r, MT.wood);
+        wildFire(ch, fl, lx, chunkHeight(ch, lx, lz) + 2.5, lz, 0.5, 0xffb060, out.group);
+        for (let q = 0; q < 16; q++) { const b2 = r() * 6.28, d = 2.5 + r() * 2.5; gl.add(x - ca * 0.5 + Math.cos(b2) * d, y + 0.2, z - sa * 0.5 + Math.sin(b2) * d, [0.9, 0.7, 1], 0.5); }
+        break;
+      }
+      case 'ruinenturm': {
+        const R = 2.6, Hh = 9 + r() * 4, n = 14;
+        for (let q = 0; q < n; q++) {
+          const b2 = q / n * 6.2832, bx = x + Math.cos(b2) * R, bz = z + Math.sin(b2) * R, by = chunkHeight(ch, bx, bz);
+          const hh = (q % 5 === 0 ? 0.35 : 1) * Hh * (0.55 + 0.45 * Math.abs(Math.sin(q * 1.7)));
+          if (q % 7 === 3) continue;   // Türöffnung und Mauerlücke
+          mg.add('box', M(bx, by + hh / 2 - 0.3, bz, 2.3, hh, 1.1, 0, -b2 + Math.PI / 2, 0), stone, 0.1, r, MT.stone);
+        }
+        for (let q = 0; q < 7; q++) { const b2 = r() * 6.28, d = R + 1.5 + r() * 3; mg.add('rock', M(x + Math.cos(b2) * d, chunkHeight(ch, x + Math.cos(b2) * d, z + Math.sin(b2) * d) + 0.3, z + Math.sin(b2) * d, 0.6 + r() * 0.6, 0.4 + r() * 0.4, 0.6 + r() * 0.6, 0, r() * 6, 0), stone, 0.2, r); }
+        mg.add('ico', M(x, y + 0.1, z, R * 0.95, 0.2, R * 0.95), B.stemC.map(v => v * 0.7), 0.1, r, MT.gen);
+        mg.add('cyl', M(x, y + 0.25, z, 0.5, 0.5, 0.5), [0.14, 0.12, 0.12], 0.1, r, MT.metal);
+        wildFire(ch, fl, x, y + 0.7, z, 1.3, 0xff8a40, out.group);
+        ch.col.push({ x, z, r: R + 0.6, top: y + Hh });
+        const ca2 = Math.cos(f.ang), sa2 = Math.sin(f.ang);
+        makeChest(out, key, x + ca2 * 1.5, z + sa2 * 1.5, Math.atan2(-ca2, -sa2), false, !!S.opened[key], false);
+        break;
+      }
       case 'steinbogen': {
         const a = f.ang, ca = Math.cos(a), sa = Math.sin(a);
         for (const sd of [-1, 1]) {
@@ -699,6 +797,7 @@ function buildFinds(ch, grp) {
   }
   if (!mg.empty) for (const g of mg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.flat); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
   if (!gl.empty) grp.add(new THREE.Points(gl.build(), MAT.glowBig));
+  if (!fl.empty) grp.add(new THREE.Points(fl.build(), MAT.flame));
   grp.add(out.group);
   // Truhen und Feuerstellen am Leben halten
   out.updaters.push(dt => updateChests(out, dt));

@@ -183,7 +183,7 @@ function toggleBroom() {
     return;
   }
   if (P.swim || P.resting) return;
-  P.broom = true; P.onGround = false; P.vy = 3; P.y += 0.3;
+  P.broom = true; P.onGround = false; P.vy = 1.5; P.y += 0.3; P.bs = Math.hypot(P.vx, P.vz); P.yawRate = 0;
   burst(P.x, P.y + 0.6, P.z, 24, [1, 0.8, 0.5], 3, 0.18, 1, -1, 0.8);
   Ton.sfx('jump');
   if (!S.broomSeen) { S.broomSeen = true; card('Der Besen', 'Leertaste steigt, Shift sinkt, B steigt ab.'); }
@@ -353,8 +353,25 @@ function updatePlayer(dt) {
   P.swim = !P.inCave && !P.broom && ground < WATER - 0.9;
   const sprint = keys.Shift && !P.swim && !P.broom;
   let sp = playerSpeed() * (sprint ? 1.55 : 1) * (P.swim ? 0.55 : 1) * (P.atkT > 0 ? 0.45 : 1) * (P.broom ? 2.6 : 1);
-  const tvx = mx * sp, tvz = mz * sp;
-  const acc = Math.min(1, dt * (P.broom ? 2.6 : P.onGround ? 10 : 3));
+  let tvx = mx * sp, tvz = mz * sp;
+  let acc = Math.min(1, dt * (P.onGround ? 10 : 3));
+  if (P.broom) {
+    // Besenflug mit Trägheit: Schub in Blickrichtung, Lenken baut Drehgeschwindigkeit erst auf, Schwung bleibt erhalten
+    const live = mode === 'play' && !P.dead;
+    const vmax = playerSpeed() * 2.6;
+    const steer = live ? (keys.a ? 1 : 0) - (keys.d ? 1 : 0) : 0;
+    const thrust = live ? (keys.w ? 1 : 0) - (keys.s ? 1 : 0) : 0;
+    P.bs = P.bs || 0; P.yawRate = P.yawRate || 0;
+    const climbDrag = Math.max(0, P.vy) * 0.25 - Math.min(0, P.vy) * 0.12;
+    P.bs += (thrust > 0 ? 5.5 * (1 - P.bs / vmax) : thrust < 0 ? -8 : -1.6) * dt - climbDrag * dt;
+    P.bs = clamp(P.bs, 0, vmax);
+    const maxRate = 1.35 * (0.3 + 0.7 * Math.min(1, P.bs / 7));
+    P.yawRate += (steer * maxRate - P.yawRate) * Math.min(1, dt * 1.8);
+    P.face += P.yawRate * dt;
+    tvx = Math.sin(P.face) * P.bs; tvz = Math.cos(P.face) * P.bs;
+    acc = Math.min(1, dt * 1.4);   // seitliches Rutschen in Kurven
+    if (!(cam.manualT > 0)) { let da = P.face - cam.yaw; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283; cam.yaw += da * Math.min(1, dt * 1.6); }
+  }
   // Rückstoss klingt ab, Laufen wird angeglichen
   P.vx += (tvx - P.vx) * acc; P.vz += (tvz - P.vz) * acc;
   const ox = P.x, oz = P.z;
@@ -362,9 +379,9 @@ function updatePlayer(dt) {
   collide(P, 0.45);
   const moved = Math.hypot(P.x - ox, P.z - oz);
   S.dist += moved;
-  P.moving = ml > 0 ? Math.hypot(P.vx, P.vz) / playerSpeed() : 0;
+  P.moving = P.broom ? Math.hypot(P.vx, P.vz) / (playerSpeed() * 2.6) : ml > 0 ? Math.hypot(P.vx, P.vz) / playerSpeed() : 0;
   if (SET.fp && !P.broom && mode === 'play' && !P.dead) P.face = cam.yaw;
-  else if (ml > 0 && P.atkT <= 0) {
+  else if (!P.broom && ml > 0 && P.atkT <= 0) {
     const ta = Math.atan2(mx, mz);
     let da = ta - P.face; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
     P.face += da * Math.min(1, dt * 12);
@@ -372,8 +389,9 @@ function updatePlayer(dt) {
   // Höhe
   const gNow = walkY(P.x, P.z, P.y);
   if (P.broom) {
-    const tgt = (keys[' '] ? 8 : 0) - (keys.Shift ? 8 : 0);
-    P.vy += (tgt - P.vy) * Math.min(1, dt * 3);
+    const tgt = mode === 'play' && !P.dead ? (keys[' '] ? 5.5 : 0) - (keys.Shift ? 5 : 0) : 0;
+    const dv = tgt - P.vy, amax = (tgt === 0 ? 2.2 : Math.sign(dv) === Math.sign(tgt) ? 2.6 : 3.4) * dt;
+    P.vy += clamp(dv, -amax, amax);
     P.y += P.vy * dt;
     const fl = Math.max(gNow, WATER) + 1.1;
     if (P.y < fl) { P.y = fl; if (P.vy < 0) P.vy = 0; }
@@ -405,7 +423,7 @@ function updatePlayer(dt) {
   const t = U.uTime.value;
   const dFace = P.face - (P.lastFace == null ? P.face : P.lastFace); P.lastFace = P.face;
   let dF = dFace; while (dF > Math.PI) dF -= 6.283; while (dF < -Math.PI) dF += 6.283;
-  P.bank = (P.bank || 0) + (clamp(-dF / Math.max(dt, 0.001) * 0.18, -0.5, 0.5) - (P.bank || 0)) * Math.min(1, dt * 5);
+  P.bank = (P.bank || 0) + (clamp(P.broom ? -(P.yawRate || 0) * 0.5 : -dF / Math.max(dt, 0.001) * 0.18, -0.5, 0.5) - (P.bank || 0)) * Math.min(1, dt * (P.broom ? 2.5 : 5));
   playerModel.position.set(P.x, P.y, P.z);
   playerModel.rotation.y = P.face;
   animatePlayer(dt, { moving: Math.min(1.2, P.moving), sprint, onGround: P.onGround, swim: P.swim, vy: P.vy, atkT: P.atkT, resting: P.resting, broom: P.broom, bank: P.bank });
@@ -653,7 +671,7 @@ function updateSites(dt, px, pz) {
   }
   for (let i = 0; i < G.torches.length; i++) {
     const l = G.torches[i], e = near4[i];
-    if (e) { const f = e[1]; l.position.set(f.x, f.y + 0.4, f.z); l.color.copy(f.col); l.intensity = (1.0 + Math.random() * 0.45) * (0.5 + Math.min(f.size, 1.6) * 0.55); l.distance = 12 + f.size * 7; }
+    if (e) { const f = e[1]; l.position.set(f.x, f.y + 0.4, f.z); l.color.copy(f.col); l.intensity = (1.0 + Math.random() * 0.45) * (0.5 + Math.min(f.size, 1.6) * 0.55) * (f.pulse == null ? 1 : f.pulse); l.distance = 12 + f.size * 7; }
     else l.intensity = 0;
   }
 }

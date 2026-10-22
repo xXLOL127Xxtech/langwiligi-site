@@ -105,7 +105,7 @@ for (const k of ['cyl', 'cyl6', 'taper', 'cone', 'cone4', 'cone6']) {
 
 const CURVED = new Set(['cyl', 'cyl6', 'taper', 'cone', 'cone6', 'torus']);
 class Merger {
-  constructor() { this.p = []; this.n = []; this.c = []; this.t = []; this.u = []; this.mat = 0; }
+  constructor() { this.p = []; this.n = []; this.c = []; this.t = []; this.u = []; this.mat = 0; this.ctr = false; this.cc = []; }
   add(kind, m, col, jit = 0, rnd = Math.random, mt = this.mat) {
     const B = BASE[kind], p = B.p, n = B.n;
     _n3.getNormalMatrix(m);
@@ -129,6 +129,7 @@ class Merger {
         this.n.push(_vn.x, _vn.y, _vn.z);
         this.c.push(col[0] * f, col[1] * f, col[2] * f);
         this.t.push(mt);
+        if (this.ctr) this.cc.push(e[12], e[14]);
         this.u.push(curved ? (k === 0 ? a0 : k === 3 ? a1 : a2) * rs : wx * -_vn.z + wz * _vn.x);
       }
     }
@@ -179,6 +180,7 @@ class Merger {
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.c, 3));
     g.setAttribute('aMat', new THREE.Float32BufferAttribute(this.t, 1));
     g.setAttribute('aU', new THREE.Float32BufferAttribute(this.u, 1));
+    if (this.cc.length) g.setAttribute('aCtr', new THREE.Float32BufferAttribute(this.cc, 2));
     g.computeBoundingSphere();
     return g;
   }
@@ -379,10 +381,10 @@ function worldMat(o = {}) {
     sh.uniforms.uCam = U.uCam; sh.uniforms.uCut = cutU || { value: 0 };
     sh.uniforms.uCDrift = U.uCDrift; sh.uniforms.uCShadow = U.uCShadow;
     sh.uniforms.uSunDirW = U.uSunDirW; sh.uniforms.uMistAmt = U.uMistAmt; sh.uniforms.uMistBase = U.uMistBase;
-    sh.vertexShader = 'attribute float aMat; attribute float aU; varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN;' + (o.path ? 'attribute float aPath; varying float vPath;' : '') + '\n' + sh.vertexShader
-      .replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vMat = aMat; vU = aU;' + (o.path ? ' vPath = aPath;' : ''));
-    sh.fragmentShader = 'varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN; uniform vec3 uCam; uniform float uCut;' + (o.path ? 'varying float vPath;' : '') + '\n' + CLOUD_SH + SURF + sh.fragmentShader
-      .replace('void main() {', 'void main() {\n' + (cutU ? ' if (distance(vWP.xz, uCam.xz) < uCut) discard;' : ''))
+    sh.vertexShader = 'attribute float aMat; attribute float aU; varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN;' + (o.path ? 'attribute float aPath; varying float vPath;' : '') + (o.ctr ? 'attribute vec2 aCtr; varying vec2 vCtr;' : '') + '\n' + sh.vertexShader
+      .replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal); vMat = aMat; vU = aU;' + (o.path ? ' vPath = aPath;' : '') + (o.ctr ? ' vCtr = aCtr;' : ''));
+    sh.fragmentShader = 'varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN; uniform vec3 uCam; uniform float uCut;' + (o.path ? 'varying float vPath;' : '') + (o.ctr ? 'varying vec2 vCtr;' : '') + '\n' + CLOUD_SH + SURF + sh.fragmentShader
+      .replace('void main() {', 'void main() {\n' + (cutU ? (o.ctr ? ' if (distance(vCtr, uCam.xz) < uCut) discard;' : ' if (distance(vWP.xz, uCam.xz) < uCut) discard;') : ''))
       .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = surf(diffuseColor.rgb, vWP, normalize(vWN), vMat, distance(vWP, uCam), vU);' + (o.path ? `
  float pk = smoothstep(3.4, 1.5, vPath + (dn(vWP * 2.3) - 0.5) * 1.5) * 0.85;
  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.4 + vec3(0.2, 0.16, 0.12) * (0.8 + 0.4 * dn(vWP * 11.0)), pk);` : ''))
@@ -406,7 +408,7 @@ function initMaterials() {
   MAT.ultraTerrain = worldMat({ cut: U.uFarCut, shine: 2 });
   MAT.ground = worldMat({ shine: 2, spec: 0x0a0a0a, path: true });
   MAT.grass = makeGrassMat();
-  MAT.farCanopy = worldMat({ cut: U.uCanCut, shine: 2, spec: 0x000000 });
+  MAT.farCanopy = worldMat({ cut: U.uCanCut, shine: 2, spec: 0x000000, ctr: true });
   MAT.flame = pointsMat(1.25, { emit: 1, additive: true, sway: 0, flicker: true, maxPt: 40 });
   MAT.landGlow = pointsMat(0.9, { emit: 1, additive: true, sway: 0, farMul: 3.2, maxPt: 14, fogCap: 0.7 });
   initFoliageMats();
@@ -1021,6 +1023,22 @@ function spawnBolt(cam, yaw) {
   G.flash = Math.max(G.flash, 0.55 + Math.random() * 0.25);
   return dist;
 }
+// Blitz an einer festen Stelle (Blitzbaum)
+function strikeBoltAt(top) {
+  const a = top.clone().add(new THREE.Vector3((Math.random() - 0.5) * 16, 75 + Math.random() * 30, (Math.random() - 0.5) * 16));
+  const pts = [], main = [];
+  boltPath(a, top, 6, 0.26, main);
+  for (const p of main) pts.push(p);
+  for (let k = 0; k < 3; k++) {
+    const s = main[Math.floor(Math.random() * (main.length / 2)) * 2], br = [];
+    boltPath(s, s.clone().add(new THREE.Vector3((Math.random() - 0.5) * 24, -6 - Math.random() * 14, (Math.random() - 0.5) * 24)), 3, 0.4, br);
+    for (const p of br) pts.push(p);
+  }
+  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xdff4ff, transparent: true, opacity: 1, fog: false }));
+  line.frustumCulled = false; line.userData = { life: 0.3, t: 0 };
+  G.bolts.add(line);
+  G.flash = Math.max(G.flash, 0.3);
+}
 function updateBolts(dt) {
   for (let i = G.bolts.children.length - 1; i >= 0; i--) {
     const l = G.bolts.children[i];
@@ -1500,11 +1518,11 @@ function buildChunk(ci, cj) {
 
 // ---------- Lichter in der Wildnis: Lagerfeuer, Fackeln am Weg, brennende Bäume ----------
 const FIRE_COLS = [0xff9050, 0xff8a40, 0xffa860];
-function wildFire(ch, fl, x, y, z, size, col) {
+function wildFire(ch, fl, x, y, z, size, col, parent) {
   const g1 = makeGlow(col, 3.2 * size, 0.85), g2 = makeGlow(0xffe0a0, 1.4 * size, 1);
   g1.position.set(x, y + 0.6 * size, z); g2.position.set(x, y + 0.45 * size, z);
-  ch.group.add(g1, g2);
-  const f = { x, y, z, g1, g2, size, col: new THREE.Color(col), sparkT: Math.random() };
+  (parent || ch.group).add(g1, g2);
+  const f = { x, y, z, g1, g2, size, col: new THREE.Color(col), sparkT: Math.random(), find: !!parent };
   ch.fires.push(f);
   for (let k = 0; k < 9; k++) fl.add(x + (Math.random() - 0.5) * 0.18 * size, y + (0.1 + k * 0.09) * size, z + (Math.random() - 0.5) * 0.18 * size, [1, 0.45 + k * 0.05, 0.1 + k * 0.02], 1);
   return f;
@@ -1561,6 +1579,7 @@ function wildFiresNear(px, pz, cb, dt) {
     const ch = G.chunks.get((ci + di) + ',' + (cj + dj));
     if (!ch || !ch.fires.length) continue;
     for (const f of ch.fires) {
+      if (f.noFlick) { cb(f); continue; }
       const dd = (f.x - px) * (f.x - px) + (f.z - pz) * (f.z - pz);
       if (dd < 3600) {
         const k = 0.85 + Math.random() * 0.3;
@@ -1850,13 +1869,13 @@ function updateChunks(px, pz, budgetMs) {
     const d = Math.hypot(cx - px, cz - pz);
     const has = G.grass.has(key);
     if (has) { const gm = G.grass.get(key); if (gm) disposeObj(gm); G.grass.delete(key); }
-    if (!ch.layerNear && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.6;
+    if (!ch.layerNear && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.9;
     if (d < LR && !ch.layerNear) lneed.push([d, ch]);
     else if (ch.layerNear) {
       const wantNear = d < LR + (ch.near ? 14 : 0);
       if (wantNear !== ch.near) setChunkNear(ch, wantNear);
-      if (!ch.near && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.6;
-      if (!wantNear && d > LR + 90) { disposeObj(ch.layerNear); ch.layerNear = null; if (ch.underObj) { disposeObj(ch.underObj); ch.underObj = null; } }
+      if (!ch.near && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.9;
+      if (!wantNear && d > LR + 90) { disposeObj(ch.layerNear); ch.layerNear = null; if (ch.underObj) { disposeObj(ch.underObj); ch.underObj = null; ch.fires = ch.fires.filter(f => !f.find); } }
     }
   }
   lneed.sort((a, b) => a[0] - b[0]);
@@ -1970,6 +1989,7 @@ function buildFarTile(fi, fj, lv = FAR_LV[0], real = false) {
   grp.add(new THREE.Mesh(g, lv.ultra ? MAT.ultraTerrain : MAT.farTerrain));
   // Baumkronen: Wälder bilden dunkle Bänder bis zum Horizont
   const r = mulberry32(hash2(fi, fj, World.seed + 777)), fm = new Merger();
+  fm.ctr = true;
   grp.userData.real = real;
   if (real) {
     // dieselben Bäume wie im Nahbereich, damit beim Näherkommen nichts verschwindet oder springt
@@ -1983,7 +2003,7 @@ function buildFarTile(fi, fj, lv = FAR_LV[0], real = false) {
         const c = (t.neon ? t.B.canopyC[0] : t.B.canopyC[1]).map(v => v * 0.8 * (t.tint ? t.tint[0] : 1));
         const conif = t.sp === 'tanne' || t.sp === 'schneetanne', h = t.y - lv.drop * 0.4;
         if (conif) fm.add('cone6', M(t.x, h + t.height * 0.12, t.z, t.crown, t.height * 0.9, t.crown), c, 0.15, r, 13);
-        else fm.add('ico0', M(t.x, h + t.height * 0.72, t.z, t.crown, t.height * 0.34, t.crown), c, 0.15, r, 13);
+        else fm.add('ico0', M(t.x, h + t.height * 0.72, t.z, t.crown * 0.9, t.height * 0.32, t.crown * 0.9), c, 0.15, r, 13);
       }
     }
   }

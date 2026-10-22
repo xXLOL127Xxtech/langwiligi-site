@@ -219,7 +219,7 @@ function makePlayerModel(armorTier) {
   const bglow = makeGlow(0xffd080, 1.8, 0.5); bglow.position.set(0, 0, -1.4); broom.add(bglow);
   parts.broom = broom; parts.broomGlow = bglow;
 
-  g.add(makeShadow(0.5));
+  parts.shadow = makeShadow(0.5); g.add(parts.shadow);
   g.userData.parts = parts;
   return g;
 }
@@ -234,6 +234,7 @@ function animatePlayer(dt, st) {
   const ph = parts.phase;
   const wind = U.uWindDir.value, ws = U.uWind.value;
   const root = parts.root, hips = parts.hips, torso = parts.torso;
+  if (parts.shadow) parts.shadow.visible = !st.broom;
   const air = !st.onGround && !st.swim && !st.broom;
   let legSw = Math.sin(ph) * 0.8 * Math.min(1, mv * 1.2), legSw2 = -legSw;
   let knee1 = Math.max(0, -Math.sin(ph + 0.9)) * 0.9 * Math.min(1, mv * 1.3), knee2 = Math.max(0, Math.sin(ph + 0.9)) * 0.9 * Math.min(1, mv * 1.3);
