@@ -252,6 +252,8 @@ const WONDERS = {
   mondtor: { name: 'Das Mondtor', sub: 'Dahinter liegt dieselbe Welt, nur stiller.', flatR: 16, discR: 45 },
   laternen: { name: 'Der Laternensee', sub: 'Jede Laterne ist ein Wunsch, der fliegen lernt.', flatR: 30, discR: 50 },
   bogen: { name: 'Der Himmelsbogen', sub: 'Ein Bogen aus Stein, so alt wie der Wind.', flatR: 0, discR: 50 },
+  drache: { name: 'Das Drachengrab', sub: 'Selbst seine Knochen werfen noch Schatten.', flatR: 30, discR: 75 },
+  ruinen: { name: 'Die versunkene Stadt', sub: 'Hier lebten einst Tausende. Jetzt nur der Wind.', flatR: 34, discR: 60 },
 };
 const WONDER_KEYS = Object.keys(WONDERS);
 
@@ -421,7 +423,7 @@ const LANDMARKS = {
   abendschloss: { mood: 'hell', names: ['Schloss Abendrot', 'Schloss Rosenlicht', 'Schloss Dämmerglanz', 'Schloss Violenhain'], sub: 'Hier geht die Sonne nie ganz unter.' },
   dunkelfeste: { mood: 'dunkel', names: ['Die Schwarze Feste', 'Burg Nachtzahn', 'Die Aschenzitadelle', 'Feste Grauentor'], sub: 'Selbst der Wind meidet diese Mauern.' },
   mondschloss: { mood: 'mond', names: ['Das Mondschloss', 'Schloss Silbermond', 'Die Sternenkrone', 'Schloss Nachtglanz'], sub: 'Der Mond wohnt hinter seinen Türmen.' },
-  koloss: { mood: 'still', names: ['Der Kniende Riese', 'Der Wächter der Ebene', 'Der Vergessene König', 'Der Steinerne Eid'], sub: 'Er wartet seit tausend Jahren auf ein Wort.' },
+  koloss: { mood: 'still', names: ['Der Steinerne Wächter', 'Der Wächter der Ebene', 'Der Vergessene König', 'Der Steinerne Eid'], sub: 'Er wartet seit tausend Jahren auf ein Wort.' },
 };
 function bigAt(bi, bj) {
   const key = bi + ',' + bj;
