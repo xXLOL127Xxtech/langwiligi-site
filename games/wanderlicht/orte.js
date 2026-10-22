@@ -1,177 +1,29 @@
 'use strict';
 // Wanderlicht – besondere Orte: grosse Wahrzeichen-Schlösser, Höhlen, Feenlichtung, Ritterlager
 
-// ---------- Figuren: Ritter und Zwerge ----------
-function makeKnight(seed, sitting) {
-  const r = mulberry32(seed);
-  const g = new THREE.Group(), mg = new Merger();
-  const steel = pick(r, [[0.62, 0.64, 0.7], [0.5, 0.5, 0.55], [0.7, 0.66, 0.58]]);
-  const cloth = pick(r, [[0.55, 0.12, 0.14], [0.16, 0.22, 0.45], [0.2, 0.36, 0.24], [0.45, 0.36, 0.14], [0.3, 0.16, 0.4]]);
-  const sy = sitting ? -0.35 : 0;
-  mg.add('taper', M(0, sitting ? 0.35 : 0, 0, 0.42, sitting ? 0.85 : 1.15, 0.42), cloth);
-  mg.add('box', M(0, 0.95 + sy, 0, 0.62, 0.5, 0.42), steel, 0.08, r);
-  mg.add('cyl', M(0, 1.15 + sy, 0, 0.24, 0.42, 0.24), steel.map(v => v * 0.9));
-  mg.add('box', M(0, 1.38 + sy, 0.2, 0.3, 0.05, 0.05), DARK);
-  if (r() < 0.6) mg.add('cone', M(0, 1.57 + sy, -0.05, 0.05, 0.4, 0.2, -0.4, 0, 0), cloth.map(v => Math.min(1, v * 1.4)));
-  for (const sx of [-1, 1]) mg.add('ico', M(0.36 * sx, 1.12 + sy, 0, 0.2, 0.16, 0.2), steel);
-  mg.add('box', M(0, 0.75 + sy, -0.28, 0.66, 1.1, 0.06), cloth.map(v => v * 0.7));
-  if (sitting) for (const sx of [-1, 1]) mg.add('box', M(0.16 * sx, 0.22, 0.32, 0.18, 0.18, 0.6), steel.map(v => v * 0.8));
-  g.add(new THREE.Mesh(mg.build(), MAT.flat));
-  g.add(makeShadow(0.55));
-  return g;
-}
-function makeDwarf(seed) {
-  const r = mulberry32(seed);
-  const g = new THREE.Group(), mg = new Merger();
-  const coat = pick(r, [[0.45, 0.28, 0.18], [0.3, 0.32, 0.4], [0.5, 0.2, 0.18], [0.32, 0.4, 0.26]]);
-  const beard = pick(r, [[0.85, 0.5, 0.25], [0.9, 0.88, 0.85], [0.4, 0.26, 0.16], [0.75, 0.3, 0.12]]);
-  mg.add('taper', M(0, 0, 0, 0.42, 0.75, 0.42), coat);
-  mg.add('ico', M(0, 0.92, 0, 0.21, 0.21, 0.21), [0.92, 0.74, 0.6]);
-  mg.add('cone', M(0, 0.82, 0.14, 0.2, 0.42, 0.12, Math.PI, 0, 0), beard);
-  mg.add('cyl', M(0, 1.04, 0, 0.25, 0.12, 0.25), [0.55, 0.55, 0.58]);
-  mg.add('box', M(0, 0.45, 0, 0.88, 0.1, 0.5), [0.25, 0.16, 0.1]);
-  g.add(new THREE.Mesh(mg.build(), MAT.flat));
-  // Arm mit Hammer
-  const arm = new THREE.Group(); arm.position.set(0.32, 0.72, 0.05);
-  const am = new Merger();
-  am.add('box', M(0, 0.05, 0.28, 0.08, 0.08, 0.6), [0.42, 0.3, 0.2]);
-  am.add('box', M(0, 0.05, 0.6, 0.22, 0.16, 0.14), [0.45, 0.45, 0.5]);
-  arm.add(new THREE.Mesh(am.build(), MAT.flat));
-  g.add(arm);
-  const lamp = makeGlow(0xffa040, 1.1, 0.8); lamp.position.set(0, 1.14, 0.18); g.add(lamp);
-  g.add(makeShadow(0.45));
-  g.userData.arm = arm;
-  return g;
-}
-
-// ---------- Hilfen für gotische Türme ----------
-function gothicTower(mg, gps, x, y, z, rad, h, st, r, winCol, lit) {
-  mg.add('cyl', M(x, y - 2, z, rad, h + 2, rad, 0, r() * 3, 0), st.stone, 0.1, r);
-  mg.add('cyl', M(x, y + h - 1.2, z, rad * 1.16, 1.4, rad * 1.16), st.stone2, 0.08, r);
-  for (let q = 0; q < 3; q++) mg.add('cyl', M(x, y + h * (0.25 + q * 0.22), z, rad * 1.04, 0.5, rad * 1.04), st.stone2, 0.06, r);
-  const sp = rad * (4.2 + r() * 2.5);
-  mg.add('cone', M(x, y + h, z, rad * 1.05, sp, rad * 1.05), st.roof, 0.06, r);
-  mg.add('cyl6', M(x, y + h + sp - 0.3, z, 0.08, 3.5, 0.08), [0.5, 0.5, 0.55]);
-  for (let q = 0; q < 4; q++) {
-    const a = q / 4 * Math.PI * 2 + 0.4;
-    mg.add('cone4', M(x + Math.cos(a) * rad * 1.12, y + h - 0.4, z + Math.sin(a) * rad * 1.12, 0.42, 3 + r() * 2, 0.42), st.roof, 0.06, r);
-  }
-  // Fensterreihen
-  for (let wy = y + 5; wy < y + h - 2; wy += 4.2) {
-    const n = 5;
-    for (let q = 0; q < n; q++) {
-      const a = q / n * Math.PI * 2 + wy * 0.3;
-      const wx = x + Math.cos(a) * (rad + 0.05), wz = z + Math.sin(a) * (rad + 0.05);
-      if (r() < lit) gps.add(wx, wy, wz, winCol, 0.7 + r() * 0.4);
-      else mg.add('box', M(wx, wy, wz, 0.5, 1.3, 0.5, 0, -a, 0), DARK);
-    }
-  }
-}
-
 // ---------- Die drei grossen Schlösser ----------
 const LM_STYLE = {
-  abendschloss: { stone: [0.78, 0.68, 0.76], stone2: [0.62, 0.52, 0.66], roof: [0.4, 0.24, 0.55], win: [1, 0.75, 0.42], wallH: 15, tower: [30, 46], keep: 58, lit: 0.55, n: 7, aura: 0xc070ff },
-  dunkelfeste: { stone: [0.11, 0.1, 0.13], stone2: [0.07, 0.06, 0.08], roof: [0.06, 0.05, 0.07], win: [1, 0.16, 0.1], wallH: 24, tower: [50, 84], keep: 110, lit: 0.4, n: 8, aura: 0x601020 },
-  mondschloss: { stone: [0.7, 0.76, 0.9], stone2: [0.55, 0.62, 0.78], roof: [0.17, 0.2, 0.42], win: [0.78, 0.9, 1], wallH: 14, tower: [32, 54], keep: 70, lit: 0.6, n: 6, aura: 0x8fb4ff },
+  abendschloss: { aura: 0xc070ff, keep: 58 },
+  dunkelfeste: { aura: 0x601020, keep: 110 },
+  mondschloss: { aura: 0x8fb4ff, keep: 80 },
 };
 function buildLandmark(L, st) {
   if (L.kind === 'koloss') return buildColossus(L, st);
-  const r = mulberry32(L.seed);
-  const out = newBuilt(L);
-  const S = LM_STYLE[L.kind];
-  const mg = new Merger(), gps = new PointSet(), ps = new PointSet();
-  const cx = L.x, cz = L.z, y0 = L.baseH, R = L.R, n = S.n, ga = L.lakeAng;
+  const r = mulberry32(L.seed ^ 0x5eed);
+  const sty = CASTLE_STYLES[L.kind], dim = CASTLE_DIMS[L.kind];
   const dunkel = L.kind === 'dunkelfeste';
-  // Mauerring mit Tor zur Seeseite
-  const corners = [];
-  for (let i = 0; i < n; i++) { const a = ga - Math.PI / n + i * Math.PI * 2 / n; corners.push([cx + Math.cos(a) * R, cz + Math.sin(a) * R]); }
-  for (let i = 0; i < n; i++) {
-    const [ax, az] = corners[i], [bx, bz] = corners[(i + 1) % n];
-    const len = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax);
-    const pieces = Math.max(3, Math.round(len / 4)), pl = len / pieces;
-    for (let k = 0; k < pieces; k++) {
-      const tm = (k + 0.5) / pieces;
-      if (i === 0 && Math.abs(tm - 0.5) * len < 4) continue;
-      const px = ax + (bx - ax) * tm, pz = az + (bz - az) * tm;
-      mg.add('box', M(px, y0 + S.wallH / 2 - 2, pz, pl + 0.1, S.wallH + 4, 2.4, 0, -ang, 0), S.stone, 0.1, r);
-      for (const o of [-0.25, 0.25]) mg.add('box', M(px + Math.cos(ang) * pl * o, y0 + S.wallH + 0.5, pz + Math.sin(ang) * pl * o, pl * 0.3, 1, 2.5, 0, -ang, 0), S.stone2, 0.08, r);
-      if (k % 2 === 0) {
-        // Strebepfeiler aussen
-        const nx = Math.sin(ang), nz = -Math.cos(ang);
-        mg.add('box', M(px + nx * 1.6, y0 + S.wallH * 0.35 - 2, pz + nz * 1.6, 1, S.wallH * 0.7 + 4, 1.4, 0, -ang, 0), S.stone2, 0.08, r);
-      }
-      if (r() < S.lit * 0.25) gps.add(px, y0 + S.wallH * 0.65, pz, S.win, 0.7);
-    }
-    const g0 = (len / 2 - 4) / len;
-    if (i === 0) {
-      segCollider(out, ax, az, ax + (bx - ax) * g0, az + (bz - az) * g0, 1.6);
-      segCollider(out, ax + (bx - ax) * (1 - g0), az + (bz - az) * (1 - g0), bx, bz, 1.6);
-    } else segCollider(out, ax, az, bx, bz, 1.6);
-  }
-  // Ecktürme
-  for (const [tx, tz] of corners) {
-    const h = S.tower[0] + r() * (S.tower[1] - S.tower[0]);
-    gothicTower(mg, gps, tx, y0, tz, 3.6 + r() * 1.4, h, S, r, S.win, S.lit);
-    circCollider(out, tx, tz, 4.8);
-  }
-  // Torhaus
-  const gx = cx + Math.cos(ga) * R, gz = cz + Math.sin(ga) * R, tA = ga + Math.PI / 2;
-  for (const sx of [-1, 1]) {
-    const tx = gx + Math.cos(tA) * 5.5 * sx, tz = gz + Math.sin(tA) * 5.5 * sx;
-    gothicTower(mg, gps, tx, y0, tz, 2.4, S.wallH + 12, S, r, S.win, S.lit);
-    circCollider(out, tx, tz, 3);
-  }
-  mg.add('box', M(gx, y0 + S.wallH + 1, gz, 2.6, 4, 9, 0, -ga, 0), S.stone, 0.08, r);
-  mg.add('cone4', M(gx, y0 + S.wallH + 3, gz, 2.2, 5, 6, 0, -ga + Math.PI / 4, 0), S.roof, 0.06, r);
-  const gateGlow = makeGlow(dunkel ? 0xff3020 : L.kind === 'mondschloss' ? 0xbfd8ff : 0xffb070, 9, dunkel ? 0.35 : 0.6);
-  gateGlow.position.set(gx, y0 + 3.5, gz); out.group.add(gateGlow);
-  // Bergfried mit Turmspitze
-  const kx = cx - Math.cos(ga) * R * 0.28, kz = cz - Math.sin(ga) * R * 0.28;
-  const kw = dunkel ? 24 : 16, kh = S.keep, ka = -ga;
-  mg.add('box', M(kx, y0 + kh / 2 - 2, kz, kw, kh + 4, kw * 0.85, 0, ka, 0), S.stone, 0.08, r);
-  for (let q = 0; q < 4; q++) {
-    const u = (q & 1 ? 1 : -1) * kw * 0.5, v = (q & 2 ? 1 : -1) * kw * 0.42, c = Math.cos(-ka), sn = Math.sin(-ka);
-    const px = kx + u * c - v * sn, pz = kz + u * sn + v * c;
-    gothicTower(mg, gps, px, y0, pz, 2.6, kh + 6 + r() * 10, S, r, S.win, S.lit);
-  }
-  mg.add('cone4', M(kx, y0 + kh, kz, kw * 0.72, kh * 0.55, kw * 0.62, 0, ka + Math.PI / 4, 0), S.roof, 0.05, r);
-  mg.add('cyl', M(kx, y0 + kh + kh * 0.3, kz, 2.2, 10, 2.2), S.stone2, 0.08, r);
-  mg.add('cone', M(kx, y0 + kh + kh * 0.3 + 10, kz, 2.6, 26 + (dunkel ? 30 : 0), 2.6), S.roof, 0.05, r);
-  // Fenster des Bergfrieds
-  for (let wy = y0 + 8; wy < y0 + kh - 4; wy += 5) {
-    for (let q = -2; q <= 2; q++) {
-      for (const side of [0, 1, 2, 3]) {
-        const a = ga + side * Math.PI / 2, ext = side % 2 === 0 ? kw * 0.425 : kw * 0.5;
-        const ox = Math.cos(a) * (ext + 0.1), oz = Math.sin(a) * (ext + 0.1), px = Math.cos(a + Math.PI / 2) * q * kw * 0.16, pz = Math.sin(a + Math.PI / 2) * q * kw * 0.16;
-        if (r() < S.lit * 0.6) gps.add(kx + ox + px, wy, kz + oz + pz, S.win, 0.6 + r() * 0.5);
-      }
-    }
-  }
-  // Rosenfenster über dem Tor des Bergfrieds
-  const rfx = kx + Math.cos(ga) * (kw * 0.425 + 0.2), rfz = kz + Math.sin(ga) * (kw * 0.425 + 0.2);
-  for (let q = 0; q < 26; q++) { const a = q / 26 * Math.PI * 2, rr = q % 2 ? 2.4 : 1.2; gps.add(rfx + Math.cos(tA) * Math.cos(a) * rr, y0 + kh * 0.62 + Math.sin(a) * rr, rfz + Math.sin(tA) * Math.cos(a) * rr, S.win, 1); }
-  boxCollider(out, kx, kz, kw + 0.6, kw * 0.85 + 0.6, ka);
-  const front = [kx + Math.cos(ga) * (kw * 0.45 + 4), kz + Math.sin(ga) * (kw * 0.45 + 4)];
-  // Hof: Truhen, Brunnen, Garten
-  for (let k = 0; k < 2; k++) {
-    const a = ga + (k ? 1 : -1) * (1.1 + r() * 0.6), d = R * 0.62;
-    const key = L.key + ':c' + k, px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
-    makeChest(out, key, px, pz, Math.atan2(cx - px, cz - pz), false, st.opened(key));
-  }
+  L.content = dunkel ? 'boss' : 'leer';
+  const out = buildCastleComplex(L, st, sty, L.kind, dim);
+  const C = out.castle, cb = C.cb, KP = C.KP, apo = C.apo, y0 = L.baseH, ga = L.lakeAng, tA = ga + Math.PI / 2, cx = L.x, cz = L.z;
+  const kx = cb.wx(0, KP.kz), kz = cb.wz(0, KP.kz);
+  const gx = cb.wx(0, apo), gz = cb.wz(0, apo);
+  const mg = new Merger(), gps = new PointSet();
+  const keepTop = dim.FH + dim.FH2 + dim.roofH;
+  out.front = [cb.wx(0, KP.kz + KP.D / 2 + 4), cb.wz(0, KP.kz + KP.D / 2 + 4)];
   if (dunkel) {
-    const key = L.key + ':boss';
-    makeChest(out, key, front[0] + Math.cos(tA) * 3, front[1] + Math.sin(tA) * 3, -ga + Math.PI / 2, true, st.opened(key), !st.cleared(L.key));
-    if (!st.cleared(L.key)) {
-      const bt = pick(r, ['ritter', 'schatten', 'waechter']);
-      out.spawns.push({ type: bt, x: (front[0] + gx) / 2, z: (front[1] + gz) / 2, boss: true, name: pick(r, BOSS_TITLES[bt]) });
-      for (let k = 0; k < 4; k++) {
-        const a = ga + (r() - 0.5) * 3, d = R * (0.4 + r() * 0.3);
-        out.spawns.push({ type: pick(r, ['ritter', 'schatten']), x: cx + Math.cos(a) * d, z: cz + Math.sin(a) * d, boss: false });
-      }
-    }
     // Krähen kreisen um die Spitze
     const crows = new PointSet(), cdat = [];
-    for (let i = 0; i < 46; i++) { crows.add(0, 0, 0, [0.03, 0.02, 0.04]); cdat.push([18 + Math.random() * 40, 0.15 + Math.random() * 0.25, Math.random() * 6.28, y0 + kh * (0.7 + Math.random() * 0.8)]); }
+    for (let i = 0; i < 46; i++) { crows.add(0, 0, 0, [0.03, 0.02, 0.04]); cdat.push([22 + Math.random() * 50, 0.15 + Math.random() * 0.25, Math.random() * 6.28, y0 + keepTop * (0.7 + Math.random() * 0.8)]); }
     const cg = crows.build(), cp = new THREE.Points(cg, pointsMat(0.9, { sway: 0, farMul: 3.2 }));
     cp.frustumCulled = false; out.group.add(cp);
     out.updaters.push(dt => {
@@ -182,59 +34,36 @@ function buildLandmark(L, st) {
       }
       cg.attributes.position.needsUpdate = true;
     });
-    const red = makeGlow(0xff2010, 110, 0.18); red.material.fog = false; red.position.set(kx, y0 + kh * 0.8, kz); out.group.add(red);
+    const red = makeGlow(0xff2010, 160, 0.18); red.material.fog = false; red.position.set(kx, y0 + keepTop * 0.8, kz); out.group.add(red);
     out.updaters.push(() => { red.material.opacity = 0.12 + Math.max(0, Math.sin(U.uTime.value * 0.7)) * 0.1; });
-  } else {
-    // Brunnen der Ruhe
-    const fx = (front[0] + gx) / 2, fz = (front[1] + gz) / 2;
-    mg.add('cyl', M(fx, y0 - 0.2, fz, 2.6, 0.9, 2.6), S.stone2, 0.06, r);
-    mg.add('cyl', M(fx, y0 + 0.5, fz, 0.4, 1.8, 0.4), S.stone, 0.06, r);
-    const wcol = L.kind === 'mondschloss' ? [0.6, 0.85, 1] : [1, 0.7, 0.95];
-    for (let q = 0; q < 40; q++) { const a = Math.random() * 6.28, d = Math.random() * 2.2; gps.add(fx + Math.cos(a) * d, y0 + 0.72, fz + Math.sin(a) * d, wcol, 0.5 + Math.random() * 0.5); }
-    out.interact.push({ kind: 'rest', x: fx, z: fz, r: 3.5, label: 'Am Brunnen rasten' });
-    circCollider(out, fx, fz, 2.7);
-    // Garten aus Blütenbäumen
-    const tree = L.kind === 'abendschloss'
-      ? { tree: 'kirsch', trunkC: [0.3, 0.2, 0.25], canopyC: [[0.85, 0.55, 0.9], [0.6, 0.38, 0.72], [1, 0.82, 0.95]] }
-      : { tree: 'weide', trunkC: [0.25, 0.27, 0.35], canopyC: [[0.7, 0.8, 1], [0.45, 0.52, 0.75], [0.92, 0.95, 1]] };
-    for (let k = 0; k < 7; k++) {
-      const a = r() * 6.28, d = R * (0.45 + r() * 0.35);
-      const px = cx + Math.cos(a) * d, pz = cz + Math.sin(a) * d;
-      if (Math.hypot(px - kx, pz - kz) < kw * 0.75 || Math.abs(Math.atan2(Math.sin(a - ga), Math.cos(a - ga))) < 0.45) continue;
-      buildTree(tree, px, y0, pz, r, mg, ps);
-      circCollider(out, px, pz, 0.6);
-    }
   }
   // Damm mit Laternen über den See
   if (L.lake) {
-    for (let d = R + 4; d < L.dam; d += 9) {
+    for (let d = L.R + 6; d < L.dam; d += 11) {
       for (const sx of [-1, 1]) {
-        const px = cx + Math.cos(ga) * d + Math.cos(tA) * 2.9 * sx, pz = cz + Math.sin(ga) * d + Math.sin(tA) * 2.9 * sx;
+        const px = cx + Math.cos(ga) * d + Math.cos(tA) * 3.2 * sx, pz = cz + Math.sin(ga) * d + Math.sin(tA) * 3.2 * sx;
         const py = Math.max(0.9, heightAt(px, pz));
-        mg.add('box', M(px, py + 1.2, pz, 0.22, 2.6, 0.22), [0.18, 0.16, 0.2]);
-        mg.add('box', M(px, py + 2.6, pz, 0.45, 0.5, 0.45), [0.12, 0.1, 0.12]);
-        gps.add(px, py + 2.6, pz, L.kind === 'mondschloss' ? [1, 0.88, 0.6] : [1, 0.72, 0.4], 1.1);
+        mg.add('box', M(px, py + 1.3, pz, 0.24, 2.8, 0.24), [0.18, 0.16, 0.2], 0, r, MT.metal);
+        mg.add('box', M(px, py + 2.8, pz, 0.5, 0.55, 0.5), [0.12, 0.1, 0.12], 0, r, MT.metal);
+        gps.add(px, py + 2.8, pz, L.kind === 'mondschloss' ? [1, 0.88, 0.6] : [1, 0.72, 0.4], 1.1);
       }
     }
   }
   // Leuchtende Aura
   if (L.kind === 'abendschloss') {
-    const a1 = makeGlow(S.aura, 230, 0.2), a2 = makeGlow(0xffa0c0, 120, 0.14);
-    for (const a of [a1, a2]) { a.material.fog = false; a.position.set(kx, y0 + 40, kz); out.group.add(a); }
-    risingMotes(out, 120, cx, y0, cz, R * 1.3, 50, [[1, 0.7, 0.95], [1, 0.85, 0.6], [0.85, 0.7, 1]], 1.4, 0.45);
+    const a1 = makeGlow(LM_STYLE.abendschloss.aura, 380, 0.2), a2 = makeGlow(0xffa0c0, 200, 0.14);
+    for (const a of [a1, a2]) { a.material.fog = false; a.position.set(kx, y0 + 60, kz); out.group.add(a); }
+    risingMotes(out, 160, cx, y0, cz, dim.R * 1.3, 70, [[1, 0.7, 0.95], [1, 0.85, 0.6], [0.85, 0.7, 1]], 1.4, 0.45);
     out.updaters.push(() => { const t = U.uTime.value; a1.material.opacity = 0.17 + Math.sin(t * 0.4) * 0.04; });
   } else if (L.kind === 'mondschloss') {
-    const a1 = makeGlow(S.aura, 160, 0.22);
-    a1.material.fog = false; a1.position.set(kx, y0 + 50, kz); out.group.add(a1);
-    risingMotes(out, 80, cx, y0, cz, R * 1.2, 40, [[0.8, 0.9, 1], [1, 0.95, 0.8]], 0.8, 0.4);
+    const a1 = makeGlow(LM_STYLE.mondschloss.aura, 280, 0.22);
+    a1.material.fog = false; a1.position.set(kx, y0 + 70, kz); out.group.add(a1);
+    risingMotes(out, 110, cx, y0, cz, dim.R * 1.2, 60, [[0.8, 0.9, 1], [1, 0.95, 0.8]], 0.8, 0.4);
     // Wer durch das Mondtor geht, wird gesegnet
     out.gate = { x: gx, z: gz, y0, nx: Math.cos(ga), nz: Math.sin(ga), tx: Math.cos(tA), tz: Math.sin(tA), prev: null, moon: true };
   }
-  out.group.add(new THREE.Mesh(mg.build(), MAT.landmark));
+  if (!mg.empty) for (const g of mg.buildBuckets(60)) { const m = new THREE.Mesh(g, MAT.landmark); m.castShadow = true; m.receiveShadow = true; out.group.add(m); }
   if (!gps.empty) out.group.add(new THREE.Points(gps.build(), MAT.landGlow));
-  if (!ps.empty) out.group.add(new THREE.Points(ps.build(), MAT.leaves));
-  out.front = front;
-  out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
   reflectable(out.group);
   return out;
 }
@@ -292,7 +121,7 @@ function buildCave(s, st) {
 
   // Innenraum (tief unter dem Eingang, eigene Welt)
   const inner = new THREE.Group();
-  const cy = CAVE_Y, img = new Merger(), ips = new PointSet(), ins = new PointSet(), igl = new PointSet();
+  const cy = CAVE_Y, img = new Merger(), ips = new LeafSet(), ins = new LeafSet(true), igl = new PointSet();
   const cave = { x, z, y: cy, kind: s.cave, flick: 0, inner };
   out.cave = cave;
   if (kristall) {
@@ -421,7 +250,7 @@ function buildCave(s, st) {
   out.interact.push({ kind: 'caveExit', x: x + fx * (cave.R - 1.5), z: z + fz * (cave.R - 1.5), r: 3, label: 'Zurück ans Tageslicht', cave: true });
   out.colliders.push({ ring: true, x, z, r: cave.R, cave: true });
   if (!img.empty) inner.add(new THREE.Mesh(img.build(), MAT.flat));
-  if (!ins.empty) inner.add(new THREE.Points(ins.build(), MAT.neonLeaves));
+  if (!ins.empty) inner.add(leafObj(ins));
   if (!igl.empty) inner.add(new THREE.Points(igl.build(), MAT.glowBig));
   // die Truhen der Höhle hängen am Innenraum
   for (const c of out.chests) if (c.y === cy) { c.lid.parent.position.y = cy; c.cave = true; }
@@ -453,7 +282,7 @@ function buildCave(s, st) {
       }
       for (const d of cave.dwarves) {
         const ph = t * 3 + d.ph, sw = Math.max(0, Math.sin(ph));
-        d.g.userData.arm.rotation.x = -1.2 + sw * 1.5;
+        animHumanoid(d.g, dt, { work: sw });
         if (Math.sin(ph - dt * 3) < 0.98 && Math.sin(ph) >= 0.98) {
           burst(d.ox, cy + 1, d.oz, 5, [1, 0.7, 0.3], 3, 0.1, 0.5, 6);
           if (out.onClink) out.onClink(d);
@@ -470,7 +299,7 @@ function buildClearing(s, st) {
   const r = mulberry32(s.seed);
   const out = newBuilt(s);
   const x = s.x, z = s.z, y0 = s.baseH;
-  const mg = new Merger(), ps = new PointSet(), gps = new PointSet(), fl = new PointSet();
+  const mg = new Merger(), ps = new LeafSet(), gps = new PointSet(), fl = new LeafSet();
   const B = BIOMES[s.biome];
   const bark = [0.3, 0.22, 0.18], leaf = [[0.32, 0.55, 0.3], [0.2, 0.36, 0.22], [0.7, 0.85, 0.45]];
   // Stamm, Wurzeln, Äste
@@ -541,9 +370,9 @@ function buildClearing(s, st) {
   });
   out.interact.push({ kind: 'feen', x: x + 4.5, z, r: 6, label: 'Die Feen grüssen' });
   out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
-  out.group.add(new THREE.Points(ps.build(), MAT.leavesBig));
+  out.group.add(leafObj(ps));
   out.group.add(new THREE.Points(gps.build(), MAT.glowBig));
-  out.group.add(new THREE.Points(fl.build(), MAT.leaves));
+  out.group.add(leafObj(fl));
   const halo = makeGlow(0xfff0b0, 46, 0.22); halo.position.set(x, y0 + 14, z); out.group.add(halo);
   const base = makeGlow(0xb0ffd8, 16, 0.3); base.position.set(x, y0 + 1.5, z); out.group.add(base);
   void B;
@@ -603,7 +432,7 @@ function buildKnights(s) {
     updateFires(out, dt);
     const t = U.uTime.value, w = U.uWindDir.value;
     flag.rotation.y = Math.atan2(-w.y, w.x) + Math.sin(t * 3) * 0.2;
-    out.knights.forEach((k, i) => { k.children[0].rotation.x = Math.sin(t * 0.9 + i * 2) * 0.04; });
+    out.knights.forEach(k => { if (k.userData.anim) k.userData.anim(dt); });
     horse.rotation.y = hr + Math.sin(t * 0.3) * 0.08;
   });
   return out;
@@ -613,33 +442,39 @@ function buildKnights(s) {
 function buildImpostor(L) {
   if (L.kind === 'koloss') return buildColossusImpostor(L);
   const r = mulberry32(L.seed);
-  const S = LM_STYLE[L.kind];
+  const S = CASTLE_STYLES[L.kind], D = CASTLE_DIMS[L.kind];
   const g = new THREE.Group(), mg = new Merger(), gps = new PointSet();
-  const cx = L.x, cz = L.z, y0 = L.baseH, R = L.R, ga = L.lakeAng;
-  for (let i = 0; i < S.n; i++) {
-    const a = ga - Math.PI / S.n + i * Math.PI * 2 / S.n, tx = cx + Math.cos(a) * R, tz = cz + Math.sin(a) * R;
-    const h = S.tower[0] + r() * (S.tower[1] - S.tower[0]), rad = 4.2;
-    mg.add('cyl6', M(tx, y0 - 4, tz, rad, h + 4, rad), S.stone);
-    mg.add('cone6', M(tx, y0 + h, tz, rad * 1.1, rad * 5.5, rad * 1.1), S.roof);
+  const cx = L.x, cz = L.z, y0 = L.baseH, ga = L.lakeAng, rot = Math.PI / 2 - ga;
+  const cs = Math.cos(rot), sn = Math.sin(rot);
+  const W = (lx, lz) => [cx + lx * cs + lz * sn, cz - lx * sn + lz * cs];
+  const th = towerHeights(L, D);
+  const apo = D.R * Math.cos(Math.PI / D.n);
+  const cor = [];
+  for (let k = 0; k < D.n; k++) { const phi = -Math.PI / D.n + k * 2 * Math.PI / D.n; cor.push(W(D.R * Math.sin(phi), D.R * Math.cos(phi))); }
+  for (let i = 0; i < D.n; i++) {
+    const [tx, tz] = cor[i], h = th[i].h, rad = th[i].rad;
+    mg.add('cyl6', M(tx, y0 - 4, tz, rad, h + 4, rad), S.stone, 0, r, MT.stone);
+    mg.add('cone6', M(tx, y0 + h, tz, rad * 1.18, rad * 3.8, rad * 1.18), S.roof, 0, r, MT.roof);
     for (let q = 0; q < 4; q++) gps.add(tx + (r() - 0.5) * rad, y0 + 6 + r() * h * 0.9, tz + (r() - 0.5) * rad, S.win, 0.8);
-    const b = (i + 1) % S.n, bx = cx + Math.cos(a + Math.PI * 2 / S.n) * R, bz = cz + Math.sin(a + Math.PI * 2 / S.n) * R;
-    mg.add('box', M((tx + bx) / 2, y0 + S.wallH / 2 - 3, (tz + bz) / 2, Math.hypot(bx - tx, bz - tz), S.wallH + 6, 2.5, 0, -Math.atan2(bz - tz, bx - tx), 0), S.stone);
-    void b;
+    const [bx, bz] = cor[(i + 1) % D.n];
+    mg.add('box', M((tx + bx) / 2, y0 + D.wallH / 2 - 3, (tz + bz) / 2, Math.hypot(bx - tx, bz - tz), D.wallH + 6, 3.2, 0, -Math.atan2(bz - tz, bx - tx), 0), S.stone, 0, r, MT.stone);
   }
-  const kx = cx - Math.cos(ga) * R * 0.28, kz = cz - Math.sin(ga) * R * 0.28, kw = L.kind === 'dunkelfeste' ? 24 : 16, kh = S.keep;
-  mg.add('box', M(kx, y0 + kh / 2 - 3, kz, kw, kh + 6, kw * 0.85, 0, -ga, 0), S.stone);
-  mg.add('cone4', M(kx, y0 + kh, kz, kw * 0.72, kh * 0.55, kw * 0.62, 0, -ga + Math.PI / 4, 0), S.roof);
-  mg.add('cyl6', M(kx, y0 + kh * 1.3, kz, 2.2, 10, 2.2), S.stone2);
-  mg.add('cone6', M(kx, y0 + kh * 1.3 + 10, kz, 2.6, 26 + (L.kind === 'dunkelfeste' ? 30 : 0), 2.6), S.roof);
-  for (let q = 0; q < 4; q++) { const u = (q & 1 ? 1 : -1) * kw * 0.5, v = (q & 2 ? 1 : -1) * kw * 0.42, c = Math.cos(ga), sn = Math.sin(ga); const px = kx + u * c - v * sn, pz = kz + u * sn + v * c, th = kh + 6 + r() * 10; mg.add('cyl6', M(px, y0, pz, 2.6, th, 2.6), S.stone); mg.add('cone6', M(px, y0 + th, pz, 2.8, 14, 2.8), S.roof); }
-  for (let q = 0; q < 40; q++) gps.add(kx + (r() - 0.5) * kw, y0 + 8 + r() * (kh - 10), kz + (r() - 0.5) * kw, S.win, 0.9);
+  const kzz = -apo * 0.34, [kx, kz] = W(0, kzz), H = D.FH + D.FH2;
+  mg.add('box', M(kx, y0 + H / 2 - 3, kz, D.keepW, H + 6, D.keepD, 0, rot, 0), S.stone, 0, r, MT.stone);
+  mg.add('cone4', M(kx, y0 + H, kz, (D.keepW / 2 + 1.8) * 1.414, D.roofH, (D.keepD / 2 + 1.8) * 1.414, 0, rot + Math.PI / 4, 0), S.roof, 0, r, MT.roof);
+  for (const [lx, lz] of [[-D.keepW / 2, kzz + D.keepD / 2], [D.keepW / 2, kzz + D.keepD / 2], [-D.keepW / 2, kzz - D.keepD / 2], [D.keepW / 2, kzz - D.keepD / 2]]) {
+    const [px, pz] = W(lx, lz), hh = H + D.roofH * 0.5;
+    mg.add('cyl6', M(px, y0 - 3, pz, 3.5, hh + 3, 3.5), S.stone, 0, r, MT.stone);
+    mg.add('cone6', M(px, y0 + hh, pz, 4.1, 18, 4.1), S.roof, 0, r, MT.roof);
+  }
+  for (let q = 0; q < 50; q++) { const [wx, wz] = W((r() - 0.5) * D.keepW, kzz + (r() < 0.5 ? 1 : -1) * D.keepD / 2); gps.add(wx, y0 + 6 + r() * (H - 8), wz, S.win, 0.9); }
   g.add(new THREE.Mesh(mg.build(), MAT.landmark));
   g.add(new THREE.Points(gps.build(), MAT.landGlow));
   if (L.kind !== 'dunkelfeste') {
-    const a = makeGlow(S.aura, L.kind === 'abendschloss' ? 230 : 160, L.kind === 'abendschloss' ? 0.28 : 0.18);
-    a.material.fog = false; a.position.set(kx, y0 + 45, kz); g.add(a);
+    const a = makeGlow(LM_STYLE[L.kind].aura, L.kind === 'abendschloss' ? 380 : 280, L.kind === 'abendschloss' ? 0.28 : 0.18);
+    a.material.fog = false; a.position.set(kx, y0 + 60, kz); g.add(a);
   } else {
-    const a = makeGlow(0xff2010, 110, 0.14); a.material.fog = false; a.position.set(kx, y0 + kh * 0.8, kz); g.add(a);
+    const a = makeGlow(0xff2010, 160, 0.14); a.material.fog = false; a.position.set(kx, y0 + 90, kz); g.add(a);
   }
   reflectable(g);
   G.scene.add(g);
@@ -694,7 +529,7 @@ function colossusParts(mg, L, r, moss) {
 function buildColossus(L, st) {
   const r = mulberry32(L.seed);
   const out = newBuilt(L);
-  const mg = new Merger(), ps = new PointSet(), gps = new PointSet();
+  const mg = new Merger(), ps = new LeafSet(), gps = new PointSet();
   const moss = [[0.26, 0.38, 0.2], [0.18, 0.28, 0.15], [0.36, 0.5, 0.26]];
   const C = colossusParts(mg, L, r, (x, y, z) => ps.add(x, y, z, moss[Math.floor(r() * 3)], 0.8 + r() * 0.3));
   const y0 = L.baseH;
@@ -728,7 +563,7 @@ function buildColossus(L, st) {
   });
   risingMotes(out, 50, sx, y0, sz, 6, 14, [[1, 0.8, 0.5], [0.8, 0.9, 1]], 0.7, 0.35);
   out.group.add(new THREE.Mesh(mg.build(), MAT.landmark));
-  out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  out.group.add(leafObj(ps));
   out.group.add(new THREE.Points(gps.build(), MAT.landGlow));
   reflectable(out.group);
   return out;

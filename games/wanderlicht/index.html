@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>Wanderlicht</title>
-<meta name="description" content="Wandere durch eine endlose Pixelwelt voller Wunder, Schlösser am Horizont, leuchtender Höhlen, Gewitter und stiller Aussichten.">
+<meta name="description" content="Endlose Welt mit riesigen Wäldern, gewaltigen Schlössern voller Säle und einem Besen zum Fliegen.">
 <meta name="theme-color" content="#b98ddc">
 <meta name="spiel-modi" content="Solo">
 <meta name="spiel-tags" content="Offene Welt,Entdecken">
-<meta name="spiel-typ" content="3D,Pixel-Art,Action">
-<meta name="spiel-suche" content="Open World Spiel, Erkundungsspiel, Pixel Abenteuer">
+<meta name="spiel-typ" content="3D,Action">
+<meta name="spiel-suche" content="Open World Spiel, Erkundungsspiel, Abenteuer, Schlösser, Wald, Besen">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --accent: #b98ddc;
@@ -25,8 +25,8 @@
   --hp: #e0607a;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b16; color: var(--text); font-family: 'Pixelify Sans', system-ui, sans-serif; user-select: none; }
-#spiel { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: grab; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0b16; color: var(--text); font-family: 'Nunito', system-ui, sans-serif; user-select: none; }
+#spiel { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; }
 #spiel:active { cursor: grabbing; }
 button { font-family: inherit; }
 kbd { display: inline-block; min-width: 1.5em; padding: 1px 6px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 4px; background: rgba(255,255,255,0.06); font-family: inherit; font-size: 0.9em; text-align: center; color: var(--accent2); }
@@ -77,7 +77,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
 /* Titelkarte bei Entdeckungen */
 #card { position: fixed; left: 50%; top: 18%; transform: translate(-50%, -10px); text-align: center; pointer-events: none; opacity: 0; transition: opacity 1.4s, transform 1.4s; width: 90vw; }
 #card.show { opacity: 1; transform: translate(-50%, 0); }
-#card h2 { margin: 0; font-size: clamp(30px, 4.4vw, 54px); font-weight: 600; letter-spacing: 2px; color: #fff; text-shadow: 0 0 18px rgba(200,160,255,0.65), 0 2px 0 rgba(0,0,0,0.6); }
+#card h2 { font-family: 'Cinzel', Georgia, serif; margin: 0; font-size: clamp(30px, 4.4vw, 54px); font-weight: 600; letter-spacing: 2px; color: #fff; text-shadow: 0 0 18px rgba(200,160,255,0.65), 0 2px 0 rgba(0,0,0,0.6); }
 #card p { margin: 8px 0 0; font-size: clamp(15px, 1.6vw, 20px); color: var(--accent2); text-shadow: 0 1px 3px #000; }
 #card h2::before, #card h2::after { content: '✦'; font-size: 0.4em; vertical-align: middle; margin: 0 18px; color: var(--accent); }
 
@@ -92,7 +92,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
 #title { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 5;
   background: radial-gradient(ellipse at center, rgba(10,6,20,0.15), rgba(10,6,20,0.55)); }
 #title.show { display: flex; }
-#title h1 { margin: 0; font-size: clamp(48px, 8vw, 104px); font-weight: 700; letter-spacing: 6px; color: #fff; text-shadow: 0 0 30px rgba(190,140,255,0.8), 0 4px 0 rgba(40,20,70,0.8); }
+#title h1 { font-family: 'Cinzel', Georgia, serif; margin: 0; font-size: clamp(48px, 8vw, 104px); font-weight: 700; letter-spacing: 6px; color: #fff; text-shadow: 0 0 30px rgba(190,140,255,0.8), 0 4px 0 rgba(40,20,70,0.8); }
 #title .sub { margin: 4px 0 30px; font-size: clamp(16px, 1.8vw, 22px); color: var(--accent2); letter-spacing: 2px; text-shadow: 0 1px 4px #000; }
 .btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .btn { min-width: 260px; padding: 11px 22px; font-size: 20px; color: var(--text); background: var(--panel); border: 2px solid var(--line); border-radius: 8px; cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.1s; }
@@ -173,6 +173,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
     <kbd>W A S D</kbd><span>gehen</span><kbd>Shift</kbd><span>rennen</span>
     <kbd>Leertaste</kbd><span>springen</span><kbd>F</kbd><span>oder Klick: schlagen</span>
     <kbd>E</kbd><span>sprechen, öffnen, rasten</span><kbd>Q</kbd><span>Heiltrank</span>
+    <kbd>B</kbd><span>Besen reiten</span><kbd>Leertaste · Shift</kbd><span>auf dem Besen steigen · sinken</span>
     <kbd>← → ↑ ↓</kbd><span>oder ziehen: umsehen</span><kbd>+ −</kbd><span>oder scrollen: Zoom</span>
     <kbd>Tab</kbd><span>Tagebuch</span><kbd>Esc</kbd><span>Menü · <kbd>H</kbd> Bild ohne Anzeigen</span>
   </div>
@@ -198,7 +199,7 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
   <div class="list">
     <button class="opt" id="mResume">Weiterwandern</button>
     <button class="opt" id="mJournal">Tagebuch</button>
-    <button class="opt" id="mPixel">Pixelgrösse</button>
+    <button class="opt" id="mQuality">Grafik</button>
     <button class="opt" id="mView">Sichtweite</button>
     <button class="opt" id="mSound">Ton</button>
     <button class="opt" id="mTitle">Zum Titelbild</button>
@@ -221,9 +222,13 @@ body.nohud #hud, body.nohud #btnSound { opacity: 0 !important; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="welt.js"></script>
 <script src="grafik.js"></script>
+<script src="laub.js"></script>
+<script src="baeume.js"></script>
 <script src="wesen.js"></script>
 <script src="bauten.js"></script>
 <script src="orte.js"></script>
+<script src="raeume.js"></script>
+<script src="burgen.js"></script>
 <script src="ton.js"></script>
 <script src="spiel.js"></script>
 <script>document.getElementById('btnWake').onclick = () => respawn();</script>
