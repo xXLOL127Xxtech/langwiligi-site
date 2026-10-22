@@ -7,7 +7,7 @@ const DAY_LEN = 960;
 const $ = id => document.getElementById(id);
 
 // ---------- Zustand ----------
-const SET = { quality: 2, view: 1, sound: true, v: 3 };
+const SET = { quality: 2, view: 1, sound: true, fp: false, v: 3 };
 let S = null;         // Spielstand
 let P = null;         // Spielfigur
 let playerModel = null;
@@ -17,6 +17,18 @@ const keys = {};
 const cam = { yaw: 0, dist: 9, pitch: 0.18, manualT: 0, shake: 0, pos: new THREE.Vector3(), look: new THREE.Vector3(), restYaw: 0 };
 let mode = 'title', prevMode = 'play';
 let hudHidden = false, worldReady = false, readyFrames = 0;
+let loadT0 = 0, loadTotal = 1, loadPhase = 'build', warmFrames = 0;
+const LADE_TIPPS = ['Auf einem Hügel ist die Welt weiter. Und stiller.', 'Folge den Erdwegen, sie führen zu Lagern und Burgen.', 'Mit V wechselst du zwischen Ego- und Dritte-Person-Ansicht.', 'Der Besen (B) trägt dich über Wälder und Flüsse.', 'Feuer und Fackeln leuchten nachts schon von Weitem.', 'Am Lagerfeuer kannst du rasten und heilen.'];
+function setLade(p, text) {
+  $('ladeFill').style.width = Math.round(clamp(p, 0, 1) * 100) + '%';
+  if (text) $('ladeText').textContent = text;
+}
+function beginLoad() {
+  worldReady = false; readyFrames = 0; loadT0 = performance.now(); loadTotal = 1; loadPhase = 'build'; warmFrames = 0;
+  const l = $('lade'); l.style.display = 'flex'; l.classList.remove('weg');
+  $('ladeHint').textContent = LADE_TIPPS[Math.floor(Math.random() * LADE_TIPPS.length)];
+  setLade(0, 'Die Welt entsteht …');
+}
 let siteTick = 0, roamTick = 4, saveTick = 0, hitStop = 0;
 let lastBiome = -1, biomeShowT = 0, bossShown = null;
 let restInfo = null;
@@ -81,7 +93,7 @@ function startWorld(state) {
   G.scene.add(playerModel);
   cam.yaw = P.face + Math.PI * 0.15;
   cam.pos.set(P.x - Math.sin(cam.yaw) * 9, P.y + 4, P.z - Math.cos(cam.yaw) * 9);
-  worldReady = false; readyFrames = 0;
+  beginLoad();
   lastBiome = -1;
   ATM.cur = Object.assign({}, WEATHERS[S.weather]);
 
@@ -104,7 +116,7 @@ canvas.addEventListener('pointermove', e => {
   drag.x = e.clientX; drag.y = e.clientY;
   if (drag.moved > 6 && (mode === 'play' || mode === 'rest')) {
     cam.yaw -= dx * 0.006;
-    cam.pitch = clamp(cam.pitch + dy * 0.004, -0.55, 1.1);
+    cam.pitch = clamp(cam.pitch + dy * 0.004, SET.fp ? -1.3 : -0.55, SET.fp ? 1.2 : 1.1);
     cam.manualT = 2.5;
   }
 });
@@ -128,7 +140,7 @@ window.addEventListener('keydown', e => {
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Tab'].includes(e.key)) e.preventDefault();
   if (mode === 'panel') { panelKey(e, k); return; }
-  if (mode === 'title') { if (k === 'Enter') $('btnStart').click(); return; }
+  if (mode === 'title') { if (k === 'Enter' && worldReady) $('btnStart').click(); return; }
   if (mode === 'dead') { if (k === 'Enter' || k === 'e' || k === ' ') respawn(); return; }
   if (mode === 'rest') { if (!e.repeat) endRest(); return; }
   if (e.repeat && ['e', 'q', 'f', 'Tab', 'Escape', 'm', 'h', ' '].includes(k)) { if (k !== ' ' && k !== 'f') return; }
@@ -139,6 +151,7 @@ window.addEventListener('keydown', e => {
     case 'e': case 'Enter': interact(); break;
     case 'q': drinkPotion(); break;
     case 'b': toggleBroom(); break;
+    case 'v': toggleFp(); break;
     case 'Tab': case 'i': openJournal(); break;
     case 'Escape': case 'p': openMenu(); break;
     case 'm': toggleSound(); break;
@@ -150,6 +163,11 @@ window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; }
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') openMenu(); });
 window.addEventListener('resize', () => resizeGraphics());
 
+function toggleFp() {
+  SET.fp = !SET.fp; saveSettings();
+  if (SET.fp) cam.pitch = clamp(cam.pitch - 0.15, -1.3, 1.2); else cam.pitch = clamp(cam.pitch, 0.04, 1.1);
+  toast(SET.fp ? 'Ego-Ansicht (V zum Wechseln)' : 'Dritte-Person-Ansicht');
+}
 function toggleSound() {
   SET.sound = !SET.sound; Ton.setOn(SET.sound); saveSettings();
   toast(SET.sound ? 'Ton an' : 'Ton aus');
@@ -345,7 +363,8 @@ function updatePlayer(dt) {
   const moved = Math.hypot(P.x - ox, P.z - oz);
   S.dist += moved;
   P.moving = ml > 0 ? Math.hypot(P.vx, P.vz) / playerSpeed() : 0;
-  if (ml > 0 && P.atkT <= 0) {
+  if (SET.fp && !P.broom && mode === 'play' && !P.dead) P.face = cam.yaw;
+  else if (ml > 0 && P.atkT <= 0) {
     const ta = Math.atan2(mx, mz);
     let da = ta - P.face; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
     P.face += da * Math.min(1, dt * 12);
@@ -390,7 +409,7 @@ function updatePlayer(dt) {
   playerModel.position.set(P.x, P.y, P.z);
   playerModel.rotation.y = P.face;
   animatePlayer(dt, { moving: Math.min(1.2, P.moving), sprint, onGround: P.onGround, swim: P.swim, vy: P.vy, atkT: P.atkT, resting: P.resting, broom: P.broom, bank: P.bank });
-  playerModel.visible = !(P.hurtCd > 0 && Math.floor(t * 20) % 2 === 0) && !(window.DEBUGCAM && window.DEBUGCAM.hide);
+  playerModel.visible = !(SET.fp && mode === 'play' && !P.dead) && !(P.hurtCd > 0 && Math.floor(t * 20) % 2 === 0) && !(window.DEBUGCAM && window.DEBUGCAM.hide);
   if (P.broom && Math.random() < dt * 40) burst(P.x - Math.sin(P.face) * 1.3, P.y + 0.6, P.z - Math.cos(P.face) * 1.3, 1, [1, 0.8, 0.45], 0.6, 0.14, 0.9, -0.5, 0.2);
   // Heilen beim Rasten
   if (P.resting) P.hp = Math.min(maxHp(), P.hp + maxHp() * dt * 0.08);
@@ -460,8 +479,8 @@ function updateCamera(dt) {
   if (mode === 'play' && !P.dead) {
     if (keys.ArrowLeft) { cam.yaw += dt * 1.9; cam.manualT = 2.5; }
     if (keys.ArrowRight) { cam.yaw -= dt * 1.9; cam.manualT = 2.5; }
-    if (keys.ArrowUp) cam.pitch = clamp(cam.pitch - dt * 0.9, -0.55, 1.1);
-    if (keys.ArrowDown) cam.pitch = clamp(cam.pitch + dt * 0.9, -0.55, 1.1);
+    if (keys.ArrowUp) cam.pitch = clamp(cam.pitch - dt * (SET.fp ? 1.4 : 0.9), SET.fp ? -1.3 : -0.55, SET.fp ? 1.2 : 1.1);
+    if (keys.ArrowDown) cam.pitch = clamp(cam.pitch + dt * (SET.fp ? 1.4 : 0.9), SET.fp ? -1.3 : -0.55, SET.fp ? 1.2 : 1.1);
     if (keys['+'] || keys['=']) cam.dist = clamp(cam.dist - dt * 8, 3.5, 16);
     if (keys['-']) cam.dist = clamp(cam.dist + dt * 8, 3.5, 16);
     cam.manualT -= dt;
@@ -470,6 +489,18 @@ function updateCamera(dt) {
       let da = P.face - cam.yaw; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283;
       if (Math.abs(da) < 2.2) cam.yaw += da * Math.min(1, dt * 0.9);
     }
+  }
+  if (SET.fp && mode === 'play' && !P.dead) {
+    if (P.broom) { let da = P.face - cam.yaw; while (da > Math.PI) da -= 6.283; while (da < -Math.PI) da += 6.283; cam.yaw += da * Math.min(1, dt * 3); }
+    const eye = P.y + (P.swim ? 0.7 : 1.62);
+    cam.pos.set(P.x + Math.sin(cam.yaw) * 0.14, eye, P.z + Math.cos(cam.yaw) * 0.14);
+    G.camera.position.copy(cam.pos);
+    if (cam.shake > 0) { G.camera.position.x += (Math.random() - 0.5) * cam.shake; G.camera.position.y += (Math.random() - 0.5) * cam.shake; cam.shake = Math.max(0, cam.shake - dt * 1.8); }
+    const cp = clamp(cam.pitch, -1.3, 1.2);
+    cam.look.set(cam.pos.x + Math.sin(cam.yaw) * Math.cos(cp), cam.pos.y - Math.sin(cp), cam.pos.z + Math.cos(cam.yaw) * Math.cos(cp));
+    G.camera.lookAt(cam.look);
+    U.uCam.value.copy(G.camera.position);
+    return;
   }
   let dist = cam.dist, yaw = cam.yaw;
   let pitch = Math.max(0.04, cam.pitch), skyLook = Math.max(0, 0.04 - cam.pitch) * 28;
@@ -504,6 +535,8 @@ function updateCamera(dt) {
   cam.look.set(P.x, P.y + lookUp, P.z);
   G.camera.lookAt(cam.look);
   U.uCam.value.copy(G.camera.position);
+  const fovT = P && P.broom && mode === 'play' ? 66 : 58;
+  if (Math.abs(G.camera.fov - fovT) > 0.02) { G.camera.fov += (fovT - G.camera.fov) * Math.min(1, dt * 3); G.camera.updateProjectionMatrix(); }
 }
 
 // Kamera: nicht durch Wände, Stämme und Decken
@@ -589,15 +622,17 @@ function updateSites(dt, px, pz) {
   // Fackeln und Feuer: die vier nächsten leuchten wirklich
   P.safe = false;
   const near4 = [], NT = G.torches.length;
+  const considerFire = f => {
+    const dd = (f.x - px) * (f.x - px) + (f.y - (P.y + 1)) * (f.y - (P.y + 1)) + (f.z - pz) * (f.z - pz);
+    if (dd > 2500) return;
+    if (near4.length < NT) { near4.push([dd, f]); near4.sort((p, q) => p[0] - q[0]); }
+    else if (dd < near4[NT - 1][0]) { near4[NT - 1] = [dd, f]; near4.sort((p, q) => p[0] - q[0]); }
+  };
+  wildFiresNear(px, pz, considerFire, dt);
   for (const [, b] of built) {
     for (const u of b.updaters) u(dt);
     const s = b.site, d = Math.hypot(s.x - px, s.z - pz);
-    for (const f of b.fires) {
-      const dd = (f.x - px) * (f.x - px) + (f.y - (P.y + 1)) * (f.y - (P.y + 1)) + (f.z - pz) * (f.z - pz);
-      if (dd > 2500) continue;
-      if (near4.length < NT) { near4.push([dd, f]); near4.sort((p, q) => p[0] - q[0]); }
-      else if (dd < near4[NT - 1][0]) { near4[NT - 1] = [dd, f]; near4.sort((p, q) => p[0] - q[0]); }
-    }
+    for (const f of b.fires) considerFire(f);
     if ((s.type === 'lager' || s.type === 'ritter') && d < 16) P.safe = true;
     if (mode === 'play' && !S.disc[s.key] && s.discR > 0 && d < s.discR) discover(s);
     if (b.gate && mode === 'play') {
@@ -1138,13 +1173,15 @@ function openMenu() {
 function fillMenu() {
   $('mQuality').textContent = 'Grafik: ' + QUALITY[SET.quality].name;
   $('mView').textContent = 'Sichtweite: ' + VIEW_SETTINGS[SET.view].name;
+  $('mPerson').textContent = 'Ansicht: ' + (SET.fp ? 'Ego (V)' : 'Dritte Person (V)');
   $('mSound').textContent = 'Ton: ' + (SET.sound ? 'An' : 'Aus');
 }
 $('mResume').onclick = closePanel;
 $('mJournal').onclick = () => { closePanel(); openJournal(); };
 let qualityManual = false;
 $('mQuality').onclick = () => { qualityManual = true; SET.quality = (SET.quality + 2) % 3; G.quality = SET.quality; applyQuality(); clearGrass(); saveSettings(); fillMenu(); };
-$('mView').onclick = () => { SET.view = (SET.view + 1) % 3; G.view = SET.view; clearChunks(); worldReady = false; saveSettings(); fillMenu(); };
+$('mView').onclick = () => { SET.view = (SET.view + 1) % 3; G.view = SET.view; clearChunks(); beginLoad(); saveSettings(); fillMenu(); };
+$('mPerson').onclick = () => { toggleFp(); fillMenu(); };
 $('mSound').onclick = () => { toggleSound(); fillMenu(); };
 $('mTitle').onclick = () => { saveGame(); show('menu', false); panel = null; goTitle(); };
 
@@ -1372,9 +1409,19 @@ function frame(now) {
   const live = mode === 'play' || mode === 'rest' || mode === 'title' || mode === 'dead';
   if (live) U.uTime.value += dt;
   const focusX = mode === 'title' ? World.spawnX : P.x, focusZ = mode === 'title' ? World.spawnZ : P.z;
-  const done = updateChunks(focusX, focusZ, worldReady ? 5 : 40);
-  if (!worldReady) { readyFrames++; if (done || readyFrames > 240) { worldReady = true; } }
-  show('loading', !worldReady);
+  const done = updateChunks(focusX, focusZ, worldReady ? 5 : loadPhase === 'build' ? 90 : 5);
+  if (!worldReady) {
+    if (loadPhase === 'build') {
+      loadTotal = Math.max(loadTotal, G.remain || 1);
+      const pr = 1 - (G.remain || 0) / loadTotal;
+      setLade(pr * 0.88, pr < 0.3 ? 'Der Boden wächst …' : pr < 0.65 ? 'Wälder werden gepflanzt …' : 'Ferne Berge und Nebel …');
+      if (done || performance.now() - loadT0 > 60000) { loadPhase = 'warm'; warmFrames = 0; warmShaders(); setLade(0.9, 'Licht und Schatten werden vorbereitet …'); }
+    } else {
+      warmFrames++; setLade(0.9 + warmFrames * 0.025, 'Licht und Schatten werden vorbereitet …');
+      if (warmFrames >= 4) { endWarm(); worldReady = true; setLade(1, 'Bereit'); const l = $('lade'); l.classList.add('weg'); setTimeout(() => { if (worldReady) l.style.display = 'none'; }, 1000); }
+    }
+  }
+  show('loading', false);
   if (live) {
     const timeSpeed = mode === 'rest' ? 32 : 1;
     S.dayT += dt * timeSpeed / DAY_LEN;
@@ -1417,7 +1464,7 @@ function frame(now) {
   if (S && P && mode !== 'title') G.hurt = Math.max(G.hurt, P.hp < maxHp() * 0.25 && !P.dead ? 0.15 + Math.sin(now * 0.006) * 0.08 : 0);
   saveTick -= dt;
   if (saveTick <= 0 && mode === 'play') { saveTick = 15; saveGame(); }
-  renderFrame();
+  if (worldReady || loadPhase === 'warm') renderFrame();
   if (fpsBox && now - fpsBoxT > 500) { fpsBoxT = now; const inf = G.renderer.info.render; fpsBox.textContent = Math.round(fpsShow || 1 / Math.max(raw, 0.001)) + ' Bilder/s   Auflösung ' + Math.round(G.dyn * 100) + ' %\n' + inf.calls + ' Zeichenaufrufe   ' + Math.round(inf.triangles / 1000) + 'k Dreiecke\nStücke ' + G.chunks.size + '   Gras ' + G.grass.size; }
 }
 

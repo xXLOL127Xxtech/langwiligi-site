@@ -245,6 +245,12 @@ function heightAt(x, z, w) {
 
 // ---------- Brücken: wo ein Weg einen Fluss kreuzt ----------
 const BR_HW = 1.9;
+// Nur echtes Flusswasser bekommt Brücken, keine Seen und nichts in der Nähe der grossen Schlösser (dort gibt es Dämme)
+function isRiverWater(x, z) {
+  if (riverAmt(x, z) < 0.1 || bigNear(x, z, 330)) return false;
+  const h = heightBase(x, z);
+  return h < 0.2 && h > -1.8;
+}
 function bridgesOfCell(ci, cj) {
   const key = ci + ',' + cj;
   if (World.bridges.has(key)) return World.bridges.get(key);
@@ -259,8 +265,8 @@ function bridgesOfCell(ci, cj) {
     pts.push(pl[pl.length - 1]);
     let i = 1;
     while (i < pts.length - 1) {
-      if (heightBase(pts[i][0], pts[i][1]) < 0.2) {
-        let j = i; while (j < pts.length - 1 && heightBase(pts[j][0], pts[j][1]) < 0.2) j++;
+      if (isRiverWater(pts[i][0], pts[i][1])) {
+        let j = i; while (j < pts.length - 1 && isRiverWater(pts[j][0], pts[j][1])) j++;
         const A = pts[Math.max(0, i - 2)], B = pts[Math.min(pts.length - 1, j + 1)];
         const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
         if (len > 4 && len < 60) {

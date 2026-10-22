@@ -231,19 +231,49 @@ function makeTree(spec, mg, ls, near) {
       break;
     }
     case 'tot': case 'knorrig': {
+      // Fünf Bauformen, dazu zufällige Rinde, Neigung und Bruchstellen: kein kahler Baum gleicht dem anderen
       const big = sp === 'knorrig' ? 1.2 : 0.9;
-      const th = (g ? 14 : 3 + r() * 2.6) * S * big, tr0 = (g ? 1.8 : 0.34) * S * big;
+      const arch = Math.floor(r() * 5);
+      const th = (g ? 14 : (arch === 4 ? 5 + r() * 4 : 3 + r() * 4.5)) * S * big;
+      const tr0 = (g ? 1.8 : 0.26 + r() * 0.2) * S * big;
+      const sh = 0.7 + r() * 0.6;
+      bark = bark.map((v, i) => v * sh * (i === 1 ? 0.95 : 1)); bark2 = bark2.map(v => v * sh); c.bark = bark; c.bark2 = bark2;
+      if (r() < 0.25) { bark = [0.62, 0.6, 0.55]; bark2 = [0.5, 0.48, 0.44]; c.bark = bark; c.bark2 = bark2; }   // ausgeblichenes Holz
       c.cr = 1.2 * S; c.kind = 1;
-      const tp = trunkPath(c, x, y, z, th, tr0 * 1.15, tr0 * 0.5, 0.35, near ? 7 : 4, { bend: 2.4, wob: 3 });
+      const lean = arch === 2 ? 0.4 + r() * 0.35 : 0.05 + r() * 0.3;
+      const tp = trunkPath(c, x, y, z, th, tr0 * 1.15, tr0 * (arch === 4 ? 0.7 : 0.5), lean, near ? 7 : 4, { bend: 0.8 + r() * 3, wob: 1.5 + r() * 3 });
       if (g) roots(c, x, y, z, tr0, 8, tr0 * 2.2);
       const top = tp.pts[tp.pts.length - 1];
-      const nl = g ? 8 : 4 + Math.floor(r() * 2);
-      const leafy = sp === 'knorrig' && r() < 0.45;
-      for (let i = 0; i < nl; i++) {
-        const a = r() * 6.2832, start = tp.pts[Math.max(2, tp.pts.length - 1 - Math.floor(r() * 4))] || top;
-        limb(c, start, [Math.cos(a), 0.5 + r() * 0.9, Math.sin(a)], (g ? 7 : 2.6) * S * (0.7 + r() * 0.6), tr0 * 0.48, g ? 3 : 2, { wander: 0.9, up: 0.3, kids: 2, farDepth: 0, wide: 0.9, tall: 0.6, flat: 0.5, ...{ midClump: false } });
-        if (!leafy) { /* kahl */ }
+      const at = k => tp.pts[Math.max(1, Math.min(tp.pts.length - 1, Math.round(tp.pts.length * k)))];
+      const O = { wander: 0.9, up: 0.3, kids: 2, farDepth: 0, wide: 0.9, tall: 0.6, flat: 0.5, midClump: false };
+      const L = (g ? 7 : 2.6) * S;
+      if (arch === 0) {
+        // Gabelung: zwei Hauptstämme
+        const fk = at(0.35 + r() * 0.2);
+        for (let q = 0; q < 2; q++) {
+          const a = r() * 6.2832 + q * Math.PI;
+          limb(c, fk, [Math.cos(a) * 0.7, 1.0, Math.sin(a) * 0.7], L * (1.1 + r() * 0.5), tr0 * 0.62, g ? 3 : 3, Object.assign({}, O, { up: 0.5, kids: 2 }));
+        }
+        for (let q = 0; q < 2; q++) { const a = r() * 6.28; limb(c, at(0.6), [Math.cos(a), 0.3, Math.sin(a)], L * 0.6, tr0 * 0.3, 1, O); }
+      } else if (arch === 1) {
+        // Kandelaber: Äste greifen wie Finger nach oben
+        const n = 5 + Math.floor(r() * 3);
+        for (let q = 0; q < n; q++) { const a = q / n * 6.2832 + r() * 0.6; limb(c, at(0.7 + r() * 0.3), [Math.cos(a) * 0.5, 1.2, Math.sin(a) * 0.5], L * (0.7 + r() * 0.6), tr0 * 0.4, 2, Object.assign({}, O, { up: 0.7, wander: 0.5 })); }
+      } else if (arch === 2) {
+        // Windschief: alle Äste zeigen in eine Richtung
+        const a0 = r() * 6.2832, n = 3 + Math.floor(r() * 3);
+        for (let q = 0; q < n; q++) { const a = a0 + (r() - 0.5) * 1.1; limb(c, at(0.45 + r() * 0.5), [Math.cos(a), 0.3 + r() * 0.5, Math.sin(a)], L * (0.9 + r() * 0.8), tr0 * 0.45, 2, Object.assign({}, O, { droop: 0.3, wander: 0.5 })); }
+      } else if (arch === 3) {
+        // Hängend: lange, herabsinkende Äste
+        const n = 4 + Math.floor(r() * 3);
+        for (let q = 0; q < n; q++) { const a = r() * 6.2832; limb(c, at(0.6 + r() * 0.4), [Math.cos(a), 0.9, Math.sin(a)], L * (1 + r() * 0.8), tr0 * 0.4, 1, Object.assign({}, O, { droop: 0.9, up: 0.6, kids: 1 })); }
+      } else {
+        // Ruine: hoher Stamm, oben abgebrochen, nur Aststümpfe und Splitter
+        for (let q = 0; q < 2 + Math.floor(r() * 3); q++) { const a = r() * 6.2832; limb(c, at(0.3 + r() * 0.6), [Math.cos(a), 0.2 + r() * 0.4, Math.sin(a)], L * (0.25 + r() * 0.3), tr0 * 0.3, 0, O); }
+        mg.add('cone4', M(top[0], top[1] + tr0 * 0.4, top[2], tr0 * 0.9, tr0 * (1.6 + r() * 2.4), tr0 * 0.9, (r() - 0.5) * 0.4, r() * 3, (r() - 0.5) * 0.4), bark2, 0.3, r, MT.bark);
       }
+      // abgebrochene Aststümpfe am Stamm
+      for (let q = 0; q < Math.floor(r() * 4); q++) { const a = r() * 6.2832, p = at(0.15 + r() * 0.5); limb(c, p, [Math.cos(a), 0.15, Math.sin(a)], 0.5 + r() * 0.8, tr0 * 0.22, 0, O); }
       break;
     }
   }
@@ -350,12 +380,15 @@ function planTrees(ch, r, segs, bigL) {
 
 // ---------- Baumschicht eines Stücks (fern: Stämme + Laubkugeln, nah: Karten) ----------
 function buildTreeLayer(ch, near) {
-  const grp = new THREE.Group();
-  if (!ch.trees.length) return grp;
+  if (!ch.trees.length) return new THREE.Group();
   const mg = new Merger(), fmg = new Merger();
   const ls = new LeafSet(false), lsN = new LeafSet(true);
   ls.noCards = lsN.noCards = !near;
   for (const spec of ch.trees) makeTree(spec, mg, spec.neon ? lsN : ls, near);
+  return finishTreeLayer(mg, fmg, ls, lsN, near);
+}
+function finishTreeLayer(mg, fmg, ls, lsN, near) {
+  const grp = new THREE.Group();
   ls.addFarTo(fmg, near); lsN.addFarTo(fmg, near);
   if (!mg.empty) for (const g of mg.buildBuckets(64)) { const m = new THREE.Mesh(g, MAT.flat); m.castShadow = true; m.receiveShadow = true; grp.add(m); }
   if (!fmg.empty) {
@@ -435,7 +468,14 @@ function buildUnderwood(ch) {
       }
       case 'farn': {
         const cols = [B.stemC.map(v => Math.min(1, v * 1.5)), B.stemC.map(v => v * 0.9), B.tipC.map(v => v * 0.8)];
-        for (let q = 0; q < 3; q++) ls.clump(x + (r() - 0.5) * 0.7, y + 0.38, z + (r() - 0.5) * 0.7, 0.62 * s, 0.38 * s, 0.62 * s, cols, rc, { kind: 4, size: 0.95 * s, dens: 0.28, flat: 0.1 });
+        // Wedel wachsen aus einem Punkt, jeder sitzt knapp über dem Boden darunter
+        const nF = 6 + Math.floor(r() * 4);
+        for (let q = 0; q < nF; q++) {
+          const a = q / nF * 6.2832 + r() * 0.6, d = (0.15 + r() * 0.5) * s;
+          const fx = x + Math.cos(a) * d, fz = z + Math.sin(a) * d, fy = chunkHeight(ch, fx, fz);
+          const up = 0.28 + (1 - d / (0.65 * s)) * 0.35 + r() * 0.1;
+          ls.add(fx, fy + up, fz, cols[q % 3], 0.9 + r() * 0.2, Math.cos(a) * 0.55, 0.85, Math.sin(a) * 0.55, 0.9 * s, 4, 0.5);
+        }
         break;
       }
       case 'blume': {
