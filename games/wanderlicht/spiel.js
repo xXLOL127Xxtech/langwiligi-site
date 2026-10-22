@@ -221,7 +221,7 @@ function hurtPlayer(dmg, fx, fz) {
   if (P.hp <= 0) die();
 }
 function die() {
-  P.hp = 0; P.dead = true; mode = 'dead';
+  P.hp = 0; P.dead = true; mode = 'dead'; P.broom = false;
   S.deaths++;
   const lost = Math.floor(S.gold * 0.25);
   S.gold -= lost;
@@ -234,7 +234,7 @@ function die() {
 function respawn() {
   show('death', false);
   if (P.inCave) leaveCave(true);
-  P.dead = false; P.hp = maxHp();
+  P.dead = false; P.hp = maxHp(); P.broom = false; P.glide = false;
   P.x = S.fire[0] + 2; P.z = S.fire[1] + 2; P.y = groundY(P.x, P.z) + 0.5; P.vx = P.vz = P.vy = 0;
   for (const e of enemies) if (!e.dead) { e.state = 'home'; }
   mode = 'play';
@@ -1338,7 +1338,7 @@ function frame(now) {
     G.sky.position.copy(G.camera.position);
     updateBurst(dt);
     let cold = 0; for (let b = 0; b < NB; b++) cold += w[b] * BIOMES[b].cold;
-    Ton.update(dt, { wind: ATM.cur.wind * (P && P.inCave ? 0.1 : 1), rain: P && P.inCave ? 0 : ATM.cur.rain, night: ATM.night, storm: ATM.cur.storm, cold, hell: mood.hell, dunkel: mood.dunkel, mond: mood.mond, feen: mood.feen, cave: P && P.inCave ? 1 : 0 });
+    Ton.update(dt, { wind: ATM.cur.wind * (P && P.inCave ? 0.1 : 1) * (1 - env.indoor * 0.85), rain: (P && P.inCave ? 0 : ATM.cur.rain) * (1 - env.indoor * 0.8), night: ATM.night, storm: ATM.cur.storm, cold, hell: mood.hell, dunkel: mood.dunkel, mond: mood.mond, feen: mood.feen, cave: P && P.inCave ? 1 : 0 });
   }
   if (S && P) {
     U.uPlayer.value.set(P.x, P.y, P.z);

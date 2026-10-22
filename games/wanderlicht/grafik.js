@@ -23,15 +23,15 @@ const U = {
 };
 
 const VIEW_SETTINGS = [
-  { name: 'Nah', chunks: 3, far: 950, grass: 45, grassMax: 2600, farR: 650, ultraR: 2000, leaf: 60 },
-  { name: 'Mittel', chunks: 4, far: 1300, grass: 62, grassMax: 3600, farR: 900, ultraR: 3000, leaf: 75 },
-  { name: 'Weit', chunks: 5, far: 1700, grass: 80, grassMax: 4600, farR: 1150, ultraR: 4200, leaf: 90 },
+  { name: 'Nah', chunks: 3, far: 950, grass: 45, grassMax: 5200, farR: 650, ultraR: 2000, leaf: 60 },
+  { name: 'Mittel', chunks: 4, far: 1300, grass: 62, grassMax: 7200, farR: 900, ultraR: 3000, leaf: 75 },
+  { name: 'Weit', chunks: 5, far: 1700, grass: 80, grassMax: 9000, farR: 1150, ultraR: 4200, leaf: 90 },
 ];
 // Bildqualität: Auflösung, Schatten und Kantenglättung
 const QUALITY = [
-  { name: 'Niedrig', scale: 0.7, shadow: 0, msaa: 0, grass: 0.5, leaf: 0.7 },
+  { name: 'Niedrig', scale: 0.8, shadow: 0, msaa: 0, grass: 0.5, leaf: 0.7 },
   { name: 'Mittel', scale: 1, shadow: 1024, msaa: 2, grass: 0.8, leaf: 0.8 },
-  { name: 'Hoch', scale: 1.25, shadow: 2048, msaa: 4, grass: 1, leaf: 1 },
+  { name: 'Hoch', scale: 1, shadow: 2048, msaa: 4, grass: 1, leaf: 1 },
 ];
 
 // Oberflächen-Kennungen für die Shader (Mauerwerk, Holz, Rinde, ...)
@@ -378,7 +378,7 @@ function worldMat(o = {}) {
       .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = surf(diffuseColor.rgb, vWP, normalize(vWN), vMat, distance(vWP, uCam), vU);' + (o.path ? `
  float pk = smoothstep(2.9, 1.2, vPath + (dn(vWP * 2.3) - 0.5) * 1.5) * 0.85;
  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.4 + vec3(0.2, 0.16, 0.12) * (0.8 + 0.4 * dn(vWP * 11.0)), pk);` : ''))
-      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * step(8.5, vMat) * step(vMat, 9.5) * 1.25;')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n float emitK = step(8.5, vMat) * step(vMat, 9.5); totalEmissiveRadiance += diffuseColor.rgb * emitK * 0.95; diffuseColor.rgb *= 1.0 - 0.75 * emitK;')
       .replace('#include <fog_fragment>', 'gl_FragColor.rgb *= cloudSh(vWP.xz);\n#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, min(aerialF(fogDepth, vWP.y, fogNear, fogFar), ' + cap.toFixed(2) + '));\n#endif');
   };
   m.customProgramCacheKey = () => 'world' + id;
@@ -398,7 +398,7 @@ function initMaterials() {
   MAT.ultraTerrain = worldMat({ cut: U.uFarCut, shine: 2 });
   MAT.ground = worldMat({ shine: 2, spec: 0x0a0a0a, path: true });
   MAT.grass = makeGrassMat();
-  MAT.farCanopy = pointsMat(5, { sway: 0, cut: true, maxPt: 6 });
+  MAT.farCanopy = worldMat({ cut: U.uNearCut, shine: 2, spec: 0x000000 });
   MAT.flame = pointsMat(1.25, { emit: 1, additive: true, sway: 0, flicker: true, maxPt: 40 });
   MAT.landGlow = pointsMat(0.9, { emit: 1, additive: true, sway: 0, farMul: 3.2, maxPt: 14, fogCap: 0.7 });
   initFoliageMats();
@@ -528,6 +528,7 @@ function initGraphics(canvas) {
   initWater();
   initWeatherFX();
   initBurst();
+  initButterflies();
   initMist();
   initCloudSea();
   G.bolts = new THREE.Group();
@@ -834,6 +835,65 @@ function initWeatherFX() {
   G.flies = wrapPoints(600, { box: new THREE.Vector3(48, 8, 48), color: 0xfff0a0, size: 0.34, mode: 1, additive: true });
   G.dust = wrapPoints(500, { box: new THREE.Vector3(46, 16, 46), color: 0xffe0a0, size: 0.12, mode: 2, transparent: true, alpha: '0.6' });
   G.fx = [G.rain, G.snow, G.petals, G.flies, G.dust];
+}
+
+// ---------- Schmetterlinge ----------
+const BUTTER_N = 64;
+function initButterflies() {
+  const g = new THREE.InstancedBufferGeometry();
+  // zwei Flügel als Vierecke, die an der Mitte befestigt sind
+  const pos = [0, 0, -0.5, 1, 0, -0.5, 1, 0, 0.5, 0, 0, 0.5, 0, 0, -0.5, -1, 0, -0.5, -1, 0, 0.5, 0, 0, 0.5];
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1], 2));
+  g.setIndex([0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6]);
+  const seed = new Float32Array(BUTTER_N * 4);
+  for (let i = 0; i < seed.length; i++) seed[i] = Math.random();
+  g.setAttribute('iSeed', new THREE.InstancedBufferAttribute(seed, 4));
+  g.instanceCount = BUTTER_N;
+  G.butterMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uOrigin: { value: new THREE.Vector3() }, uAmt: { value: 0 }, uLight: U.uLight, uFogColor: U.uFogColor },
+    vertexShader: `
+      uniform float uTime, uAmt; uniform vec3 uOrigin;
+      attribute vec4 iSeed;
+      varying vec2 vUv; varying vec3 vCol; varying float vShow;
+      void main(){
+        vec3 box = vec3(40.0, 1.0, 40.0);
+        vec3 c = vec3(iSeed.x * box.x, 0.0, iSeed.y * box.z);
+        c.xz += vec2(sin(uTime * 0.21 * (0.6 + iSeed.z) + iSeed.w * 30.0), cos(uTime * 0.17 * (0.6 + iSeed.w) + iSeed.z * 20.0)) * 6.0 + vec2(uTime * 0.6 * (iSeed.z - 0.5), uTime * 0.6 * (iSeed.w - 0.5));
+        c.xz = mod(c.xz - uOrigin.xz + box.xz * 0.5, box.xz) - box.xz * 0.5 + uOrigin.xz;
+        c.y = uOrigin.y + 0.5 + iSeed.z * 2.2 + sin(uTime * 1.1 + iSeed.w * 40.0) * 0.35;
+        vec2 dir = normalize(vec2(cos(uTime * 0.3 + iSeed.x * 10.0), sin(uTime * 0.27 + iSeed.y * 9.0)));
+        float fl = sin(uTime * (16.0 + iSeed.z * 8.0) + iSeed.w * 50.0) * 0.9 + 0.2;
+        float sz = 0.1 + iSeed.w * 0.07;
+        vec3 p = position;
+        float side = sign(p.x);
+        p.x = abs(p.x) * cos(fl) * sz; p.y = abs(position.x) * sin(fl) * sz * 1.1 * side * 0.0 + abs(position.x) * sin(fl) * sz; p.z *= sz * 1.1;
+        p.x *= side;
+        vec3 w = vec3(dot(vec2(p.x, p.z), vec2(dir.y, dir.x)), p.y, dot(vec2(p.x, p.z), vec2(-dir.x, dir.y)));
+        vec4 mv = viewMatrix * vec4(c + w, 1.0);
+        gl_Position = projectionMatrix * mv;
+        vUv = uv;
+        float h = fract(iSeed.x * 7.0 + iSeed.y * 3.0);
+        vCol = h < 0.25 ? vec3(1.0, 0.75, 0.2) : h < 0.5 ? vec3(0.95, 0.95, 1.0) : h < 0.7 ? vec3(0.45, 0.7, 1.0) : h < 0.88 ? vec3(1.0, 0.55, 0.3) : vec3(0.85, 0.5, 0.95);
+        vShow = step(iSeed.z * 0.9 + 0.05, uAmt);
+      }`,
+    fragmentShader: `
+      uniform vec3 uLight; uniform vec3 uFogColor;
+      varying vec2 vUv; varying vec3 vCol; varying float vShow;
+      void main(){
+        if (vShow < 0.5) discard;
+        vec2 q = vUv - vec2(0.5, 0.45);
+        float r = length(q * vec2(1.0, 1.15));
+        if (r > 0.5) discard;
+        float spot = smoothstep(0.28, 0.2, length(q - vec2(0.12, 0.08)));
+        vec3 col = mix(vCol, vCol * 0.35, smoothstep(0.34, 0.5, r)) + spot * 0.25;
+        gl_FragColor = vec4(col * (0.55 + 0.5 * uLight), 1.0);
+      }`,
+    side: THREE.DoubleSide,
+  });
+  G.butter = new THREE.Mesh(g, G.butterMat);
+  G.butter.frustumCulled = false;
+  G.scene.add(G.butter);
 }
 
 // ---------- Kurze Teilchen (Treffer, Funken, Münzglanz) ----------
@@ -1195,6 +1255,8 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   A.flies = cave ? 0.7 : clamp01(fl * (ATM.night * 1.1 + c.fog * 0.3) * (1 - c.rain) * (1 - stormE * 0.4) + md.feen * 0.8 + md.mond * 0.3);
   G.flies.material.uniforms.uColor.value.copy(cave ? cave.fly : md.feen > 0.3 ? _c1.setRGB(1, 0.85, 0.5) : ATM.flyC);
   A.dust = clamp01(du * (1 - ATM.night) * 0.8) * out;
+  { let gr = 0; for (let i = 0; i < NB; i++) gr += bw[i] * BIOMES[i].grass * (1 - BIOMES[i].cold); const day = clamp01(1.6 - ATM.night * 2.2) * (1 - c.rain) * (1 - stormE) * (1 - fogE * 0.8) * (cave ? 0 : 1) * (1 - indoor);
+    G.butterMat.uniforms.uAmt.value = clamp01(gr * 0.7) * day; G.butter.visible = G.butterMat.uniforms.uAmt.value > 0.02; G.butterMat.uniforms.uOrigin.value.set(player.x, player.y, player.z); }
   const wd = U.uWindDir.value, ws = c.wind;
   const setFx = (o, amt, vel, origin) => {
     const u = o.material.uniforms;
@@ -1548,7 +1610,7 @@ function buildGrass(ch) {
     const B = BIOMES[sampleBiome(w, r())];
     const hh = B.grassH * 0.62 * (0.55 + r() * 0.65) * (0.7 + patch * 0.55);
     iPos.push(x, h - 0.04, z);
-    iPar.push(hh, 0.8 + r() * 0.7, r() * 6.28, r());
+    iPar.push(hh, 1.0 + r() * 0.8, r() * 6.28, r());
     const f = 0.82 + r() * 0.3, alt = r() < 0.06 ? 1.15 : 1;
     if (r() < B.neon * 0.22) {
       const nc = B.neonCC[Math.floor(r() * 3)];
@@ -1750,7 +1812,7 @@ function buildFarTile(fi, fj, lv = FAR_LV[0]) {
     if (conif) fm.add('cone', M(x, h + hh * 0.18, z, rr, hh * 0.86, rr), c.map(v => v * 0.8), 0.15, r, 13);
     else fm.add('ico', M(x, h + hh * 0.72, z, rr, hh * 0.42, rr), c.map(v => v * 0.8), 0.15, r, 13);
   }
-  if (!fm.empty) grp.add(new THREE.Mesh(fm.build(), MAT.leafFar));
+  if (!fm.empty) grp.add(new THREE.Mesh(fm.build(), MAT.farCanopy));
   reflectable(grp);
   G.scene.add(grp);
   return grp;

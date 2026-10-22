@@ -256,7 +256,7 @@ class LeafSet {
       if (!n) continue;
       const g = new THREE.InstancedBufferGeometry();
       const q = leafQuad();
-      g.index = q.index; g.attributes.position = q.attributes.position; g.attributes.uv = q.attributes.uv;
+      g.setIndex(q.index.clone()); g.setAttribute('position', q.attributes.position.clone()); g.setAttribute('uv', q.attributes.uv.clone());
       const pos = new Float32Array(n * 4), nrm = new Int8Array(n * 4), col = new Uint8Array(n * 4);
       for (let i = 0; i < n; i++) {
         const o = i * 12;

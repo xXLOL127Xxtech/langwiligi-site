@@ -216,15 +216,28 @@ function fCauldron(cb, lx, lz, col, size = 1) {
   cb.circ(lx, lz, 0.65 * size, -1, 1.1);
 }
 function fArmorStand(cb, lx, lz, ry, st) {
-  const steel = [0.62, 0.64, 0.7];
-  cb.box(lx, 0.1, lz, 0.9, 0.2, 0.9, ry, st.stone2, MT.stone, 0);
-  cb.cyl6(lx, 0.2, lz, 0.05, 1.1, [0.3, 0.2, 0.14], MT.wood);
-  cb.sph(lx, 1.45, lz, 0.28, 0.4, 0.2, steel, MT.metal);
-  cb.sph(lx, 1.95, lz, 0.19, 0.22, 0.2, steel, MT.metal);
-  cb.box(lx, 1.95, lz + 0.0, 0.3, 0.05, 0.3, ry, [0.05, 0.05, 0.08], MT.gen, 0);
-  for (const sd of [-1, 1]) { cb.sph(lx + sd * 0.38 * Math.cos(ry), 1.7, lz - sd * 0.38 * Math.sin(ry), 0.16, 0.1, 0.16, steel, MT.metal); cb.cyl6(lx + sd * 0.46 * Math.cos(ry), 1.0, lz - sd * 0.46 * Math.sin(ry), 0.06, 0.7, steel, MT.metal); }
-  cb.cyl(lx, 0.75, lz, 0.32, 0.5, st.cloth, MT.cloth);
-  cb.circ(lx, lz, 0.5, -1, 2.2);
+  const steel = [0.58, 0.61, 0.7], dark = [0.34, 0.36, 0.43];
+  const fx = Math.sin(ry), fz = Math.cos(ry), px = Math.cos(ry), pz = -Math.sin(ry);
+  cb.box(lx, 0.1, lz, 1.0, 0.2, 1.0, ry, st.stone2, MT.stone, 0);
+  cb.cyl6(lx, 0.2, lz, 0.05, 0.8, [0.3, 0.2, 0.14], MT.wood);
+  for (const sd of [-1, 1]) cb.tube([[lx + px * sd * 0.15, 0.22, lz + pz * sd * 0.15], [lx + px * sd * 0.15, 0.7, lz + pz * sd * 0.15], [lx + px * sd * 0.14, 1.15, lz + pz * sd * 0.14]], [0.1, 0.09, 0.11], steel, 8, MT.metal);
+  cb.cone(lx, 0.78, lz, 0.4, 0.5, st.cloth, MT.cloth);
+  cb.sph(lx, 1.55, lz, 0.3, 0.4, 0.22, steel, MT.metal);
+  cb.tor(lx, 1.2, lz, 0.3, 0.05, Math.PI / 2, 0, [0.35, 0.25, 0.15], MT.metal);
+  for (const sd of [-1, 1]) {
+    const sx = lx + px * sd * 0.4, sz = lz + pz * sd * 0.4;
+    cb.sph(sx, 1.85, sz, 0.17, 0.11, 0.17, steel, MT.metal);
+    cb.tube([[sx, 1.8, sz], [sx + px * sd * 0.1 + fx * 0.05, 1.45, sz + pz * sd * 0.1 + fz * 0.05], [sx + px * sd * 0.08 + fx * 0.25, 1.1, sz + pz * sd * 0.08 + fz * 0.25]], [0.08, 0.07, 0.06], dark, 7, MT.metal);
+  }
+  cb.sph(lx, 2.12, lz, 0.19, 0.23, 0.2, steel, MT.metal);
+  cb.box(lx + fx * 0.16, 2.14, lz + fz * 0.16, 0.26, 0.05, 0.05, ry, [0.05, 0.05, 0.08], MT.gen, 0);
+  cb.box(lx + fx * 0.17, 2.05, lz + fz * 0.17, 0.04, 0.2, 0.04, ry, [0.05, 0.05, 0.08], MT.gen, 0);
+  cb.tube([[lx, 2.32, lz], [lx - fx * 0.1, 2.5, lz - fz * 0.1], [lx - fx * 0.3, 2.35, lz - fz * 0.3], [lx - fx * 0.4, 2.0, lz - fz * 0.4]], [0.02, 0.06, 0.05, 0.02], st.banner, 7, MT.cloth);
+  // Schild und Speer
+  cb.sph(lx - px * 0.55 + fx * 0.15, 1.3, lz - pz * 0.55 + fz * 0.15, 0.3, 0.38, 0.05, st.banner, MT.metal);
+  cb.cyl6(lx + px * 0.6, 0.2, lz + pz * 0.6, 0.025, 2.4, [0.4, 0.3, 0.2], MT.wood);
+  cb.cone(lx + px * 0.6, 2.6, lz + pz * 0.6, 0.06, 0.3, steel, MT.metal);
+  cb.circ(lx, lz, 0.55, -1, 2.6);
 }
 function fWeaponRack(cb, lx, lz, ry, st) {
   const c = Math.cos(ry), s = Math.sin(ry);
