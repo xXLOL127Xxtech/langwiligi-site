@@ -454,7 +454,7 @@ function initGraphics(canvas) {
   G.lantern = new THREE.PointLight(0xffb070, 0, 13, 2);
   G.scene.add(G.hemi, G.sun, G.sun.target, G.lantern);
   // Fackeln und Feuer in Hallen: ein paar bewegliche Lichter
-  for (let i = 0; i < 3; i++) { const l = new THREE.PointLight(0xff9a50, 0, 18, 2); G.torches.push(l); G.scene.add(l); }
+  for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xff9a50, 0, 18, 2); G.torches.push(l); G.scene.add(l); }
   for (const l of [G.hemi, G.sun, G.lantern, ...G.torches]) l.layers.enable(1);
 
   const qv = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -1206,6 +1206,8 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   let far = vs.far * elevMult * (1 - fogE * 0.5) * (1 - c.rain * 0.15) * (1 - ATM.night * 0.12);
   let near = 6 + 30 * (1 - fogE);
   G.scene.fog.color.copy(ATM.hor).lerp(ATM.zen, 0.15);
+  // Ferne Dinge werden zu dunklen Umrissen im Dunst (Schlösser, Berge, Wälder)
+  G.scene.fog.color.lerp(ATM.zen, 0.08).multiplyScalar(0.74);
   if (cave) { G.scene.fog.color.copy(cave.fog); near = 6; far = cave.far; }
   G.scene.fog.near = near; G.scene.fog.far = far;
   U.uNearCut.value = (vs.chunks - 0.6) * CHUNK;
@@ -1370,7 +1372,7 @@ function buildChunk(ci, cj) {
 
   const r = mulberry32(hash2(ci, cj, World.seed + 99));
   const mg = new Merger();
-  const chunk = { ci, cj, H, WW, group, segs, col: [], trees: [], interact: [], shrines: [], layerFar: null, layerNear: null, near: false, out: null };
+  const chunk = { ci, cj, H, WW, group, segs, fires: [], col: [], trees: [], interact: [], shrines: [], layerFar: null, layerNear: null, near: false, out: null };
   const bigL = bigNear(x0 + CHUNK / 2, z0 + CHUNK / 2, 330);
   planTrees(chunk, r, segs, bigL);
   // weiche Schatten unter den Baumkronen (in der Ferne, wo es keine echten Schatten gibt)
@@ -1444,6 +1446,7 @@ function buildChunk(ci, cj) {
     const x = x0 + 8 + r() * (CHUNK - 16), z = z0 + 8 + r() * (CHUNK - 16), h = chunkHeight(chunk, x, z);
     if (h > 0.6 && !nearSite(x, z, 14)) buildDecor(pick(r, ['schwert', 'statue', 'schrein', 'graeber', 'schwert', 'schrein', 'statue']), x, h, z, r, mg, gps, chunk);
   }
+  planWildFires(chunk, r, mg, segs, x0, z0);
   // Holzbrücken über Flüsse (jedes Brett gehört dem Stück, in dem es liegt)
   for (const b of bridgesNear(x0, z0, x0 + CHUNK, z0 + CHUNK)) {
     const ry = Math.atan2(b.ux, b.uz), nxp = -b.uz, nzp = b.ux;
@@ -1493,6 +1496,107 @@ function buildChunk(ci, cj) {
   planUnderwood(chunk, r, segs);
   G.scene.add(group);
   return chunk;
+}
+
+// ---------- Lichter in der Wildnis: Lagerfeuer, Fackeln am Weg, brennende Bäume ----------
+const FIRE_COLS = [0xff9050, 0xff8a40, 0xffa860];
+function wildFire(ch, fl, x, y, z, size, col) {
+  const g1 = makeGlow(col, 3.2 * size, 0.85), g2 = makeGlow(0xffe0a0, 1.4 * size, 1);
+  g1.position.set(x, y + 0.6 * size, z); g2.position.set(x, y + 0.45 * size, z);
+  ch.group.add(g1, g2);
+  const f = { x, y, z, g1, g2, size, col: new THREE.Color(col), sparkT: Math.random() };
+  ch.fires.push(f);
+  for (let k = 0; k < 9; k++) fl.add(x + (Math.random() - 0.5) * 0.18 * size, y + (0.1 + k * 0.09) * size, z + (Math.random() - 0.5) * 0.18 * size, [1, 0.45 + k * 0.05, 0.1 + k * 0.02], 1);
+  return f;
+}
+function planWildFires(ch, r, mg, segs, x0, z0) {
+  const fl = new PointSet();
+  const free = (x, z, rad) => { for (const c of ch.col) { if (c.seg) continue; if (Math.hypot(c.x - x, c.z - z) < c.r + rad) return false; } return true; };
+  // Lagerfeuer abseits der Wege, mit Steinring und Holzscheiten
+  if (r() < 0.09) {
+    const x = x0 + 6 + r() * (CHUNK - 12), z = z0 + 6 + r() * (CHUNK - 12), h = chunkHeight(ch, x, z);
+    if (h > 0.8 && h < 40 && !nearSite(x, z, 8) && free(x, z, 3.5) && !(segs.length && pathDist(x, z, segs) < 2.5)) {
+      for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; mg.add('ico', M(x + Math.cos(a) * 0.85, h + 0.1, z + Math.sin(a) * 0.85, 0.26, 0.2, 0.26, r(), r(), r()), [0.42, 0.4, 0.44], 0.2, r); }
+      for (let i = 0; i < 3; i++) mg.add('box', M(x, h + 0.18, z, 1.3, 0.16, 0.16, 0, i * 1.05 + r(), 0.1), [0.28, 0.18, 0.12], 0.1, r, MT.wood);
+      // Sitzbaumstamm
+      const a = r() * 6.283; mg.add('cyl', M(x + Math.cos(a) * 2.3, h + 0.28, z + Math.sin(a) * 2.3, 0.28, 1.5, 0.28, 0, -a, Math.PI / 2), [0.34, 0.23, 0.15], 0.1, r, MT.bark);
+      wildFire(ch, fl, x, h + 0.1, z, 1, FIRE_COLS[Math.floor(r() * 3)]);
+      ch.col.push({ x, z, r: 0.9, top: h + 0.4 });
+    }
+  }
+  // Fackelpfosten entlang der Wege
+  if (segs.length && r() < 0.35) {
+    const sg = segs[Math.floor(r() * segs.length)], n = 2 + Math.floor(r() * 2), t0 = r() * 0.5;
+    const ex = sg[2] - sg[0], ez = sg[3] - sg[1], l = Math.hypot(ex, ez) || 1;
+    for (let q = 0; q < n; q++) {
+      const t = Math.min(0.98, t0 + q * Math.min(0.45, 14 / l)), side = q % 2 ? -1 : 1;
+      const x = sg[0] + ex * t - ez / l * 2.4 * side, z = sg[1] + ez * t + ex / l * 2.4 * side;
+      if (x < x0 || x > x0 + CHUNK || z < z0 || z > z0 + CHUNK) continue;
+      const h = chunkHeight(ch, x, z);
+      if (h < 0.7 || nearSite(x, z, 3) || !free(x, z, 1)) continue;
+      mg.add('cyl6', M(x, h - 0.2, z, 0.07, 2.1, 0.07, 0, 0, (r() - 0.5) * 0.06), [0.26, 0.18, 0.12], 0.1, r, MT.wood);
+      mg.add('cyl', M(x, h + 1.85, z, 0.2, 0.22, 0.2), [0.14, 0.12, 0.11], 0.1, r, MT.metal);
+      wildFire(ch, fl, x, h + 2.0, z, 0.55, 0xff9a50);
+      ch.col.push({ x, z, r: 0.2, top: h + 2.2 });
+    }
+  }
+  // Brennende Bäume: einzelne kahle oder alte Bäume stehen in Flammen
+  if (ch.trees.length && r() < 0.2) {
+    const cand = ch.trees.filter(t => t.sp === 'tot' || t.sp === 'knorrig' || t.giant);
+    const t = cand.length ? cand[Math.floor(r() * cand.length)] : (r() < 0.3 ? ch.trees[Math.floor(r() * ch.trees.length)] : null);
+    if (t) {
+      const sz = t.giant ? 3.4 : 1.8;
+      wildFire(ch, fl, t.x, t.y + t.height * 0.45, t.z, sz, 0xff7a30);
+      wildFire(ch, fl, t.x + 0.4, t.y + t.height * 0.8, t.z - 0.3, sz * 0.8, 0xff8a40);
+      wildFire(ch, fl, t.x, t.y + 1.0, t.z, sz * 0.5, 0xff7a30);
+      t.burning = true;
+    }
+  }
+  if (!fl.empty) ch.group.add(new THREE.Points(fl.build(), MAT.flame));
+}
+// Feuer rund um die Figur: Flackern, Funken, Licht
+function wildFiresNear(px, pz, cb, dt) {
+  const ci = Math.floor(px / CHUNK), cj = Math.floor(pz / CHUNK);
+  for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+    const ch = G.chunks.get((ci + di) + ',' + (cj + dj));
+    if (!ch || !ch.fires.length) continue;
+    for (const f of ch.fires) {
+      const dd = (f.x - px) * (f.x - px) + (f.z - pz) * (f.z - pz);
+      if (dd < 3600) {
+        const k = 0.85 + Math.random() * 0.3;
+        f.g1.scale.setScalar(3.2 * f.size * k); f.g2.scale.setScalar(1.4 * f.size * (0.8 + Math.random() * 0.4));
+        f.sparkT -= dt;
+        if (f.sparkT <= 0) { f.sparkT = 0.15 + Math.random() * 0.3; burst(f.x, f.y + 0.5 * f.size, f.z, 1, f.col, 1.2, 0.12 * f.size, 1.4, -1.2, 0.4); }
+      }
+      cb(f);
+    }
+  }
+}
+
+// Shader vorab übersetzen, damit beim Spielen nichts ruckelt, wenn etwas zum ersten Mal auftaucht
+function warmShaders() {
+  const grp = new THREE.Group();
+  const c = G.camera.position, d = new THREE.Vector3(); G.camera.getWorldDirection(d);
+  const px = c.x + d.x * 4, py = c.y + d.y * 4, pz = c.z + d.z * 4;
+  for (let kind = 0; kind < 6; kind++) for (const neon of [false, true]) {
+    const ls = new LeafSet(neon); ls.shadow = true;
+    ls.add(px, py, pz, [1, 1, 1], 1, 0, 1, 0, 0.05, kind, 0.5);
+    const g = ls.meshNear(); g.traverse(o => { o.frustumCulled = false; }); grp.add(g);
+  }
+  for (const m of [MAT.orb, MAT.ring, MAT.coin, MAT.flat, MAT.glow, MAT.glowBig, MAT.neonGlow, MAT.flame, MAT.landGlow, MAT.cloudPts, MAT.landmark, MAT.farCanopy, MAT.ground, MAT.leafFar]) {
+    if (!m) continue;
+    const o = m.isPointsMaterial || m.isShaderMaterial && m.uniforms && m.uniforms.uSize ? new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([px, py, pz], 3)).setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1], 3)).setAttribute('aRnd', new THREE.Float32BufferAttribute([0.5], 1)), m)
+      : new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01).translate(px, py, pz), m);
+    o.frustumCulled = false; o.receiveShadow = true; o.castShadow = true; grp.add(o);
+  }
+  grp.add(makeGlow(0xffffff, 0.1, 0.01));
+  G.scene.add(grp); G.warm = grp;
+  G.shadowForce = true;
+  try { G.renderer.compile(G.scene, G.camera); } catch (e) { /* egal */ }
+}
+function endWarm() {
+  if (!G.warm) return;
+  disposeObj(G.warm); G.warm = null;
 }
 
 function nearSite(x, z, extra) {
@@ -1756,9 +1860,11 @@ function updateChunks(px, pz, budgetMs) {
     }
   }
   lneed.sort((a, b) => a[0] - b[0]);
+  // Nahe Bäume werden Baum für Baum über mehrere Bilder verteilt gebaut (kein Ruckeln)
   for (const [, ch] of lneed) {
     if (performance.now() - t0 > budgetMs) break;
-    buildChunkNear(ch);
+    if (!ch.job) startNearJob(ch);
+    stepNearJob(ch, t0 + budgetMs);
   }
   gneed.sort((a, b) => a[0] - b[0]);
   for (const [, key, ch] of gneed) {
@@ -1766,19 +1872,40 @@ function updateChunks(px, pz, budgetMs) {
     G.grass.set(key, buildGrass(ch));
   }
   const ready = need.length === 0 && gneed.length === 0 && lneed.length === 0;
-  if (ready || performance.now() - t0 < budgetMs * 0.5) updateFar(px, pz, t0, budgetMs);
-  return ready;
+  let farLeft = 0;
+  if (ready || performance.now() - t0 < budgetMs * 0.5) farLeft = updateFar(px, pz, t0, budgetMs);
+  else farLeft = 9;
+  G.remain = need.length + lneed.length + farLeft;
+  return ready && farLeft === 0;
 }
 function disposeChunk(ch) {
   disposeObj(ch.group);
   if (ch.layerNear) disposeObj(ch.layerNear);
   if (ch.underObj) disposeObj(ch.underObj);
 }
-function buildChunkNear(ch) {
-  ch.layerNear = buildTreeLayer(ch, true);
+function startNearJob(ch) {
+  const ls = new LeafSet(false), lsN = new LeafSet(true);
+  ls.noCards = lsN.noCards = false;
+  ch.job = { i: 0, mg: new Merger(), fmg: new Merger(), ls, lsN, stage: 0, grp: null };
+}
+function stepNearJob(ch, deadline) {
+  const j = ch.job;
+  if (j.stage === 0) {
+    while (j.i < ch.trees.length) {
+      const spec = ch.trees[j.i++];
+      makeTree(spec, j.mg, spec.neon ? j.lsN : j.ls, true);
+      if (performance.now() > deadline) return false;
+    }
+    j.grp = ch.trees.length ? finishTreeLayer(j.mg, j.fmg, j.ls, j.lsN, true) : new THREE.Group();
+    j.stage = 1;
+    if (performance.now() > deadline) return false;
+  }
+  ch.layerNear = j.grp;
   ch.group.add(ch.layerNear);
   if (ch.under) { ch.underObj = buildUnderwood(ch); if (ch.underObj) ch.group.add(ch.underObj); }
   setChunkNear(ch, true);
+  ch.job = null;
+  return true;
 }
 function setChunkNear(ch, near) {
   ch.near = near;
@@ -1883,6 +2010,7 @@ function buildFarTile(fi, fj, lv = FAR_LV[0], real = false) {
   return grp;
 }
 function updateFar(px, pz, t0, budgetMs) {
+  let built = 0;
   const vs = VIEW_SETTINGS[G.view];
   const need = [];
   for (let l = 0; l < FAR_LV.length; l++) {
@@ -1900,6 +2028,7 @@ function updateFar(px, pz, t0, budgetMs) {
   for (const [d0, i, j, key, lv] of need) {
     if (performance.now() - t0 > budgetMs) break;
     G.far.set(key, buildFarTile(i, j, lv, !lv.ultra && d0 < 400));
+    built++;
   }
   for (const [key, ft] of G.far) {
     const l = +key[0], [i, j] = key.slice(2).split(',').map(Number), F = FAR_LV[l].size;
@@ -1907,6 +2036,7 @@ function updateFar(px, pz, t0, budgetMs) {
     if (!l && !ft.userData.real && d < 380) { disposeObj(ft); G.far.delete(key); continue; }
     if (d > (l ? vs.ultraR : vs.farR) + F * 1.6 || (l && d < vs.farR - F * 2.2)) { disposeObj(ft); G.far.delete(key); }
   }
+  return need.length - built;
 }
 
 // ---------- Wolkenmeer: von hohen Gipfeln sieht man auf ein Meer aus Wolken ----------
