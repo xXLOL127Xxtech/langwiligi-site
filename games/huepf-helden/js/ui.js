@@ -226,7 +226,7 @@ UI.levelClear = how => {
   UI.autosave();
   setTimeout(() => {
     const aw = awardsFor(G.players, 'ls');
-    $('ergTitel').textContent = how === 'secret' ? 'Geheimer Ausgang gefunden!' : how === 'final' ? 'Lunara ist gerettet!' : nd.type === 'burg' ? `Burg ${nd.world} erobert!` : nd.type === 'turm' ? `Turm ${nd.world} erobert!` : `Level ${nd.title} geschafft!`;
+    $('ergTitel').textContent = how === 'secret' ? 'Geheimer Ausgang gefunden!' : how === 'final' ? 'Lunara ist gerettet!' : nd.type === 'burg' ? `${burgName(nd.world)} erobert!` : nd.type === 'turm' ? `Turm ${nd.world} erobert!` : `Level ${nd.title} geschafft!`;
     const r = Prog.save.done[nd.id];
     $('ergSterne').innerHTML = [0, 1, 2].map(i => `<span class="${r.stars[i] ? 'ja' : ''}">⭐</span>`).join('');
     const wrap = $('ekarten'); wrap.innerHTML = '';
@@ -251,15 +251,17 @@ function nextFromResults() {
   const lw = () => { if (window.LW && LW.rundeFertig) { try { LW.rundeFertig(); } catch (e) { } } };
   if (how === 'final' || (nd.type === 'burg' && WORLD_SPECS[n - 1].final)) {
     lw();
-    Story.play(STORY.ending(Prog.w9Open()), () => { Prog.save.story.ending = true; UI.autosave(); Karte.enter(Prog.w9Open() ? 9 : 8); Karte.say(Prog.w9Open() ? 'Die geheime Sternenwelt ist offen!' : 'Ihr habt Lunara gerettet! Sucht weiter nach Sternmünzen …', 4); updatePauseKnopf(); });
+    Story.play(STORY.ending(Prog.w9Open()), () => { Prog.save.story.ending = true; Prog.save.world = NEW_FIRST; UI.autosave(); Karte.enter(NEW_FIRST); Karte.say(Prog.w9Open() ? 'Lunara ist gerettet! Neue Welten und die geheime Sternenwelt sind offen!' : 'Lunara ist gerettet! Vier neue Welten sind offen – „Welt wählen“ zeigt alle.', 5); updatePauseKnopf(); });
     return;
   }
   if (nd.type === 'burg') {
     lw();
-    Story.play(STORY.castle(n), () => {
-      Prog.save.world = Math.min(8, n + 1); UI.autosave();
-      Karte.enter(Prog.save.world); Karte.say(`Welt ${n + 1}: ${WORLD_SPECS[n].name} – Spielstand gespeichert!`, 3.5); updatePauseKnopf();
-    });
+    const spec = WORLD_SPECS[n - 1], nx = nextWorldOf(n);
+    const back = (w, msg) => () => { Prog.save.world = w; UI.autosave(); Karte.enter(w); Karte.say(msg, 4); updatePauseKnopf(); };
+    if (spec.sternFinale) Story.play(STORY.ende9(), back(9, 'Die Sternenwelt ist gerettet! Spielstand gespeichert.'));
+    else if (spec.himmelFinale) Story.play(STORY.ende13(), back(13, 'Alle Welten sind gerettet! Sammelt weiter Sternmünzen und Geheimwege.'));
+    else if (n >= NEW_FIRST) Story.play(STORY.castleNeu(n), back(nx, `Welt ${nx}: ${WORLD_SPECS[nx - 1].name} – Spielstand gespeichert!`));
+    else Story.play(STORY.castle(n), back(nx, `Welt ${nx}: ${WORLD_SPECS[nx - 1].name} – Spielstand gespeichert!`));
     return;
   }
   Karte.enter(n);
@@ -384,6 +386,7 @@ function openWorldSelect() {
   for (let n = 1; n <= WORLD_COUNT; n++) {
     const spec = WORLD_SPECS[n - 1], open = Prog.save.unlocked.includes(n);
     if (n === 9 && !open) continue;
+    if (n >= NEW_FIRST + 1 && !open && !Prog.save.unlocked.includes(n - 1)) continue;
     const b = document.createElement('button'); b.className = 'welt'; b.disabled = !open;
     b.style.setProperty('--w1', spec.sky[0]); b.style.setProperty('--w2', spec.land[1]);
     const [g, a] = Prog.starsWorld(n);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Hüpf-Helden</title>
-<meta name="description" content="Rettet Prinzessin Lunara! Jump and Run für 1–4: Weltkarte, Türme, Burgen, Geheimwege und Bosse.">
+<meta name="description" content="Rettet Prinzessin Lunara! Jump and Run für 1–4: 13 Welten, Geheimwege, Drehsprung und Bosse mit eigenen Angriffen.">
 <meta name="theme-color" content="#ffb627">
 <meta name="spiel-modi" content="Lokal,Solo">
 <meta name="spiel-tags" content="Bis 4,Weltkarte,Bosse">
@@ -167,7 +167,8 @@ input.txt:focus{border-color:var(--gold)}
       <button class="btn haupt" id="bLos">Los geht's!</button>
     </div>
     <p class="hinweis">Beitreten: eigene <b>Springen-Taste</b> drücken (<kbd>W</kbd> <kbd>↑</kbd> <kbd>I</kbd> <kbd>T</kbd> oder Gamepad <kbd>A</kbd>) oder ein freies Feld anklicken.<br>
-      Laufen-Tasten wechseln die Figur · Stampfen-Taste verlässt den Platz · <kbd>Leertaste</kbd> startet.</p>
+      Laufen-Tasten wechseln die Figur · Stampfen-Taste verlässt den Platz · <kbd>Leertaste</kbd> startet.<br>
+      Im Spiel: <b>Spezial</b> (<kbd>E</kbd>, <kbd>Enter</kbd>, <kbd>U</kbd>, <kbd>R</kbd>) = hochheben und werfen, Extra-Kraft oder Fähigkeit der Figur · <b>Drehsprung</b> = Stampfen-Taste halten und Springen · auf der Weltkarte öffnet <kbd>E</kbd> das Inventar.</p>
   </div>
 </div>
 
@@ -207,14 +208,14 @@ input.txt:focus{border-color:var(--gold)}
   <div class="panel mittel hilfe">
     <h2>Steuerung und Tipps</h2>
     <table>
-      <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen / ducken · <kbd>Q</kbd> Spezial</td></tr>
-      <tr><td style="color:#ef5350">Spieler 2</td><td><kbd>←</kbd> <kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> oder <kbd>-</kbd> Spezial</td></tr>
-      <tr><td style="color:#3fbf5a">Spieler 3</td><td><kbd>J</kbd> <kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial</td></tr>
-      <tr><td style="color:#ffc531">Spieler 4</td><td><kbd>F</kbd> <kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial</td></tr>
-      <tr><td>Gamepad</td><td>Stick laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · Start = Pause</td></tr>
-      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, dazu <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial.</td></tr>
+      <tr><td style="color:#4f8ff7">Spieler 1</td><td><kbd>A</kbd> <kbd>D</kbd> laufen · <kbd>W</kbd> springen · <kbd>S</kbd> stampfen / ducken · <kbd>E</kbd> Spezial · <kbd>S</kbd>+<kbd>W</kbd> Drehsprung</td></tr>
+      <tr><td style="color:#ef5350">Spieler 2</td><td><kbd>←</kbd> <kbd>→</kbd> laufen · <kbd>↑</kbd> springen · <kbd>↓</kbd> stampfen · <kbd>Enter</kbd> oder <kbd>-</kbd> Spezial · <kbd>↓</kbd>+<kbd>↑</kbd> Drehsprung</td></tr>
+      <tr><td style="color:#3fbf5a">Spieler 3</td><td><kbd>J</kbd> <kbd>L</kbd> laufen · <kbd>I</kbd> springen · <kbd>K</kbd> stampfen · <kbd>U</kbd> Spezial · <kbd>K</kbd>+<kbd>I</kbd> Drehsprung</td></tr>
+      <tr><td style="color:#ffc531">Spieler 4</td><td><kbd>F</kbd> <kbd>H</kbd> laufen · <kbd>T</kbd> springen · <kbd>G</kbd> stampfen · <kbd>R</kbd> Spezial · <kbd>G</kbd>+<kbd>T</kbd> Drehsprung</td></tr>
+      <tr><td>Gamepad</td><td>Stick laufen · <kbd>A</kbd> springen · unten stampfen · <kbd>B</kbd>/<kbd>X</kbd> Spezial · unten + <kbd>A</kbd> Drehsprung · Start = Pause</td></tr>
+      <tr><td>Allein</td><td>Alle Tastenfelder steuern dich, dazu <kbd>Leertaste</kbd> springen und <kbd>X</kbd> Spezial. Auf der Karte öffnet <kbd>E</kbd> das Inventar.</td></tr>
     </table>
-    <h3>Die Spezial-Taste</h3>
+    <h3>Die Spezial-Taste (E)</h3>
     <p style="margin:4px 0">Sie macht immer das Passende: Schneckenhäuser, Eisblöcke oder <b>Mitspieler hochheben und werfen</b> · mit einem Extra dessen Kraft nutzen · sonst die Fähigkeit eurer Figur.</p>
     <div class="figs" id="figInfo"></div>
     <h3>Extras</h3>
@@ -224,7 +225,7 @@ input.txt:focus{border-color:var(--gold)}
       <li>Lauft von Level zu Level. In der Mitte jeder Welt wartet ein <b>Turm</b> mit Zwischenboss, am Ende eine <b>Burg</b>.</li>
       <li>Jedes Level hat <b>drei Sternmünzen</b>. Damit öffnet ihr Sternentore auf der Karte.</li>
       <li>Rotes Haus: <b>Memory</b> für Extras ins Inventar. Grünes Haus: <b>Ballon-Kanone</b> für Extraleben.</li>
-      <li>Mit der Spezial-Taste öffnet ihr auf der Karte das <b>Inventar</b> und startet das nächste Level verwandelt.</li>
+      <li>Mit der Taste <kbd>E</kbd> öffnet ihr auf der Karte das <b>Inventar</b> und startet das nächste Level verwandelt.</li>
       <li>Manche Level haben einen <b>geheimen Ausgang</b> mit roter Fahne – achtet auf brüchigen Boden und stampft drauf!</li>
       <li>Wer in allen acht Welten jede Sternmünze findet, öffnet eine geheime neunte Welt.</li>
       <li>Nach jedem geschafften Level wird automatisch gespeichert. In Levels gibt es Zwischenziele.</li>

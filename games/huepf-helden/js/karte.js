@@ -14,7 +14,7 @@ const Karte = {
     this.route = [];
     this.bgCache = null;
     G.mode = 'map';
-    Music.play(composeSong(n * 77 + 5, { scale: n >= 7 ? 'moll' : n === 6 ? 'dorisch' : 'dur', root: 60 + (n % 3), bpm: 104, lead: 'triangle', comp: 'pad', legato: 1.2 }));
+    Music.play(composeSong(n * 77 + 5, { scale: (n >= 7 && n <= 9) || n === 11 ? 'moll' : n === 6 ? 'dorisch' : n === 10 ? 'mixo' : 'dur', root: 60 + (n % 3), bpm: 104, lead: 'triangle', comp: 'pad', legato: 1.2 }));
   },
   node() { return this.W.byId[this.at]; },
   say(text, dur = 2.6) { this.msg = { text, t: dur }; },
@@ -270,7 +270,7 @@ const Karte = {
     const r = Prog.save.done[nd.id];
     if (nd.type === 'level') { title = nd.geheim ? `Geheimlevel ${this.W.n}` : `Level ${nd.title}`; sub = THEMES[nd.theme].name + (nd.secret ? ' · hier gibt es einen geheimen Ausgang' : '') + (r && r.c ? ' · geschafft' : ''); }
     else if (nd.type === 'turm') { title = `Turm ${this.W.n}`; sub = 'Zwischenboss Panzerkäfer Krax · danach wird gespeichert'; }
-    else if (nd.type === 'burg') { title = spec.final ? 'Schattenburg' : `Burg ${this.W.n}`; sub = spec.final ? 'Hier hält Morvax Prinzessin Lunara gefangen!' : `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · danach geht es in die nächste Welt`; }
+    else if (nd.type === 'burg') { title = burgName(this.W.n); sub = spec.final ? 'Hier hält Morvax Prinzessin Lunara gefangen!' : spec.sternFinale ? 'Der Sternenkönig wartet – der letzte Kampf der Sternenwelt!' : spec.himmelFinale ? `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · der Kampf um das Himmelsreich` : `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · danach geht es in die nächste Welt`; }
     else if (nd.type === 'haus') sub = nd.variant === 'rot' ? 'Findet Paare und gewinnt Extras fürs Inventar' : 'Schiesst auf Ballons und gewinnt Extraleben';
     else if (nd.type === 'tor') sub = Prog.save.paid[nd.id] ? 'Offen' : `Öffnen kostet ${nd.cost} Sternmünzen`;
     else if (nd.type === 'kanone') sub = `Fliegt direkt in Welt ${nd.target}`;
@@ -279,7 +279,7 @@ const Karte = {
     g.fillText(title, SW / 2, by + 34);
     g.font = '14px system-ui, sans-serif'; g.fillStyle = '#fff'; g.fillText(sub, SW / 2, by + 58);
     g.font = '12.5px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)';
-    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Inventar: Spezial-Taste · Menü: Esc', SW / 2, by + 90);
+    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Inventar: E · Menü: Esc', SW / 2, by + 90);
     if (this.msg) {
       const a = Math.min(1, this.msg.t * 3);
       g.globalAlpha = a;
@@ -297,13 +297,13 @@ const Karte = {
     const sky = g.createLinearGradient(0, 0, 0, SH); sky.addColorStop(0, spec.sky[0]); sky.addColorStop(1, spec.sky[1]);
     g.fillStyle = sky; g.fillRect(0, 0, SW, SH);
     const map = spec.map;
-    if (map === 'nebel' || map === 'schatten' || map === 'sterne' || map === 'hoehle') {
+    if (map === 'nebel' || map === 'schatten' || map === 'sterne' || map === 'hoehle' || map === 'vulkan') {
       g.fillStyle = '#fff';
       for (let i = 0; i < 120; i++) { g.globalAlpha = rng.f() * .7; g.fillRect(rng.f() * SW, rng.f() * SH, 1.6, 1.6); }
       g.globalAlpha = 1;
     }
-    if (spec.sea || map === 'wolken') {
-      g.strokeStyle = map === 'wolken' ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.25)'; g.lineWidth = 2;
+    if (spec.sea || map === 'wolken' || map === 'himmel') {
+      g.strokeStyle = map === 'wolken' || map === 'himmel' ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.25)'; g.lineWidth = 2;
       for (let i = 0; i < 40; i++) { const x = rng.f() * SW, y = rng.f() * SH; g.beginPath(); g.arc(x, y, 10, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); }
     }
     this.layout();
@@ -323,7 +323,7 @@ const Karte = {
       const x = nd.x + Math.cos(a) * d * 1.4, y = nd.y + 8 + Math.sin(a) * d * .8;
       if (pts.some(o => Math.hypot(o.x - x, o.y - y) < 46)) continue;
       g.save(); g.translate(x, y); g.scale(.45, .45);
-      const k = { wiese: ['baum', 'busch', 'blume'], wueste: ['kaktus', 'stein'], schnee: ['tanne', 'schneemann'], strand: ['palme', 'koralle'], wolken: ['puff'], hoehle: ['kristall', 'pilz'], nebel: ['baumtot', 'grab'], schatten: ['baumtot', 'kristall'], sterne: ['kristall'] }[map];
+      const k = { wiese: ['baum', 'busch', 'blume'], wueste: ['kaktus', 'stein'], schnee: ['tanne', 'schneemann'], strand: ['palme', 'koralle'], wolken: ['puff'], hoehle: ['kristall', 'pilz'], nebel: ['baumtot', 'grab'], schatten: ['baumtot', 'kristall'], sterne: ['kristall'], dschungel: ['dschungelbaum', 'farn', 'busch', 'blume'], vulkan: ['obsidian', 'stein'], zucker: ['lolli', 'stange', 'muffin'], himmel: ['saeule', 'puff'] }[map];
       paintDeko(g, { kind: rng.pick(k), x: 0, y: 0, h: rng.f(), s: 1 }, THEMES[map] || THEMES.wiese);
       g.restore();
     }

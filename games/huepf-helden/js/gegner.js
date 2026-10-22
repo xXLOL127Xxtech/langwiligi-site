@@ -23,6 +23,11 @@ function drawEnemy(g, e, t) {
     case 'fisch': drawFisch(g, e, t, dir); break;
     case 'qualle': drawQualle(g, e, t); break;
     case 'seeigel': drawSeeigel(g, e, t); break;
+    case 'saeule': drawSaeule(g, e, t); break;
+    case 'zapfen': drawZapfen(g, e, t); break;
+    case 'welle': drawWelle(g, e, t); break;
+    case 'wolke': drawGiftwolke(g, e, t); break;
+    case 'scherbe': drawScherbe(g, e, t); break;
   }
   g.restore();
 }
@@ -121,18 +126,27 @@ function drawHummel(g, e, t, dir) {
   g.strokeStyle = OL; g.lineWidth = 2; g.beginPath(); g.moveTo(9, -28); g.lineTo(18, -25); g.stroke();
   g.beginPath(); g.moveTo(14, -32); g.quadraticCurveTo(18, -42, 24, -42); g.stroke();
 }
+const SHOT_COL = {
+  lava: ['#fff6b0', '#ffa21a', '#d0300a', 'rgba(255,200,80,.6)', 'rgba(255,80,20,0)', 'rgba(255,120,30,.5)'],
+  eis: ['#ffffff', '#a8e8ff', '#3a8ad0', 'rgba(200,245,255,.7)', 'rgba(120,200,255,0)', 'rgba(170,230,255,.5)'],
+  gift: ['#f0ffb0', '#8ad03a', '#3a7a1a', 'rgba(190,255,60,.6)', 'rgba(90,160,30,0)', 'rgba(150,220,60,.5)'],
+  wasser: ['#ffffff', '#7fd8ff', '#2a8ad0', 'rgba(150,230,255,.6)', 'rgba(40,140,220,0)', 'rgba(120,210,255,.5)'],
+  zucker: ['#ffffff', '#ff9ad0', '#e8408a', 'rgba(255,170,220,.6)', 'rgba(255,80,160,0)', 'rgba(255,150,210,.5)'],
+  stern: ['#ffffff', '#ffe066', '#c8902a', 'rgba(255,240,150,.6)', 'rgba(255,200,60,0)', 'rgba(255,230,120,.5)'],
+};
 function drawLavaball(g, e, t) {
   const r = e.kind === 'magma' ? 12 : 17;
+  const col = SHOT_COL[e.col] || SHOT_COL.lava;
   const up = (e.vy || 0) < 0;
   g.save(); if (!up) { g.scale(1, -1); g.translate(0, 36); }
   const fl = Math.sin(t * 20) * 3;
-  g.fillStyle = 'rgba(255,120,30,.5)';
+  g.fillStyle = col[5];
   g.beginPath(); g.moveTo(-r * .8, -16); g.quadraticCurveTo(-8 + fl, 12, 0, 22); g.quadraticCurveTo(8 - fl, 12, r * .8, -16); g.fill();
   g.restore();
   const gl = g.createRadialGradient(0, -18, 4, 0, -18, r * 2);
-  gl.addColorStop(0, 'rgba(255,200,80,.6)'); gl.addColorStop(1, 'rgba(255,80,20,0)');
+  gl.addColorStop(0, col[3]); gl.addColorStop(1, col[4]);
   g.fillStyle = gl; g.beginPath(); g.arc(0, -18, r * 2, 0, TAU); g.fill();
-  g.beginPath(); g.arc(0, -18, r, 0, TAU); fs(g, radial(g, 0, -18, r, '#fff6b0', '#ffa21a', '#d0300a'), 2);
+  g.beginPath(); g.arc(0, -18, r, 0, TAU); fs(g, radial(g, 0, -18, r, col[0], col[1], col[2]), 2);
   g.fillStyle = '#5a0a00'; ell(g, -r * .35, -20, 2.5, 4); g.fill(); ell(g, r * .35, -20, 2.5, 4); g.fill();
 }
 function drawCrusher(g, e, t) {
@@ -245,7 +259,7 @@ function drawFisch(g, e, t, dir) {
   g.strokeStyle = OL; g.lineWidth = 2; g.beginPath(); g.moveTo(14, -10); g.lineTo(21, -12); g.stroke();
 }
 function drawQualle(g, e, t) {
-  const p = Math.sin(t * 3);
+  const p = e.pulse !== undefined ? e.pulse * 2 - 1 : Math.sin(t * 3);
   g.strokeStyle = 'rgba(255,170,230,.8)'; g.lineWidth = 3; g.lineCap = 'round';
   for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(i * 6, -22); g.quadraticCurveTo(i * 6 + Math.sin(t * 5 + i) * 6, -10, i * 6, 4 + p * 4); g.stroke(); }
   g.beginPath(); g.moveTo(-20, -22); g.quadraticCurveTo(-20 - p * 2, -46, 0, -46); g.quadraticCurveTo(20 + p * 2, -46, 20, -22); g.quadraticCurveTo(0, -16, -20, -22);
@@ -291,14 +305,35 @@ function drawEisblock(g, b, t) {
 //  Bosse
 // ---------------------------------------------------------------------
 const BOSS_LOOK = {
-  1: { name: 'Magma-Koloss', body: ['#7a6a72', '#4a3a42', '#241a20'], glow: [255, 140, 40], crown: '#ffcc33' },
-  2: { name: 'Sand-Koloss', body: ['#e0c08a', '#a8804a', '#5a3a1a'], glow: [255, 220, 90], crown: '#ff9a2a' },
-  3: { name: 'Frost-Koloss', body: ['#c8e8ff', '#6aa0d0', '#2a4a7a'], glow: [120, 230, 255], crown: '#e8f8ff' },
-  4: { name: 'Korallen-Koloss', body: ['#ff9ab0', '#c84a6a', '#5a1a30'], glow: [120, 255, 220], crown: '#ffd23a' },
-  5: { name: 'Sturm-Koloss', body: ['#9aa8c8', '#4a5878', '#1a2238'], glow: [255, 255, 120], crown: '#c0c8ff' },
-  6: { name: 'Kristall-Koloss', body: ['#c8a8ff', '#6a4aa8', '#2a1a58'], glow: [255, 130, 230], crown: '#7fe8ff' },
-  7: { name: 'Moor-Koloss', body: ['#7a9a6a', '#3a5a32', '#14240e'], glow: [190, 255, 60], crown: '#c8a85a' },
+  // atk = Spezialangriffe (neben Springen, Werfen und Rammen), pil/wave/fall = Aussehen der Angriffe
+  1: { name: 'Magma-Koloss', body: ['#7a6a72', '#4a3a42', '#241a20'], glow: [255, 140, 40], crown: '#ffcc33', atk: ['eruption'], pil: 'lava', deco: 'horn' },
+  2: { name: 'Sand-Koloss', body: ['#e0c08a', '#a8804a', '#5a3a1a'], glow: [255, 220, 90], crown: '#ff9a2a', atk: ['wellen', 'zapfen'], wave: 'sand', fall: 'fels', deco: 'horn' },
+  3: { name: 'Frost-Koloss', body: ['#c8e8ff', '#6aa0d0', '#2a4a7a'], glow: [120, 230, 255], crown: '#e8f8ff', atk: ['zapfen', 'eruption'], pil: 'eis', fall: 'eis', shot: 'eis', deco: 'eis' },
+  4: { name: 'Korallen-Koloss', body: ['#ff9ab0', '#c84a6a', '#5a1a30'], glow: [120, 255, 220], crown: '#ffd23a', atk: ['flut', 'wellen'], wave: 'wasser', shot: 'wasser', deco: 'koralle' },
+  5: { name: 'Sturm-Koloss', body: ['#9aa8c8', '#4a5878', '#1a2238'], glow: [255, 255, 120], crown: '#c0c8ff', atk: ['blitze', 'wellen'], wave: 'wind', deco: 'wolke' },
+  6: { name: 'Kristall-Koloss', body: ['#c8a8ff', '#6a4aa8', '#2a1a58'], glow: [255, 130, 230], crown: '#7fe8ff', atk: ['scherben', 'eruption'], pil: 'kristall', shot: 'kristall', deco: 'eis' },
+  7: { name: 'Moor-Koloss', body: ['#7a9a6a', '#3a5a32', '#14240e'], glow: [190, 255, 60], crown: '#c8a85a', atk: ['gift', 'eruption'], pil: 'dorn', shot: 'gift', deco: 'ranken' },
+  9: { name: 'Sternenkönig', body: ['#8a7ae0', '#3a2a8a', '#120a3a'], glow: [255, 230, 110], crown: '#ffe066', atk: ['eruption', 'wellen', 'zapfen', 'blitze', 'scherben', 'gift', 'flut'], pil: 'stern', wave: 'wind', fall: 'stern', shot: 'stern', deco: 'stern' },
+  10: { name: 'Dschungel-Koloss', body: ['#8ac070', '#3f7a3a', '#173a1a'], glow: [255, 240, 80], crown: '#ff8a3a', atk: ['eruption', 'gift', 'wellen'], pil: 'dorn', wave: 'sand', shot: 'gift', deco: 'ranken' },
+  11: { name: 'Vulkan-Koloss', body: ['#5a3a3a', '#2a1618', '#0e0606'], glow: [255, 110, 20], crown: '#ff5a1a', atk: ['eruption', 'wellen', 'scherben'], pil: 'lava', wave: 'lava', shot: 'lava', deco: 'horn' },
+  12: { name: 'Zucker-Koloss', body: ['#ffc0e0', '#e86aa8', '#8a2a5a'], glow: [255, 255, 255], crown: '#7fe8ff', atk: ['zapfen', 'scherben', 'wellen'], pil: 'zucker', wave: 'zucker', fall: 'zucker', shot: 'zucker', deco: 'zucker' },
+  13: { name: 'Himmels-Koloss', body: ['#fff4c8', '#e8c060', '#8a6a1a'], glow: [255, 255, 180], crown: '#ffffff', atk: ['blitze', 'flut', 'scherben'], pil: 'blitz', wave: 'wind', shot: 'stern', deco: 'wolke' },
 };
+// Zusätzlicher Rückenschmuck je nach Boss
+function drawKolossDeco(g, look, t) {
+  const c = look.crown;
+  g.save();
+  switch (look.deco) {
+    case 'eis': for (let i = 0; i < 5; i++) { const x = -52 + i * 18; g.beginPath(); g.moveTo(x - 7, -108 + Math.abs(i - 2) * 9); g.lineTo(x, -150 + Math.abs(i - 2) * 12 - (i % 2) * 14); g.lineTo(x + 7, -108 + Math.abs(i - 2) * 9); g.closePath(); fs(g, c, 2); } break;
+    case 'horn': for (const dx of [-1, 1]) { g.beginPath(); g.moveTo(dx * 36 - 8, -128); g.quadraticCurveTo(dx * 58, -150, dx * 44, -178); g.quadraticCurveTo(dx * 36, -150, dx * 36 + 8, -128); g.closePath(); fs(g, look.body[2], 2.5); } break;
+    case 'koralle': for (let i = 0; i < 4; i++) { const x = -44 + i * 24; g.strokeStyle = c; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, -128); g.quadraticCurveTo(x + 8, -150, x - 4, -168 - i % 2 * 10); g.moveTo(x + 4, -146); g.lineTo(x + 18, -156); g.stroke(); } break;
+    case 'ranken': g.strokeStyle = '#2f8a3a'; g.lineWidth = 5; g.lineCap = 'round'; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(-50 + i * 38, -130); g.bezierCurveTo(-60 + i * 38, -100, -30 + i * 38, -80, -48 + i * 38, -50); g.stroke(); g.fillStyle = '#6ad04a'; g.beginPath(); g.ellipse(-50 + i * 38, -108, 9, 4, .6, 0, TAU); g.fill(); } break;
+    case 'wolke': g.fillStyle = 'rgba(255,255,255,.9)'; for (const [x, y, r] of [[-40, -142, 18], [-18, -152, 22], [10, -146, 20], [34, -138, 16]]) { g.beginPath(); g.arc(x, y + Math.sin(t * 2 + x) * 2, r, 0, TAU); g.fill(); } break;
+    case 'zucker': for (let i = 0; i < 4; i++) { const x = -46 + i * 26; g.strokeStyle = i % 2 ? '#ffffff' : '#ff4a8a'; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, -128); g.quadraticCurveTo(x + 10, -156, x - 6, -170); g.stroke(); } break;
+    case 'stern': for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .5, r = 120 + Math.sin(t * 3 + i) * 6; g.save(); g.translate(Math.cos(a) * r * .55, -90 + Math.sin(a) * r * .9); g.rotate(t + i); starPath(g, 0, 0, 12, 5); fs(g, '#ffe066', 2); g.restore(); } break;
+  }
+  g.restore();
+}
 function drawKoloss(g, b, t) {
   const look = BOSS_LOOK[b.look] || BOSS_LOOK[1];
   g.save();
@@ -319,7 +354,8 @@ function drawKoloss(g, b, t) {
   const bg = g.createRadialGradient(10, -60, 4, 10, -60, 34);
   bg.addColorStop(0, `rgba(${r0},${g0},${b0},.9)`); bg.addColorStop(1, `rgba(${r0},${g0},${b0},0)`);
   g.fillStyle = bg; ell(g, 10, -60, 34, 30); g.fill();
-  const arm = b.state === 'throw' ? -1 : Math.sin(t * 3) * .3;
+  drawKolossDeco(g, look, t);
+  const arm = b.state === 'throw' || b.atk ? -1.2 + Math.sin(t * 14) * .15 : Math.sin(t * 3) * .3;
   g.save(); g.translate(56, -80); g.rotate(arm); ell(g, 14, 10, 22, 20); fs(g, look.body[1], 3); g.restore();
   g.fillStyle = `rgb(${r0},${g0},${b0})`; ell(g, 18, -104, 11, b.angry ? 7 : 10); g.fill(); ell(g, 46, -100, 10, b.angry ? 6 : 9); g.fill();
   g.fillStyle = '#1a0a08'; g.beginPath(); g.arc(21, -103, 4.5, 0, TAU); g.arc(48, -99, 4, 0, TAU); g.fill();
@@ -355,4 +391,104 @@ function drawKrax(g, b, t) {
   g.fillStyle = '#ff3a2a'; g.shadowColor = '#ff3a2a'; g.shadowBlur = 10;
   ell(g, 50, -36, 5, b.angry ? 3 : 5); g.fill(); ell(g, 63, -34, 4, b.angry ? 2.5 : 4.5); g.fill(); g.shadowBlur = 0;
   g.restore();
+}
+
+// ---------------------------------------------------------------------
+//  Boss-Gefahren: Säulen, Zapfen, Wellen, Giftwolken, Splitter
+// ---------------------------------------------------------------------
+const PIL_COL = {
+  lava: ['#fff0a0', '#ff8a1a', '#c02a0a'], eis: ['#ffffff', '#a8e8ff', '#4a9ad8'], kristall: ['#ffd0ff', '#c86aff', '#6a2aa8'],
+  dorn: ['#d8ff9a', '#6ac03a', '#2a6a1a'], zucker: ['#ffffff', '#ff6aa8', '#c82a6a'], stern: ['#ffffff', '#ffe066', '#e8a020'], blitz: ['#ffffff', '#fff6a0', '#7aa8ff'],
+};
+function drawSaeule(g, e, t) {
+  const c = PIL_COL[e.style] || PIL_COL.lava, w = e.w;
+  if (e.warn > 0) {
+    const k = 1 - e.warn / e.warn0, pu = .5 + .5 * Math.sin(t * 30);
+    if (e.style === 'blitz') {
+      g.strokeStyle = `rgba(255,255,200,${.25 + .4 * k})`; g.lineWidth = 3 + k * 8; g.setLineDash([14, 10]);
+      g.beginPath(); g.moveTo(0, -700); g.lineTo(0, 0); g.stroke(); g.setLineDash([]);
+    }
+    g.fillStyle = `rgba(${e.style === 'eis' ? '160,230,255' : e.style === 'dorn' ? '120,220,60' : e.style === 'blitz' ? '255,255,160' : '255,110,30'},${.25 + .45 * pu * k})`;
+    ell(g, 0, 0, w * (.6 + .5 * k), 8 + 6 * k); g.fill();
+    g.strokeStyle = c[1]; g.lineWidth = 3; ell(g, 0, 0, w * .6, 9); g.stroke();
+    return;
+  }
+  const h = e.h * Math.min(1, (e.hotT || 0) / .12 + .15);
+  if (e.style === 'blitz') {
+    const gl = g.createLinearGradient(-w, 0, w, 0); gl.addColorStop(0, 'rgba(180,200,255,0)'); gl.addColorStop(.5, 'rgba(255,255,220,.85)'); gl.addColorStop(1, 'rgba(180,200,255,0)');
+    g.fillStyle = gl; g.fillRect(-w, -700, w * 2, 700);
+    g.strokeStyle = '#ffffff'; g.lineWidth = 9; g.lineJoin = 'round'; g.shadowColor = '#bfe0ff'; g.shadowBlur = 18;
+    g.beginPath(); g.moveTo(0, -700); for (let y = -660; y < 0; y += 44) g.lineTo(((y / 44) % 2 ? 14 : -14) + Math.sin(y + e.t * 40) * 4, y); g.lineTo(0, 0); g.stroke(); g.shadowBlur = 0;
+    return;
+  }
+  if (e.style === 'lava' || e.style === 'stern') {
+    const gr = g.createLinearGradient(0, 0, 0, -h); gr.addColorStop(0, c[2]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, c[0]);
+    g.fillStyle = gr; g.beginPath(); g.moveTo(-w / 2, 0);
+    for (let i = 0; i <= 6; i++) g.lineTo(-w / 2 + w * i / 6 + (i % 2 ? 3 : -3), -h + (i % 2) * 22 + Math.sin(t * 14 + i) * 5);
+    g.lineTo(w / 2, 0); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-w * .12, -h * .85, w * .24, h * .85);
+    return;
+  }
+  // Spitzen: Eis, Kristall, Dornen, Zuckerstangen
+  const n = 3;
+  for (let i = 0; i < n; i++) {
+    const x = (i - 1) * w * .32, hh = h * (i === 1 ? 1 : .72), ww = w * .24;
+    g.beginPath(); g.moveTo(x - ww, 0); g.lineTo(x - ww * .3, -hh + 10); g.lineTo(x, -hh); g.lineTo(x + ww * .3, -hh + 10); g.lineTo(x + ww, 0); g.closePath();
+    const gr = g.createLinearGradient(x - ww, 0, x + ww, 0); gr.addColorStop(0, c[2]); gr.addColorStop(.5, c[1]); gr.addColorStop(1, c[0]);
+    fs(g, e.style === 'zucker' ? (i % 2 ? '#ffffff' : '#ff6aa8') : gr, 2);
+    g.fillStyle = 'rgba(255,255,255,.4)'; g.beginPath(); g.moveTo(x - ww * .5, -6); g.lineTo(x - ww * .2, -hh + 14); g.lineTo(x, -hh + 4); g.lineTo(x - ww * .1, -6); g.fill();
+  }
+}
+function drawZapfen(g, e, t) {
+  const c = e.fall === 'fels' ? ['#e8d0a0', '#a8804a', '#5a3a1a'] : e.fall === 'zucker' ? ['#ffffff', '#ff6aa8', '#c82a6a'] : e.fall === 'stern' ? ['#ffffff', '#ffe066', '#c8902a'] : ['#ffffff', '#a8e8ff', '#4a9ad8'];
+  if (e.warn > 0) {
+    const k = 1 - e.warn / e.warn0, A = G.L.arena, fy = A ? A.gy * T - e.y : 0;
+    g.save(); g.translate(0, fy); g.fillStyle = `rgba(255,70,50,${.3 + .5 * Math.abs(Math.sin(t * 16))})`;
+    g.beginPath(); g.moveTo(-14, -4); g.lineTo(14, -4); g.lineTo(0, -22 - 10 * k); g.closePath(); g.fill(); g.restore();
+    g.globalAlpha = .5 + .5 * k;
+  }
+  if (e.fall === 'stern') { g.translate(0, -22); g.rotate(t * 6); starPath(g, 0, 0, 20, 9); fs(g, c[1], 2.5); return; }
+  g.beginPath();
+  if (e.fall === 'fels') { g.moveTo(-14, -40); g.lineTo(14, -44); g.lineTo(18, -16); g.lineTo(0, 0); g.lineTo(-17, -16); }
+  else { g.moveTo(-11, -46); g.lineTo(11, -46); g.lineTo(0, 2); }
+  g.closePath();
+  fs(g, e.fall === 'zucker' ? c[1] : radial(g, 0, -26, 28, c[0], c[1], c[2]), 2.5);
+  g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.moveTo(-6, -40); g.lineTo(-2, -40); g.lineTo(-3, -12); g.fill();
+}
+const WAVE_COL = { wasser: ['#d8f6ff', '#4ab4f0', '#1a6ab8'], sand: ['#fff0c0', '#e8b860', '#a8742a'], lava: ['#fff0a0', '#ff8a1a', '#c02a0a'], zucker: ['#ffffff', '#ff9ad0', '#e8408a'], wind: ['#ffffff', '#d8e8ff', '#8aa8e0'] };
+function drawWelle(g, e, t) {
+  const c = WAVE_COL[e.wave] || WAVE_COL.wasser, w = e.w, h = e.h, dir = e.dir || 1;
+  if (e.warn > 0) {   // Warnpfeil am Rand
+    const A = G.L.arena, fy = A.gy * T - e.y;
+    g.save(); g.translate(-dir * 0, fy - 40); g.fillStyle = `rgba(255,80,60,${.4 + .5 * Math.abs(Math.sin(t * 14))})`;
+    g.beginPath(); g.moveTo(dir * 26, 0); g.lineTo(-dir * 10, -22); g.lineTo(-dir * 10, 22); g.closePath(); g.fill();
+    g.font = '28px ' + FONT; g.textAlign = 'center'; g.fillStyle = '#fff'; g.fillText('!', -dir * 36, 10); g.restore();
+    return;
+  }
+  g.save(); g.scale(dir, 1);
+  const wob = Math.sin(t * 12) * 3;
+  g.beginPath(); g.moveTo(-w / 2, 0);
+  g.bezierCurveTo(-w / 2, -h * .35, -w * .12, -h * .6, w * .1, -h - wob);
+  g.bezierCurveTo(w * .42, -h * .95, w * .5, -h * .3, w / 2, 0); g.closePath();
+  const gr = g.createLinearGradient(0, -h, 0, 0); gr.addColorStop(0, c[1]); gr.addColorStop(1, c[2]);
+  fs(g, gr, 3);
+  g.strokeStyle = c[0]; g.lineWidth = 4; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-w * .1, -h * .78); g.quadraticCurveTo(w * .12, -h * 1.02 - wob, w * .32, -h * .72); g.stroke();
+  g.fillStyle = c[0]; for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(-w * .3 + i * w * .22, -h * .3 - Math.sin(t * 9 + i) * 4, 3 + (i % 2), 0, TAU); g.fill(); }
+  g.restore();
+}
+function drawGiftwolke(g, e, t) {
+  const a = Math.min(1, (e.age || 0) * 2) * Math.min(1, e.life / .8);
+  g.globalAlpha = a * .85;
+  for (const [x, y, r, col] of [[-26, -18, 24, '#6a9a2a'], [0, -26, 30, '#8ac03a'], [26, -18, 24, '#6a9a2a'], [0, -10, 28, '#9ad84a']]) { g.fillStyle = col; g.beginPath(); g.arc(x + Math.sin(t * 2 + x) * 3, y + Math.cos(t * 2.4 + x) * 2, r, 0, TAU); g.fill(); }
+  g.fillStyle = 'rgba(40,70,10,.6)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(-30 + i * 15, -30 - ((t * 20 + i * 13) % 34), 3, 0, TAU); g.fill(); }
+  g.fillStyle = '#d8ff80'; g.beginPath(); g.arc(-8, -28, 3.5, 0, TAU); g.arc(8, -28, 3.5, 0, TAU); g.fill();
+  g.globalAlpha = 1;
+}
+function drawScherbe(g, e, t) {
+  const c = SHOT_COL[e.col] || SHOT_COL.stern;
+  g.translate(0, -13); g.rotate(Math.atan2(e.vy, e.vx) + Math.PI / 2);
+  const gl = g.createRadialGradient(0, 0, 2, 0, 0, 26); gl.addColorStop(0, c[3]); gl.addColorStop(1, c[4]);
+  g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 26, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(0, -17); g.lineTo(8, 0); g.lineTo(0, 15); g.lineTo(-8, 0); g.closePath(); fs(g, radial(g, 0, 0, 14, c[0], c[1], c[2]), 2);
 }
