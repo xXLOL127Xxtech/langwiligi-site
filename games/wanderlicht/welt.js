@@ -110,6 +110,8 @@ const BIOMES = [
     sky: [0.04, 0.04, -0.05], fogAdd: 0.6, fogTint: [0.6, 0.56, 0.14], desat: 0.75, neon: 0.25, fly: 0xd0ff40, neonC: [0xc8ff30, 0xa0ff60, 0xffff50] },
 ];
 const NB = BIOMES.length;
+const MOSS_AMT = { lavendel: 0.85, gold: 0.6, kirsch: 0.9, mondwald: 0.9, schnee: 0, duenen: 0.05, moor: 0.95, toten: 0.65 };
+const MOSS_C = { lavendel: [0.2, 0.3, 0.14], gold: [0.3, 0.32, 0.14], kirsch: [0.2, 0.34, 0.15], mondwald: [0.1, 0.24, 0.17], schnee: [0.5, 0.55, 0.5], duenen: [0.5, 0.4, 0.2], moor: [0.1, 0.3, 0.2], toten: [0.16, 0.2, 0.12] };
 for (const b of BIOMES) {
   b.groundC = hexRGB(b.ground); b.groundHiC = hexRGB(b.groundHi); b.rockC = hexRGB(b.rock);
   b.stemC = hexRGB(b.stem); b.tipC = hexRGB(b.tip); b.canopyC = b.canopy.map(hexRGB); b.trunkC = hexRGB(b.trunk);
@@ -118,12 +120,16 @@ for (const b of BIOMES) {
   b.flyC = hexRGB(b.fly); b.neonCC = b.neonC.map(hexRGB);
   // Ferne Wiesen sollen die Farbe der Halme haben
   b.fieldC = b.groundC.map((v, i) => lerp(v, lerp(b.stemC[i], b.tipC[i], 0.45), 0.55 * Math.min(1, b.grass)));
+  // Der Boden ist von Moos bedeckt (ausser in Schnee und Wüste)
+  const mk = MOSS_AMT[b.id] || 0;
+  b.mossC = MOSS_C[b.id] || MOSS_C.lavendel;
+  b.fieldC = b.fieldC.map((v, i) => lerp(v, b.mossC[i], mk));
 }
 
 // ---------- Welt-Zustand ----------
 const World = {
   seed: 1, spawnX: 0, spawnZ: 0,
-  nH: null, nT: null, nM: null, nD: null,
+  nH: null, nT: null, nM: null, nD: null, nR: null, bridges: new Map(), bridgeQ: new Map(),
   sites: new Map(), big: new Map(), paths: new Map(),
 };
 
@@ -133,6 +139,8 @@ function initWorld(seed, spawn) {
   World.nT = new Simplex(seed + 11);
   World.nM = new Simplex(seed + 23);
   World.nD = new Simplex(seed + 37);
+  World.nR = new Simplex(seed + 53);
+  World.bridges.clear(); World.bridgeQ.clear();
   World.sites.clear(); World.big.clear(); World.paths.clear();
   if (spawn) { World.spawnX = spawn[0]; World.spawnZ = spawn[1]; }
   else findSpawn();
@@ -182,7 +190,7 @@ function naturalHeight(x, z, w) {
   r = r * r * r;
   const n3 = World.nD.noise(x * 0.05, z * 0.05);
   const cont = fbm(World.nD, x * 0.0009 + 40, z * 0.0009, 2);
-  let h = n1 * a + r * mn + n3 * dt + off + cont * (2 + a * 0.3);
+  let h = n1 * a * 0.55 + r * mn + n3 * dt * 0.18 + off + cont * (1.2 + a * 0.15);
   // Gewaltige Gebirge: weit sichtbar, besteigbar, mit Schneegipfeln
   const mm = smooth(0.1, 0.48, fbm(World.nT, x * 0.00031 - 70, z * 0.00031 + 130, 2));
   if (mm > 0) {
@@ -217,8 +225,88 @@ function applySites(x, z, h) {
   return lerp(h, s.baseH, t);
 }
 
+// Flüsschen: Linien, an denen das Rauschen null wird; im Hochland versiegen sie
+function riverAmt(x, z) {
+  const d = Math.abs(fbm(World.nR, x * 0.0016 + 20, z * 0.0016 - 60, 2));
+  return d < 0.02 ? smooth(0.02, 0.004, d) : 0;
+}
+function applyRiver(x, z, h) {
+  const k = riverAmt(x, z);
+  if (k <= 0) return h;
+  const kk = k * (1 - smooth(9, 24, h));
+  return lerp(h, Math.min(h, -1.5), kk);
+}
+function heightBase(x, z, w) {
+  return applyBig(x, z, applySites(x, z, applyRiver(x, z, naturalHeight(x, z, w || weightsAt(x, z)))));
+}
 function heightAt(x, z, w) {
-  return applyBig(x, z, applySites(x, z, naturalHeight(x, z, w || weightsAt(x, z))));
+  return applyBridges(x, z, heightBase(x, z, w));
+}
+
+// ---------- Brücken: wo ein Weg einen Fluss kreuzt ----------
+const BR_HW = 1.9;
+function bridgesOfCell(ci, cj) {
+  const key = ci + ',' + cj;
+  if (World.bridges.has(key)) return World.bridges.get(key);
+  const out = [];
+  for (const pl of pathsOfCell(ci, cj)) {
+    // Weg in Schritten von 2 m abtasten
+    const pts = [];
+    for (let k = 0; k < pl.length - 1; k++) {
+      const a = pl[k], b = pl[k + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(l / 2));
+      for (let q = 0; q < n; q++) pts.push([lerp(a[0], b[0], q / n), lerp(a[1], b[1], q / n)]);
+    }
+    pts.push(pl[pl.length - 1]);
+    let i = 1;
+    while (i < pts.length - 1) {
+      if (heightBase(pts[i][0], pts[i][1]) < 0.2) {
+        let j = i; while (j < pts.length - 1 && heightBase(pts[j][0], pts[j][1]) < 0.2) j++;
+        const A = pts[Math.max(0, i - 2)], B = pts[Math.min(pts.length - 1, j + 1)];
+        const len = Math.hypot(B[0] - A[0], B[1] - A[1]);
+        if (len > 4 && len < 60) {
+          const ya = Math.max(heightBase(A[0], A[1]), 0.95), yb = Math.max(heightBase(B[0], B[1]), 0.95);
+          out.push({ ax: A[0], az: A[1], bx: B[0], bz: B[1], len, ux: (B[0] - A[0]) / len, uz: (B[1] - A[1]) / len, ya, yb });
+        }
+        i = j + 1;
+      } else i++;
+    }
+  }
+  World.bridges.set(key, out);
+  return out;
+}
+// Brücken, die ein Feld (280 m) berühren
+function bridgesNearCell(ci, cj) {
+  const key = ci * 200003 + cj;
+  let list = World.bridgeQ.get(key);
+  if (list) return list;
+  list = [];
+  const x0 = ci * CELL - 8, x1 = (ci + 1) * CELL + 8, z0 = cj * CELL - 8, z1 = (cj + 1) * CELL + 8;
+  for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+    for (const b of bridgesOfCell(ci + i, cj + j)) {
+      if (Math.max(b.ax, b.bx) < x0 || Math.min(b.ax, b.bx) > x1 || Math.max(b.az, b.bz) < z0 || Math.min(b.az, b.bz) > z1) continue;
+      list.push(b);
+    }
+  }
+  World.bridgeQ.set(key, list);
+  return list;
+}
+function bridgesNear(x0, z0, x1, z1) {
+  const out = new Set();
+  for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) for (const b of bridgesNearCell(Math.floor(x / CELL), Math.floor(z / CELL))) out.add(b);
+  return [...out];
+}
+function bridgeDeckY(b, u) { return lerp(b.ya, b.yb, clamp01(u / b.len)); }
+function applyBridges(x, z, h) {
+  const list = bridgesNearCell(Math.floor(x / CELL), Math.floor(z / CELL));
+  for (let k = 0; k < list.length; k++) {
+    const b = list[k];
+    const dx = x - b.ax, dz = z - b.az;
+    const u = dx * b.ux + dz * b.uz, v = -dx * b.uz + dz * b.ux;
+    if (u < -2 || u > b.len + 2 || v > 2.8 || v < -2.8) continue;
+    const t = smooth(2.7, 1.3, Math.abs(v)) * (u < 0 ? smooth(-2, 0, u) : u > b.len ? smooth(b.len + 2, b.len, u) : 1);
+    if (t > 0) h = lerp(h, bridgeDeckY(b, u) - 0.06, t);
+  }
+  return h;
 }
 
 function dominantBiome(w) {
@@ -401,7 +489,7 @@ function groundColor(x, z, h, slope, w, out) {
   const snow = smooth(lerp(72, 32, cold), lerp(96, 42, cold), h + sn) * (1 - rock * 0.5);
   r = lerp(r, SNOWC[0], snow); g = lerp(g, SNOWC[1], snow); b = lerp(b, SNOWC[2], snow);
   // feine Flecken
-  const n = World.nD.noise(x * 0.09, z * 0.09) * 0.06 + World.nD.noise(x * 0.013 + 9, z * 0.013) * 0.08;
+  const n = World.nD.noise(x * 0.09, z * 0.09) * 0.09 + World.nD.noise(x * 0.013 + 9, z * 0.013) * 0.14 + World.nD.noise(x * 0.33, z * 0.33) * 0.04;
   out[0] = r * (1 + n); out[1] = g * (1 + n); out[2] = b * (1 + n);
   return out;
 }
@@ -536,9 +624,16 @@ function pathsOfCell(ci, cj) {
   const out = [];
   const s = siteAt(ci, cj);
   if (s) {
-    for (const [di, dj] of [[1, 0], [0, 1]]) {
+    for (const [di, dj] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
       const o = siteAt(ci + di, cj + dj);
-      if (o && Math.hypot(o.x - s.x, o.z - s.z) < CELL * 1.8) out.push(linkPath(s, o, hash2(ci, cj, di * 3 + dj)));
+      if (o && Math.hypot(o.x - s.x, o.z - s.z) < CELL * 1.8) out.push(linkPath(s, o, hash2(ci, cj, di * 3 + dj + 5)));
+    }
+    // Pfade, die in verschiedene Richtungen durch den Wald führen
+    const rr = mulberry32(hash2(ci, cj, World.seed ^ 0x7a11));
+    const nTrail = 1 + Math.floor(rr() * 3);
+    for (let q = 0; q < nTrail; q++) {
+      const ang = rr() * Math.PI * 2, len = 150 + rr() * 260;
+      out.push(linkPath(s, { x: s.x + Math.cos(ang) * len, z: s.z + Math.sin(ang) * len }, hash2(ci, cj, 200 + q)));
     }
     // Weg zum nächsten Wahrzeichen
     const L = bigNear(s.x, s.z, 560);

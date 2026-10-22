@@ -384,7 +384,7 @@ function worldMat(o = {}) {
     sh.fragmentShader = 'varying float vU; varying float vMat; varying vec3 vWP; varying vec3 vWN; uniform vec3 uCam; uniform float uCut;' + (o.path ? 'varying float vPath;' : '') + '\n' + CLOUD_SH + SURF + sh.fragmentShader
       .replace('void main() {', 'void main() {\n' + (cutU ? ' if (distance(vWP.xz, uCam.xz) < uCut) discard;' : ''))
       .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = surf(diffuseColor.rgb, vWP, normalize(vWN), vMat, distance(vWP, uCam), vU);' + (o.path ? `
- float pk = smoothstep(2.9, 1.2, vPath + (dn(vWP * 2.3) - 0.5) * 1.5) * 0.85;
+ float pk = smoothstep(3.4, 1.5, vPath + (dn(vWP * 2.3) - 0.5) * 1.5) * 0.85;
  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.4 + vec3(0.2, 0.16, 0.12) * (0.8 + 0.4 * dn(vWP * 11.0)), pk);` : ''))
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n float emitK = step(8.5, vMat) * step(vMat, 9.5); totalEmissiveRadiance += diffuseColor.rgb * emitK * 0.95; diffuseColor.rgb *= 1.0 - 0.75 * emitK;')
       .replace('#include <fog_fragment>', 'gl_FragColor.rgb *= cloudSh(vWP.xz);\n#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, min(aerialF(fogDepth, vWP.y, fogNear, fogFar), ' + cap.toFixed(2) + '));\n#endif');
@@ -1444,6 +1444,34 @@ function buildChunk(ci, cj) {
     const x = x0 + 8 + r() * (CHUNK - 16), z = z0 + 8 + r() * (CHUNK - 16), h = chunkHeight(chunk, x, z);
     if (h > 0.6 && !nearSite(x, z, 14)) buildDecor(pick(r, ['schwert', 'statue', 'schrein', 'graeber', 'schwert', 'schrein', 'statue']), x, h, z, r, mg, gps, chunk);
   }
+  // Holzbrücken über Flüsse (jedes Brett gehört dem Stück, in dem es liegt)
+  for (const b of bridgesNear(x0, z0, x0 + CHUNK, z0 + CHUNK)) {
+    const ry = Math.atan2(b.ux, b.uz), nxp = -b.uz, nzp = b.ux;
+    const inC = (x, z) => x >= x0 && x < x0 + CHUNK && z >= z0 && z < z0 + CHUNK;
+    const n = Math.ceil(b.len / 0.8);
+    for (let k = 0; k < n; k++) {
+      const u = (k + 0.5) * b.len / n, x = b.ax + b.ux * u, z = b.az + b.uz * u;
+      if (!inC(x, z)) continue;
+      const y = bridgeDeckY(b, u);
+      mg.add('box', M(x, y - 0.03, z, BR_HW * 2 + 0.2, 0.14, b.len / n + 0.02, 0, ry, 0), [0.34 + r() * 0.06, 0.25 + r() * 0.04, 0.17], 0.1, r, MT.wood);
+    }
+    for (let u = 0; u <= b.len + 0.01; u += 2) {
+      const uu = Math.min(u, b.len), x = b.ax + b.ux * uu, z = b.az + b.uz * uu;
+      if (!inC(x, z)) continue;
+      const y = bridgeDeckY(b, uu);
+      for (const sd of [-1, 1]) {
+        const px = x + nxp * (BR_HW + 0.05) * sd, pz = z + nzp * (BR_HW + 0.05) * sd;
+        mg.add('cyl6', M(px, y - 1.4, pz, 0.1, 2.5, 0.1), [0.22, 0.16, 0.11], 0.1, r, MT.wood);
+        chunk.col.push({ x: px, z: pz, r: 0.28, top: y + 1 });
+        // Geländer zum nächsten Pfosten
+        const u2 = Math.min(uu + 2, b.len), ex = b.ax + b.ux * u2 + nxp * (BR_HW + 0.05) * sd, ez = b.az + b.uz * u2 + nzp * (BR_HW + 0.05) * sd;
+        if (uu < b.len - 0.01) {
+          mg.add('box', M((px + ex) / 2, (y + bridgeDeckY(b, u2)) / 2 + 0.85, (pz + ez) / 2, 0.07, 0.07, u2 - uu + 0.05, 0, ry, 0), [0.26, 0.19, 0.13], 0.1, r, MT.wood);
+          mg.add('box', M((px + ex) / 2, (y + bridgeDeckY(b, u2)) / 2 + 0.5, (pz + ez) / 2, 0.06, 0.06, u2 - uu + 0.05, 0, ry, 0), [0.26, 0.19, 0.13], 0.1, r, MT.wood);
+        }
+      }
+    }
+  }
   if (!mg.empty) for (const gg of mg.buildBuckets(64)) { const m = new THREE.Mesh(gg, MAT.flat); m.castShadow = true; m.receiveShadow = true; group.add(m); }
   if (!wps.empty) group.add(new THREE.Points(wps.build(), MAT.glowBig));
   // Leuchtpilze und Leuchtblumen
@@ -1475,6 +1503,7 @@ function nearSite(x, z, extra) {
 }
 
 function chunkHeight(ch, x, z) {
+  if (ch.virtual) return heightAt(x, z);
   const S = CHUNK / CHUNK_RES, V = CHUNK_RES + 1;
   let fx = (x - ch.ci * CHUNK) / S, fz = (z - ch.cj * CHUNK) / S;
   fx = clamp(fx, 0, CHUNK_RES - 1e-4); fz = clamp(fz, 0, CHUNK_RES - 1e-4);
@@ -1485,6 +1514,7 @@ function chunkHeight(ch, x, z) {
   return d + (c - d) * (1 - u) + (b - d) * (1 - v);
 }
 function chunkWeights(ch, x, z, out) {
+  if (ch.virtual) return weightsAt(x, z, out);
   const S = CHUNK / CHUNK_RES, V = CHUNK_RES + 1;
   const fx = clamp((x - ch.ci * CHUNK) / S, 0, CHUNK_RES - 1e-4), fz = clamp((z - ch.cj * CHUNK) / S, 0, CHUNK_RES - 1e-4);
   const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
@@ -1715,8 +1745,7 @@ function updateChunks(px, pz, budgetMs) {
     const cx = ch.ci * CHUNK + CHUNK / 2, cz = ch.cj * CHUNK + CHUNK / 2;
     const d = Math.hypot(cx - px, cz - pz);
     const has = G.grass.has(key);
-    if (d < GR && !has) gneed.push([d, key, ch]);
-    else if (d > GR + 30 && has) { const gm = G.grass.get(key); if (gm) disposeObj(gm); G.grass.delete(key); }
+    if (has) { const gm = G.grass.get(key); if (gm) disposeObj(gm); G.grass.delete(key); }
     if (!ch.layerNear && ch.layerFar) ch.layerFar.visible = d < CAN_R + CHUNK * 0.6;
     if (d < LR && !ch.layerNear) lneed.push([d, ch]);
     else if (ch.layerNear) {
@@ -1774,7 +1803,7 @@ const FAR_LV = [
   { size: 192, res: 12, drop: 1.1, ultra: false },
   { size: 640, res: 14, drop: 3.5, ultra: true },
 ];
-function buildFarTile(fi, fj, lv = FAR_LV[0]) {
+function buildFarTile(fi, fj, lv = FAR_LV[0], real = false) {
   const N = lv.res, FAR = lv.size, S = FAR / N, V = N + 1, VV = N + 3, x0 = fi * FAR, z0 = fj * FAR;
   const HH = new Float32Array(VV * VV), WW = new Float32Array(V * V * NB);
   for (let j = -1; j <= N + 1; j++) for (let i = -1; i <= N + 1; i++) {
@@ -1814,7 +1843,24 @@ function buildFarTile(fi, fj, lv = FAR_LV[0]) {
   grp.add(new THREE.Mesh(g, lv.ultra ? MAT.ultraTerrain : MAT.farTerrain));
   // Baumkronen: Wälder bilden dunkle Bänder bis zum Horizont
   const r = mulberry32(hash2(fi, fj, World.seed + 777)), fm = new Merger();
-  for (let k = 0; k < (lv.ultra ? 0 : 190); k++) {
+  grp.userData.real = real;
+  if (real) {
+    // dieselben Bäume wie im Nahbereich, damit beim Näherkommen nichts verschwindet oder springt
+    const cps = FAR / CHUNK, cI = Math.round(x0 / CHUNK), cJ = Math.round(z0 / CHUNK);
+    for (let cj = cJ; cj < cJ + cps; cj++) for (let ci = cI; ci < cI + cps; ci++) {
+      const cx0 = ci * CHUNK, cz0 = cj * CHUNK;
+      const vch = { ci, cj, virtual: true };
+      planTrees(vch, mulberry32(hash2(ci, cj, World.seed + 99)), pathSegsNear(cx0, cz0, cx0 + CHUNK, cz0 + CHUNK), bigNear(cx0 + CHUNK / 2, cz0 + CHUNK / 2, 330));
+      for (const t of vch.trees) {
+        if (t.sp === 'tot') continue;
+        const c = (t.neon ? t.B.canopyC[0] : t.B.canopyC[1]).map(v => v * 0.8 * (t.tint ? t.tint[0] : 1));
+        const conif = t.sp === 'tanne' || t.sp === 'schneetanne', h = t.y - lv.drop * 0.4;
+        if (conif) fm.add('cone6', M(t.x, h + t.height * 0.12, t.z, t.crown, t.height * 0.9, t.crown), c, 0.15, r, 13);
+        else fm.add('ico0', M(t.x, h + t.height * 0.72, t.z, t.crown, t.height * 0.34, t.crown), c, 0.15, r, 13);
+      }
+    }
+  }
+  for (let k = 0; k < (lv.ultra || real ? 0 : 190); k++) {
     const x = x0 + r() * FAR, z = z0 + r() * FAR;
     const w = weightsAt(x, z, _fw);
     let td = 0; for (let b = 0; b < NB; b++) td += w[b] * BIOMES[b].trees;
@@ -1851,13 +1897,14 @@ function updateFar(px, pz, t0, budgetMs) {
     }
   }
   need.sort((a, b) => a[0] - b[0]);
-  for (const [, i, j, key, lv] of need) {
+  for (const [d0, i, j, key, lv] of need) {
     if (performance.now() - t0 > budgetMs) break;
-    G.far.set(key, buildFarTile(i, j, lv));
+    G.far.set(key, buildFarTile(i, j, lv, !lv.ultra && d0 < 400));
   }
   for (const [key, ft] of G.far) {
     const l = +key[0], [i, j] = key.slice(2).split(',').map(Number), F = FAR_LV[l].size;
     const d = Math.hypot((i + 0.5) * F - px, (j + 0.5) * F - pz);
+    if (!l && !ft.userData.real && d < 380) { disposeObj(ft); G.far.delete(key); continue; }
     if (d > (l ? vs.ultraR : vs.farR) + F * 1.6 || (l && d < vs.farR - F * 2.2)) { disposeObj(ft); G.far.delete(key); }
   }
 }
