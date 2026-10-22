@@ -325,7 +325,7 @@ function initGraphics(canvas) {
   G.brightMat = new THREE.ShaderMaterial({
     uniforms: { tDiffuse: { value: G.rt.texture }, uPx: { value: new THREE.Vector2() } }, vertexShader: qv,
     fragmentShader: `uniform sampler2D tDiffuse; uniform vec2 uPx; varying vec2 vUv;
-      vec3 br(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; float l = max(c.r, max(c.g, c.b)); return c * smoothstep(0.55, 0.95, l); }
+      vec3 br(vec2 o){ vec3 c = texture2D(tDiffuse, vUv + o).rgb; float l = max(c.r, max(c.g, c.b)); return c * smoothstep(0.62, 1.0, l); }
       void main(){ gl_FragColor = vec4((br(vec2(0.0)) + br(uPx * vec2(1.0, 0.0)) + br(uPx * vec2(0.0, 1.0)) + br(uPx)) * 0.25, 1.0); }`,
     depthTest: false, depthWrite: false,
   });
@@ -364,6 +364,7 @@ function initGraphics(canvas) {
   initWeatherFX();
   initBurst();
   initMist();
+  initCloudSea();
   G.bolts = new THREE.Group();
   G.scene.add(G.bolts);
   resizeGraphics();
@@ -535,7 +536,7 @@ function initClouds() {
         p.y += sin(uTime * 0.3 + aRnd * 6.0) * 0.4;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = min(15.0 * (0.7 + 0.6 * aRnd) * uScale / -mv.z, 60.0) * vis;
+        gl_PointSize = min(15.0 * (0.7 + 0.6 * aRnd) * uScale / -mv.z, 60.0) * vis * smoothstep(10.0, 55.0, -mv.z);
         vec3 col = mix(uDark, uLit, aInfo.y * (0.8 + 0.3 * aRnd));
         col += uFlash * vec3(0.55, 0.5, 0.8) * (0.4 + aRnd);
         vCol = mix(col, uHorizon, smoothstep(uField * 0.12, uField * 0.46, dist) * 0.8);
@@ -1011,6 +1012,17 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   U.uNeon.value = cave ? 1 : (0.12 + ATM.night * 0.88) * (1 - md.dunkel * 0.85);
   U.uFogColor.value.copy(G.scene.fog.color); U.uFogNear.value = near; U.uFogFar.value = far;
   U.uWind.value = c.wind; U.uGrassFar.value = vs.grass;
+
+  // Wolkenmeer, wenn man hoch oben steht (morgens und bei Nebel besonders dicht)
+  const morning = smooth(0.18, 0.28, dayT) * (1 - smooth(0.36, 0.46, dayT));
+  const seaAmt = cave ? 0 : smooth(SEA_Y + 12, SEA_Y + 50, cam.y) * clamp01(0.45 + morning * 0.5 + c.fog * 0.6 + cloudE * 0.3);
+  G.sea.visible = seaAmt > 0.01;
+  if (G.sea.visible) {
+    G.seaMat.uniforms.uAmt.value = seaAmt;
+    G.sea.position.x = Math.round(cam.x / 50) * 50; G.sea.position.z = Math.round(cam.z / 50) * 50;
+    G.seaMat.uniforms.uLit.value.copy(ATM.hor).lerp(ATM.sunC, 0.45 * sunUp).multiplyScalar(1.1 - ATM.night * 0.4);
+    G.seaMat.uniforms.uShade.value.copy(ATM.zen).lerp(ATM.hor, 0.4).multiplyScalar(0.8);
+  }
 
   // Wolken
   G.clouds.visible = !cave;
@@ -1619,6 +1631,40 @@ function initMist() {
   }
 }
 
+
+// ---------- Wolkenmeer: von hohen Gipfeln sieht man auf ein Meer aus Wolken ----------
+const SEA_Y = 54;
+function initCloudSea() {
+  G.seaMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: U.uTime, uAmt: { value: 0 }, uLit: { value: new THREE.Color() }, uShade: { value: new THREE.Color() }, uFogColor: U.uFogColor, uCam: U.uCam, uSunDirW: U.uSunDirW },
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `
+      uniform float uTime, uAmt; uniform vec3 uLit, uShade, uFogColor, uCam, uSunDirW; varying vec3 vW;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+      float fb(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += n(p) * a; p *= 2.1; a *= 0.5; } return v; }
+      void main(){
+        vec2 p = vW.xz * 0.004 + vec2(uTime * 0.004, uTime * 0.002);
+        float c = fb(p);
+        float a = smoothstep(0.32, 0.62, c) * uAmt;
+        float d = distance(vW.xz, uCam.xz);
+        a *= smoothstep(4200.0, 2400.0, d);
+        if (a < 0.02) discard;
+        float lit = smoothstep(0.35, 0.8, c) * (0.6 + 0.4 * max(uSunDirW.y, 0.0));
+        vec3 col = mix(uShade, uLit, lit);
+        col = mix(col, uFogColor, smoothstep(600.0, 3600.0, d) * 0.85);
+        gl_FragColor = vec4(col, a);
+      }`,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+  });
+  G.sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), G.seaMat);
+  G.sea.rotation.x = -Math.PI / 2;
+  G.sea.position.y = SEA_Y;
+  G.sea.renderOrder = 3;
+  G.sea.frustumCulled = false;
+  G.sea.visible = false;
+  G.scene.add(G.sea);
+}
 
 // ---------- Knorrige, tote Bäume ----------
 function twig(mg, x, y, z, a, tilt, len, rad, depth, r, col, ps, cols, leaves) {
