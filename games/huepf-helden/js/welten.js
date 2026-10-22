@@ -41,6 +41,7 @@ const NEW_FIRST = 10;     // erste der neuen Welten
 const nextWorldOf = n => n < 8 ? n + 1 : n === 8 ? NEW_FIRST : (n >= NEW_FIRST && n < WORLD_COUNT) ? n + 1 : 0;
 const burgName = w => { const sp = WORLD_SPECS[w - 1]; return sp.final ? 'Schattenburg' : sp.sternFinale ? 'Sternenfestung' : 'Burg ' + w; };
 
+const byIdOf = (nodes, id) => nodes.find(o => o.id === id);
 // Weltkarte einer Welt aufbauen (Knoten und Wege)
 function buildWorld(n) {
   const spec = WORLD_SPECS[n - 1];
@@ -80,6 +81,16 @@ function buildWorld(n) {
     edge(n + '-5', n + '-G5', 'secret');
     node(n + '-HR5', 'haus', { variant: 'rot', title: 'Memory-Haus' });
     edge(n + '-G5', n + '-HR5');
+    // Versteckte Tunnel (nicht in Wolken- oder Unterwasser-Leveln): Ein Tunnelschlüssel öffnet ein Toad-Haus auf der Karte
+    let nt = 0;
+    for (const ti of [1, 3, 0, 4, 2]) {
+      const tk = THEMES[spec.themes[ti]];
+      if (nt >= 2 || !tk || tk.bottomless || tk.water) continue;
+      byIdOf(nodes, n + '-' + (ti + 1)).tunnel = true;
+      node(n + '-TH' + (ti + 1), 'haus', { variant: 'toad', title: 'Toad-Haus', geheim: true });
+      edge(n + '-' + (ti + 1), n + '-TH' + (ti + 1), 'toad');
+      nt++;
+    }
     node(n + '-Z', 'tor', { cost: spec.gate, title: 'Sternentor' });
     edge(n + '-4', n + '-Z');
     node(n + '-HG', 'haus', { variant: 'gruen', title: 'Ballon-Haus' });
@@ -145,15 +156,31 @@ function newSave() {
   return {
     v: 2, created: Date.now(), saved: Date.now(), seed: (Math.random() * 2 ** 31) >>> 0,
     lives: 5, inv: { beere: 1, bluete: 0, frost: 0, wirbel: 0, eisbaer: 0, stern: 0 },
-    world: 1, at: {}, done: {}, paid: {}, unlocked: [1], beaten: [], spent: 0, houses: {}, clears: 0,
+    world: 1, at: {}, done: {}, paid: {}, unlocked: [1, 2], beaten: [], spent: 0, houses: {}, clears: 0, toad: {},
     story: { intro: false, ending: false }, score: 0, playMs: 0,
   };
+}
+// Freischaltregeln: Welt 1 und 2 sind offen. Wer in einer Welt 5 Level geschafft hat, öffnet die nächste.
+// Nach Welt 8 (Morvax) öffnet sich Welt 10, nach Burg-Siegen immer die Folgewelt.
+function applyUnlocks(s) {
+  let any = false;
+  const add = w => { if (w && !s.unlocked.includes(w)) { s.unlocked.push(w); any = true; } };
+  add(2);
+  for (const n of s.beaten || []) add(nextWorldOf(n));
+  for (let n = 1; n <= WORLD_COUNT; n++) {
+    if (n === 8 || n === 9 || !s.unlocked.includes(n)) continue;
+    const re = new RegExp('^' + n + '-(\\d+|G\\d*)$');
+    let c = 0;
+    for (const k in s.done) if (re.test(k) && (s.done[k].c || s.done[k].s)) c++;
+    if (c >= 5) add(nextWorldOf(n));
+  }
+  return any;
 }
 function loadSlot(i) {
   const s = store('spielstand-' + i);
   if (!s || s.v !== 2) return null;
-  // Spielstände aus der Zeit vor den neuen Welten: Folgewelten nachträglich öffnen
-  for (const n of s.beaten || []) { const nx = nextWorldOf(n); if (nx && !s.unlocked.includes(nx)) s.unlocked.push(nx); }
+  if (!s.toad) s.toad = {};
+  applyUnlocks(s);
   return s;
 }
 function writeSlot(i, s) { s.saved = Date.now(); store('spielstand-' + i, s); }
@@ -168,6 +195,7 @@ const Prog = {
   edgeOpen(W, e) {
     const a = W.byId[e.a], r = this.save.done[e.a];
     if (a.type === 'start') return true;
+    if (e.req === 'toad') return !!(this.save.toad && this.save.toad[e.a]);
     if (e.req === 'secret') return !!(r && r.s);
     if (e.req === 'paid') return !!this.save.paid[e.a];
     if (a.type === 'tor') return !!this.save.paid[e.a];
@@ -211,6 +239,7 @@ const Prog = {
       const nx = nextWorldOf(n);
       if (nx && !this.save.unlocked.includes(nx)) this.save.unlocked.push(nx);
     }
+    applyUnlocks(this.save);
     if (this.w9Open() && !this.save.unlocked.includes(9)) this.save.unlocked.push(9);
   },
   houseReady(id) { const last = this.save.houses[id]; return last === undefined || last < this.save.clears; },

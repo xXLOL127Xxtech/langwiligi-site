@@ -24,7 +24,7 @@ const SEG_WEIGHTS = {
 };
 const WATER_WEIGHTS = { wflat: 2, wrocks: 3, wpillars: 2.5, wfish: 2.5, wjelly: 1.6, wurchin: 1.6, wblocks: 2, wpit: 1.4 };
 
-function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, bossLook = 1 }) {
+function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, tunnel = false, bossLook = 1 }) {
   const th = THEMES[themeKey];
   const rng = makeRng(seed);
   const H = 15, MAXW = 700;
@@ -478,6 +478,23 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     starSpot(lx + 1, uRow - 2, 3);
   }
 
+  // ---------------- Versteckter Tunnel (Toad-Haus) ----------------
+  // Brüchiger Boden -> Gang unter der Erde mit Münzen und Tunnelschlüssel -> Schacht zurück nach oben
+  function toadTunnel(x, gy) {
+    const ng = Math.min(gy, 10), len = 10;
+    x = flatRun(x, 3, ng, { noDeko: true });
+    for (let i = 0; i < len + 2; i++) ground(x + i, ng);
+    for (let tx = x; tx < x + len; tx++) for (let ty = ng + 1; ty <= ng + 2; ty++) set(tx, ty, 0);
+    set(x, ng, TILE.R); set(x + 1, ng, TILE.R);
+    set(x + len - 2, ng, 0); set(x + len - 1, ng, 0);
+    for (let i = 2; i < len - 2; i += 2) coin(x + i, ng + 2);
+    L.ents.push({ type: 'toad', x: (x + len - 4) * T + T / 2, y: (ng + 2) * T + T / 2 });
+    L.tunnelX = x;
+    for (let i = 0; i < len + 2; i++) if (rng.chance(.12)) deko('stein', (x + i) * T + T / 2, ng * T);
+    x = flatRun(x + len + 2, 3, ng);
+    return [x, ng];
+  }
+
   // ---------------- Bossarena ----------------
   function arena(x, type) {
     const gy = 12;
@@ -488,7 +505,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     for (const px of plats) for (let i = 0; i < 3; i++) set(px + i, gy - 4, TILE.P);
     for (let i = 0; i < 4; i++) L.deko.push({ kind: 'fackel', x: (ax + 3 + i * Math.floor(alen / 4)) * T, y: gy * T, dyn: true, s: 1, h: .5 });
     L.arena = { x0: ax * T, x1: (ax + alen) * T, gy, type, look: bossLook };
-    L.ents.push({ type: 'boss', boss: type, x: (ax + alen - 6) * T, y: gy * T, look: bossLook });
+    L.ents.push({ type: 'boss', boss: type === 'koloss' ? (BOSS_TYPE[bossLook] || 'koloss') : type, x: (ax + alen - 6) * T, y: gy * T, look: bossLook });
     x = ax + alen;
     for (let ty = 0; ty < H; ty++) set(x, ty, TILE.S);
     return x + 1;
@@ -519,6 +536,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
       x = flatRun(x, 4, gy);
       continue;
     }
+    if (tunnel && !water && !L.tunnelX && x > target * .3) { [x, gy] = toadTunnel(x, gy); continue; }
     if (secret && !water && !L.secretX && x > target * .56) { [x, gy] = secretPocket(x, gy); continue; }
     let k;
     do { k = rng.weighted(weights); } while (k === last && rng.chance(.8));

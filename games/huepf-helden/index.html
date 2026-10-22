@@ -120,7 +120,8 @@ input.txt:focus{border-color:var(--gold)}
 .inv .anz{font-family:var(--fn);font-size:20px;color:var(--gold)}
 .inv.sel,.inv:hover,.inv:focus-visible{background:rgba(255,210,58,.22);box-shadow:0 0 0 3px var(--gold)}
 .inv:disabled{opacity:.35;cursor:default}
-.welten{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.welten{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-height:min(52vh,460px);overflow-y:auto;padding:4px;scroll-behavior:smooth}
+.welt.sel{box-shadow:0 0 0 3px var(--gold),0 0 18px rgba(255,210,58,.5);transform:scale(1.03)}
 .welt{border:0;border-radius:16px;padding:12px 8px;color:#fff;cursor:pointer;font:600 13px system-ui;text-align:center;outline:none;background:linear-gradient(160deg,var(--w1),var(--w2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
 .welt b{display:block;font-family:var(--fn);font-weight:400;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.4)}
 .welt:hover,.welt:focus-visible{box-shadow:0 0 0 3px var(--gold)}
@@ -227,7 +228,7 @@ input.txt:focus{border-color:var(--gold)}
       <li>Rotes Haus: <b>Memory</b> für Extras ins Inventar. Grünes Haus: <b>Ballon-Kanone</b> für Extraleben.</li>
       <li>Mit der Taste <kbd>E</kbd> öffnet ihr auf der Karte das <b>Inventar</b> und startet das nächste Level verwandelt.</li>
       <li>Manche Level haben einen <b>geheimen Ausgang</b> mit roter Fahne – achtet auf brüchigen Boden und stampft drauf!</li>
-      <li>Wer in allen acht Welten jede Sternmünze findet, öffnet eine geheime neunte Welt.</li>
+      <li>Wer in jeder Welt 5 Level schafft, öffnet die nächste Welt (Welt 1 und 2 sind von Anfang an offen). Wer in allen acht Welten jede Sternmünze findet, öffnet eine geheime neunte Welt.</li>
       <li>Nach jedem geschafften Level wird automatisch gespeichert. In Levels gibt es Zwischenziele.</li>
     </ul>
     <button class="btn haupt" id="bHilfeZurueck">Alles klar!</button>
@@ -258,6 +259,7 @@ input.txt:focus{border-color:var(--gold)}
 <div id="weltwahl" class="over hidden">
   <div class="panel mittel">
     <h2>Welt wählen</h2>
+    <p class="hinweis" style="margin:0 0 8px">Pfeiltasten wählen · Leertaste oder Enter geht hin · Esc zurück · Touchpad scrollt</p>
     <div class="welten" id="weltListe"></div>
     <button class="btn" id="bWeltZu" style="margin-top:12px">Zurück</button>
   </div>

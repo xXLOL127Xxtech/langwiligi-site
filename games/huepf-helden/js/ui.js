@@ -7,7 +7,7 @@ const UI = {
   previews: [], lastDefs: null, invSel: 0, ask_: null,
 };
 window.UI = UI;
-window.captureKeys = () => ['play', 'map', 'memory', 'ballon', 'story'].includes(G.mode) || ['lobby', 'ergebnis'].includes(UI.screen);
+window.captureKeys = () => ['play', 'map', 'memory', 'ballon', 'toad', 'story'].includes(G.mode) || ['lobby', 'ergebnis'].includes(UI.screen);
 
 function show(id) {
   for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
@@ -219,10 +219,10 @@ function statTable(s, p) {
 }
 UI.levelClear = how => {
   const nd = G.node;
-  const wasW9 = Prog.save.unlocked.includes(9);
+  const wasW9 = Prog.save.unlocked.includes(9), unlockedBefore = Prog.save.unlocked.slice();
   const secretBefore = Prog.save.done[nd.id] && Prog.save.done[nd.id].s;
   Prog.levelDone(nd.id, how === 'secret' ? 'secret' : 'normal', G.starGot);
-  UI.after = { nd, how, newSecret: how === 'secret' && !secretBefore, newW9: !wasW9 && Prog.save.unlocked.includes(9) };
+  UI.after = { nd, how, newSecret: how === 'secret' && !secretBefore, newW9: !wasW9 && Prog.save.unlocked.includes(9), newWorlds: Prog.save.unlocked.filter(w => !unlockedBefore.includes(w) && w !== 9) };
   UI.autosave();
   setTimeout(() => {
     const aw = awardsFor(G.players, 'ls');
@@ -246,7 +246,7 @@ function nextFromResults() {
   if (!ready(700) || UI.screen !== 'ergebnis') return;
   for (const p of G.players) { for (const k in p.tot) p.tot[k] += p.ls[k]; p.ls = newStats(); }
   show(null);
-  const { nd, how, newSecret, newW9 } = UI.after;
+  const { nd, how, newSecret, newW9, newWorlds } = UI.after;
   const n = nd.world;
   const lw = () => { if (window.LW && LW.rundeFertig) { try { LW.rundeFertig(); } catch (e) { } } };
   if (how === 'final' || (nd.type === 'burg' && WORLD_SPECS[n - 1].final)) {
@@ -266,7 +266,8 @@ function nextFromResults() {
   }
   Karte.enter(n);
   updatePauseKnopf();
-  if (newW9) Karte.say('Alle Sternmünzen gefunden – die geheime Sternenwelt ist erschienen!', 4.5);
+  if (newWorlds && newWorlds.length) Karte.say(`Neue Welt freigeschaltet: ${WORLD_SPECS[newWorlds[0] - 1].name}! (Esc → Welt wählen)`, 4.5);
+  else if (newW9) Karte.say('Alle Sternmünzen gefunden – die geheime Sternenwelt ist erschienen!', 4.5);
   else if (newSecret) Karte.say('Ein geheimer Weg ist erschienen!', 3.5);
   else if (nd.type === 'turm') Karte.say('Turm erobert! Spielstand gespeichert.', 3);
   else Karte.say('Geschafft – gespeichert!', 2);
@@ -392,9 +393,27 @@ function openWorldSelect() {
     const [g, a] = Prog.starsWorld(n);
     b.innerHTML = `<b>Welt ${n}</b>${open ? spec.name : '???'}<br>${open ? `⭐ ${g}/${a}${Prog.save.beaten.includes(n) ? ' · 🏰' : ''}` : '🔒'}`;
     b.onclick = () => { closeOver(); Karte.enter(n); };
+    b.dataset.n = n;
     wrap.appendChild(b);
   }
+  const btns = [...wrap.children];
+  UI.worldSel = Math.max(0, btns.findIndex(b => +b.dataset.n === Karte.W.n && !b.disabled));
   openOver('weltwahl');
+  markWorld();
+}
+// Auswahl in der Weltliste (Pfeiltasten, scrollt automatisch)
+function markWorld() {
+  const btns = [...$('weltListe').children];
+  btns.forEach((b, i) => b.classList.toggle('sel', i === UI.worldSel));
+  const cur = btns[UI.worldSel]; if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function moveWorld(dx, dy) {
+  const btns = [...$('weltListe').children]; if (!btns.length) return;
+  const step = dy ? dy * 3 : dx;
+  let i = UI.worldSel + step;
+  while (i >= 0 && i < btns.length && btns[i].disabled) i += step > 0 ? 1 : -1;
+  if (i < 0 || i >= btns.length) { if (dy) { SFX.bump(); return; } i = clamp(UI.worldSel + step, 0, btns.length - 1); if (btns[i].disabled) return; }
+  UI.worldSel = i; markWorld(); SFX.step();
 }
 $('bWeltZu').onclick = () => openMapMenu();
 UI.ask = (text, yes, fn) => { $('frageText').textContent = text; $('bFrageJa').textContent = yes; UI.ask_ = fn; openOver('frage'); };
@@ -438,7 +457,16 @@ keyListeners.push(code => {
       else return false;
       pressed.delete(code); return true;
     }
-    if (overOpen('weltwahl') || overOpen('kartenmenue')) { if (code === 'Escape') { closeOver(); pressed.delete(code); return true; } return false; }
+    if (overOpen('weltwahl')) {
+      const anyOf = k => KB_SCHEMES.some(sc => SCHEMES[sc][k].includes(code));
+      if (anyOf('l')) moveWorld(-1, 0); else if (anyOf('r')) moveWorld(1, 0);
+      else if (anyOf('j')) moveWorld(0, -1); else if (anyOf('d')) moveWorld(0, 1);
+      else if (code === 'Space' || code === 'Enter' || code === 'NumpadEnter') { const b = $('weltListe').children[UI.worldSel]; if (b && !b.disabled) b.click(); }
+      else if (code === 'Escape' || isAct(code)) closeOver();
+      else return false;
+      pressed.delete(code); return true;
+    }
+    if (overOpen('kartenmenue')) { if (code === 'Escape') { closeOver(); pressed.delete(code); return true; } return false; }
     if (code === 'Escape' || code === 'KeyP') { openMapMenu(); return true; }
   }
   return false;
@@ -461,6 +489,12 @@ padListeners.push((i, what) => {
   if (G.mode === 'map' && UI.screen === null) {
     const P = pads[i];
     if (overOpen('frage')) { if (what === 'j') $('bFrageJa').click(); else if (what === 'a') $('bFrageNein').click(); P.jP = P.aP = false; return true; }
+    if (overOpen('weltwahl')) {
+      if (what === 'l') moveWorld(-1, 0); else if (what === 'r') moveWorld(1, 0);
+      else if (what === 'j') { const b = $('weltListe').children[UI.worldSel]; if (b && !b.disabled) b.click(); }
+      else if (what === 'a' || what === 's') closeOver();
+      P.jP = P.aP = false; return true;
+    }
     if (overOpen('inventar')) {
       if (what === 'l') { UI.invSel = (UI.invSel + 5) % 6; markInv(); } else if (what === 'r') { UI.invSel = (UI.invSel + 1) % 6; markInv(); }
       else if (what === 'j') useItem(INV_ORDER[UI.invSel]); else if (what === 'a' || what === 's') closeOver();

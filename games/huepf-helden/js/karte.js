@@ -82,7 +82,7 @@ const Karte = {
     if (nd.type === 'haus') {
       if (!Prog.houseReady(nd.id)) { this.say('Das Haus öffnet wieder, wenn ihr ein weiteres Level geschafft habt.'); SFX.bump(); return; }
       Prog.save.houses[nd.id] = Prog.save.clears;
-      if (nd.variant === 'rot') Memory.start(); else Ballon.start();
+      if (nd.variant === 'rot') Memory.start(); else if (nd.variant === 'toad') Toad.start(); else Ballon.start();
       return;
     }
     if (nd.type === 'tor') {
@@ -205,7 +205,7 @@ const Karte = {
         g.globalAlpha = used ? .5 : 1;
         g.beginPath(); g.ellipse(0, 6, 28, 10, 0, 0, TAU); g.fillStyle = 'rgba(0,0,0,.3)'; g.fill();
         rr(g, -20, -26, 40, 32, 3); fs(g, '#f4e6c8', 2.5);
-        g.beginPath(); g.moveTo(-28, -24); g.lineTo(0, -50); g.lineTo(28, -24); g.closePath(); fs(g, nd.variant === 'rot' ? '#e0403a' : '#3fae4a', 2.5);
+        g.beginPath(); g.moveTo(-28, -24); g.lineTo(0, -50); g.lineTo(28, -24); g.closePath(); fs(g, nd.variant === 'rot' ? '#e0403a' : nd.variant === 'toad' ? '#ffc21a' : '#3fae4a', 2.5);
         g.fillStyle = '#fff'; g.beginPath(); g.arc(0, -34, 5, 0, TAU); g.fill();
         rr(g, -6, -14, 12, 20, [6, 6, 0, 0]); fs(g, '#8a5a2a', 1.5);
         rr(g, 9, -20, 8, 8, 2); fs(g, '#9ad4ff', 1.4);
@@ -271,7 +271,7 @@ const Karte = {
     if (nd.type === 'level') { title = nd.geheim ? `Geheimlevel ${this.W.n}` : `Level ${nd.title}`; sub = THEMES[nd.theme].name + (nd.secret ? ' · hier gibt es einen geheimen Ausgang' : '') + (r && r.c ? ' · geschafft' : ''); }
     else if (nd.type === 'turm') { title = `Turm ${this.W.n}`; sub = 'Zwischenboss Panzerkäfer Krax · danach wird gespeichert'; }
     else if (nd.type === 'burg') { title = burgName(this.W.n); sub = spec.final ? 'Hier hält Morvax Prinzessin Lunara gefangen!' : spec.sternFinale ? 'Der Sternenkönig wartet – der letzte Kampf der Sternenwelt!' : spec.himmelFinale ? `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · der Kampf um das Himmelsreich` : `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · danach geht es in die nächste Welt`; }
-    else if (nd.type === 'haus') sub = nd.variant === 'rot' ? 'Findet Paare und gewinnt Extras fürs Inventar' : 'Schiesst auf Ballons und gewinnt Extraleben';
+    else if (nd.type === 'haus') sub = nd.variant === 'toad' ? 'Geheimer Tunnel entdeckt! Wählt eine Truhe mit Extras oder Leben' : nd.variant === 'rot' ? 'Findet Paare und gewinnt Extras fürs Inventar' : 'Schiesst auf Ballons und gewinnt Extraleben';
     else if (nd.type === 'tor') sub = Prog.save.paid[nd.id] ? 'Offen' : `Öffnen kostet ${nd.cost} Sternmünzen`;
     else if (nd.type === 'kanone') sub = `Fliegt direkt in Welt ${nd.target}`;
     else if (nd.type === 'start') sub = this.W.n === 1 ? 'Das Abenteuer beginnt!' : 'Hier geht es los';
@@ -335,4 +335,4 @@ const Karte = {
   },
 };
 modeHandlers.map = { update: dt => Karte.update(dt), render: dt => Karte.render(dt) };
-cv.addEventListener('click', e => { if (G.mode === 'map' && !UI.overlayOpen()) Karte.click(e.clientX, e.clientY); else if (G.mode === 'memory') Memory.click(e.clientX, e.clientY); else if (G.mode === 'ballon') Ballon.click(); else if (G.mode === 'story') Story.next(); });
+cv.addEventListener('click', e => { if (G.mode === 'map' && !UI.overlayOpen()) Karte.click(e.clientX, e.clientY); else if (G.mode === 'memory') Memory.click(e.clientX, e.clientY); else if (G.mode === 'ballon') Ballon.click(); else if (G.mode === 'toad') Toad.click(e.clientX, e.clientY); else if (G.mode === 'story') Story.next(); });

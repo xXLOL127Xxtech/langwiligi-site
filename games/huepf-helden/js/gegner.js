@@ -28,6 +28,7 @@ function drawEnemy(g, e, t) {
     case 'welle': drawWelle(g, e, t); break;
     case 'wolke': drawGiftwolke(g, e, t); break;
     case 'scherbe': drawScherbe(g, e, t); break;
+    case 'flamme': drawFlamme(g, e, t); break;
   }
   g.restore();
 }
@@ -306,20 +307,22 @@ function drawEisblock(g, b, t) {
 // ---------------------------------------------------------------------
 const BOSS_LOOK = {
   // atk = Spezialangriffe (neben Springen, Werfen und Rammen), pil/wave/fall = Aussehen der Angriffe
-  1: { name: 'Magma-Koloss', body: ['#7a6a72', '#4a3a42', '#241a20'], glow: [255, 140, 40], crown: '#ffcc33', atk: ['eruption'], pil: 'lava', deco: 'horn' },
+  1: { name: 'Drachenkönig Ignaz', body: ['#8ad050', '#3a8a2a', '#143a10'], glow: [255, 140, 40], crown: '#ffcc33', shot: 'lava', belly: '#f4d890' },
   2: { name: 'Sand-Koloss', body: ['#e0c08a', '#a8804a', '#5a3a1a'], glow: [255, 220, 90], crown: '#ff9a2a', atk: ['wellen', 'zapfen'], wave: 'sand', fall: 'fels', deco: 'horn' },
-  3: { name: 'Frost-Koloss', body: ['#c8e8ff', '#6aa0d0', '#2a4a7a'], glow: [120, 230, 255], crown: '#e8f8ff', atk: ['zapfen', 'eruption'], pil: 'eis', fall: 'eis', shot: 'eis', deco: 'eis' },
-  4: { name: 'Korallen-Koloss', body: ['#ff9ab0', '#c84a6a', '#5a1a30'], glow: [120, 255, 220], crown: '#ffd23a', atk: ['flut', 'wellen'], wave: 'wasser', shot: 'wasser', deco: 'koralle' },
+  3: { name: 'Eishexe Frosta', body: ['#d8f0ff', '#6aa0d0', '#2a4a7a'], glow: [120, 230, 255], crown: '#e8f8ff', shot: 'eis', hat: '#3a5a9a' },
+  4: { name: 'Seedrache Glubb', body: ['#7ae8d8', '#2a9ab0', '#0a3a5a'], glow: [120, 255, 220], crown: '#ffd23a', shot: 'wasser', belly: '#d8fff4' },
   5: { name: 'Sturm-Koloss', body: ['#9aa8c8', '#4a5878', '#1a2238'], glow: [255, 255, 120], crown: '#c0c8ff', atk: ['blitze', 'wellen'], wave: 'wind', deco: 'wolke' },
   6: { name: 'Kristall-Koloss', body: ['#c8a8ff', '#6a4aa8', '#2a1a58'], glow: [255, 130, 230], crown: '#7fe8ff', atk: ['scherben', 'eruption'], pil: 'kristall', shot: 'kristall', deco: 'eis' },
-  7: { name: 'Moor-Koloss', body: ['#7a9a6a', '#3a5a32', '#14240e'], glow: [190, 255, 60], crown: '#c8a85a', atk: ['gift', 'eruption'], pil: 'dorn', shot: 'gift', deco: 'ranken' },
+  7: { name: 'Moorhexe Gruselda', body: ['#b0e078', '#4a6a2a', '#14240e'], glow: [190, 255, 60], crown: '#c8a85a', shot: 'gift', hat: '#2a1a3a' },
   9: { name: 'Sternenkönig', body: ['#8a7ae0', '#3a2a8a', '#120a3a'], glow: [255, 230, 110], crown: '#ffe066', atk: ['eruption', 'wellen', 'zapfen', 'blitze', 'scherben', 'gift', 'flut'], pil: 'stern', wave: 'wind', fall: 'stern', shot: 'stern', deco: 'stern' },
-  10: { name: 'Dschungel-Koloss', body: ['#8ac070', '#3f7a3a', '#173a1a'], glow: [255, 240, 80], crown: '#ff8a3a', atk: ['eruption', 'gift', 'wellen'], pil: 'dorn', wave: 'sand', shot: 'gift', deco: 'ranken' },
-  11: { name: 'Vulkan-Koloss', body: ['#5a3a3a', '#2a1618', '#0e0606'], glow: [255, 110, 20], crown: '#ff5a1a', atk: ['eruption', 'wellen', 'scherben'], pil: 'lava', wave: 'lava', shot: 'lava', deco: 'horn' },
-  12: { name: 'Zucker-Koloss', body: ['#ffc0e0', '#e86aa8', '#8a2a5a'], glow: [255, 255, 255], crown: '#7fe8ff', atk: ['zapfen', 'scherben', 'wellen'], pil: 'zucker', wave: 'zucker', fall: 'zucker', shot: 'zucker', deco: 'zucker' },
+  10: { name: 'Urwald-Rex', body: ['#d8b060', '#7a5a22', '#2a1a0a'], glow: [255, 240, 80], crown: '#ff8a3a', shot: 'gift', belly: '#f8e8b0' },
+  11: { name: 'Lavaspeier Brutus', body: ['#ff8a4a', '#a82a0a', '#3a0a04'], glow: [255, 200, 40], crown: '#ffdd55', shot: 'lava', belly: '#ffd080' },
+  12: { name: 'Zuckerhexe Bonbonella', body: ['#ffc0e0', '#e86aa8', '#8a2a5a'], glow: [255, 255, 255], crown: '#7fe8ff', shot: 'zucker', hat: '#c82a7a' },
   13: { name: 'Himmels-Koloss', body: ['#fff4c8', '#e8c060', '#8a6a1a'], glow: [255, 255, 180], crown: '#ffffff', atk: ['blitze', 'flut', 'scherben'], pil: 'blitz', wave: 'wind', shot: 'stern', deco: 'wolke' },
 };
 // Zusätzlicher Rückenschmuck je nach Boss
+// Welcher Boss in welcher Welt kämpft (Rest: Koloss mit eigenen Angriffen)
+const BOSS_TYPE = { 1: 'drache', 3: 'hexe', 4: 'speier', 7: 'hexe', 10: 'drache', 11: 'speier', 12: 'hexe' };
 function drawKolossDeco(g, look, t) {
   const c = look.crown;
   g.save();
@@ -491,4 +494,115 @@ function drawScherbe(g, e, t) {
   const gl = g.createRadialGradient(0, 0, 2, 0, 0, 26); gl.addColorStop(0, c[3]); gl.addColorStop(1, c[4]);
   g.fillStyle = gl; g.beginPath(); g.arc(0, 0, 26, 0, TAU); g.fill();
   g.beginPath(); g.moveTo(0, -17); g.lineTo(8, 0); g.lineTo(0, 15); g.lineTo(-8, 0); g.closePath(); fs(g, radial(g, 0, 0, 14, c[0], c[1], c[2]), 2);
+}
+
+function drawFlamme(g, e, t) {
+  const L = e.w, dir = e.dir || 1, k = Math.min(1, (e.age || 0) / .15) * Math.min(1, e.life / .25);
+  g.scale(dir, 1);
+  for (let layer = 0; layer < 3; layer++) {
+    const h = (46 - layer * 12) * k, len = L * (1 - layer * .12) * k;
+    g.fillStyle = ['rgba(255,90,20,.85)', 'rgba(255,170,40,.9)', 'rgba(255,245,170,.95)'][layer];
+    g.beginPath(); g.moveTo(-L / 2, 0);
+    for (let i = 0; i <= 8; i++) { const x = -L / 2 + len * i / 8; g.lineTo(x, -h * (1 - i / 8 * .6) - Math.sin(t * 24 + i * 1.7 + layer) * 5 * (i / 8)); }
+    g.lineTo(-L / 2 + len, 0); g.closePath(); g.fill();
+  }
+}
+// ---------------------------------------------------------------------
+//  Boss: Drachenkönig (Bowser-Art): Feuer, Hämmer, Sprung
+// ---------------------------------------------------------------------
+function drawDrache(g, b, t) {
+  const look = BOSS_LOOK[b.look] || BOSS_LOOK[1], c = look.body;
+  g.save(); g.translate(b.x, b.y); g.scale(b.dir, 1);
+  const hurt = b.hurtT > 0 && Math.floor(t * 20) % 2 === 0, sq = b.squash || 0;
+  g.scale(1 + sq * .2, 1 - sq * .25);
+  const step = Math.sin(b.walk || 0), mouth = b.state === 'feuer';
+  // Schwanz
+  g.beginPath(); g.moveTo(-40, -44); g.quadraticCurveTo(-90, -50 + step * 4, -96, -86); g.quadraticCurveTo(-68, -64, -38, -78); g.closePath(); fs(g, c[1], 3);
+  // Beine
+  ell(g, -26, -14 - Math.max(0, step) * 7, 22, 15); fs(g, c[1], 3);
+  ell(g, 30, -14 - Math.max(0, -step) * 7, 22, 15); fs(g, c[1], 3);
+  // Panzer mit Stacheln
+  ell(g, -14, -80, 56, 58); fs(g, radial(g, -20, -100, 70, hurt ? '#fff' : look.crown, c[1], c[2]), 3.5);
+  for (let i = 0; i < 5; i++) { const a = -2.7 + i * .55, cx = -14 + Math.cos(a) * 54, cy = -80 + Math.sin(a) * 56; g.beginPath(); g.moveTo(cx - 9, cy + 6); g.lineTo(cx + Math.cos(a) * 20, cy + Math.sin(a) * 20); g.lineTo(cx + 9, cy + 6); g.closePath(); fs(g, '#f4f0e0', 2.5); }
+  // Bauch und Arm
+  ell(g, 12, -62, 38, 44); fs(g, hurt ? '#fff' : (look.belly || '#f4d890'), 3);
+  const arm = b.state === 'haemmer' ? -1.3 + Math.sin(t * 16) * .3 : Math.sin(t * 3) * .3;
+  g.save(); g.translate(40, -70); g.rotate(arm); ell(g, 14, 8, 20, 14); fs(g, hurt ? '#fff' : c[0], 3); g.restore();
+  // Kopf
+  g.save(); g.translate(30, -118);
+  ell(g, 0, 0, 40, 34); fs(g, hurt ? '#ffffff' : radial(g, -6, -10, 44, c[0], c[1], c[2]), 3.5);
+  g.beginPath(); g.moveTo(-26, -24); g.lineTo(-40, -58); g.lineTo(-10, -34); g.closePath(); fs(g, '#f4f0e0', 2.5);
+  g.beginPath(); g.moveTo(10, -30); g.lineTo(22, -64); g.lineTo(32, -26); g.closePath(); fs(g, '#f4f0e0', 2.5);
+  g.fillStyle = look.crown; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-30 + i * 14, -26); g.lineTo(-24 + i * 14, -46 - (i % 2) * 8); g.lineTo(-18 + i * 14, -26); g.fill(); }
+  ell(g, 34, 8, 26, 17); fs(g, hurt ? '#fff' : c[0], 3);
+  if (mouth) { g.fillStyle = '#4a0a04'; ell(g, 44, 12, 18, 10 + Math.sin(t * 30) * 2); g.fill(); const gl = g.createRadialGradient(54, 12, 2, 54, 12, 26); gl.addColorStop(0, 'rgba(255,230,120,.95)'); gl.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gl; g.beginPath(); g.arc(54, 12, 26, 0, TAU); g.fill(); }
+  else { g.fillStyle = '#1a0a08'; rr(g, 26, 14, 30, 6, 3); g.fill(); g.fillStyle = '#fff'; for (let i = 0; i < 3; i++) { g.beginPath(); g.moveTo(30 + i * 9, 14); g.lineTo(33 + i * 9, 20); g.lineTo(36 + i * 9, 14); g.fill(); } }
+  g.fillStyle = '#fff'; ell(g, 10, -6, 10, b.angry ? 6 : 9); g.fill(); g.fillStyle = '#c81a0a'; ell(g, 12, -6, 5, b.angry ? 5 : 7); g.fill();
+  g.strokeStyle = '#1a0a08'; g.lineWidth = 4; g.beginPath(); g.moveTo(-2, -16); g.lineTo(22, -8); g.stroke();
+  g.restore();
+  g.restore();
+}
+// ---------------------------------------------------------------------
+//  Boss: Hexe auf dem Besen
+// ---------------------------------------------------------------------
+function drawHexe(g, b, t) {
+  const look = BOSS_LOOK[b.look] || BOSS_LOOK[3], c = look.body, hat = look.hat || '#2a1a3a';
+  g.save(); g.translate(b.x, b.y); g.scale(b.dir, 1);
+  const hurt = b.hurtT > 0 && Math.floor(t * 20) % 2 === 0, tired = b.state === 'erschoepft';
+  const bob = tired ? 0 : Math.sin(t * 5) * 3;
+  if (b.state === 'sturz' && b.dive !== true) { g.translate(Math.sin(t * 60) * 3, 0); }
+  // Besen
+  g.save(); g.translate(0, -18 + bob); g.rotate(tired ? .25 : -.12);
+  g.fillStyle = '#7a5226'; rr(g, -56, -4, 100, 8, 4); g.fill(); g.strokeStyle = OL; g.lineWidth = 2; g.stroke();
+  g.fillStyle = '#d8b050'; g.beginPath(); g.moveTo(-50, -2); for (let i = 0; i < 6; i++) g.lineTo(-84 + Math.sin(t * 14 + i) * 4, -14 + i * 6); g.lineTo(-50, 8); g.closePath(); fs(g, '#d8b050', 2);
+  g.restore();
+  // Umhang
+  g.beginPath(); g.moveTo(-18, -66 + bob); g.quadraticCurveTo(-44 - Math.sin(t * 6) * 5, -34 + bob, -30, -14 + bob); g.lineTo(18, -14 + bob); g.quadraticCurveTo(26, -44 + bob, 12, -66 + bob); g.closePath();
+  fs(g, hurt ? '#fff' : radial(g, 0, -40 + bob, 40, c[0], c[1], c[2]), 3);
+  // Kopf
+  g.save(); g.translate(2, -78 + bob);
+  ell(g, 0, 0, 20, 18); fs(g, hurt ? '#fff' : '#9ad868', 3);
+  g.beginPath(); g.moveTo(14, 2); g.quadraticCurveTo(30, 6, 24, 16); g.quadraticCurveTo(20, 8, 12, 8); g.closePath(); fs(g, '#8ac858', 2);
+  g.fillStyle = '#fff'; ell(g, 4, -4, 7, tired ? 2 : 6); g.fill(); g.fillStyle = tired ? '#1a0a08' : '#c81a8a'; if (!tired) { ell(g, 6, -4, 3, 4); g.fill(); }
+  if (tired) { g.strokeStyle = '#1a0a08'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -8); g.lineTo(9, 0); g.moveTo(9, -8); g.lineTo(0, 0); g.stroke(); }
+  g.fillStyle = '#1a0a08'; g.beginPath(); g.moveTo(-2, 10); g.quadraticCurveTo(6, 16, 14, 10); g.lineTo(12, 12); g.quadraticCurveTo(6, 17, -2, 12); g.fill();
+  // Hut
+  g.beginPath(); g.ellipse(0, -14, 34, 8, 0, 0, TAU); fs(g, hat, 3);
+  g.beginPath(); g.moveTo(-18, -16); g.quadraticCurveTo(-8, -50, 14, -70 + Math.sin(t * 4) * 3); g.quadraticCurveTo(8, -40, 20, -16); g.closePath(); fs(g, hat, 3);
+  g.fillStyle = look.crown; rr(g, -16, -26, 34, 7, 2); g.fill();
+  g.restore();
+  // Zauberstab-Glühen
+  if (b.state === 'zauber' || b.state === 'sturz') { const gl = g.createRadialGradient(34, -50 + bob, 2, 34, -50 + bob, 30); gl.addColorStop(0, `rgba(${look.glow[0]},${look.glow[1]},${look.glow[2]},.95)`); gl.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gl; g.beginPath(); g.arc(34, -50 + bob, 30, 0, TAU); g.fill(); }
+  if (tired) { for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.1; g.save(); g.translate(Math.cos(a) * 30, -120 + Math.sin(a) * 8); starPath(g, 0, 0, 7, 3); fs(g, '#ffe066', 1.5); g.restore(); } }
+  g.restore();
+}
+// ---------------------------------------------------------------------
+//  Boss: Feuerspeier (Drachenkopf an der Wand)
+// ---------------------------------------------------------------------
+function drawSpeier(g, b, t) {
+  const look = BOSS_LOOK[b.look] || BOSS_LOOK[4], c = look.body, A = G.L.arena;
+  const hurt = b.hurtT > 0 && Math.floor(t * 20) % 2 === 0;
+  // Hals von der Wand zum Kopf
+  const wx = A.x1 + 20, wy = A.gy * T - 70;
+  const hx = b.x, hy = b.y - 56;
+  for (let i = 0; i <= 14; i++) {
+    const k = i / 14, x = wx + (hx - wx) * k, y = wy + (hy - wy) * k + Math.sin(k * Math.PI) * -26 + Math.sin(t * 3 + i) * 3, r = 30 - k * 8;
+    g.beginPath(); g.arc(x, y, r, 0, TAU); fs(g, hurt ? '#fff' : radial(g, x - 6, y - 8, r, c[0], c[1], c[2]), 3);
+  }
+  // Warnmarke für den Biss
+  if (b.state === 'beissen' && b.phase === 'ziel') { g.fillStyle = `rgba(255,70,50,${.4 + .5 * Math.abs(Math.sin(t * 16))})`; g.beginPath(); g.moveTo(b.biteX - 18, A.gy * T - 4); g.lineTo(b.biteX + 18, A.gy * T - 4); g.lineTo(b.biteX, A.gy * T - 34); g.closePath(); g.fill(); }
+  g.save(); g.translate(b.x, b.y); g.scale(-1, 1);
+  const open = b.state === 'speien' ? .5 + .5 * Math.sin(t * 12) : b.state === 'erschoepft' ? 0 : b.state === 'beissen' ? .8 : .12;
+  // Unterkiefer
+  g.save(); g.translate(-10, -30); g.rotate(open * .5); ell(g, 36, 10, 46, 14); fs(g, hurt ? '#fff' : c[1], 3.5); g.fillStyle = '#fff'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(10 + i * 18, 2); g.lineTo(16 + i * 18, -10); g.lineTo(22 + i * 18, 2); g.fill(); } g.restore();
+  // Kopf
+  ell(g, 0, -62, 50, 42); fs(g, hurt ? '#fff' : radial(g, -10, -76, 56, c[0], c[1], c[2]), 3.5);
+  ell(g, 40, -48, 30, 20); fs(g, hurt ? '#fff' : c[0], 3);
+  g.fillStyle = '#1a0a08'; g.beginPath(); g.arc(58, -54, 3, 0, TAU); g.fill();
+  g.beginPath(); g.moveTo(-18, -92); g.lineTo(-30, -124); g.lineTo(-2, -98); g.closePath(); fs(g, look.crown, 2.5);
+  g.beginPath(); g.moveTo(14, -100); g.lineTo(18, -130); g.lineTo(32, -96); g.closePath(); fs(g, look.crown, 2.5);
+  g.fillStyle = '#fff'; ell(g, 14, -72, 12, b.state === 'erschoepft' ? 3 : 9); g.fill(); g.fillStyle = '#c81a0a'; if (b.state !== 'erschoepft') { ell(g, 17, -72, 5, 8); g.fill(); }
+  if (b.state === 'speien' || (b.state === 'beissen' && b.phase === 'ziel')) { const gl = g.createRadialGradient(70, -44, 2, 70, -44, 34); gl.addColorStop(0, `rgba(${look.glow[0]},${look.glow[1]},${look.glow[2]},.95)`); gl.addColorStop(1, 'rgba(255,90,20,0)'); g.fillStyle = gl; g.beginPath(); g.arc(70, -44, 34, 0, TAU); g.fill(); }
+  if (b.state === 'erschoepft') { for (let i = 0; i < 3; i++) { const a = t * 4 + i * 2.1; g.save(); g.translate(Math.cos(a) * 34, -126 + Math.sin(a) * 8); starPath(g, 0, 0, 7, 3); fs(g, '#ffe066', 1.5); g.restore(); } }
+  g.restore();
 }

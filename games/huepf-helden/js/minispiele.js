@@ -220,3 +220,75 @@ const Ballon = {
   },
 };
 modeHandlers.ballon = { update: dt => Ballon.update(dt), render: dt => Ballon.render(dt) };
+
+// ---------------------------------------------------------------------
+//  Toad-Haus (über einen versteckten Tunnel erreichbar): eine von drei Truhen wählen
+// ---------------------------------------------------------------------
+const Toad = {
+  rewards: [], sel: 1, phase: 'pick', t: 0, got: null, prev: {},
+  start() {
+    const pool = ['beere', 'bluete', 'frost', 'wirbel', 'eisbaer', 'stern', 'leben', 'leben', 'leben3'];
+    const pick = [];
+    while (pick.length < 3) { const k = pool[Math.floor(Math.random() * pool.length)]; if (!pick.includes(k)) pick.push(k); }
+    this.rewards = pick; this.sel = 1; this.phase = 'pick'; this.t = 0; this.got = null; this.prev = {};
+    G.mode = 'toad';
+    Music.play(composeSong(555, { scale: 'dur', root: 64, bpm: 112, lead: 'triangle' }));
+  },
+  update(dt) {
+    this.t += dt;
+    const inp = miniInput();
+    if (this.phase === 'pick') {
+      const held = { l: inp.l, r: inp.r };
+      if (held.l && !this.prev.l) { this.sel = (this.sel + 2) % 3; SFX.step(); }
+      if (held.r && !this.prev.r) { this.sel = (this.sel + 1) % 3; SFX.step(); }
+      this.prev = held;
+      if (this.t > .5 && (anyPressed(['Space', 'Enter', 'NumpadEnter', 'KeyE', 'KeyQ']) || inp.jP || inp.aP)) this.open(this.sel);
+    } else if (this.t > 1.2 && (inp.jP || inp.aP || anyPressed(['Space', 'Enter']))) this.leave();
+  },
+  open(i) {
+    const k = this.rewards[i];
+    this.got = k; this.phase = 'open'; this.t = 0;
+    if (k === 'leben' || k === 'leben3') { const n = k === 'leben' ? 1 : 3; G.lives = Math.min(99, G.lives + n); Prog.save.lives = G.lives; SFX.life(); }
+    else { Prog.save.inv[k] = Math.min(20, (Prog.save.inv[k] || 0) + 1); SFX.power(); }
+    UI.autosave();
+  },
+  click(mx, my) {
+    if (this.phase === 'open') { if (this.t > 1) this.leave(); return; }
+    for (let i = 0; i < 3; i++) { const c = this.pos(i); if (Math.abs(mx - c.x) < 80 && Math.abs(my - c.y) < 70) { this.sel = i; this.open(i); return; } }
+  },
+  pos(i) { return { x: SW / 2 + (i - 1) * Math.min(230, SW / 4), y: SH * .58 }; },
+  leave() { Music.stop(); Karte.enter(Karte.W.n); Karte.say(this.got === 'leben' ? '+1 Extraleben!' : this.got === 'leben3' ? '+3 Extraleben!' : `${ITEM_INFO[this.got].name} liegt im Inventar!`); },
+  render() {
+    const g = ctx;
+    g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    drawHouseRoom(g, SW, SH, this.t, true);
+    g.textAlign = 'center'; g.font = '34px ' + FONT; g.fillStyle = '#ffd23a';
+    g.fillText('Toad-Haus', SW / 2, 56);
+    g.font = '15px system-ui, sans-serif'; g.fillStyle = '#fff';
+    g.fillText(this.phase === 'pick' ? 'Ihr habt den geheimen Tunnel gefunden! Links/Rechts wählen · Springen oder Klick öffnet eine Truhe' : 'Das war eure Truhe! Springen oder Klick: zurück zur Karte', SW / 2, 84);
+    // Toad
+    g.save(); g.translate(SW / 2, SH * .3 + Math.sin(this.t * 3) * 3);
+    rr(g, -16, -4, 32, 42, 10); fs(g, '#fff4d8', 2.5);
+    g.beginPath(); g.ellipse(0, -4, 44, 34, 0, Math.PI, TAU); fs(g, '#ef5350', 3);
+    g.fillStyle = '#fff'; for (const [dx, dy, r] of [[-24, -22, 8], [0, -34, 9], [24, -22, 8]]) { g.beginPath(); g.arc(dx, dy, r, 0, TAU); g.fill(); }
+    g.fillStyle = '#1a0a08'; g.beginPath(); g.arc(-7, 12, 3, 0, TAU); g.arc(7, 12, 3, 0, TAU); g.fill();
+    g.restore();
+    for (let i = 0; i < 3; i++) {
+      const c = this.pos(i), opened = this.phase === 'open' && i === this.sel;
+      g.save(); g.translate(c.x, c.y);
+      if (i === this.sel && this.phase === 'pick') { g.fillStyle = 'rgba(255,230,120,.35)'; rr(g, -78, -62, 156, 124, 18); g.fill(); }
+      rr(g, -60, -10, 120, 56, 8); fs(g, '#a8682a', 3);
+      g.save(); g.translate(-60, -10); g.rotate(opened ? -.9 : 0); rr(g, 0, -34, 120, 34, [14, 14, 0, 0]); fs(g, '#c8863a', 3); g.restore();
+      rr(g, -8, 6, 16, 22, 3); fs(g, '#ffd23a', 2);
+      if (this.phase === 'open') {
+        const k = this.rewards[i], a = i === this.sel ? 1 : .45;
+        g.globalAlpha = a; g.translate(0, -46 - Math.min(1, this.t * 3) * 26);
+        if (k === 'leben' || k === 'leben3') { heartPath(g, 0, 0, 20); g.fillStyle = '#ff5a7a'; g.fill(); g.font = '24px ' + FONT; g.fillStyle = '#fff'; g.fillText(k === 'leben' ? '+1' : '+3', 0, 44); }
+        else { g.scale(.8, .8); drawItemIcon(g, k, this.t); }
+        g.globalAlpha = 1;
+      }
+      g.restore();
+    }
+  },
+};
+modeHandlers.toad = { update: dt => Toad.update(dt), render: dt => Toad.render(dt) };
