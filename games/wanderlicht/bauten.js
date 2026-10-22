@@ -20,7 +20,7 @@ function newBuilt(s) {
   return { site: s, group: new THREE.Group(), colliders: [], interact: [], spawns: [], chests: [], fires: [], updaters: [], gate: null };
 }
 function segCollider(out, ax, az, bx, bz, r) { out.colliders.push({ seg: true, ax, az, bx, bz, r }); }
-function circCollider(out, x, z, r) { out.colliders.push({ seg: false, x, z, r }); }
+function circCollider(out, x, z, r) { const c = { seg: false, x, z, r }; out.colliders.push(c); return c; }
 function boxCollider(out, cx, cz, w, d, ang) {
   const c = Math.cos(ang), s = Math.sin(ang);
   const pts = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]].map(([u, v]) => [cx + u * c - v * s, cz + u * s + v * c]);
@@ -630,11 +630,121 @@ function buildWonder(s, st) {
       }
       break;
     }
+    case 'drache': {
+      // Ein Drachenskelett liegt eingerollt im Gras
+      const bone = [0.82, 0.78, 0.68], bd = [0.62, 0.58, 0.5];
+      const a0 = r() * 6.283, N = 44, spine = [];
+      for (let i = 0; i <= N; i++) {
+        const t = i / N, a = a0 + t * 2.6, rr = 20 - t * 9;
+        const px = x + Math.cos(a) * rr, pz = z + Math.sin(a) * rr;
+        const py = y0 + 1.2 + Math.sin(Math.min(1, t * 1.6) * Math.PI) * 7 * (1 - t * 0.6);
+        spine.push([px, py, pz]);
+      }
+      for (let i = 0; i < N; i++) {
+        const [ax, ay, az] = spine[i], [bx, by, bz] = spine[i + 1], t = i / N, th = 1.1 * (1 - t * 0.75) + 0.2;
+        boneSeg(mg, ax, ay, az, bx, by, bz, th * 0.55, bd, r);
+        mg.add('ico', M(ax, ay, az, th, th * 0.85, th, r(), r(), r()), bone, 0.1, r);
+        mg.add('cone4', M(ax, ay + th * 0.5, az, th * 0.35, th * 2.2 * (1 - t * 0.5), th * 0.35, (r() - 0.5) * 0.3, 0, 0), bone, 0.1, r);
+        // Rippen
+        if (t > 0.12 && t < 0.55 && i % 2 === 0) {
+          const dx = bx - ax, dz = bz - az, l = Math.hypot(dx, dz), nx = -dz / l, nz = dx / l;
+          for (const sd of [-1, 1]) {
+            let px = ax, py = ay, pz = az;
+            const span = 6.5 * Math.sin((t - 0.12) / 0.43 * Math.PI) + 2.5;
+            for (let k = 1; k <= 6; k++) {
+              const u = k / 6, qx = ax + nx * sd * Math.sin(u * Math.PI * 0.62) * span, qz = az + nz * sd * Math.sin(u * Math.PI * 0.62) * span;
+              const qy = ay + Math.sin(u * Math.PI * 0.4) * 2.5 - u * u * (ay - y0 + 2.2);
+              boneSeg(mg, px, py, pz, qx, qy, qz, 0.28 * (1 - u * 0.4), bone, r);
+              px = qx; py = qy; pz = qz;
+            }
+            circCollider(out, px, pz, 0.6);
+          }
+        }
+      }
+      // Schädel mit Hörnern
+      const [hx, hy, hz] = spine[0], ha = a0 - Math.PI / 2;
+      const fx = Math.cos(ha), fz = Math.sin(ha);
+      mg.add('ico', M(hx + fx * 2.5, hy + 0.5, hz + fz * 2.5, 3.2, 2.4, 2.8, 0, -ha, 0), bone, 0.1, r);
+      mg.add('box', M(hx + fx * 6, hy - 0.4, hz + fz * 6, 2, 1.2, 6.5, 0, -ha + Math.PI / 2, 0), bone, 0.1, r);
+      mg.add('box', M(hx + fx * 5.5, hy - 2, hz + fz * 5.5, 1.6, 0.8, 5.5, 0.25, -ha + Math.PI / 2, 0), bd, 0.1, r);
+      for (const sd of [-1, 1]) {
+        const ox = -fz * sd, oz = fx * sd;
+        boneSeg(mg, hx + ox * 1.6, hy + 2, hz + oz * 1.6, hx + ox * 4 - fx * 3, hy + 6, hz + oz * 4 - fz * 3, 0.55, bd, r);
+        boneSeg(mg, hx + ox * 4 - fx * 3, hy + 6, hz + oz * 4 - fz * 3, hx + ox * 4.5 - fx * 7, hy + 7, hz + oz * 4.5 - fz * 7, 0.3, bd, r);
+        mg.add('box', M(hx + fx * 4.2 + ox * 1.4, hy + 1.2, hz + fz * 4.2 + oz * 1.4, 0.9, 0.7, 0.9), [0.03, 0.03, 0.04]);
+      }
+      addFire(out, hx + fx * 3, hy + 0.2, hz + fz * 3, 0x60a0ff, 0.9);
+      circCollider(out, hx + fx * 3, hz + fz * 3, 3.6);
+      // Flügelknochen ragen in den Himmel
+      const [wx, wy, wz] = spine[Math.round(N * 0.22)];
+      for (const sd of [-1, 1]) {
+        const [qx, qy, qz] = spine[Math.round(N * 0.22) + 1], dx = qx - wx, dz = qz - wz, l = Math.hypot(dx, dz), nx = -dz / l * sd, nz = dx / l * sd;
+        const ex = wx + nx * 9, ey = wy + 13 + r() * 4, ez = wz + nz * 9;
+        boneSeg(mg, wx, wy, wz, ex, ey, ez, 0.6, bone, r);
+        for (let f = 0; f < 4; f++) {
+          const fa = (f - 1.5) * 0.45, tx = ex + nx * Math.cos(fa) * 13 + dx / l * Math.sin(fa) * 13, tz = ez + nz * Math.cos(fa) * 13 + dz / l * Math.sin(fa) * 13, ty = ey - 6 - f * 2.5;
+          boneSeg(mg, ex, ey, ez, tx, ty, tz, 0.3, bone, r);
+          // zerrissene Flughaut
+          for (let q = 0; q < 70; q++) { const u = r(), v = r() * 0.8; ps.add(lerp(ex, tx, u) * (1 - v * 0.3) + wx * v * 0.3, lerp(ey, ty, u) - v * 4, lerp(ez, tz, u) * (1 - v * 0.3) + wz * v * 0.3, pick(r, [[0.32, 0.16, 0.18], [0.22, 0.12, 0.14], [0.4, 0.22, 0.2]]), 0.8); }
+        }
+      }
+      const ck = s.key + ':c0';
+      makeChest(out, ck, hx + fx * 9, hz + fz * 9, -ha, r() < 0.5, st.opened(ck));
+      break;
+    }
+    case 'ruinen': {
+      // Säulen, Bögen und eine kopflose Statue einer vergessenen Stadt
+      const stone = [0.62, 0.6, 0.56], st2 = [0.5, 0.48, 0.46], ivy = B.canopyC.map(c => c.map(v => v * 0.85));
+      const ga = r() * 6.283, gc = Math.cos(ga), gs = Math.sin(ga);
+      const P = (u, v) => [x + u * gc - v * gs, z + u * gs + v * gc];
+      // Bodenplatten
+      for (let q = 0; q < 70; q++) { const u = (r() - 0.5) * 50, v = (r() - 0.5) * 50; const [px, pz] = P(u, v); mg.add('box', M(px, groundY(px, pz) + 0.05, pz, 2.6, 0.25, 2.6, (r() - 0.5) * 0.12, ga, (r() - 0.5) * 0.12), r() < 0.5 ? stone : st2, 0.12, r); }
+      // Säulengang
+      for (let k = -4; k <= 4; k++) for (const sd of [-1, 1]) {
+        const [px, pz] = P(k * 5.5, sd * 7), h = r() < 0.35 ? 2 + r() * 4 : 9 + r() * 2;
+        const py = groundY(px, pz);
+        mg.add('cyl', M(px, py - 0.5, pz, 0.85, h + 0.5, 0.85), stone, 0.08, r);
+        mg.add('box', M(px, py + 0.2, pz, 2.1, 0.5, 2.1, 0, ga, 0), st2, 0.08, r);
+        if (h > 8) mg.add('box', M(px, py + h + 0.25, pz, 2.1, 0.5, 2.1, 0, ga, 0), st2, 0.08, r);
+        else { const fa = r() * 6.283; for (let q = 0; q < 3; q++) mg.add('cyl', M(px + Math.cos(fa) * (2 + q * 2.3), py + 0.4, pz + Math.sin(fa) * (2 + q * 2.3), 0.8, 2.1, 0.8, 0, -fa, Math.PI / 2 + (r() - 0.5) * 0.2), stone, 0.08, r); }
+        for (let q = 0; q < 30; q++) ps.add(px + (r() - 0.5) * 2, py + r() * h, pz + (r() - 0.5) * 2, ivy[q % 3]);
+        circCollider(out, px, pz, 1.1);
+      }
+      // Gebälk auf intakten Abschnitten
+      for (const sd of [-1, 1]) for (let k = -4; k < 4; k += 2) { if (r() < 0.45) continue; const [px, pz] = P(k * 5.5 + 2.75, sd * 7); mg.add('box', M(px, groundY(px, pz) + 10.4, pz, 12, 1.2, 2.2, 0, -ga, 0), st2, 0.08, r); }
+      // grosser Bogen am Ende
+      const [ax, az] = P(27, 0), ay = groundY(ax, az);
+      for (const sd of [-1, 1]) { const [px, pz] = P(27, sd * 6); mg.add('box', M(px, groundY(px, pz) + 8, pz, 3, 18, 3, 0, ga, 0), stone, 0.08, r); circCollider(out, px, pz, 2); }
+      mg.add('box', M(ax, ay + 18, az, 3.4, 3, 15, 0, ga, 0), stone, 0.08, r);
+      // kopflose Statue mit erhobenem Arm
+      const [sx, sz] = P(-14, 0), sy = groundY(sx, sz);
+      mg.add('box', M(sx, sy + 1.5, sz, 4, 3, 4, 0, ga, 0), st2, 0.08, r);
+      mg.add('taper', M(sx, sy + 3, sz, 1.4, 6, 1.4), stone, 0.08, r);
+      mg.add('box', M(sx, sy + 9.5, sz, 2.6, 3, 1.6, 0, ga, 0), stone, 0.08, r);
+      mg.add('cyl', M(sx + 1.4, sy + 10.5, sz, 0.45, 4.5, 0.45, 0, 0, -0.5), stone, 0.08, r);
+      circCollider(out, sx, sz, 2.6);
+      // gestürzter Kopf
+      const [hx, hz] = P(-10, 5); mg.add('ico1', M(hx, groundY(hx, hz) + 1, hz, 1.8, 1.9, 1.8, 0.4, r(), 0.9), stone, 0.08, r);
+      const ck = s.key + ':c0', [cx2, cz2] = P(0, 0);
+      makeChest(out, ck, cx2, cz2, ga, false, st.opened(ck));
+      break;
+    }
   }
   if (!mg.empty) out.group.add(new THREE.Mesh(mg.build(), MAT.flat));
   if (!ps.empty) out.group.add(new THREE.Points(ps.build(), psMat));
-  out.updaters.push(dt => updateFires(out, dt));
+  out.updaters.push(dt => { updateFires(out, dt); updateChests(out, dt); });
   return out;
+}
+// Knochen oder Stab zwischen zwei Punkten
+const _up = new THREE.Vector3(0, 1, 0), _bdir = new THREE.Vector3(), _bq = new THREE.Quaternion(), _be = new THREE.Euler();
+function boneSeg(mg, ax, ay, az, bx, by, bz, rad, col, r) {
+  _bdir.set(bx - ax, by - ay, bz - az);
+  const len = _bdir.length();
+  if (len < 0.01) return;
+  _bdir.multiplyScalar(1 / len);
+  _bq.setFromUnitVectors(_up, _bdir);
+  _be.setFromQuaternion(_bq, 'YXZ');
+  mg.add('cyl6', M(ax, ay, az, rad, len, rad, _be.x, _be.y, _be.z), col, 0.1, r);
 }
 
 // ---------- Lager ----------
@@ -757,6 +867,10 @@ function buildSite(s, st) {
   else if (s.type === 'wunder') out = buildWonder(s, st);
   else if (s.type === 'lager') out = buildCamp(s, st);
   else if (s.type === 'aussicht') out = buildView(s);
+  else if (s.type === 'wahrzeichen') out = buildLandmark(s, st);
+  else if (s.type === 'hoehle') out = buildCave(s, st);
+  else if (s.type === 'lichtung') out = buildClearing(s, st);
+  else if (s.type === 'ritter') out = buildKnights(s, st);
   else out = buildWanderer(s);
   G.scene.add(out.group);
   return out;
