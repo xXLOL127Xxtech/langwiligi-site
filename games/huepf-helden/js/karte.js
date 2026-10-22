@@ -17,6 +17,20 @@ const Karte = {
     Music.play(composeSong(n * 77 + 5, { scale: (n >= 7 && n <= 9) || n === 11 ? 'moll' : n === 6 ? 'dorisch' : n === 10 ? 'mixo' : 'dur', root: 60 + (n % 3), bpm: 104, lead: 'triangle', comp: 'pad', legato: 1.2 }));
   },
   node() { return this.W.byId[this.at]; },
+  // Welt links/rechts davon (Welt 9 nur, wenn sie offen ist); null am Ende
+  neighbourWorld(d) {
+    const list = [];
+    for (let n = 1; n <= WORLD_COUNT; n++) if (n !== 9 || Prog.save.unlocked.includes(9)) list.push(n);
+    const i = list.indexOf(this.W.n) + d;
+    return i >= 0 && i < list.length ? list[i] : null;
+  },
+  arrowPos(d) { return { x: d < 0 ? Math.max(48, this.view.ox / 2) : SW - Math.max(48, this.view.ox / 2), y: this.view.oy + 280 * this.view.s + 10, r: 34 }; },
+  switchWorld(d) {
+    const n = this.neighbourWorld(d);
+    if (n === null) { SFX.bump(); return; }
+    if (!Prog.save.unlocked.includes(n)) { SFX.wrong(); const need = n === NEW_FIRST ? 'Besiegt Morvax in Welt 8' : `Schafft 5 Level in Welt ${n === NEW_FIRST + 1 ? NEW_FIRST : n - 1}`; this.say(`Welt ${n} ist noch gesperrt: ${need}.`, 3); return; }
+    SFX.select(); this.enter(n);
+  },
   say(text, dur = 2.6) { this.msg = { text, t: dur }; },
   // Ansicht: Kartenkoordinaten (1000×560) -> Bildschirm
   layout() {
@@ -51,6 +65,8 @@ const Karte = {
     this.holdT = (held.l || held.r || held.u || held.d) ? (this.holdT || 0) + dt : 0;
     this.prevDir = held;
     if (dir) { this.step(dir); this.holdT = 0; }
+    if (anyPressed(['PageUp', 'BracketLeft'])) { this.switchWorld(-1); return; }
+    if (anyPressed(['PageDown', 'BracketRight'])) { this.switchWorld(1); return; }
     const confirm = anyPressed(['Space', 'Enter', 'NumpadEnter']) || pads.some(p => p.jP);
     const menuKey = anyPressed(['KeyQ', 'KeyE', 'KeyU', 'KeyO', 'KeyR', 'KeyX', 'KeyC', 'Slash', 'Period']) || pads.some(p => p.aP);
     if (confirm) this.enterNode();
@@ -104,7 +120,9 @@ const Karte = {
     }
   },
   click(mx, my) {
-    if (!this.view || this.route.length) return;
+    if (!this.view) return;
+    for (const d of [-1, 1]) { const a = this.arrowPos(d); if (Math.hypot(mx - a.x, my - a.y) < a.r + 12) { this.switchWorld(d); return; } }
+    if (this.route.length) return;
     let best = null, bd = 34;
     for (const nd of this.W.nodes) {
       if (!this.visible(nd)) continue;
@@ -156,6 +174,23 @@ const Karte = {
     });
     g.restore();
     this.drawHud(g);
+    this.drawArrows(g);
+  },
+  drawArrows(g) {
+    for (const d of [-1, 1]) {
+      const n = this.neighbourWorld(d);
+      if (n === null) continue;
+      const a = this.arrowPos(d), open = Prog.save.unlocked.includes(n), pul = 1 + Math.sin(this.t * 4) * .05;
+      g.save(); g.translate(a.x, a.y); g.scale(pul, pul);
+      g.globalAlpha = open ? 1 : .5;
+      g.beginPath(); g.arc(0, 0, a.r, 0, TAU); fs(g, open ? 'rgba(255,200,50,.95)' : 'rgba(90,90,110,.9)', 3.5);
+      g.beginPath(); g.moveTo(d * 12, 0); g.lineTo(-d * 10, -18); g.lineTo(-d * 10, 18); g.closePath(); fs(g, '#fff', 2.5);
+      g.restore();
+      g.globalAlpha = 1; g.textAlign = 'center'; g.font = '15px ' + FONT; g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 4;
+      const label = open ? `Welt ${n}` : `Welt ${n} 🔒`;
+      g.strokeText(label, a.x, a.y + a.r + 22); g.fillText(label, a.x, a.y + a.r + 22);
+      if (open) { g.font = '12px system-ui, sans-serif'; g.strokeText(WORLD_SPECS[n - 1].name, a.x, a.y + a.r + 38); g.fillText(WORLD_SPECS[n - 1].name, a.x, a.y + a.r + 38); }
+    }
   },
   drawNode(g, nd, t) {
     const done = Prog.beaten(nd.id), r = Prog.save.done[nd.id];
@@ -279,7 +314,7 @@ const Karte = {
     g.fillText(title, SW / 2, by + 34);
     g.font = '14px system-ui, sans-serif'; g.fillStyle = '#fff'; g.fillText(sub, SW / 2, by + 58);
     g.font = '12.5px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)';
-    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Inventar: E · Menü: Esc', SW / 2, by + 90);
+    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Inventar: E · Welt: Pfeile am Rand · Menü: Esc', SW / 2, by + 90);
     if (this.msg) {
       const a = Math.min(1, this.msg.t * 3);
       g.globalAlpha = a;
