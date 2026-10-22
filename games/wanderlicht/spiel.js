@@ -713,7 +713,9 @@ function updateMood(dt, x, y, z) {
     } else if (L.kind === 'dunkelfeste') {
       const k = smooth(650, 110, d);
       if (k > tg.dunkel) { tg.dunkel = k; env.dunkelYaw = Math.atan2(dx, dz); }
-    } else {
+    } else if (L.kind === 'koloss') {
+      tg.fogBank = Math.max(tg.fogBank, smooth(520, 160, d) * 0.3);
+    } else if (L.kind === 'mondschloss') {
       const k = smooth(430, 200, d);
       tg.fogBank = Math.max(tg.fogBank, smooth(760, 590, d) * (1 - smooth(460, 360, d)));
       if (k > tg.mond) { tg.mond = k; const top = L.baseH + LM_STYLE.mondschloss.keep * 1.15 - y; mood.mondDir.set(dx / d, clamp(top / Math.max(d, 1) * 0.9, 0.12, 0.7), dz / d).normalize(); }
@@ -784,7 +786,7 @@ function talkTo(s) {
   if (s.type === 'ritter') {
     const L = bigNear(P.x, P.z, 2600);
     if (L && !S.disc[L.key]) {
-      const what = L.kind === 'dunkelfeste' ? 'Wo der Himmel schwarz wird, steht ' + L.name + '. Wer dort hingeht, kommt verändert zurück, oder gar nicht.' : L.kind === 'mondschloss' ? 'Hinter dem Nebel liegt ' + L.name + '. Geh hindurch, auch wenn du nichts mehr siehst.' : L.name + ' leuchtet im Abendrot. Dort ist das Licht freundlicher als irgendwo sonst.';
+      const what = L.kind === 'koloss' ? 'Auf der Ebene kniet ein Riese aus Stein. ' + L.name + ' nennen ihn die Alten. Man sagt, wer ihm zuhört, hört die Zeit.' : L.kind === 'dunkelfeste' ? 'Wo der Himmel schwarz wird, steht ' + L.name + '. Wer dort hingeht, kommt verändert zurück, oder gar nicht.' : L.kind === 'mondschloss' ? 'Hinter dem Nebel liegt ' + L.name + '. Geh hindurch, auch wenn du nichts mehr siehst.' : L.name + ' leuchtet im Abendrot. Dort ist das Licht freundlicher als irgendwo sonst.';
       S.hints[L.key] = [L.x, L.z, L.name];
       dialogPages.push(what + ' Es liegt im ' + dirWord(L.x - P.x, L.z - P.z) + '.');
     }
@@ -934,7 +936,8 @@ function fillMenu() {
 }
 $('mResume').onclick = closePanel;
 $('mJournal').onclick = () => { closePanel(); openJournal(); };
-$('mPixel').onclick = () => { SET.pixel = SET.pixel >= 5 ? 2 : SET.pixel + 1; G.pixel = SET.pixel; resizeGraphics(); saveSettings(); fillMenu(); };
+let pixelManual = false;
+$('mPixel').onclick = () => { pixelManual = true; SET.pixel = SET.pixel >= 5 ? 2 : SET.pixel + 1; G.pixel = SET.pixel; resizeGraphics(); saveSettings(); fillMenu(); };
 $('mView').onclick = () => { SET.view = (SET.view + 1) % 3; G.view = SET.view; clearChunks(); worldReady = false; saveSettings(); fillMenu(); };
 $('mSound').onclick = () => { toggleSound(); fillMenu(); };
 $('mTitle').onclick = () => { saveGame(); show('menu', false); panel = null; goTitle(); };
@@ -1128,9 +1131,17 @@ function beginPlay() {
 let last = performance.now(), fpsAcc = 0, fpsN = 0;
 function frame(now) {
   requestAnimationFrame(frame);
-  let dt = Math.min(0.05, (now - last) / 1000);
+  const raw = Math.max(0, (now - last) / 1000);
+  let dt = Math.min(0.05, raw);
   last = now;
-  fpsAcc += dt; fpsN++;
+  fpsAcc += Math.min(raw, 0.5); fpsN++;
+  // Bleibt es zu langsam, wird das Bild etwas gröber (nur für diese Sitzung)
+  if (mode !== 'play' || !worldReady) { fpsAcc = 0; fpsN = 0; }
+  else if (fpsAcc > 6) {
+    const fps = fpsN / fpsAcc;
+    if (fps < 22 && !pixelManual && G.pixel < 4) { G.pixel++; resizeGraphics(); toast('Das Bild wird etwas gröber, damit alles flüssig läuft.'); }
+    fpsAcc = 0; fpsN = 0;
+  }
   if (hitStop > 0) { hitStop -= dt; dt *= 0.15; }
   const live = mode === 'play' || mode === 'rest' || mode === 'title' || mode === 'dead';
   if (live) U.uTime.value += dt;

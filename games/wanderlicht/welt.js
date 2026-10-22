@@ -421,6 +421,7 @@ const LANDMARKS = {
   abendschloss: { mood: 'hell', names: ['Schloss Abendrot', 'Schloss Rosenlicht', 'Schloss Dämmerglanz', 'Schloss Violenhain'], sub: 'Hier geht die Sonne nie ganz unter.' },
   dunkelfeste: { mood: 'dunkel', names: ['Die Schwarze Feste', 'Burg Nachtzahn', 'Die Aschenzitadelle', 'Feste Grauentor'], sub: 'Selbst der Wind meidet diese Mauern.' },
   mondschloss: { mood: 'mond', names: ['Das Mondschloss', 'Schloss Silbermond', 'Die Sternenkrone', 'Schloss Nachtglanz'], sub: 'Der Mond wohnt hinter seinen Türmen.' },
+  koloss: { mood: 'still', names: ['Der Kniende Riese', 'Der Wächter der Ebene', 'Der Vergessene König', 'Der Steinerne Eid'], sub: 'Er wartet seit tausend Jahren auf ein Wort.' },
 };
 function bigAt(bi, bj) {
   const key = bi + ',' + bj;
@@ -431,7 +432,7 @@ function bigAt(bi, bj) {
   const spawnBig = bi === sbi && bj === sbj;
   if (spawnBig || r() < 0.85) {
     let x = bi * BIG + 230 + r() * (BIG - 460), z = bj * BIG + 230 + r() * (BIG - 460);
-    let type = pick(r, ['abendschloss', 'dunkelfeste', 'mondschloss']);
+    let type = pick(r, ['abendschloss', 'dunkelfeste', 'mondschloss', 'koloss']);
     if (spawnBig) {
       // das erste Schloss liegt in Sichtweite, aber nicht zu nah
       const a = r() * Math.PI * 2;
@@ -444,10 +445,10 @@ function bigAt(bi, bj) {
     const def = LANDMARKS[type];
     const nat = naturalHeight(x, z);
     L = { key: 'L' + key, type: 'wahrzeichen', kind: type, mood: def.mood, x, z, seed: hash2(bi, bj, World.seed + 31),
-      name: pick(r, def.names), sub: def.sub, R: type === 'dunkelfeste' ? 46 : 52, F: type === 'dunkelfeste' ? 22 : 34 };
+      name: pick(r, def.names), sub: def.sub, R: type === 'dunkelfeste' ? 46 : type === 'koloss' ? 30 : 52, F: type === 'dunkelfeste' ? 22 : 34 };
     L.baseH = type === 'dunkelfeste' ? Math.max(nat, 4) + 14 : Math.max(nat, 2) + 3;
     L.lakeAng = r() * Math.PI * 2;
-    L.lake = type !== 'dunkelfeste';
+    L.lake = type !== 'dunkelfeste' && type !== 'koloss';
     L.lakeA = type === 'mondschloss' ? 70 : 58; L.lakeB = type === 'mondschloss' ? 44 : 36;
     L.lx = x + Math.cos(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6); L.lz = z + Math.sin(L.lakeAng) * (L.R + L.lakeB * 0.9 + 6);
     // Damm mit Laternen über den See bis zum Tor

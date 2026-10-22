@@ -75,6 +75,7 @@ const LM_STYLE = {
   mondschloss: { stone: [0.7, 0.76, 0.9], stone2: [0.55, 0.62, 0.78], roof: [0.17, 0.2, 0.42], win: [0.78, 0.9, 1], wallH: 14, tower: [32, 54], keep: 70, lit: 0.6, n: 6, aura: 0x8fb4ff },
 };
 function buildLandmark(L, st) {
+  if (L.kind === 'koloss') return buildColossus(L, st);
   const r = mulberry32(L.seed);
   const out = newBuilt(L);
   const S = LM_STYLE[L.kind];
@@ -610,6 +611,7 @@ function buildKnights(s) {
 
 // ---------- Ferne Silhouetten der Wahrzeichen (bis zum Horizont sichtbar) ----------
 function buildImpostor(L) {
+  if (L.kind === 'koloss') return buildColossusImpostor(L);
   const r = mulberry32(L.seed);
   const S = LM_STYLE[L.kind];
   const g = new THREE.Group(), mg = new Merger(), gps = new PointSet();
@@ -641,5 +643,100 @@ function buildImpostor(L) {
   }
   reflectable(g);
   G.scene.add(g);
+  return g;
+}
+
+// ---------- Der kniende Riese: ein gewaltiges Standbild ----------
+function colossusParts(mg, L, r, moss) {
+  const cx = L.x, cz = L.z, y0 = L.baseH, th = Math.PI / 2 - L.lakeAng;
+  const cs = Math.cos(th), sn = Math.sin(th);
+  const st = [0.43, 0.45, 0.43], dk = [0.3, 0.32, 0.31], hi = [0.52, 0.53, 0.5];
+  // Teil im eigenen Koordinatensystem (z zeigt zum Tor) in die Welt setzen
+  const P = (kind, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0, c = st) => {
+    const wx = cx + x * cs + z * sn, wz = cz - x * sn + z * cs;
+    mg.add(kind, M(wx, y0 + y, wz, sx, sy, sz, rx, ry + th, rz), c, 0.12, r);
+    if (moss && sy > 6) for (let q = 0; q < Math.min(90, sx * sz * 0.5); q++) moss(wx + (r() - 0.5) * sx, y0 + y + (r() - 0.2) * sy * 0.6, wz + (r() - 0.5) * sz);
+  };
+  const W = (x, z) => [cx + x * cs + z * sn, cz - x * sn + z * cs];
+  // Sockel aus Trümmern
+  for (let k = 0; k < 18; k++) { const a = r() * 6.283, d = 14 + r() * 14; P('ico', Math.cos(a) * d, 1, Math.sin(a) * d, 3 + r() * 5, 2 + r() * 3, 3 + r() * 5, r(), r() * 6, r(), dk); }
+  // Beine: links aufgestellt, rechts kniend
+  P('box', -6, 10, 14, 8, 22, 9, 0, 0, 0, st);
+  P('box', -6, 23, 7, 9, 8, 17, 0.08, 0, 0, st);
+  P('box', -6, 2, 17, 9, 4, 13, 0, 0, 0, dk);
+  P('box', 6, 14, 2, 9, 22, 9, 0.35, 0, 0, st);
+  P('box', 6, 4, -8, 8, 8, 22, 0, 0, 0, st);
+  // Rumpf, Gürtel, Brustpanzer
+  P('box', 0, 26, 0, 22, 6, 14, 0, 0, 0, dk);
+  P('box', 0, 41, 1, 24, 26, 15, 0.08, 0, 0, st);
+  P('box', 0, 44, 8.8, 14, 16, 2, 0.08, 0, 0, hi);
+  // Umhang
+  P('box', 0, 30, -9, 27, 44, 2.2, -0.16, 0, 0, dk);
+  // Schultern (eine zerbrochen)
+  P('ico', -15, 54, 0, 9, 7, 9, 0, 0, 0.2, hi);
+  P('ico', 15, 52, 0, 7, 5, 8, 0.3, 0, -0.3, hi);
+  // Arme stützen sich auf das Schwert
+  P('box', -13, 44, 6, 6, 16, 6, 0.6, 0, 0.25, st);
+  P('box', 13, 44, 6, 6, 16, 6, 0.6, 0, -0.25, st);
+  P('box', -7, 35, 15, 5.5, 5.5, 14, 0.25, 0.5, 0, st);
+  P('box', 7, 35, 15, 5.5, 5.5, 14, 0.25, -0.5, 0, st);
+  P('ico', 0, 33, 21, 6, 5, 5, 0, 0, 0, st);
+  // Helm mit Kamm, gesenkter Blick
+  P('box', 0, 62, 3, 10, 12, 11, 0.35, 0, 0, st);
+  P('box', 0, 61, 8.4, 7, 1.3, 1, 0.35, 0, 0, [0.04, 0.04, 0.05]);
+  P('cone4', 0, 67, 1, 1.6, 9, 9, 0.2, 0, 0, dk);
+  // Schwert im Boden
+  P('box', 0, 13, 22, 3.6, 30, 1, 0, 0, 0, [0.5, 0.53, 0.58]);
+  P('box', 0, 29, 22, 17, 1.8, 2.2, 0, 0, 0, hi);
+  P('box', 0, 32, 22, 1.6, 5, 1.6, 0, 0, 0, dk);
+  return { W, top: y0 + 72 };
+}
+function buildColossus(L, st) {
+  const r = mulberry32(L.seed);
+  const out = newBuilt(L);
+  const mg = new Merger(), ps = new PointSet(), gps = new PointSet();
+  const moss = [[0.26, 0.38, 0.2], [0.18, 0.28, 0.15], [0.36, 0.5, 0.26]];
+  const C = colossusParts(mg, L, r, (x, y, z) => ps.add(x, y, z, moss[Math.floor(r() * 3)], 0.8 + r() * 0.3));
+  const y0 = L.baseH;
+  // Ranken hängen vom Umhang und den Armen
+  for (let k = 0; k < 40; k++) {
+    const [x, z] = C.W((r() - 0.5) * 26, -10 + r() * 4);
+    const top = y0 + 25 + r() * 25, len = 6 + r() * 16;
+    for (let q = 0; q < len; q += 0.6) ps.add(x, top - q, z, moss[q % 3 > 1 ? 2 : 0], 0.9);
+  }
+  // Augen glimmen schwach
+  for (const ex of [-2, 2]) { const [x, z] = C.W(ex, 8.6); gps.add(x, y0 + 61.4, z, [0.55, 0.8, 1], 1); }
+  // Opfergaben und Kerzen am Schwert
+  const [sx, sz] = C.W(0, 26);
+  for (let q = 0; q < 14; q++) { const a = r() * 6.283, d = 2 + r() * 3; gps.add(sx + Math.cos(a) * d, y0 + 0.4, sz + Math.sin(a) * d, [1, 0.75, 0.4], 1); mg.add('cyl6', M(sx + Math.cos(a) * d, y0 - 0.1, sz + Math.sin(a) * d, 0.1, 0.5, 0.1), [0.9, 0.86, 0.75]); }
+  out.interact.push({ kind: 'rest', x: sx, z: sz, r: 4, label: 'Dem Riesen zuhören' });
+  const [kx, kz] = C.W(14, 20), key = L.key + ':c0';
+  makeChest(out, key, kx, kz, Math.atan2(sx - kx, sz - kz), true, st.opened(key));
+  // Kollision mit Beinen, Knie und Schwert
+  for (const [lx, lz, rr] of [[-6, 14, 5.5], [-6, 18, 5], [6, 3, 5.5], [6, -8, 5], [6, -17, 4.5], [0, 22, 2.4], [0, -2, 8]]) { const [x, z] = C.W(lx, lz); circCollider(out, x, z, rr); }
+  // Weisse Vögel kreisen um den Kopf
+  const birds = new PointSet(), bd = [];
+  const [hx, hz] = C.W(0, 3);
+  for (let i = 0; i < 24; i++) { birds.add(0, 0, 0, [0.92, 0.92, 0.95]); bd.push([12 + Math.random() * 22, 0.2 + Math.random() * 0.3, Math.random() * 6.3, y0 + 55 + Math.random() * 25]); }
+  const bg = birds.build(), bp = new THREE.Points(bg, pointsMat(0.7, { sway: 0, farMul: 3 }));
+  bp.frustumCulled = false; out.group.add(bp);
+  out.updaters.push(dt => {
+    const a = bg.attributes.position.array, t = U.uTime.value;
+    for (let i = 0; i < bd.length; i++) { const d = bd[i], an = d[2] + t * d[1]; a[i * 3] = hx + Math.cos(an) * d[0]; a[i * 3 + 1] = d[3] + Math.sin(t * 1.5 + i) * 1.5; a[i * 3 + 2] = hz + Math.sin(an) * d[0]; }
+    bg.attributes.position.needsUpdate = true;
+    updateChests(out, dt);
+  });
+  risingMotes(out, 50, sx, y0, sz, 6, 14, [[1, 0.8, 0.5], [0.8, 0.9, 1]], 0.7, 0.35);
+  out.group.add(new THREE.Mesh(mg.build(), MAT.landmark));
+  out.group.add(new THREE.Points(ps.build(), MAT.leaves));
+  out.group.add(new THREE.Points(gps.build(), MAT.landGlow));
+  reflectable(out.group);
+  return out;
+}
+function buildColossusImpostor(L) {
+  const r = mulberry32(L.seed), mg = new Merger(), g = new THREE.Group();
+  colossusParts(mg, L, r, null);
+  g.add(new THREE.Mesh(mg.build(), MAT.landmark));
+  reflectable(g); G.scene.add(g);
   return g;
 }

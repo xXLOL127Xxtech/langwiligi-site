@@ -17,6 +17,7 @@ const U = {
   uScale: { value: 150 }, uCam: { value: new THREE.Vector3() },
   uLanternPos: { value: new THREE.Vector3() }, uLanternCol: { value: new THREE.Color(0, 0, 0) },
   uGrassFar: { value: 70 }, uNeon: { value: 0 }, uNearCut: { value: 0 }, uFarCut: { value: 0 },
+  uSunDirW: { value: new THREE.Vector3(0, 1, 0) }, uCDrift: { value: new THREE.Vector2() }, uCShadow: { value: 0 },
 };
 
 const VIEW_SETTINGS = [
@@ -120,7 +121,18 @@ float aerialF(float d, float y, float n, float f) {
   float a = 1.0 - exp(-(fd * fd * 2.2 + fd * 0.45));
   return a * mix(1.0, 0.42, smoothstep(6.0, 190.0, y));
 }`;
-const FOG_V = 'uniform float uFogNear; uniform float uFogFar; varying float vFog;' + AERIAL;
+// Wolkenschatten, die über das Land ziehen
+const CLOUD_SH = `
+uniform vec2 uCDrift; uniform float uCShadow;
+float csH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float csN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(csH(i), csH(i + vec2(1.0, 0.0)), f.x), mix(csH(i + vec2(0.0, 1.0)), csH(i + vec2(1.0, 1.0)), f.x), f.y); }
+float cloudSh(vec2 xz) {
+  if (uCShadow < 0.01) return 1.0;
+  float n = csN(xz * 0.0042 - uCDrift) * 0.65 + csN(xz * 0.011 - uCDrift * 2.6) * 0.35;
+  return 1.0 - uCShadow * smoothstep(0.42, 0.68, n);
+}`;
+const FOG_V = 'uniform float uFogNear; uniform float uFogFar; varying float vFog;' + AERIAL + CLOUD_SH;
 THREE.ShaderChunk.fog_pars_vertex = '#ifdef USE_FOG\n varying float fogDepth; varying float vFogY;\n#endif';
 THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\n fogDepth = - mvPosition.z; vFogY = (modelMatrix * vec4(position, 1.0)).y;\n#endif';
 THREE.ShaderChunk.fog_pars_fragment = '#ifdef USE_FOG\n uniform vec3 fogColor; varying float fogDepth; varying float vFogY; uniform float fogNear; uniform float fogFar;' + AERIAL + '\n#endif';
@@ -146,7 +158,7 @@ function pointsMat(size, opts = {}) {
         if (uCut > 0.5 && distance(wp.xz, uCam.xz) < uNearCut) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         float ld = distance(wp.xyz, uLanternPos);
         vec3 li = uLight + uLanternCol * pow(max(0.0, 1.0 - ld / 13.0), 2.0);
-        vCol = color * mix(li, vec3(1.0), uEmit);
+        vCol = color * mix(li * cloudSh(wp.xz), vec3(1.0), uEmit);
         vFog = aerialF(-mv.z / uFarMul, wp.y, uFogNear, uFogFar) * uFogCap;
       }`,
     fragmentShader: `
@@ -162,7 +174,7 @@ function pointsMat(size, opts = {}) {
 
 const MAT = {};
 function initMaterials() {
-  MAT.flat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  MAT.flat = farLambert(null, 1);
   MAT.leaves = pointsMat(0.62);
   MAT.leavesBig = pointsMat(0.9);
   MAT.glow = pointsMat(0.5, { emit: 1, additive: true });
@@ -181,7 +193,7 @@ function initMaterials() {
     vertexShader: `
       ${FOG_V}
       uniform float uTime, uWind, uGrassFar, uNeon;
-      uniform vec2 uWindDir; uniform vec3 uLight, uSunCol, uLanternPos, uLanternCol, uCam;
+      uniform vec2 uWindDir; uniform vec3 uLight, uSunCol, uLanternPos, uLanternCol, uCam, uSunDirW;
       attribute vec3 iPos; attribute vec4 iPar; attribute vec3 iTip; attribute vec3 iStem; attribute float iGlow;
       varying vec3 vCol;
       void main(){
@@ -202,7 +214,13 @@ function initMaterials() {
         vec3 base = mix(iStem, iTip, smoothstep(0.44, 0.6, t)) * (0.85 + 0.25 * smoothstep(0.5, 1.0, t));
         float ld = distance(p, uLanternPos);
         vec3 li = uLight * (0.6 + 0.4 * t) + uSunCol * 0.35 * t * iPar.w + uLanternCol * pow(max(0.0, 1.0 - ld / 12.0), 2.0) * 1.2;
-        vCol = base * li;
+        // Gegenlicht: Rispen leuchten, wenn man in die tiefe Sonne schaut
+        vec3 vd = normalize(p - uCam);
+        float back = pow(max(dot(vd, uSunDirW), 0.0), 5.0) * smoothstep(0.45, 0.85, t);
+        li += uSunCol * back * 1.6;
+        // Windwellen laufen hell über die Wiese
+        li *= 1.0 + max(gust, 0.0) * 0.16 * t * uWind;
+        vCol = base * li * cloudSh(p.xz);
         float gl = iGlow * uNeon * smoothstep(0.5, 0.8, t) * (0.75 + 0.25 * sin(uTime * 2.0 + iPar.z * 3.0));
         vCol = mix(vCol, iTip * 1.25, gl);
         vFog = aerialF(-mv.z, p.y, uFogNear, uFogFar) * (1.0 - gl * 0.6);
@@ -221,10 +239,11 @@ function farLambert(cutU, cap) {
   const id = FAR_MATS++;
   m.onBeforeCompile = sh => {
     sh.uniforms.uCam = U.uCam; sh.uniforms.uCut = cutU || { value: 0 };
+    sh.uniforms.uCDrift = U.uCDrift; sh.uniforms.uCShadow = U.uCShadow;
     sh.vertexShader = 'varying vec3 vWP;\n' + sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = 'varying vec3 vWP; uniform vec3 uCam; uniform float uCut;\n' + sh.fragmentShader
+    sh.fragmentShader = 'varying vec3 vWP; uniform vec3 uCam; uniform float uCut;\n' + CLOUD_SH + sh.fragmentShader
       .replace('void main() {', 'void main() {\n' + (cutU ? ' if (distance(vWP.xz, uCam.xz) < uCut) discard;' : ''))
-      .replace('#include <fog_fragment>', '#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, min(aerialF(fogDepth, vWP.y, fogNear, fogFar), ' + cap.toFixed(2) + '));\n#endif');
+      .replace('#include <fog_fragment>', 'gl_FragColor.rgb *= cloudSh(vWP.xz);\n#ifdef USE_FOG\n gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, min(aerialF(fogDepth, vWP.y, fogNear, fogFar), ' + cap.toFixed(2) + '));\n#endif');
   };
   m.customProgramCacheKey = () => 'far' + id;
   return m;
@@ -945,6 +964,9 @@ function updateAtmosphere(dt, dayT, target, bw, cam, yaw, player, lanternOn, onT
   G.sun.target.position.copy(cam);
   U.uLight.value.copy(G.hemi.color).multiplyScalar(G.hemi.intensity * 0.85).add(_c2.copy(G.sun.color).multiplyScalar(G.sun.intensity * 0.55));
   U.uSunCol.value.copy(ATM.sunC).multiplyScalar(sunUp * (1 - cloudE * 0.6) * (cave ? 0 : 1));
+  U.uSunDirW.value.copy(ATM.sunDir);
+  U.uCDrift.value.set(ATM.drift.x * 0.0042, ATM.drift.y * 0.0042);
+  U.uCShadow.value = cave ? 0 : sunUp * smooth(0.25, 0.7, cloudE) * 0.38 * (1 - c.rain * 0.5);
 
   // Laterne
   const lan = lanternOn ? (cave ? 1 : clamp01(ATM.night * 1.2 + stormE * 0.3 + fogE * 0.3)) : 0;
@@ -1155,13 +1177,15 @@ function buildChunk(ci, cj) {
   // weiche Schatten unter den Baumkronen
   for (let t = 0; t < treeXZ.length; t += 3) {
     const tx = treeXZ[t], tz = treeXZ[t + 1], rad = treeXZ[t + 2];
-    const i0 = Math.max(0, Math.floor((tx - rad - x0) / S)), i1 = Math.min(N - 1, Math.floor((tx + rad - x0) / S));
-    const j0 = Math.max(0, Math.floor((tz - rad - z0) / S)), j1 = Math.min(N - 1, Math.floor((tz + rad - z0) / S));
+    const i0 = Math.max(0, Math.floor((tx - rad * 1.3 - x0) / S)), i1 = Math.min(N - 1, Math.floor((tx + rad * 1.3 - x0) / S));
+    const j0 = Math.max(0, Math.floor((tz - rad * 1.3 - z0) / S)), j1 = Math.min(N - 1, Math.floor((tz + rad * 1.3 - z0) / S));
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const d = Math.hypot(x0 + (i + 0.5) * S - tx, z0 + (j + 0.5) * S - tz);
-      const f = 1 - 0.42 * smooth(rad + S * 0.7, rad * 0.3, d);
       const b = (j * N + i) * 18;
-      for (let q = 0; q < 18; q++) col[b + q] *= f;
+      for (let q = 0; q < 18; q += 3) {
+        const d = Math.hypot(pos[b + q] - tx, pos[b + q + 2] - tz);
+        const f = 1 - 0.45 * smooth(rad * 1.25, rad * 0.25, d);
+        col[b + q] *= f; col[b + q + 1] *= f; col[b + q + 2] *= f;
+      }
     }
   }
   if (treeXZ.length) g.attributes.color.needsUpdate = true;
