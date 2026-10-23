@@ -33,6 +33,7 @@ button { font:inherit; color:inherit; cursor:pointer; }
 #zones span.on { background:rgba(200,85,61,.35); border-color:var(--acc); color:#fff; font-weight:700; }
 #info { position:absolute; top:10px; right:10px; width:164px; text-align:right; }
 #mini { width:160px; height:120px; border:2px solid rgba(255,255,255,.25); border-radius:8px; background:#222; display:block; margin-left:auto; image-rendering:pixelated; }
+#camp { margin-top:4px; font-size:12px; background:var(--panel); border:1px solid rgba(229,88,74,.5); color:#ffb4a8; border-radius:8px; padding:3px 8px; display:inline-block; }
 #where { margin-top:4px; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:3px 8px; display:inline-block; }
 #plist { margin-top:4px; font-size:12px; } #plist div { background:var(--panel); border:1px solid var(--line); border-radius:7px; margin-top:3px; padding:2px 7px; display:flex; justify-content:space-between; gap:8px; }
 #feed { position:absolute; top:128px; left:10px; width:280px; display:flex; flex-direction:column; gap:4px; }
@@ -89,12 +90,12 @@ select { background:#0c0e12; color:var(--text); border:1px solid var(--line); bo
     <div id="zones"><span data-z="0">1 Kopf</span><span data-z="1">2 Rumpf</span><span data-z="2">3 Arme</span><span data-z="3">4 Beine</span></div>
   </div>
   <div id="feed"></div>
-  <div id="info"><canvas id="mini" width="160" height="120"></canvas><div id="where"></div><div id="plist"></div></div>
+  <div id="info"><canvas id="mini" width="160" height="120"></canvas><div id="where"></div><div id="camp"></div><div id="plist"></div></div>
   <div id="roombox" class="hidden"><span>Raum</span><b id="rcode"></b><button class="mini" id="rcopy">Link kopieren</button></div>
   <div id="timebox"></div>
   <div id="prog" class="hidden"><i id="progi" style="width:0"></i></div>
   <div id="prompt" class="hidden"></div>
-  <div id="hint">Tab: Inventar · E: Handeln · F: Pferd · H: Hilfe</div>
+  <div id="hint">Leertaste: Schlagen · Shift: Parieren · Tab: Inventar · E: Handeln · F: Pferd · H: Hilfe</div>
 </div>
 <div id="modal" class="hidden"></div>
 <div id="title" class="screen">
@@ -126,7 +127,7 @@ select { background:#0c0e12; color:var(--text); border:1px solid var(--line); bo
 'use strict';
 /* ================= Eisenherbst 1438 – Daten ================= */
 const GAME_ID = 'eisenherbst';
-const TS = 16, MW = 160, MH = 120;
+const TS = 16, MW = 240, MH = 180;
 const HUB = window.GameHub || null;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -338,7 +339,7 @@ function genWorld(seed) {
   const cy = x => Math.round(62 + 3 * Math.sin(x / 14) + 1.5 * Math.sin(x / 5));
   for (let x = 0; x < MW; x++) for (let d = -2; d <= 2; d++) {
     let t = 3;
-    if (x >= 68 && x <= 76) t = 8;
+    if ((x >= 68 && x <= 76) || (x >= 150 && x <= 156)) t = 8;
     if (x >= 102 && x <= 105) t = 9;
     setT(x, cy(x) + d, t);
     keep[ix(x, clamp(cy(x) + d, 0, MH - 1))] = 1;
@@ -458,6 +459,39 @@ function genWorld(seed) {
   WORLD.chests.push({ id: 'c_scheune', x: 19 * TS + 8, y: 42 * TS + 8, tier: 0, lock: 1 });
   WORLD.chests.push({ id: 'c_taverne', x: 46 * TS + 8, y: 38 * TS + 8, tier: 1, lock: 2 });
   WORLD.chests.forEach(c => { setD(Math.floor(c.x / TS), Math.floor(c.y / TS), 0); });
+
+
+  // ---- Weite Karte: viele Lager, Strassen, Aussenposten ----
+  WORLD.camps = [];
+  road([[72, 65], [60, 74], [56, 76]]); road([[60, 90], [60, 104]]); road([[46, 94], [20, 100]]);
+  road([[112, 54], [130, 48], [160, 48], [190, 44]]); road([[153, 48], [153, 72], [180, 90], [205, 95]]); road([[205, 95], [205, 150]]);
+  road([[118, 92], [130, 120], [140, 148]]); road([[140, 148], [205, 150]]);
+  const camp = (id, title, cx, cy, tents, nPos, o = {}) => {
+    ORTE[id] = title;
+    rect(cx - 9, cy - 7, 19, 15, 6, [0, 4, 5]); keepRect(cx - 9, cy - 7, 19, 15, 0);
+    place(id, cx - 12, cy - 9, cx + 12, cy + 10);
+    tents.forEach(([dx, dy]) => bld('zelt', cx + dx, cy + dy, 3, 3, { roof: o.roof == null ? 3 : o.roof }));
+    setD(cx, cy + 1, 11); setD(cx - 3, cy + 3, 10); setD(cx + 4, cy + 5, 8); setD(cx - 5, cy + 6, 16);
+    WORLD.chests.push({ id: 'c_' + id, x: cx * TS + 8, y: (cy - 5) * TS + 8, tier: o.tier == null ? 2 : o.tier, lock: o.lock == null ? 2 : o.lock });
+    const pos = []; for (let i = 0; i < nPos; i++) { const a = i / nPos * 6.283; pos.push({ x: (cx + Math.cos(a) * 4.5) * TS + 8, y: (cy + 2 + Math.sin(a) * 3.2) * TS + 8 }); }
+    sp[id] = pos; WORLD.camps.push({ id, name: title, x: cx * TS + 8, y: cy * TS + 8, army: !!o.army, n: nPos });
+  };
+  const T3 = [[-8, -5], [6, -5], [-8, 3]];
+  camp('ostweg', 'Räuber am Ostweg', 65, 45, [[-8, -5], [5, -5]], 4, { tier: 1, lock: 1 });
+  camp('strassenraeuber', 'Strassenräuber-Rast', 56, 78, [[-8, -5]], 4, { tier: 1, lock: 1 });
+  camp('schwarzmoor', 'Schwarzmoor', 60, 108, T3, 6);
+  camp('schlucht', 'Räuberschlucht', 22, 104, T3, 6);
+  camp('eulen', 'Eulenstein', 190, 38, T3, 7);
+  camp('rabenhorst', 'Rabenhorst', 205, 152, [[-8, -5], [6, -5], [-8, 3], [6, 3]], 10, { tier: 3, lock: 3 });
+  camp('grenzwacht', 'Grenzwacht', 140, 152, T3, 7, { army: 1, roof: 0, tier: 2 });
+  // Köhlerhain
+  ORTE.koehler = 'Köhlerhain'; place('koehler', 194, 84, 218, 106);
+  [[196, 88], [206, 88], [196, 98], [208, 98]].forEach(([x, y]) => house(x, y));
+  setD(202, 94, 12); setD(204, 91, 16); setD(200, 101, 8);
+  sp.koehler = [{ x: 202 * TS, y: 97 * TS }, { x: 200 * TS, y: 92 * TS }, { x: 205 * TS, y: 96 * TS }, { x: 203 * TS, y: 100 * TS }];
+  WORLD.chests.push({ id: 'c_koehler', x: 212 * TS + 8, y: 94 * TS + 8, tier: 1, lock: 1 });
+  sp.patrouille = [[130, 48], [160, 50], [153, 70], [180, 90], [112, 96], [84, 100], [96, 77], [72, 90], [40, 94], [118, 56], [60, 74], [36, 62], [150, 120], [170, 60]].map(([x, y]) => ({ x: x * TS + 8, y: y * TS + 8 }));
+  sp.wegelagerer = [[130, 48], [160, 60], [100, 70], [30, 70], [110, 100], [180, 70], [150, 110], [90, 120], [66, 70], [14, 48], [60, 18], [30, 16], [46, 66], [50, 120], [170, 130], [120, 130]].map(([x, y]) => ({ x: x * TS + 8, y: y * TS + 8 }));
 
   // Natur: Bäume, Büsche, Steine
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
@@ -742,7 +776,7 @@ function doAttack(att, zone, ang) {
     if (!validTarget(att, o)) return;
     const dx = o.x - att.x, dy = o.y - att.y, d = Math.hypot(dx, dy);
     if (d > reach + 7 || d < 0.01) return;
-    if (d > 9 && Math.abs(angDiff(Math.atan2(dy, dx), ang)) > 1.0) return;
+    if (d > 9 && Math.abs(angDiff(Math.atan2(dy, dx), ang)) > 1.3) return;
     if (d < bd) { bd = d; best = o; }
   });
   noise(att.x, att.y, 260, att);
@@ -1052,6 +1086,7 @@ const ARCH = {
 };
 function spawnNpc(arch, x, y, o = {}) {
   const A = ARCH[arch], male = Math.random() < 0.78;
+  { const f = nearestFree(x, y); x = f.x; y = f.y; }
   const e = mkEnt({
     arch, fac: A.fac, hp: A.hp, mhp: A.hp, mv: A.mv + rnd(-3, 3), courage: clamp(A.courage + rnd(-0.12, 0.12), 0, 1), x, y, a: rnd(0, 6.28),
     name: (arch === 'bauer' && !male ? pick(NAMES_F) : pick(NAMES_M)) + (arch === 'hauptmann' || arch === 'banditenfuehrer' || arch === 'ritter' ? ' ' + pick(SURN) : (Math.random() < 0.3 ? ' ' + pick(SURN) : '')),
@@ -1101,6 +1136,16 @@ function spawnWorld() {
     arr.forEach((p, i) => S(i === 0 && lead ? 'banditenfuehrer' : 'bandit', p.x, p.y, { grp: name, roam: 50 }));
   };
   band(sp.wolf, 'wolf', 6, true); band(sp.hohl, 'hohl', 5, true);
+  WORLD.camps.forEach(c => {
+    const pos = sp[c.id];
+    if (c.id === 'koehler') return;
+    if (c.army) pos.forEach((p, i) => S(i === 0 ? 'hauptmann' : 'soldat', p.x, p.y, { role: 'wache', roam: 40, grp: c.id }));
+    else pos.forEach((p, i) => S(i === 0 && pos.length >= 5 ? 'banditenfuehrer' : 'bandit', p.x, p.y, { grp: c.id, roam: 50 }));
+  });
+  sp.koehler.forEach((p, i) => S(i < 3 ? 'bauer' : 'wache', p.x, p.y, { roam: 40, role: i < 3 ? '' : 'wache' }));
+  // Streifen: Räubertrupps unterwegs und Wegelagerer
+  for (let g = 0; g < 6; g++) for (let k = 0; k < 3; k++) { const p = sp.patrouille[(g * 2 + k) % sp.patrouille.length]; S('bandit', p.x + k * 14, p.y, { grp: 'streife' + g, wander: sp.patrouille }); }
+  sp.wegelagerer.forEach(p => S('bandit', p.x, p.y, { grp: 'weg', roam: 60 }));
   // Reisende
   for (let i = 0; i < 4; i++) {
     const p = sp.markt; S('reisender', p.x + i * 20, p.y + 60, { role: 'reisender', wander: [sp.markt, sp.lagertor[0], { x: 72 * TS, y: 64 * TS }, sp.muehle[0], { x: 104 * TS, y: 63 * TS }, sp.schmied, sp.dorfwache[0]] });
@@ -2068,6 +2113,7 @@ function drawMini() {
   m.imageSmoothingEnabled = false; m.drawImage(MM, 0, 0, MW, MH, 0, 0, mc.width, mc.height);
   const sx = mc.width / MW, sy = mc.height / MH;
   WORLD.chests.forEach(ch => { if (!G.chestOpen[ch.id]) { m.fillStyle = '#d8b24a'; m.fillRect(ch.x / TS * sx - 1, ch.y / TS * sy - 1, 2, 2); } });
+  WORLD.camps.forEach(c => { m.fillStyle = c.army ? '#6fa0ff' : '#ff4a3a'; m.fillRect(c.x / TS * sx - 2, c.y / TS * sy - 2, 4, 4); });
   G.ents.forEach(e => { if (e.k === 'p') { m.fillStyle = e === G.me ? '#ffe28a' : '#6fc3ff'; m.fillRect(e.x / TS * sx - 2, e.y / TS * sy - 2, 4, 4); } else if (e.k === 'n' && !e.dead && e.fac === 'bande' && Math.hypot(e.x - G.me.x, e.y - G.me.y) < 260) { m.fillStyle = '#ff5a4a'; m.fillRect(e.x / TS * sx - 1, e.y / TS * sy - 1, 2, 2); } });
   m.strokeStyle = 'rgba(255,255,255,.5)'; m.strokeRect(cam.x / TS * sx, cam.y / TS * sy, cam.w / TS * sx, cam.h / TS * sy);
 }
@@ -2576,7 +2622,7 @@ function enterGame(seed, isHost, init) {
   if (G.room) { $('roombox').classList.remove('hidden'); $('rcode').textContent = G.room.code; } else $('roombox').classList.add('hidden');
   if (!isHost && G.room) G.room.send({ t: 'hello', name: P.name, eq: me.eq, w: me.wep, sk: me.sk, hr: me.hr });
   onEquipChanged();
-  toast('Willkommen in Niederhain. Drück H für die Steuerung.', 8000);
+  toast('Willkommen in Niederhain. Leertaste schlägt zu. Räuber lauern auf den Wegen – rechts siehst du das nächste Lager.', 9000);
   if (!started) { started = true; requestAnimationFrame(frame); }
 }
 function leaveGame() {
@@ -2707,6 +2753,7 @@ function updateHud() {
   const h = Math.floor(G.tm / 60) % 24, mi = Math.floor(G.tm % 60);
   $('timebox').textContent = String(h).padStart(2, '0') + ':' + String(mi - mi % 10).padStart(2, '0') + ' Uhr';
   $('where').textContent = placeName();
+  { let bc = null, bd = 1e9; WORLD.camps.forEach(c => { if (c.army) return; const d = Math.hypot(c.x - me.x, c.y - me.y); if (d < bd) { bd = d; bc = c; } }); if (bc) { const a = Math.atan2(bc.y - me.y, bc.x - me.x), ar = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][Math.round(((a + 6.2832) % 6.2832) / 0.7854) % 8]; $('camp').textContent = 'Räuber: ' + ar + ' ' + bc.name + ' (' + Math.round(bd / TS) + ' Felder)'; } }
   if (G.room) {
     let html = ''; G.ents.forEach(e => { if (e.k === 'p') html += `<div><span>${esc(e.name)}</span><span style="color:${e.hp / (e.mhp || 100) > 0.4 ? '#7bd36a' : '#e5584a'}">${e.dead ? '†' : e.down ? 'am Boden' : Math.max(0, Math.round(e.hp))}</span></div>`; });
     $('plist').innerHTML = html;
