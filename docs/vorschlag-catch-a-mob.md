@@ -128,17 +128,17 @@ Alle Spieler sind in **derselben Lobby**, also in derselben Welt. Duelle gibt es
 | Art | Ablauf |
 |---|---|
 | **Herausforderung** | Person anwählen (`E`), «Duell» wählen. Die andere Person sieht eine Karte oben im Bild und nimmt mit `J` an oder lehnt mit `N` ab. Nur bei Zustimmung beginnt der Kampf. |
-| **Überfall** | Jeder Spieler darf **einmal pro 30 Minuten** eine andere Person überfallen. Der Kampf beginnt sofort, ohne zu fragen. Der Überfallene darf trotzdem fliehen (siehe Schutzregeln). |
+| **Überfall** | Jeder Spieler darf andere Spieler überfallen. Der Kampf beginnt sofort, ohne zu fragen. Die 30-Minuten-Sperre gilt **für den Überfallenen**: Wer überfallen wurde, kann 30 Minuten lang nicht erneut überfallen werden, auch nicht von anderen. So wird niemand dreimal hintereinander erwischt. Der Überfallene darf trotzdem fliehen (siehe Schutzregeln). |
 
 Schutzregeln, damit der Überfall Spannung bringt und nicht nervt:
 - **Sichere Zonen:** In Dörfern, Läden, Heilhäusern und innerhalb der Party gibt es keinen Überfall.
-- **Schutzzeit:** Wer überfallen wurde, ist die nächsten 30 Minuten vor weiteren Überfällen geschützt (auch durch andere Spieler).
+- **Schutzzeit (30 Minuten) am Überfallenen gemessen:** Sie startet, sobald der Überfall beginnt, und gilt gegen alle anderen Spieler. Der Angreifer selbst hat keine Wartezeit, er kann also weitere Spieler überfallen, solange diese nicht geschützt sind.
 - **Mindeststufe:** Neulinge unter Stufe 10 können nicht überfallen werden.
 - **Fliehen:** Der Überfallene kann die erste Runde fliehen. Die Flucht gelingt nach Tempo-Vergleich, ein Überfall ist also kein sicherer Sieg.
 - **Einsatz:** Der Verlierer verliert einen kleinen Teil seines Goldes (höchstens 5 %), der Gewinner erhält davon die Hälfte. **Kein Mob geht verloren.**
 - **Rangliste:** Nur Herausforderungen zählen. Überfälle sind Spass und zählen nicht, damit niemand Anfänger «farmt».
-- Pro Spieler läuft der 30-Minuten-Zähler im Spiel mit und wird als kleine Anzeige gezeigt.
-- Die Überfall-Grenze wird bei jedem Client geprüft und vom Host gegengeprüft, damit nicht jeder sie umgehen kann.
+- Der eigene Schutz-Zähler wird als kleine Anzeige gezeigt («Geschützt: 24:10»). Über anderen Spielern zeigt ein Schildsymbol, dass sie gerade geschützt sind.
+- Der Host merkt sich für jeden Spieler den Zeitpunkt des letzten Überfalls und lehnt einen zweiten Überfall innerhalb von 30 Minuten ab. Verlässt der Host die Welt, übernimmt der neue Host die Liste.
 
 ## 7. Fangen, Team und Fortschritt
 
@@ -185,7 +185,7 @@ Zuerst Riesenraid und Freundesduell, dann der Rest der Welt.
 | Etappe | Inhalt | Ergebnis |
 |---|---|---|
 | **1. Kern** | Kampf, Fangen, Team, 12 Mobs, 2 Biome, Bots-Modus, Speichern | Spielbar gegen Bots |
-| **2. Freundesduell** | Gemeinsame Lobby (zuerst 8 Plätze), Namen, Positionen, Duell mit Zustimmung, Rangliste, Überfall mit 30-Minuten-Grenze | Gegen Freunde spielen |
+| **2. Freundesduell** | Gemeinsame Lobby (zuerst 8 Plätze), Namen, Positionen, Duell mit Zustimmung, Rangliste, Überfall mit 30-Minuten-Schutz für den Überfallenen | Gegen Freunde spielen |
 | **3. Party und Riesenraid** | Party (bis 4), Standortanzeige, Karte, erster Riesen-Boss mit Phasen, Belohnungen | Zusammen gegen Starke |
 | **4. Offene Welt** | Alle Biome, Tag/Nacht, Wetter, Jahreszeiten, Läden, Heilhaus, Mob-Verkauf | Grosse, lebendige Welt |
 | **5. 20 Spieler** | Serveranpassung, Host-Wechsel, Weltbosse, mehrere Welten | Grosse Gemeinschaft |
