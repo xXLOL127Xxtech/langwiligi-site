@@ -19,6 +19,7 @@
 | [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Lokal · Online · Bots | Gegner in Blasen fangen: 8 Level gegen Bots, 1 gegen 1 oder 2 gegen 2 auf Zufallskarten. |
 | [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
 | [Catapult](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
+| [Catch a Mob](https://langwiligi.site/catch-a-mob/) | Online · Bots | Düstere Mobs fangen in einer riesigen Welt mit Wetter und Jahreszeiten. Mit der Party gegen Riesen, im Duell gegen Freunde. |
 | [Clumsy Bird](https://langwiligi.site/clumsy-bird/) | Solo | Flatter durch die Röhren. Original: Ellison Leão (GPL-3.0). |
 | [Dame](https://langwiligi.site/dame/) | Lokal · Online · Bots | Springen, schlagen, zur Dame werden. |
 | [Dead Maze](https://langwiligi.site/dead-maze/) | Solo | Tower-Defense gegen Zombie-Horden. |

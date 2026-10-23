@@ -16,6 +16,16 @@ Ein Online-Sammel- und Kampfspiel in einer riesigen Dark-Fantasy-Welt für bis z
 
 ---
 
+## Stand der Umsetzung
+
+Das Spiel ist gebaut (`games/catch-a-mob/`) und enthält bereits:
+- Bots-Modus und Online-Welt (Code und Link), Name und Farbe, Spielstand im Browser plus Spielstand-Code
+- grosse Welt (400 × 400 Kacheln) mit 8 Biomen, Dörfern mit Heilhaus, Siegel-Laden, Mob-Händler und Wegstein, Wetter, Tag/Nacht und Jahreszeiten
+- 16 Mob-Familien (48 Mobs) plus 8 Riesen, Kampfsystem mit Elementen, Wetter, Statuseffekten, Fangen, Erfahrung und Entwicklung
+- Trainer-Bots, Riesen-Raids mit der Party, Freundesduell, Überfall mit 30 Minuten Schutz für den Überfallenen, Party mit Standortpfeilen und Karte
+
+Noch offen: Weltboss für alle, Duell-Rangliste auf dem Server (heute nur pro Welt), Raum mit 20 statt 8 Spielern (braucht die Serveränderung, siehe Abschnitt 3.2).
+
 ## 1. Die Idee
 
 Du bist ein Mob-Jäger in einer düsteren Fantasy-Welt. Wilde Mobs (Schattenwölfe, Knochendrachen, Sumpfgeister …) streifen durch Wälder, Moore, Vulkane und Gebirge. Du fängst sie mit Fangsiegeln, trainierst sie und ziehst mit deiner Party los. In der Welt laufen bis zu 20 echte Spieler gleichzeitig herum. Man sieht sich, kämpft zusammen gegen Riesen-Bosse, fordert sich zu Duellen heraus und handelt.
