@@ -49,6 +49,7 @@
 | [Road-Runner](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
 | [SBB Runner](https://langwiligi.site/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
 | [Schach](https://langwiligi.site/schach/) | Lokal · Online · Bots | Gegen einen Bot mit vier Stärken und drei Stilen. |
+| [Schoggi-Boss](https://langwiligi.site/schoggi-boss/) | Solo | Schoggi-Tycoon: Geheimrezepte entdecken, im Dorf handeln, Verkäufer einstellen und dem Kontrolleur ausweichen. |
 | [Snake](https://langwiligi.site/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
 | [Sternen-Party](https://langwiligi.site/sternen-party/) | Lokal · Online · Bots | Party-Brettspiel für 4: würfeln, Sterne kaufen, Münzen sammeln und nach jeder Runde ein Minispiel. |
 | [Strassenbaron](https://langwiligi.site/strassenbaron/) | Lokal · Online · Bots | Kaufen, bauen, abkassieren: der Brettspiel-Klassiker in 3D mit Schweizer Strassen, für 2 bis 6 Spieler. |

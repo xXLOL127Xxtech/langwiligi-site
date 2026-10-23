@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Schoggi-Boss</title>
+<meta name="description" content="Entdecke Geheimrezepte, verkaufe deine Schoggi im Dorf und weiche dem Kontrolleur aus: dein Weg zum Imperium.">
+<meta name="theme-color" content="#e58a3c">
+<meta name="spiel-modi" content="Solo">
+<meta name="spiel-tags" content="Tycoon,Offene Welt,Rezepte">
+<meta name="spiel-typ" content="Aufbau,Strategie">
+<meta name="spiel-suche" content="Tycoon Spiel, Schoggi Spiel, Schokolade Tycoon, Aufbauspiel mit Rezepten">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root { --bg:#0d0f13; --panel:rgba(18,22,30,.92); --line:rgba(255,255,255,.12); --acc:#e58a3c; --gold:#ffcf4a;
+  --txt:#eef1f6; --dim:#9aa3b2; --ok:#3ccf6e; --bad:#ef5350; }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--txt);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; user-select:none; -webkit-user-select:none; }
+canvas#c { position:fixed; inset:0; width:100%; height:100%; display:block; }
+button { font:inherit; color:inherit; cursor:pointer; border:0; }
+.hidden { display:none !important; }
+
+#hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+.pill { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 12px; }
+#stats { position:absolute; top:12px; left:12px; display:flex; gap:14px; align-items:center; font-weight:600; font-size:15px; }
+#stats b { color:var(--gold); }
+#stats .dim { color:var(--dim); font-weight:500; }
+#obj { position:absolute; top:60px; left:12px; max-width:340px; font-size:13px; line-height:1.35; }
+#obj small { display:block; color:var(--acc); font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:10px; margin-bottom:2px; }
+#mini { position:absolute; top:12px; right:12px; border-radius:12px; border:1px solid var(--line); background:var(--panel); width:200px; height:130px; }
+#event { position:absolute; top:150px; right:12px; max-width:200px; font-size:12px; color:var(--dim); text-align:right; }
+#event b { color:var(--acc); }
+#prompt { position:absolute; left:50%; bottom:70px; transform:translateX(-50%); font-weight:700; font-size:16px; padding:9px 16px; white-space:nowrap; }
+#prompt kbd, .foot kbd { background:var(--acc); color:#1b1006; border-radius:6px; padding:1px 7px; font-weight:800; font-family:inherit; }
+#toasts { position:absolute; top:70px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; align-items:center; }
+.toast { background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--acc); border-radius:10px; padding:8px 14px; font-size:14px; animation:tin .25s; max-width:520px; text-align:center; }
+.toast.ok { border-left-color:var(--ok); } .toast.bad { border-left-color:var(--bad); } .toast.gold { border-left-color:var(--gold); }
+@keyframes tin { from { opacity:0; transform:translateY(-8px); } }
+#help { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); font-size:12px; color:var(--dim); white-space:nowrap; padding:6px 12px; }
+#alarm { position:absolute; top:110px; left:50%; transform:translateX(-50%); width:260px; height:10px; border-radius:6px; background:rgba(0,0,0,.5); overflow:hidden; border:1px solid var(--line); }
+#alarm i { display:block; height:100%; width:0; background:var(--bad); }
+
+#panel { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; background:rgba(5,7,12,.55); }
+#box { width:min(600px,94vw); max-height:86vh; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:20px 22px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+#box h2 { margin:0 0 4px; font-size:22px; color:var(--acc); }
+#box .sub { color:var(--dim); font-size:14px; margin:4px 0 12px; line-height:1.4; }
+.rows { display:flex; flex-direction:column; gap:4px; }
+.row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 12px; border-radius:10px; border:1px solid transparent; background:rgba(255,255,255,.04); cursor:pointer; font-size:15px; }
+.row.sel { border-color:var(--acc); background:rgba(229,138,60,.14); }
+.row.off { opacity:.45; }
+.row.head { background:none; cursor:default; color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.07em; padding:10px 4px 2px; }
+.row .r { color:var(--gold); font-weight:700; white-space:nowrap; text-align:right; }
+.arr { display:inline-block; padding:0 8px; margin:0 2px; border-radius:6px; background:rgba(255,255,255,.1); cursor:pointer; color:var(--txt); }
+.arr:hover { background:var(--acc); color:#1b1006; }
+.foot { margin-top:14px; color:var(--dim); font-size:12px; text-align:center; }
+.chip { display:inline-block; padding:1px 8px; border-radius:20px; font-size:12px; font-weight:700; color:#1b1206; margin:0 3px 2px 0; }
+.chip.q { background:#444b59; color:#cbd2de; }
+.good { color:var(--ok); } .bad { color:var(--bad); }
+.tbl { width:100%; border-collapse:collapse; font-size:14px; } .tbl td,.tbl th { padding:4px 8px; text-align:left; border-bottom:1px solid var(--line); }
+.tbl .lw-me { color:var(--gold); }
+
+#title { position:fixed; inset:0; z-index:30; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 30%, #3a2412, #0d0f13 70%); }
+#title .card { width:min(660px,94vw); text-align:center; padding:26px; }
+#title h1 { margin:0; font-size:56px; letter-spacing:.01em; color:var(--acc); }
+#title p { color:var(--dim); line-height:1.5; margin:10px 0; }
+#title .how { text-align:left; background:rgba(255,255,255,.05); border-radius:14px; padding:12px 18px; font-size:14px; color:var(--txt); line-height:1.6; margin:16px 0; }
+.btn { background:var(--acc); color:#1b1006; font-weight:800; font-size:17px; padding:12px 26px; border-radius:12px; margin:4px; }
+.btn.alt { background:rgba(255,255,255,.1); color:var(--txt); }
+.btn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hidden">
+  <div id="stats" class="pill"></div>
+  <div id="obj" class="pill"></div>
+  <canvas id="mini" width="400" height="260"></canvas>
+  <div id="event"></div>
+  <div id="alarm" class="hidden"><i></i></div>
+  <div id="toasts"></div>
+  <div id="prompt" class="pill hidden"></div>
+  <div id="help" class="pill">WASD / Pfeile: laufen · Shift: rennen · E: Aktion · B: Rezepte · I: Rucksack · Esc: Menü · M: Ton</div>
+</div>
+<div id="panel" class="hidden"><div id="box"></div></div>
+<div id="title">
+  <div class="card">
+    <h1>Schoggi-Boss</h1>
+    <p>Du hast eine kleine Hinterhof-Schoggi-Küche, 120 Franken und grosse Pläne.<br>Erfinde Rezepte, verkaufe sie im Dorf und werde zum Schoggi-Imperium.</p>
+    <div class="how">
+      <b>So geht's:</b><br>
+      1. Am <b>Mischtisch</b> Zutaten kombinieren und die Wirkung entdecken.<br>
+      2. In der <b>Maschine</b> eine Charge herstellen, aus der <b>Lagerkiste</b> in den Rucksack packen.<br>
+      3. Mit Dorfbewohnern <b>handeln</b>: Wer was mag, musst du herausfinden. Zu teuer? Dann gehen sie.<br>
+      4. Im <b>Büro</b> Maschinen und Verkäufer kaufen. Verbotene Zaubersorten meiden den <b>Kontrolleur</b>!<br>
+      <span style="color:var(--dim)">WASD oder Pfeiltasten laufen, E macht fast alles, Shift rennt. Touchpad-Klick geht in allen Menüs.</span>
+    </div>
+    <div id="titleBtns"></div>
+  </div>
+</div>
+
+<script src="../_shared/hub.js"></script>
+<script>
+'use strict';
+// ====================================================================================
+//  Schoggi-Boss – Daten
+// ====================================================================================
+const GAME_ID = 'schoggi-boss', KEY = GAME_ID + '-save';
+const TS = 4;                       // Spielminuten pro echte Sekunde
+const W = 2800, H = 1800;
+const TAG_START = 360, TAG_ENDE = 1440;
+
+const EFF = {
+  Knusprig:{m:.20,c:'#d9a066'}, Cremig:{m:.25,c:'#f3e2c7'}, Feurig:{m:.35,c:'#ff6a45'}, Frisch:{m:.25,c:'#5fe0c8'},
+  Blumig:{m:.30,c:'#e3a0f5'}, Nussig:{m:.30,c:'#c28b4d'}, Karamellig:{m:.40,c:'#f0a63a'}, Wach:{m:.45,c:'#b98a5a'},
+  Fruchtig:{m:.40,c:'#ff9a4d'}, Würzig:{m:.35,c:'#e0705a'}, Bitter:{m:-.15,c:'#9aa85a'}, Goldig:{m:1.2,c:'#ffd23f'},
+  Magisch:{m:2,c:'#b86bff'}
+};
+const BASEN = [
+  {id:'milch',  n:'Milchschoggi',   wert:8,  k:2,   preis:0,    rang:1},
+  {id:'zart',   n:'Zartbitter',     wert:11, k:2.6, preis:250,  rang:2},
+  {id:'weiss',  n:'Weisse Schoggi', wert:13, k:3,   preis:600,  rang:3},
+  {id:'praline',n:'Praliné',        wert:22, k:5,   preis:1800, rang:5}
+];
+const ZUT = [
+  {id:'nuss',    n:'Nüsse',       fx:'Knusprig',   k:.8,  preis:0,    rang:1},
+  {id:'honig',   n:'Honig',       fx:'Cremig',     k:1,   preis:60,   rang:1},
+  {id:'minze',   n:'Minze',       fx:'Frisch',     k:.8,  preis:90,   rang:1},
+  {id:'chili',   n:'Chili',       fx:'Feurig',     k:.8,  preis:120,  rang:1},
+  {id:'salz',    n:'Meersalz',    fx:'Karamellig', k:.5,  preis:150,  rang:2},
+  {id:'kaffee',  n:'Kaffee',      fx:'Wach',       k:1.2, preis:200,  rang:2},
+  {id:'orange',  n:'Orange',      fx:'Fruchtig',   k:1,   preis:260,  rang:2},
+  {id:'lavendel',n:'Lavendel',    fx:'Blumig',     k:1.5, preis:350,  rang:3},
+  {id:'ingwer',  n:'Ingwer',      fx:'Würzig',     k:1.2, preis:500,  rang:3},
+  {id:'safran',  n:'Safran',      fx:'Goldig',     k:4,   preis:1500, rang:4},
+  {id:'zauber',  n:'Zauberstaub', fx:'Magisch',    k:6,   preis:3000, rang:6}
+];
+// Reaktionen: Eine Zutat verwandelt bereits vorhandene Wirkungen (nur die vorherigen, nicht ihre eigene)
+const REGELN = {
+  chili:{Frisch:'Würzig', Cremig:'Karamellig'},
+  minze:{Feurig:'Fruchtig', Wach:'Blumig'},
+  honig:{Würzig:'Karamellig', Bitter:'Cremig'},
+  lavendel:{Wach:'Cremig', Knusprig:'Nussig'},
+  kaffee:{Cremig:'Knusprig', Blumig:'Würzig'},
+  orange:{Würzig:'Feurig', Blumig:'Fruchtig'},
+  ingwer:{Fruchtig:'Frisch', Cremig:'Würzig'},
+  salz:{Cremig:'Karamellig', Fruchtig:'Bitter'},
+  safran:{Karamellig:'Goldig', Nussig:'Magisch'},
+  zauber:{Bitter:'Goldig'}
+};
+const BAS = Object.fromEntries(BASEN.map(b => [b.id, b]));
+const ZUD = Object.fromEntries(ZUT.map(z => [z.id, z]));
+const RAENGE = [['Lehrling',0],['Geselle',400],['Meister',1500],['Konditor',5000],['Chocolatier',14000],['Schoggi-Baron',35000],['Imperium',90000]];
+const ZONEN = {
+  dorf:    {n:'Dorf',     r:[0,600,1400,1800],   rang:1, f:1,    col:'#4a8a3f'},
+  see:     {n:'Seeufer',  r:[0,0,1400,600],      rang:3, f:1.3,  col:'#3f8a5a'},
+  bahnhof: {n:'Bahnhof',  r:[1400,600,2800,1200],rang:2, f:1.15, col:'#7d8a74'},
+  altstadt:{n:'Altstadt', r:[1400,1200,2800,1800],rang:5,f:1.6,  col:'#a39279'},
+  wald:    {n:'Wald',     r:[1400,0,2800,600],   rang:99,f:1,    col:'#1f4d2a'}
+};
+// Name, Zone, Vorlieben, Abneigung, Farbe
+const KUNDEN = [
+  ['Frau Gerber','dorf',['Cremig','Karamellig'],'Feurig','#e57373'],
+  ['Herr Kunz','dorf',['Knusprig','Nussig'],'Blumig','#7986cb'],
+  ['Lehrerin Meier','dorf',['Wach','Würzig'],'Cremig','#ba68c8'],
+  ['Metzger Roth','dorf',['Feurig','Würzig'],'Frisch','#ef5350'],
+  ['Bäckerin Amrein','dorf',['Fruchtig','Karamellig'],'Wach','#ffb74d'],
+  ['Briefträger Tobi','dorf',['Frisch','Wach'],'Karamellig','#fdd835'],
+  ['Pendlerin Sandra','bahnhof',['Wach','Frisch'],'Cremig','#4db6ac'],
+  ['Dr. Keller','bahnhof',['Würzig','Knusprig'],'Fruchtig','#90a4ae'],
+  ['Kondukteur Fritz','bahnhof',['Karamellig','Nussig'],'Feurig','#e53935'],
+  ['Studentin Leila','bahnhof',['Fruchtig','Feurig'],'Knusprig','#f06292'],
+  ['Fischer Ueli','see',['Würzig','Nussig'],'Blumig','#4fc3f7'],
+  ['Joggerin Mia','see',['Frisch','Fruchtig'],'Cremig','#aed581'],
+  ['Maler Beat','see',['Blumig','Goldig'],'Bitter','#ff8a65'],
+  ['Touristin Yuki','see',['Goldig','Feurig'],'Würzig','#ce93d8'],
+  ['Madame Blanc','altstadt',['Blumig','Cremig'],'Feurig','#f8bbd0'],
+  ['Professor Egli','altstadt',['Wach','Goldig'],'Fruchtig','#a1887f'],
+  ['Bankier Vogel','altstadt',['Goldig','Magisch'],'Bitter','#78909c'],
+  ['Sängerin Carla','altstadt',['Karamellig','Blumig'],'Wach','#ec407a']
+];
+const EVENTS = [
+  {t:'Fasnacht: Fruchtige Sorten sind heute gefragt (+30 %).', fx:'Fruchtig', m:1.3},
+  {t:'Kalter Morgen: Feurige Sorten wärmen die Leute (+30 %).', fx:'Feurig', m:1.3},
+  {t:'Wanderwoche: Frische Sorten verkaufen sich gut (+30 %).', fx:'Frisch', m:1.3},
+  {t:'Prüfungszeit: Wache Sorten sind begehrt (+35 %).', fx:'Wach', m:1.35},
+  {t:'Hochzeit im Dorf: Blumige Sorten sind gefragt (+30 %).', fx:'Blumig', m:1.3},
+  {t:'Weihnachtsmarkt: Karamellige Sorten gehen weg (+30 %).', fx:'Karamellig', m:1.3},
+  {t:'Kunstmesse: Goldige Sorten sind der Hit (+40 %).', fx:'Goldig', m:1.4},
+  {t:'Ein ganz normaler Tag. Keine Besonderheiten.', fx:null, m:1},
+  {t:'Ein ruhiger Tag im Dorf. Keine Besonderheiten.', fx:null, m:1}
+];
+const MASCH_POS = [[420,1320],[420,1430],[420,1540],[270,1610]];
+const DAUER = 180;                  // Spielminuten pro Charge (bei Tempo-Stufe 0)
+const BATCH = [10,20,30,40], TEMPO = [1,.75,.55], RUCK = [40,80,150], SCHUH = [1,1.12,1.25];
+const UPG_PREIS = {
+  maschinen:[500,1500,4000], batch:[400,1500,4000], tempo:[700,2000], lager:[300,1000], schuhe:[200,600]
+};
+const HAENDLER_PREIS = 350, GEHALT = 30;
+
+// Weltgeometrie: feste Hindernisse [x, y, w, h, Farbe, Beschriftung]
+const BAU = [
+  [780,760,200,130,'#b5503c','Zutatenladen'],[1040,760,170,120,'#d9a066','Bäckerei'],
+  [300,700,140,110,'#9aa5b8',''],[560,690,120,100,'#c9a27a',''],[1180,1250,150,120,'#a9b5a0',''],
+  [700,1450,170,120,'#b88a8a',''],[1000,1500,180,130,'#9fb4c7',''],[1200,980,130,100,'#c4b38f',''],
+  [110,1130,220,100,'#a0522d','Werkstatt'],
+  [1700,640,420,120,'#7a8fa8','Bahnhof'],[2300,700,130,100,'#c9553d','Kiosk'],
+  [1500,1000,140,110,'#b0a58a',''],[2400,1020,190,120,'#a0aab5',''],
+  [200,420,140,90,'#8b5a2b','Bootshaus'],[1100,420,160,100,'#b6a07a',''],[150,150,150,120,'#a9b5a0',''],
+  [1550,1260,200,140,'#c2a98a',''],[1900,1260,240,140,'#b7a38c','Konditorei'],[2300,1260,220,140,'#c9b49a',''],
+  [1550,1560,200,150,'#bfa686',''],[2300,1560,260,150,'#cdb79c','']
+];
+const WASSER = [500,80,800,300];
+const BRUNNEN = [2000,1450,70,70];
+const ZAUN = [[80,1100,480,16],[80,1100,16,600],[80,1684,480,16],[544,1100,16,180],[544,1380,16,320]];
+const HOF = [80,1100,560,1700];
+const TOR = [552,1330];
+const SOLIDE = [];
+BAU.forEach(b => SOLIDE.push([b[0],b[1],b[2],b[3]]));
+SOLIDE.push(WASSER, BRUNNEN);
+ZAUN.forEach(z => SOLIDE.push(z));
+
+const HAENDLER_STAND = {dorf:[1010,1080], bahnhof:[1900,1000], see:[700,500], altstadt:[2100,1380]};
+const PATROUILLE = [
+  ['dorf',[880,990]],['dorf',[1250,1120]],['dorf',[900,1500]],['dorf',[640,1100]],
+  ['bahnhof',[1750,900]],['bahnhof',[2250,950]],
+  ['dorf',[830,690]],['see',[900,520]],['see',[300,300]],['see',[900,520]],
+  ['dorf',[900,1420]],['altstadt',[1450,1450]],['altstadt',[1850,1400]],['altstadt',[2250,1450]],['altstadt',[1450,1450]]
+];
+
+// ====================================================================================
+//  Hilfsfunktionen
+// ====================================================================================
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const rnd = (a,b) => a + Math.random()*(b-a);
+const $ = id => document.getElementById(id);
+const fr = n => 'Fr ' + Math.round(n).toLocaleString('de-CH').replace(/’/g,"'");
+const hhmm = m => { m = Math.floor(m); return String(Math.floor(m/60)%24).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const inR = (x,y,r) => x>=r[0] && x<=r[2] && y>=r[1] && y<=r[3];
+function zoneAt(x,y) { for (const k of ['dorf','see','bahnhof','altstadt','wald']) if (inR(x,y,ZONEN[k].r)) return k; return 'dorf'; }
+function ruckLast() { return Object.values(S.rucksack).reduce((a,b)=>a+b,0); }
+function rang() { let r = 1; for (let i = 0; i < RAENGE.length; i++) if (S.earned >= RAENGE[i][1]) r = i+1; return r; }
+function zoneOffen(k) { return S.rang >= ZONEN[k].rang; }
+
+function mischen(baseId, seq) {
+  let fx = [], reakt = [];
+  for (const id of seq) {
+    const rg = REGELN[id] || {};
+    fx = fx.map(e => { if (rg[e]) { reakt.push([id,e,rg[e]]); return rg[e]; } return e; });
+    fx = [...new Set(fx)];
+    const own = ZUD[id].fx;
+    if (!fx.includes(own) && fx.length < 8) fx.push(own);
+  }
+  return {fx, reakt};
+}
+const sorteKey = (b,fx) => b + '|' + [...fx].sort().join(',');
+const wertVon = (b,fx) => Math.max(1, Math.round(BAS[b].wert * (1 + fx.reduce((a,e)=>a+EFF[e].m, 0))));
+const kostenVon = (b,seq) => BAS[b].k + seq.reduce((a,id)=>a+ZUD[id].k, 0);
+function sorteName(s) {
+  if (!s.fx.length) return BAS[s.base].n;
+  const top = [...s.fx].sort((a,b)=>EFF[b].m-EFF[a].m)[0];
+  return top + '-' + BAS[s.base].n;
+}
+const heiss = s => s.fx.includes('Magisch');
+function aktWert(s) { return s.wert * (S.event && S.event.fx && s.fx.includes(S.event.fx) ? S.event.m : 1); }
+const chip = e => `<span class="chip" style="background:${EFF[e].c}">${e}</span>`;
+const sorteHtml = s => `${sorteName(s)}${heiss(s) ? ' ⚠️' : ''}<br>${s.fx.map(chip).join('')}`;
+
+// ====================================================================================
+//  Spielstand
+// ====================================================================================
+let S = null;
+function neuS() {
+  return {
+    v:1, money:120, earned:0, day:1, minute:TAG_START, rang:1, verk:0,
+    besitz:{nuss:1, milch:1}, sorten:{}, entdeckt:{}, reaktionen:[], lager:{}, rucksack:{},
+    maschinen:[0,1,2,3].map(()=>({state:'idle', key:null, n:0, t:0, total:DAUER})),
+    upg:{maschinen:1, batch:0, tempo:0, lager:0, schuhe:0}, haendler:[],
+    kd:KUNDEN.map(()=>({rel:0, heute:0})), event:EVENTS[7], px:340, py:1360, name:''
+  };
+}
+function laden() {
+  try { const j = JSON.parse(localStorage.getItem(KEY)); if (j && j.v === 1) return j; } catch (e) { /* kein Spielstand */ }
+  return null;
+}
+function speichern(still) {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); if (!still) toast('Spielstand gespeichert.', 'ok'); } catch (e) { if (!still) toast('Speichern nicht möglich.', 'bad'); }
+}
+
+// ====================================================================================
+//  Ton
+// ====================================================================================
+let actx = null, stumm = false;
+function sfx(t) {
+  if (stumm) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const n = actx.currentTime;
+    const melodie = {
+      kauf:[[660,.07],[880,.1]], ok:[[520,.07],[780,.12]], nein:[[200,.14]], fertig:[[523,.08],[659,.08],[784,.14]],
+      alarm:[[880,.12],[660,.12],[880,.12]], neu:[[523,.08],[659,.08],[784,.08],[1046,.2]], klick:[[440,.04]], busse:[[220,.2],[150,.25]]
+    }[t] || [[440,.05]];
+    let at = n;
+    for (const [f,d] of melodie) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = t === 'nein' || t === 'busse' ? 'sawtooth' : 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(.12, at+.01); g.gain.exponentialRampToValueAtTime(.0001, at+d);
+      o.connect(g); g.connect(actx.destination); o.start(at); o.stop(at+d+.02); at += d;
+    }
+  } catch (e) { /* Ton ist optional */ }
+}
+
+// ====================================================================================
+//  Oberfläche: Meldungen, Menüs
+// ====================================================================================
+function toast(msg, kind) {
+  const d = document.createElement('div'); d.className = 'toast ' + (kind||''); d.textContent = msg;
+  $('toasts').appendChild(d);
+  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+  setTimeout(() => d.remove(), 4200);
+}
+let panel = null, sel = 0;
+function openPanel(def) { panel = def; sel = def.start || 0; $('panel').classList.remove('hidden'); renderPanel(true); }
+function closePanel() { panel = null; $('panel').classList.add('hidden'); }
+function istZeile(it) { return !it.head; }
+function renderPanel(scroll) {
+  const items = panel.items();
+  if (!items[sel] || !istZeile(items[sel])) sel = Math.max(0, items.findIndex(istZeile));
+  let h = `<h2>${panel.title}</h2>`;
+  if (panel.sub) h += `<div class="sub">${panel.sub()}</div>`;
+  h += '<div class="rows">' + items.map((it,i) =>
+    `<div class="row${i===sel?' sel':''}${it.off?' off':''}${it.head?' head':''}" data-i="${i}"><span>${it.l}</span><span class="r">${it.r||''}</span></div>`).join('') + '</div>';
+  h += `<div class="foot">${panel.foot ? panel.foot() : '<kbd>↑</kbd><kbd>↓</kbd> wählen · <kbd>Enter</kbd> bestätigen · <kbd>Esc</kbd> zurück'}</div>`;
+  const keepTop = $('box').scrollTop;
+  $('box').innerHTML = h;
+  $('box').scrollTop = keepTop;
+  if (scroll) { const s = $('box').querySelector('.row.sel'); if (s) s.scrollIntoView({block:'nearest'}); }
+}
+function panelNav(d) {
+  const items = panel.items(); let i = sel;
+  for (let k = 0; k < items.length; k++) { i = (i + d + items.length) % items.length; if (istZeile(items[i])) break; }
+  sel = i; renderPanel(true); sfx('klick');
+}
+function panelAktion(art, schritt) {
+  const it = panel.items()[sel]; if (!it) return;
+  const f = art === 'ok' ? it.fn : art === 'l' ? it.left : it.right;
+  if (it.off && art === 'ok') { sfx('nein'); return; }
+  if (f) { const p = panel; f(schritt||1); if (panel === p) renderPanel(); }
+}
+function panelTaste(e) {
+  const c = e.code;
+  if (c === 'ArrowUp' || c === 'KeyW') panelNav(-1);
+  else if (c === 'ArrowDown' || c === 'KeyS') panelNav(1);
+  else if (c === 'ArrowLeft' || c === 'KeyA') panelAktion('l', e.shiftKey ? 5 : 1);
+  else if (c === 'ArrowRight' || c === 'KeyD') panelAktion('r', e.shiftKey ? 5 : 1);
+  else if (c === 'Enter' || c === 'Space' || c === 'KeyE') panelAktion('ok');
+  else if (c === 'Escape' || c === 'KeyQ' || c === 'Backspace') { const z = panel.zurueck; closePanel(); if (z) z(); }
+  else return false;
+  return true;
+}
+$('box').addEventListener('click', ev => {
+  if (!panel) return;
+  const a = ev.target.closest('.arr'), row = ev.target.closest('.row');
+  if (!row) return;
+  const i = +row.dataset.i; if (panel.items()[i] && panel.items()[i].head) return;
+  sel = i;
+  if (a) panelAktion(a.dataset.a, ev.shiftKey ? 5 : 1); else panelAktion('ok');
+  if (panel) renderPanel();
+});
+$('panel').addEventListener('click', ev => { if (ev.target === $('panel')) { closePanel(); } });
+const pfeile = (txt, kann) => `<span class="arr" data-a="l">‹</span>${txt}<span class="arr" data-a="r">›</span>`;
+
+// ====================================================================================
+//  Spielsystem: Zeit, Maschinen, Verkäufer
+// ====================================================================================
+function neuerTag() {
+  S.day++;
+  S.event = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  S.kd.forEach(k => k.heute = 0);
+  let lohn = 0;
+  for (const h of S.haendler) { const z = Math.min(S.money, GEHALT); S.money -= z; lohn += z; }
+  if (lohn) neuTagLohn = lohn;
+}
+let neuTagLohn = 0;
+function schritt(min) {
+  // Maschinen laufen weiter
+  for (const m of S.maschinen) if (m.state === 'busy') {
+    m.t += min;
+    if (m.t >= m.total) { m.state = 'done'; sfx('fertig'); toast('Eine Maschine ist fertig!', 'ok'); }
+  }
+  const alt = Math.floor(S.minute/60);
+  S.minute += min;
+  const neu = Math.floor(S.minute/60);
+  for (let h = alt + 1; h <= neu; h++) stunde(h % 24);
+  if (S.minute >= TAG_ENDE) { S.minute -= TAG_ENDE; neuerTag(); }
+}
+function stunde(h) {
+  if (h < 8 || h > 21) return;
+  for (const hd of S.haendler) {
+    const keys = Object.keys(hd.stock).filter(k => hd.stock[k] > 0).sort((a,b)=>S.sorten[b].wert-S.sorten[a].wert);
+    if (!keys.length) continue;
+    const k = keys[0], n = Math.min(hd.stock[k], 1 + Math.floor(Math.random()*3));
+    hd.stock[k] -= n; S.verk += n;
+    hd.kasse += Math.round(n * aktWert(S.sorten[k]) * ZONEN[hd.zone].f * .9);
+  }
+}
+function schlafen(erzwungen) {
+  const tag0 = S.day;
+  let guard = 0;
+  while ((S.day === tag0 || S.minute < TAG_START) && guard++ < 400) schritt(10);
+  S.minute = Math.max(S.minute, TAG_START);
+  P.x = 200; P.y = 1330;
+  kundenZuruecksetzen();
+  speichern(true);
+  meldeScore();
+  let t = erzwungen ? 'Du bist vor Müdigkeit eingeschlafen. ' : 'Gut geschlafen. ';
+  toast(t + 'Tag ' + S.day + ' beginnt.', 'gold');
+  if (neuTagLohn) { toast('Löhne bezahlt: ' + fr(neuTagLohn), ''); neuTagLohn = 0; }
+  toast(S.event.t, '');
+}
+function rangPruefen() {
+  const r = rang();
+  if (r > S.rang) {
+    S.rang = r; sfx('neu');
+    const freis = [];
+    ZUT.filter(z => z.rang === r).forEach(z => freis.push(z.n));
+    BASEN.filter(b => b.rang === r).forEach(b => freis.push(b.n));
+    Object.keys(ZONEN).filter(k => ZONEN[k].rang === r).forEach(k => freis.push('Gebiet ' + ZONEN[k].n));
+    toast(`Rang ${r}: ${RAENGE[r-1][0]}!` + (freis.length ? ' Neu: ' + freis.join(', ') : ''), 'gold');
+    if (r === 7) toast('Du bist das Schoggi-Imperium! Spiel weiter für einen höheren Rang auf der Liste.', 'gold');
+    speichern(true); meldeScore();
+    if (window.LW && LW.rundeFertig) { try { LW.rundeFertig(); } catch (e) { /* egal */ } }
+  }
+}
+let letzterScore = 0;
+function meldeScore() {
+  if (!window.GameHub || !GameHub.submitScore || Date.now() - letzterScore < 3000) return;
+  const name = GameHub.getName && GameHub.getName();
+  if (!name) return;
+  letzterScore = Date.now();
+  const punkte = Math.floor(S.earned / 10);
+  GameHub.submitScore(GAME_ID, name, punkte, {jumps: S.verk}).catch(() => {});
+}
+
+// ====================================================================================
+//  Welt: Spieler, Kunden, Kontrolleur
+// ====================================================================================
+const P = {x:340, y:1360, vx:0, vy:0, face:1, lauf:0};
+let kunden = [], insp = null, floaters = [], tNow = 0;
+function kreisInRect(x,y,r,b) {
+  const cx = clamp(x,b[0],b[0]+b[2]), cy = clamp(y,b[1],b[1]+b[3]);
+  return (x-cx)*(x-cx) + (y-cy)*(y-cy) < r*r;
+}
+function blockiert(x,y,r) {
+  if (x < r || y < r || x > W-r || y > H-r) return true;
+  for (const b of SOLIDE) if (kreisInRect(x,y,r,b)) return true;
+  for (const k of Object.keys(ZONEN)) {
+    if (S.rang >= ZONEN[k].rang) continue;
+    const z = ZONEN[k].r; if (kreisInRect(x,y,r,[z[0],z[1],z[2]-z[0],z[3]-z[1]])) return true;
+  }
+  return false;
+}
+function bewege(e, dx, dy, r) {
+  const nx = e.x + dx; if (!blockiert(nx, e.y, r)) e.x = nx;
+  const ny = e.y + dy; if (!blockiert(e.x, ny, r)) e.y = ny;
+}
+function freierPunkt(zone) {
+  const z = ZONEN[zone].r;
+  for (let i = 0; i < 40; i++) {
+    const x = rnd(z[0]+60, z[2]-60), y = rnd(z[1]+60, z[3]-60);
+    if (!blockiert(x,y,26) && !inR(x,y,[HOF[0]-30,HOF[1]-30,HOF[2]+30,HOF[3]+30])) return [x,y];
+  }
+  return [(z[0]+z[2])/2, (z[1]+z[3])/2];
+}
+function kundenZuruecksetzen() {
+  kunden = KUNDEN.map((k,i) => {
+    const [x,y] = freierPunkt(k[1]);
+    return {i, n:k[0], zone:k[1], likes:k[2], hate:k[3], col:k[4], greed:.92 + (i%5)*.04,
+            x, y, tx:x, ty:y, warte:rnd(0,3), out:false};
+  });
+}
+function updateKunden(dt) {
+  const tag = S.minute >= 480 && S.minute < 1320;
+  for (const c of kunden) {
+    c.out = tag && zoneOffen(c.zone);
+    if (!c.out) continue;
+    if (Math.hypot(c.x-P.x, c.y-P.y) < 60 && panel === null) { c.warte = Math.max(c.warte, .5); continue; }   // bleibt kurz stehen
+    if (c.warte > 0) { c.warte -= dt; if (c.warte <= 0) [c.tx, c.ty] = freierPunkt(c.zone); continue; }
+    const dx = c.tx-c.x, dy = c.ty-c.y, d = Math.hypot(dx,dy);
+    if (d < 8) { c.warte = rnd(2,7); continue; }
+    const x0 = c.x, y0 = c.y;
+    bewege(c, dx/d*52*dt, dy/d*52*dt, 11);
+    if (Math.hypot(c.x-x0, c.y-y0) < 12*dt) c.warte = .2;
+  }
+}
+function kundeStatus(c) { return S.kd[c.i]; }
+
+function inspInit() { insp = {x:880, y:1000, wp:0, mode:'patrol', alarm:0, face:0, still:0, ruhe:0, weit:0}; }
+function patrouille() { return PATROUILLE.filter(p => zoneOffen(p[0])); }
+function hatHeisses() { return Object.keys(S.rucksack).some(k => S.rucksack[k] > 0 && heiss(S.sorten[k])); }
+function updateInsp(dt) {
+  const aktiv = S.minute >= 540 && S.minute < 1200;
+  if (!aktiv) { insp.alarm = 0; insp.mode = 'patrol'; $('alarm').classList.add('hidden'); return; }
+  const d = Math.hypot(P.x-insp.x, P.y-insp.y);
+  const imHof = inR(P.x,P.y,HOF);
+  if (insp.ruhe > 0) insp.ruhe -= dt;
+  if (insp.mode === 'patrol') {
+    const wps = patrouille(); if (insp.wp >= wps.length) insp.wp = 0;
+    const [tx,ty] = wps[insp.wp][1];
+    const dx = tx-insp.x, dy = ty-insp.y, dd = Math.hypot(dx,dy);
+    if (dd < 30) { insp.wp = (insp.wp+1) % wps.length; }
+    else {
+      const x0 = insp.x, y0 = insp.y;
+      bewege(insp, dx/dd*70*dt, dy/dd*70*dt, 12);
+      insp.face = Math.atan2(dy,dx);
+      if (Math.hypot(insp.x-x0, insp.y-y0) < 20*dt) { insp.still += dt; if (insp.still > .8) { insp.wp = (insp.wp+1) % wps.length; insp.still = 0; } } else insp.still = 0;
+    }
+    let sieht = false;
+    if (hatHeisses() && !imHof && insp.ruhe <= 0) {
+      const w = Math.atan2(P.y-insp.y, P.x-insp.x);
+      const da = Math.abs(((w - insp.face + Math.PI*3) % (Math.PI*2)) - Math.PI);
+      sieht = d < 70 || (d < 240 && da < .9);
+    }
+    insp.alarm = clamp(insp.alarm + (sieht ? dt/1.0 : -dt*.7), 0, 1);
+    if (insp.alarm >= 1) { insp.mode = 'jagd'; insp.weit = 0; sfx('alarm'); toast('Der Kontrolleur hat dich gesehen! Lauf in den Hinterhof!', 'bad'); }
+  } else {
+    const dx = P.x-insp.x, dy = P.y-insp.y;
+    insp.face = Math.atan2(dy,dx);
+    bewege(insp, dx/d*128*dt, dy/d*128*dt, 12);
+    insp.weit = d > 420 ? insp.weit + dt : 0;
+    if (imHof || insp.weit > 3.5) { insp.mode = 'patrol'; insp.alarm = 0; insp.ruhe = 12; toast('Du hast den Kontrolleur abgehängt.', 'ok'); }
+    else if (d < 26) erwischt();
+  }
+  $('alarm').classList.toggle('hidden', insp.alarm <= 0.02 && insp.mode !== 'jagd');
+  $('alarm').firstElementChild.style.width = (insp.mode === 'jagd' ? 100 : insp.alarm*100) + '%';
+}
+function erwischt() {
+  let beschlag = 0;
+  for (const k of Object.keys(S.rucksack)) if (heiss(S.sorten[k])) { beschlag += S.rucksack[k]; delete S.rucksack[k]; }
+  const busse = Math.min(S.money, Math.max(60, Math.round(S.money * .2)));
+  S.money -= busse;
+  sfx('busse');
+  toast(`Erwischt! Busse ${fr(busse)}, ${beschlag} Verbotene beschlagnahmt.`, 'bad');
+  P.x = TOR[0]+30; P.y = TOR[1]; insp.mode = 'patrol'; insp.alarm = 0; insp.ruhe = 20;
+}
+
+// ====================================================================================
+//  Stationen und Menüs
+// ====================================================================================
+function stationen() {
+  const l = [
+    {x:250, y:1400, r:60, l:'Mischtisch', fn:openMisch},
+    {x:130, y:1450, r:60, l:'Lagerkiste', fn:openLager},
+    {x:440, y:1190, r:60, l:'Büro', fn:openBuero},
+    {x:170, y:1290, r:55, l:'Bett: schlafen', fn:openSchlafen},
+    {x:880, y:915, r:55, l:'Zutatenladen', fn:openLaden}
+  ];
+  MASCH_POS.forEach((p,i) => l.push({x:p[0], y:p[1], r:55, l:'Maschine ' + (i+1), fn:() => openMaschine(i)}));
+  S.haendler.forEach((h,i) => { const p = HAENDLER_STAND[h.zone]; l.push({x:p[0], y:p[1]+26, r:60, l:'Verkäufer ' + h.n, fn:() => openHaendler(i)}); });
+  for (const c of kunden) if (c.out) l.push({x:c.x, y:c.y, r:52, l:'Handeln mit ' + c.n, fn:() => openHandel(c), kunde:c});
+  return l;
+}
+function naechste() {
+  let best = null, bd = 1e9;
+  for (const s of stationen()) {
+    const d = Math.hypot(s.x-P.x, s.y-P.y);
+    if (d < s.r && d - (s.kunde ? 30 : 0) < bd) { best = s; bd = d - (s.kunde ? 30 : 0); }
+  }
+  return best;
+}
+
+// ---- Mischtisch ----
+let mischBase = 'milch', mischSeq = [];
+function openMisch() {
+  const bases = BASEN.filter(b => S.besitz[b.id]);
+  if (!bases.find(b => b.id === mischBase)) mischBase = 'milch';
+  const vorschau = () => {
+    const r = mischen(mischBase, mischSeq);
+    const unbekannt = r.fx.filter(e => !S.entdeckt[e]).length;
+    return {r, unbekannt};
+  };
+  openPanel({
+    title:'Mischtisch',
+    sub:() => {
+      const {r, unbekannt} = vorschau();
+      const chips = r.fx.map(e => S.entdeckt[e] ? chip(e) : '<span class="chip q">?</span>').join('') || '<span class="dim">noch keine Wirkung</span>';
+      const wert = unbekannt ? 'Wert unbekannt (Probe nötig)' : 'Wert ca. ' + fr(wertVon(mischBase, r.fx)) + ' pro Stück';
+      return `Reihenfolge: <b>${mischSeq.length ? mischSeq.map(i => ZUD[i].n).join(' → ') : 'leer'}</b> (max. 5)<br>Wirkung: ${chips}<br>${wert}, Kosten ca. ${fr(kostenVon(mischBase, mischSeq))}`;
+    },
+    items:() => {
+      const l = [];
+      const bi = bases.findIndex(b => b.id === mischBase);
+      const wechsel = d => { mischBase = bases[(bi + d + bases.length) % bases.length].id; };
+      l.push({l:'Basis', r:pfeile(BAS[mischBase].n), left:() => wechsel(-1), right:() => wechsel(1), fn:() => wechsel(1)});
+      l.push({head:1, l:'Zutat hinzufügen (die Reihenfolge verändert das Ergebnis!)'});
+      ZUT.filter(z => S.besitz[z.id]).forEach(z => l.push({l:z.n, r:'Fr ' + z.k.toFixed(1) + ' / Stück', fn:() => { if (mischSeq.length < 5) { mischSeq.push(z.id); sfx('klick'); } else { sfx('nein'); toast('Höchstens 5 Zutaten.', 'bad'); } }}));
+      l.push({head:1, l:'Aktionen'});
+      l.push({l:'Letzte Zutat entfernen', off:!mischSeq.length, fn:() => mischSeq.pop()});
+      l.push({l:'Alles leeren', off:!mischSeq.length, fn:() => { mischSeq = []; }});
+      const kost = Math.ceil(kostenVon(mischBase, mischSeq) * 2);
+      l.push({l:'Probe mischen (2 Stück)', r:fr(kost), off:!mischSeq.length, fn:() => probe()});
+      return l;
+    },
+    foot:() => '<kbd>Enter</kbd> Zutat wählen · <kbd>←</kbd><kbd>→</kbd> Basis ändern · <kbd>Esc</kbd> zurück'
+  });
+}
+function probe() {
+  const kost = Math.ceil(kostenVon(mischBase, mischSeq) * 2);
+  if (S.money < kost) { sfx('nein'); toast('Zu wenig Geld für die Probe.', 'bad'); return; }
+  S.money -= kost;
+  const r = mischen(mischBase, mischSeq);
+  const neuFx = r.fx.filter(e => !S.entdeckt[e]);
+  r.fx.forEach(e => S.entdeckt[e] = true);
+  r.reakt.forEach(([id,a,b]) => { const t = `${id}|${a}|${b}`; if (!S.reaktionen.includes(t)) S.reaktionen.push(t); });
+  const key = sorteKey(mischBase, r.fx);
+  const kosten = kostenVon(mischBase, mischSeq);
+  let neu = false;
+  if (!S.sorten[key]) { S.sorten[key] = {key, base:mischBase, fx:r.fx, wert:wertVon(mischBase, r.fx), kosten, seq:[...mischSeq]}; neu = true; }
+  else if (kosten < S.sorten[key].kosten) { S.sorten[key].kosten = kosten; S.sorten[key].seq = [...mischSeq]; }
+  const s = S.sorten[key];
+  if (neuFx.length) { sfx('neu'); toast('Neue Wirkung entdeckt: ' + neuFx.join(', ') + '!', 'gold'); }
+  else if (neu) { sfx('ok'); toast('Neues Rezept: ' + sorteName(s) + ' (Wert ' + fr(s.wert) + ')', 'ok'); }
+  else { sfx('klick'); toast('Dieses Ergebnis kennst du schon: ' + sorteName(s) + '.'); }
+  if (neu && neuFx.length) toast('Neues Rezept: ' + sorteName(s) + ' (Wert ' + fr(s.wert) + ')', 'ok');
+  speichern(true);
+}
+
+// ---- Maschine ----
+function openMaschine(i) {
+  const m = S.maschinen[i];
+  if (i >= S.upg.maschinen) { toast('Diese Maschine kaufst du im Büro.'); return; }
+  if (m.state === 'done') {
+    S.lager[m.key] = (S.lager[m.key]||0) + m.n;
+    toast(`${m.n} × ${sorteName(S.sorten[m.key])} in der Lagerkiste.`, 'ok'); sfx('ok');
+    m.state = 'idle'; return;
+  }
+  if (m.state === 'busy') { toast(`Maschine ${i+1}: ${Math.round(m.t/m.total*100)} % fertig (${sorteName(S.sorten[m.key])}).`); return; }
+  const n = BATCH[S.upg.batch];
+  const sorten = Object.values(S.sorten).sort((a,b) => b.wert - a.wert);
+  openPanel({
+    title:'Maschine ' + (i+1),
+    sub:() => `Eine Charge macht <b>${n} Stück</b> und dauert ca. ${Math.round(m.total/60*10)/10} Spielstunden.<br>Geld: <b>${fr(S.money)}</b>`,
+    items:() => {
+      if (!sorten.length) return [{l:'Du kennst noch keine Rezepte. Probiere am Mischtisch!', fn:() => {}}];
+      return sorten.map(s => ({
+        l:sorteHtml(s), r:'Kosten ' + fr(Math.ceil(s.kosten*n)) + '<br><span class="good">Wert je ' + fr(aktWert(s)) + '</span>',
+        off:S.money < Math.ceil(s.kosten*n),
+        fn:() => {
+          const k = Math.ceil(s.kosten*n); if (S.money < k) return;
+          S.money -= k;
+          m.state = 'busy'; m.key = s.key; m.n = n; m.t = 0; m.total = DAUER * TEMPO[S.upg.tempo];
+          sfx('kauf'); toast('Charge gestartet: ' + sorteName(s), 'ok'); closePanel();
+        }}));
+    }
+  });
+}
+
+// ---- Lagerkiste ----
+function openLager() {
+  const cap = RUCK[S.upg.lager];
+  const verschieben = (k, n) => {   // n > 0: ins Lager -> Rucksack
+    if (n > 0) {
+      const m = Math.min(n, S.lager[k]||0, cap - ruckLast());
+      if (m <= 0) { sfx('nein'); if (cap - ruckLast() <= 0) toast('Rucksack voll.', 'bad'); return; }
+      S.lager[k] -= m; S.rucksack[k] = (S.rucksack[k]||0) + m;
+    } else {
+      const m = Math.min(-n, S.rucksack[k]||0); if (m <= 0) return;
+      S.rucksack[k] -= m; S.lager[k] = (S.lager[k]||0) + m;
+    }
+    sfx('klick');
+  };
+  openPanel({
+    title:'Lagerkiste',
+    sub:() => `Rucksack: <b>${ruckLast()} / ${cap}</b>. Was im Lager liegt, ist vor dem Kontrolleur sicher.`,
+    items:() => {
+      const ks = Object.keys(S.sorten).filter(k => (S.lager[k]||0) + (S.rucksack[k]||0) > 0);
+      const l = ks.map(k => ({
+        l:sorteHtml(S.sorten[k]),
+        r:`Lager ${S.lager[k]||0} ${pfeile('')} Rucksack ${S.rucksack[k]||0}`,
+        left:st => verschieben(k, st>1 ? -9999 : -5), right:st => verschieben(k, st>1 ? 9999 : 5), fn:() => verschieben(k, 9999)
+      }));
+      return l.length ? l : [{l:'Noch nichts da. Stelle in einer Maschine Schoggi her.', fn:() => {}}];
+    },
+    foot:() => '<kbd>←</kbd> 5 ins Lager · <kbd>→</kbd> 5 in den Rucksack · <kbd>Shift</kbd> alle · <kbd>Enter</kbd> alle in den Rucksack'
+  });
+}
+function openRucksack() {
+  openPanel({
+    title:'Rucksack', sub:() => `${ruckLast()} / ${RUCK[S.upg.lager]} Stück · Geld ${fr(S.money)}`,
+    items:() => {
+      const ks = Object.keys(S.rucksack).filter(k => S.rucksack[k] > 0);
+      return ks.length ? ks.map(k => ({l:sorteHtml(S.sorten[k]), r:S.rucksack[k] + ' ×<br>' + fr(aktWert(S.sorten[k])), fn:() => {}}))
+        : [{l:'Der Rucksack ist leer.', fn:() => {}}];
+    }
+  });
+}
+
+// ---- Zutatenladen ----
+function openLaden() {
+  openPanel({
+    title:'Zutatenladen Gusti', sub:() => `Hier schliesst du Lieferverträge ab. Danach kannst du die Zutat jederzeit mischen.<br>Geld: <b>${fr(S.money)}</b>`,
+    items:() => {
+      const l = [{head:1, l:'Basis-Schoggi'}];
+      for (const b of BASEN) if (!S.besitz[b.id]) l.push(kaufZeile(b.n + ' (Wert ' + fr(b.wert) + ')', b, () => { S.besitz[b.id] = 1; }));
+      l.push({head:1, l:'Zutaten'});
+      for (const z of ZUT) if (!S.besitz[z.id]) l.push(kaufZeile(z.n + ' <span class="dim" style="color:var(--dim)">· wirkt: ' + (S.entdeckt[z.fx] ? z.fx : '?') + '</span>', z, () => { S.besitz[z.id] = 1; }));
+      if (l.length === 2 || (l.length === 3 && l[2].head)) l.push({l:'Du hast alles. Nichts Neues im Angebot.', fn:() => {}});
+      return l;
+    }
+  });
+}
+function kaufZeile(label, o, tun) {
+  const gesperrt = S.rang < o.rang;
+  return {l:label, r:gesperrt ? 'ab Rang ' + o.rang : fr(o.preis), off:gesperrt || S.money < o.preis,
+    fn:() => { if (S.money < o.preis) { sfx('nein'); toast('Zu wenig Geld.', 'bad'); return; } S.money -= o.preis; tun(); sfx('kauf'); toast('Gekauft: ' + o.n, 'ok'); }};
+}
+
+// ---- Büro ----
+function openBuero() {
+  const upg = (key, label, werte) => {
+    const stufe = S.upg[key], max = UPG_PREIS[key].length;
+    if (stufe >= max) return {l:label, r:'<span class="good">Maximum</span>', fn:() => {}};
+    const p = UPG_PREIS[key][stufe];
+    return {l:label, r:fr(p), off:S.money < p, fn:() => {
+      if (S.money < p) return; S.money -= p; S.upg[key]++; sfx('kauf'); toast('Verbessert: ' + label.replace(/<[^>]+>/g,''), 'ok'); }};
+  };
+  openPanel({
+    title:'Büro', sub:() => `Geld: <b>${fr(S.money)}</b> · Gesamtumsatz ${fr(S.earned)} · Rang ${S.rang}: ${RAENGE[S.rang-1][0]}` +
+      (S.rang < 7 ? ` (nächster Rang ab ${fr(RAENGE[S.rang][1])})` : ''),
+    items:() => {
+      const l = [{head:1, l:'Werkstatt'}];
+      l.push(upg('maschinen', `Maschine ${S.upg.maschinen+1} kaufen <span style="color:var(--dim)">(jetzt ${S.upg.maschinen})</span>`));
+      l.push(upg('batch', `Grössere Chargen <span style="color:var(--dim)">(jetzt ${BATCH[S.upg.batch]} Stück)</span>`));
+      l.push(upg('tempo', `Schnellere Maschinen <span style="color:var(--dim)">(Stufe ${S.upg.tempo})</span>`));
+      l.push({head:1, l:'Unterwegs'});
+      l.push(upg('lager', `Grösserer Rucksack <span style="color:var(--dim)">(jetzt ${RUCK[S.upg.lager]})</span>`));
+      l.push(upg('schuhe', `Bessere Schuhe <span style="color:var(--dim)">(schneller laufen)</span>`));
+      l.push({head:1, l:`Verkäufer (Lohn ${fr(GEHALT)} pro Tag, behalten 15 % Provision)`});
+      for (const k of ['dorf','bahnhof','see','altstadt']) {
+        const da = S.haendler.find(h => h.zone === k);
+        const offen = zoneOffen(k);
+        l.push({l:'Verkäufer in ' + ZONEN[k].n, r:da ? '<span class="good">' + da.n + '</span>' : offen ? fr(HAENDLER_PREIS) : 'ab Rang ' + ZONEN[k].rang,
+          off:!da && (!offen || S.money < HAENDLER_PREIS), fn:() => {
+            if (da) { toast(da.n + ' verkauft in ' + ZONEN[k].n + '. Besuche den Stand und gib ihm Ware.'); return; }
+            S.money -= HAENDLER_PREIS;
+            const namen = ['Anna','Luca','Marco','Sofia','Elias','Nina','Jonas','Lea','Noah','Mia'];
+            S.haendler.push({zone:k, n:namen[Math.floor(Math.random()*namen.length)], kasse:0, stock:{}});
+            sfx('kauf'); toast('Neuer Verkäufer im ' + ZONEN[k].n + '. Bring ihm Ware an den Stand!', 'ok');
+          }});
+      }
+      l.push({head:1, l:'Wissen'});
+      l.push({l:'Rezeptbuch ansehen', fn:() => openRezepte(openBuero)});
+      l.push({l:'Bestenliste', fn:() => openListe(openBuero)});
+      return l;
+    }
+  });
+}
+
+// ---- Verkäufer-Stand ----
+function openHaendler(i) {
+  const h = S.haendler[i];
+  const bestand = () => Object.values(h.stock).reduce((a,b)=>a+b, 0);
+  openPanel({
+    title:'Verkäufer ' + h.n + ' (' + ZONEN[h.zone].n + ')',
+    sub:() => `Im Stand: <b>${bestand()} Stück</b> · Kasse: <b>${fr(h.kasse)}</b> (du bekommst ${fr(Math.round(h.kasse*.85))}).<br>Er verkauft von 8 bis 22 Uhr zu 90 % des Preises.`,
+    items:() => {
+      const l = [{l:'Kasse leeren', r:fr(Math.round(h.kasse*.85)), off:h.kasse <= 0, fn:() => {
+        const g = Math.round(h.kasse*.85); S.money += g; S.earned += g; h.kasse = 0; sfx('ok'); toast('Eingenommen: ' + fr(g), 'ok'); rangPruefen(); }}];
+      l.push({head:1, l:'Ware aus deinem Rucksack nachfüllen (+10, Shift: alles)'});
+      const ks = Object.keys(S.rucksack).filter(k => S.rucksack[k] > 0);
+      if (!ks.length) l.push({l:'Dein Rucksack ist leer.', fn:() => {}});
+      ks.forEach(k => l.push({l:sorteHtml(S.sorten[k]), r:`Rucksack ${S.rucksack[k]} ${pfeile('')} Stand ${h.stock[k]||0}`,
+        fn:() => geben(k, 10), right:st => geben(k, st>1 ? 999 : 10), left:st => nehmen(k, st>1 ? 999 : 10)}));
+      return l;
+    },
+    foot:() => '<kbd>Enter</kbd>/<kbd>→</kbd> 10 geben · <kbd>←</kbd> zurücknehmen'
+  });
+  function geben(k, n) { const m = Math.min(n, S.rucksack[k]||0); if (m <= 0) return; S.rucksack[k] -= m; h.stock[k] = (h.stock[k]||0) + m; sfx('klick'); }
+  function nehmen(k, n) { const m = Math.min(n, h.stock[k]||0, RUCK[S.upg.lager]-ruckLast()); if (m <= 0) return; h.stock[k] -= m; S.rucksack[k] = (S.rucksack[k]||0) + m; sfx('klick'); }
+}
+
+// ---- Schlafen ----
+function openSchlafen() {
+  openPanel({
+    title:'Schlafen?', sub:() => `Es ist ${hhmm(S.minute)}. Bis 06:00 laufen die Maschinen und die Verkäufer weiter. Das Spiel wird gespeichert.`,
+    items:() => [{l:'Ja, schlafen gehen', fn:() => { closePanel(); schlafen(false); }}, {l:'Nein, noch nicht', fn:() => closePanel()}]
+  });
+}
+
+// ---- Handeln ----
+function wunsch(c, s) {
+  const lk = s.fx.filter(e => c.likes.includes(e)).length, ab = s.fx.includes(c.hate) ? 1 : 0;
+  return aktWert(s) * ZONEN[c.zone].f * (1 + .18*lk - .25*ab + .04*Math.floor(kundeStatus(c).rel)) * c.greed;
+}
+function bekannteVorlieben(c) {
+  const rel = Math.floor(kundeStatus(c).rel);
+  const t = [];
+  t.push(rel >= 1 ? 'mag ' + c.likes[0] : 'mag: ?');
+  t.push(rel >= 2 ? 'mag ' + c.likes[1] : 'mag: ?');
+  t.push(rel >= 3 ? 'hasst ' + c.hate : 'hasst: ?');
+  return t.join(' · ');
+}
+function openHandel(c) {
+  const st = kundeStatus(c);
+  if (st.heute >= 2) { toast(c.n + ': «Für heute habe ich genug Schoggi, danke!»'); return; }
+  const keys = Object.keys(S.rucksack).filter(k => S.rucksack[k] > 0);
+  if (!keys.length) { toast('Dein Rucksack ist leer. Hol Schoggi aus der Lagerkiste im Hinterhof.', 'bad'); sfx('nein'); return; }
+  let ki = 0, preis = Math.round(wertFair(c, keys[0])), antwort = '«Was hast du für mich?»', gegen = null;
+  function wertFair(c, k) { return aktWert(S.sorten[k]) * ZONEN[c.zone].f; }
+  const waehle = d => { ki = (ki + d + keys.length) % keys.length; preis = Math.round(wertFair(c, keys[ki])); antwort = '«Mal sehen …»'; };
+  openPanel({
+    title:c.n, zurueck:null,
+    sub:() => `<span style="color:var(--dim)">${bekannteVorlieben(c)} · Vertrauen ${Math.floor(st.rel)}/5</span><br><i>${antwort}</i>`,
+    items:() => {
+      if (gegen) return [
+        {l:`Gegenangebot annehmen: ${fr(gegen.preis)} pro Stück`, r:gegen.qty + ' ×', fn:() => abschluss(gegen.preis, gegen.qty)},
+        {l:'Ablehnen', fn:() => { gegen = null; antwort = '«Schade.»'; }}
+      ];
+      const s = S.sorten[keys[ki]];
+      return [
+        {l:sorteHtml(s), r:`${pfeile(S.rucksack[keys[ki]] + ' im Rucksack')}`, left:() => waehle(-1), right:() => waehle(1), fn:() => waehle(1)},
+        {l:'Dein Preis pro Stück', r:`${pfeile('<b>' + fr(preis) + '</b>')}<br><span style="color:var(--dim);font-weight:500;font-size:12px">Shift = 5er-Schritte · Richtwert ${fr(wertFair(c, keys[ki]))}</span>`,
+          left:n => { preis = Math.max(1, preis - n); }, right:n => { preis += n; }, fn:() => anbieten()},
+        {l:'Preis anbieten', fn:() => anbieten()},
+        {l:'Gehen', fn:() => closePanel()}
+      ];
+    },
+    foot:() => '<kbd>←</kbd><kbd>→</kbd> ändern · <kbd>Enter</kbd> bestätigen · <kbd>Esc</kbd> gehen'
+  });
+  function anbieten() {
+    const k = keys[ki], s = S.sorten[k], w = wunsch(c, s), ratio = preis / w, have = S.rucksack[k];
+    const qty = Math.min(have, ratio <= .85 ? 3 : 1 + Math.floor(Math.random()*2.6));
+    if (ratio <= 1) abschluss(preis, qty);
+    else if (ratio <= 1.18) { gegen = {preis:Math.max(1, Math.round(w)), qty:Math.min(have, 1 + Math.floor(Math.random()*2))}; antwort = `«Fast. Wie wäre es mit ${fr(gegen.preis)}?»`; sfx('klick'); }
+    else {
+      st.rel = Math.max(0, st.rel - .15); sfx('nein');
+      antwort = ratio > 1.6 ? '«Spinnst du? Viel zu teuer!»' : '«Das ist mir zu teuer.»';
+    }
+  }
+  function abschluss(p, qty) {
+    const k = keys[ki], s = S.sorten[k]; qty = Math.min(qty, S.rucksack[k]);
+    const sum = p * qty;
+    S.rucksack[k] -= qty; S.money += sum; S.earned += sum; S.verk += qty;
+    st.heute++; st.rel = Math.min(5.99, st.rel + .34);
+    floaters.push({x:c.x, y:c.y-30, txt:'+' + fr(sum), t:0});
+    sfx('ok'); toast(`${c.n} kauft ${qty} × ${sorteName(s)} für ${fr(sum)}.`, 'ok');
+    closePanel(); rangPruefen();
+    if (Math.floor(st.rel) > Math.floor(st.rel - .34)) toast(c.n + ' vertraut dir mehr (Stufe ' + Math.floor(st.rel) + '). Vielleicht verrät sie oder er jetzt etwas …', 'gold');
+  }
+}
+
+// ---- Rezeptbuch, Liste, Menü ----
+function openRezepte(zurueck) {
+  openPanel({
+    title:'Rezeptbuch', zurueck,
+    sub:() => `Entdeckte Wirkungen: ${Object.keys(S.entdeckt).length} / ${Object.keys(EFF).length}`,
+    items:() => {
+      const l = [{head:1, l:'Meine Sorten'}];
+      const ss = Object.values(S.sorten).sort((a,b) => b.wert - a.wert);
+      if (!ss.length) l.push({l:'Noch keine Rezepte. Mische am Mischtisch im Hinterhof.', fn:() => {}});
+      ss.forEach(s => l.push({l:sorteHtml(s) + `<span style="color:var(--dim);font-size:12px">${BAS[s.base].n} + ${s.seq.map(i => ZUD[i].n).join(' → ') || '–'}</span>`, r:fr(s.wert), fn:() => {}}));
+      l.push({head:1, l:'Entdeckte Reaktionen'});
+      if (!S.reaktionen.length) l.push({l:'Noch keine. Eine Zutat kann bereits vorhandene Wirkungen verwandeln.', fn:() => {}});
+      S.reaktionen.forEach(t => { const [id,a,b] = t.split('|'); l.push({l:`${ZUD[id].n} macht aus ${chip(a)} → ${chip(b)}`, fn:() => {}}); });
+      return l;
+    }
+  });
+}
+function openListe(zurueck) {
+  let tabelle = 'Lade …';
+  const p = {
+    title:'Bestenliste', zurueck,
+    sub:() => 'Punkte = Gesamtumsatz geteilt durch 10. Dein Stand: <b>' + Math.floor(S.earned/10) + '</b>' + (window.GameHub ? '' : '<br>Hier lokal nicht erreichbar.'),
+    items:() => [{l:'<div style="width:100%">' + tabelle + '</div>', fn:() => {}}]
+  };
+  openPanel(p);
+  const zeige = html => { tabelle = html; if (panel === p) renderPanel(); };
+  if (window.GameHub && GameHub.highscores) {
+    GameHub.highscores(GAME_ID).then(rows => {
+      const d = document.createElement('div');
+      GameHub.renderScores(d, rows, GameHub.getName && GameHub.getName(), {cols:[['score','Punkte']]});
+      zeige(d.innerHTML);
+    }).catch(() => zeige('Liste gerade nicht erreichbar.'));
+  } else zeige('Nur auf der Webseite verfügbar.');
+}
+function openMenue() {
+  let neuBestaetigen = false;
+  openPanel({
+    title:'Pause',
+    items:() => [
+      {l:'Weiterspielen', fn:() => closePanel()},
+      {l:'Spielstand speichern', fn:() => speichern()},
+      {l:'Rezeptbuch', fn:() => openRezepte(openMenue)},
+      {l:'Bestenliste', fn:() => openListe(openMenue)},
+      {l:'Ton', r:stumm ? 'aus' : 'an', fn:() => { stumm = !stumm; }},
+      {l:neuBestaetigen ? 'Wirklich alles löschen? Nochmal Enter' : 'Neues Spiel beginnen', fn:() => {
+        if (!neuBestaetigen) { neuBestaetigen = true; return; }
+        try { localStorage.removeItem(KEY); } catch (e) { /* egal */ }
+        starten(true); closePanel();
+      }}
+    ]
+  });
+}
+
+// ====================================================================================
+//  Ziel-Hinweis
+// ====================================================================================
+function ziel() {
+  const lagerSumme = Object.values(S.lager).reduce((a,b)=>a+b, 0), ruck = ruckLast();
+  const fertig = S.maschinen.some((m,i) => i < S.upg.maschinen && m.state === 'done');
+  const laeuft = S.maschinen.some((m,i) => i < S.upg.maschinen && m.state === 'busy');
+  if (!Object.keys(S.sorten).length) return 'Gehe zum Mischtisch im Hinterhof (E) und mische Nüsse in deine Schoggi. Probiere, was passiert!';
+  if (fertig) return 'Eine Maschine ist fertig. Hol die Schoggi ab (E).';
+  if (!lagerSumme && !ruck && !laeuft) return 'Starte eine Charge an der Maschine (E). Das kostet Zutaten.';
+  if (!ruck && lagerSumme) return 'Packe Schoggi aus der Lagerkiste in den Rucksack (E).';
+  if (!ruck && laeuft) return 'Die Maschine arbeitet. Probiere unterdessen neue Rezepte am Mischtisch.';
+  if (ruck && S.verk < 3) return 'Verkaufe Schoggi an Leute im Dorf (E bei gelbem $). Finde heraus, was sie mögen.';
+  if (S.verk < 12 && Object.keys(S.besitz).length < 4) return 'Kaufe im Zutatenladen (am Dorfplatz) eine neue Zutat und entdecke Reaktionen.';
+  if (S.rang === 1) return 'Verdiene Gesamtumsatz ' + fr(RAENGE[1][1]) + ' für Rang 2 und neue Gebiete.';
+  if (!S.haendler.length) return 'Stelle im Büro einen Verkäufer ein: Er verkauft auch, wenn du weg bist.';
+  if (S.upg.maschinen < 2) return 'Kaufe im Büro eine zweite Maschine.';
+  if (S.rang < 7) return 'Nächster Rang ' + (S.rang+1) + ' (' + RAENGE[S.rang][0] + ') ab Umsatz ' + fr(RAENGE[S.rang][1]) + '. Entdecke seltene Wirkungen für hohe Preise!';
+  return 'Du bist das Imperium! Jage die Bestenliste.';
+}
+
+// ====================================================================================
+//  Zeichnen
+// ====================================================================================
+const cv = $('c'), ctx = cv.getContext('2d'), mini = $('mini'), mctx = mini.getContext('2d');
+let dpr = 1, Z = 1;
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = innerWidth*dpr; cv.height = innerHeight*dpr;
+  Z = clamp(innerHeight/820, .7, 1.35);
+}
+addEventListener('resize', resize);
+
+const BAEUME = [];
+(function () {
+  let s = 12345; const r = () => (s = (s*16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 260; i++) {
+    const x = r()*W, y = r()*H;
+    const waldBereich = inR(x,y,ZONEN.wald.r);
+    if (!waldBereich && (Math.hypot(x-880,y-1000) < 160)) continue;
+    if (!waldBereich && (zoneAt(x,y) === 'altstadt' || zoneAt(x,y) === 'bahnhof') && r() < .8) continue;
+    if (inR(x,y,[HOF[0]-20,HOF[1]-20,HOF[2]+20,HOF[3]+20])) continue;
+    if (!waldBereich && SOLIDE.some(b => kreisInRect(x,y,34,b))) continue;
+    if (!waldBereich && r() < .45) continue;
+    BAEUME.push([x,y,16 + r()*14]);
+  }
+})();
+(function () {
+  let s = 777; const r = () => (s = (s*16807) % 2147483647) / 2147483647;
+  const z = ZONEN.wald.r;
+  for (let i = 0; i < 170; i++) BAEUME.push([z[0] + r()*(z[2]-z[0]), z[1] + r()*(z[3]-z[1]), 20 + r()*18]);
+})();
+const STRASSEN = [[0,940,2800,70],[860,600,70,1200],[2060,1200,70,600],[1380,600,60,600]];
+
+function kreis(x,y,r,f) { ctx.fillStyle = f; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill(); }
+function person(x,y,col,o) {
+  o = o || {};
+  const wipp = o.geht ? Math.sin(tNow*12 + x)*1.8 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x,y+11,11,5,0,0,7); ctx.fill();
+  kreis(x, y+wipp, 11, col);
+  kreis(x, y-9+wipp, 7, o.haut || '#f1c8a0');
+  if (o.hut) {
+    ctx.fillStyle = o.hut; ctx.fillRect(x-7, y-22+wipp, 14, 7);
+    if (o.hoch) ctx.fillRect(x-5, y-29+wipp, 10, 8);
+  }
+}
+function zeichneWelt() {
+  const vw = innerWidth/Z, vh = innerHeight/Z;
+  const cx = vw >= W ? (W-vw)/2 : clamp(P.x - vw/2, 0, W-vw), cy = vh >= H ? (H-vh)/2 : clamp(P.y - vh/2, 0, H-vh);
+  ctx.setTransform(dpr*Z,0,0,dpr*Z,-cx*dpr*Z,-cy*dpr*Z);
+  ctx.fillStyle = '#2b5a30'; ctx.fillRect(0,0,W,H);
+  for (const k of Object.keys(ZONEN)) { const r = ZONEN[k].r; ctx.fillStyle = ZONEN[k].col; ctx.fillRect(r[0], r[1], r[2]-r[0], r[3]-r[1]); }
+  // Strassen
+  ctx.fillStyle = '#5b5f66';
+  for (const s of STRASSEN) ctx.fillRect(s[0], s[1], s[2], s[3]);
+  ctx.fillStyle = '#d5d8de'; for (let x = 20; x < W; x += 80) ctx.fillRect(x, 972, 36, 4);
+  // Gleise
+  ctx.fillStyle = '#3a3d44'; ctx.fillRect(1400,1090,1400,10); ctx.fillRect(1400,1120,1400,10);
+  ctx.fillStyle = '#6b4f33'; for (let x = 1400; x < W; x += 28) ctx.fillRect(x, 1086, 6, 48);
+  // Hof
+  ctx.fillStyle = '#9a7650'; ctx.fillRect(HOF[0], HOF[1], HOF[2]-HOF[0], HOF[3]-HOF[1]);
+  ctx.fillStyle = 'rgba(0,0,0,.08)'; for (let y = HOF[1]; y < HOF[3]; y += 28) ctx.fillRect(HOF[0], y, HOF[2]-HOF[0], 2);
+  // Wasser
+  ctx.fillStyle = '#2f7fc0'; ctx.fillRect(...WASSER);
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < 14; i++) ctx.fillRect(WASSER[0]+40+(i*53)%700, WASSER[1]+30+(i*37)%240 + Math.sin(tNow+i)*3, 40, 3);
+  ctx.fillStyle = '#8a6a3a'; ctx.fillRect(560, 380, 24, 110);
+  // Brunnen
+  kreis(BRUNNEN[0]+35, BRUNNEN[1]+35, 40, '#8f8a82'); kreis(BRUNNEN[0]+35, BRUNNEN[1]+35, 28, '#3f93d8');
+  // Wald und Bäume
+  for (const b of BAEUME) { if (b[0]<cx-40||b[0]>cx+vw+40||b[1]<cy-40||b[1]>cy+vh+40) continue; kreis(b[0]+3,b[1]+5,b[2],'rgba(0,0,0,.2)'); kreis(b[0],b[1],b[2],inR(b[0],b[1],ZONEN.wald.r)?'#164024':'#2f7a3a'); kreis(b[0]-b[2]*.25,b[1]-b[2]*.25,b[2]*.55,inR(b[0],b[1],ZONEN.wald.r)?'#1d5230':'#3e9449'); }
+  // Gebäude
+  ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.font = '700 15px system-ui';
+  for (const b of BAU) {
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(b[0]+6, b[1]+8, b[2], b[3]);
+    ctx.fillStyle = b[4]; ctx.fillRect(b[0], b[1], b[2], b[3]);
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(b[0], b[1], b[2], b[3]*.5);
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(b[0]+b[2]/2-2, b[1], 4, b[3]);
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 2; ctx.strokeRect(b[0], b[1], b[2], b[3]);
+    if (b[5]) { ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 4; ctx.strokeText(b[5], b[0]+b[2]/2, b[1]+b[3]/2+5); ctx.fillText(b[5], b[0]+b[2]/2, b[1]+b[3]/2+5); }
+  }
+  // Laden-Tür
+  ctx.fillStyle = '#ffcf4a'; ctx.fillRect(860, 884, 40, 8);
+  // Zaun
+  ctx.fillStyle = '#6b4a2b'; for (const z of ZAUN) ctx.fillRect(...z);
+  // Stationen im Hof
+  zeichneHof();
+  // Verkäufer-Stände
+  S.haendler.forEach(h => { const p = HAENDLER_STAND[h.zone]; ctx.fillStyle = '#c0392b'; ctx.fillRect(p[0]-30, p[1]-8, 60, 24); ctx.fillStyle = '#fff'; ctx.fillRect(p[0]-30, p[1]-8, 60, 6); person(p[0], p[1]-22, '#2e7d32', {hut:'#e8402f'}); });
+  // Figuren, nach y sortiert
+  const fig = [];
+  for (const c of kunden) if (c.out) fig.push({y:c.y, f:() => {
+    person(c.x, c.y, c.col, {geht:c.warte <= 0});
+    const st = kundeStatus(c), nah = Math.hypot(c.x-P.x, c.y-P.y) < 170;
+    if (st.heute < 2) { ctx.fillStyle = '#ffcf4a'; ctx.font = '800 15px system-ui'; ctx.fillText('$', c.x, c.y-30 + Math.sin(tNow*4+c.i)*2); }
+    if (nah) { ctx.font = '700 12px system-ui'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.fillStyle = '#fff'; ctx.strokeText(c.n, c.x, c.y+28); ctx.fillText(c.n, c.x, c.y+28); }
+  }});
+  if (S.minute >= 540 && S.minute < 1200) fig.push({y:insp.y, f:() => {
+    if (insp.mode === 'patrol' && insp.alarm > 0) {   // Sichtkegel
+      ctx.fillStyle = 'rgba(255,80,80,.12)'; ctx.beginPath(); ctx.moveTo(insp.x,insp.y); ctx.arc(insp.x,insp.y,240,insp.face-.9,insp.face+.9); ctx.fill();
+    }
+    person(insp.x, insp.y, '#263238', {hut:'#37474f', hoch:true});
+    ctx.fillStyle = '#ffcf4a'; ctx.fillRect(insp.x-3, insp.y-3, 6, 6);
+    ctx.font = '700 12px system-ui'; ctx.fillStyle = '#ff8a80'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.strokeText('Kontrolleur', insp.x, insp.y+28); ctx.fillText('Kontrolleur', insp.x, insp.y+28);
+    if (insp.mode === 'jagd') { ctx.font = '900 22px system-ui'; ctx.fillStyle = '#ff5252'; ctx.fillText('!', insp.x, insp.y-34); }
+  }});
+  fig.push({y:P.y, f:() => person(P.x, P.y, '#4f8ff7', {hut:'#fff', hoch:true, geht:P.lauf > 0})});
+  fig.sort((a,b) => a.y - b.y).forEach(o => o.f());
+  // Beschriftung der Stationen
+  const nae = naechste();
+  // Schwebende Zahlen
+  for (const f of floaters) { ctx.globalAlpha = 1 - f.t; ctx.fillStyle = '#7dff9b'; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.lineWidth = 3; ctx.font = '800 18px system-ui'; ctx.strokeText(f.txt, f.x, f.y - f.t*40); ctx.fillText(f.txt, f.x, f.y - f.t*40); }
+  ctx.globalAlpha = 1;
+  // Gesperrte Gebiete
+  for (const k of ['bahnhof','see','altstadt']) {
+    if (zoneOffen(k)) continue;
+    const r = ZONEN[k].r; ctx.fillStyle = 'rgba(8,10,18,.62)'; ctx.fillRect(r[0], r[1], r[2]-r[0], r[3]-r[1]);
+    ctx.strokeStyle = '#ffcf4a'; ctx.lineWidth = 6; ctx.setLineDash([24,16]); ctx.strokeRect(r[0]+3, r[1]+3, r[2]-r[0]-6, r[3]-r[1]-6); ctx.setLineDash([]);
+    ctx.fillStyle = '#ffcf4a'; ctx.font = '800 26px system-ui'; ctx.fillText(ZONEN[k].n + ': ab Rang ' + ZONEN[k].rang, (r[0]+r[2])/2, (r[1]+r[3])/2);
+  }
+  // Tageszeit
+  const h = S.minute/60; let a = 0;
+  if (h >= 18 && h < 22) a = (h-18)/4*.42; else if (h >= 22) a = .42; else if (h < 6) a = .42; else if (h < 7) a = .42*(7-h);
+  if (a > 0) {
+    ctx.setTransform(dpr,0,0,dpr,0,0); ctx.fillStyle = `rgba(12,18,50,${a})`; ctx.fillRect(0,0,innerWidth,innerHeight);
+  }
+  return nae;
+}
+function zeichneHof() {
+  // Haus-Tür, Bett
+  ctx.fillStyle = '#4b5d78'; ctx.fillRect(140,1270,60,36); ctx.fillStyle = '#e8e2d6'; ctx.fillRect(144,1274,52,16);
+  // Lagerkiste
+  ctx.fillStyle = '#7a5230'; ctx.fillRect(100,1425,60,45); ctx.fillStyle = '#9a7040'; ctx.fillRect(104,1429,52,12);
+  ctx.fillStyle = '#fff'; ctx.font = '700 11px system-ui'; ctx.textAlign = 'center'; ctx.fillText('LAGER', 130, 1460);
+  // Mischtisch
+  ctx.fillStyle = '#b0b7c2'; ctx.fillRect(215,1380,70,40); ctx.fillStyle = '#8a929e'; ctx.fillRect(215,1412,70,8);
+  kreis(235,1396,9,'#5a3320'); kreis(262,1396,8,'#e58a3c');
+  // Büro
+  ctx.fillStyle = '#6b4a2b'; ctx.fillRect(410,1170,60,40); ctx.fillStyle = '#e8e2d6'; ctx.fillRect(418,1176,20,14); ctx.fillStyle = '#4f8ff7'; ctx.fillRect(446,1176,16,12);
+  // Maschinen
+  MASCH_POS.forEach((p,i) => {
+    const m = S.maschinen[i], frei = i < S.upg.maschinen;
+    ctx.globalAlpha = frei ? 1 : .35;
+    ctx.fillStyle = '#6c7683'; ctx.fillRect(p[0]-26, p[1]-26, 52, 52); ctx.fillStyle = '#8a95a3'; ctx.fillRect(p[0]-26, p[1]-26, 52, 18);
+    ctx.fillStyle = !frei ? '#555' : m.state === 'done' ? (Math.sin(tNow*8) > 0 ? '#3ccf6e' : '#1f7a3f') : m.state === 'busy' ? '#ffcf4a' : '#9aa3b2';
+    kreis(p[0], p[1]+6, 8, ctx.fillStyle);
+    if (frei && m.state === 'busy') { ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(p[0]-24, p[1]-38, 48, 7); ctx.fillStyle = '#ffcf4a'; ctx.fillRect(p[0]-24, p[1]-38, 48*m.t/m.total, 7); }
+    if (frei && m.state === 'done') { ctx.fillStyle = '#7dff9b'; ctx.font = '800 14px system-ui'; ctx.fillText('fertig!', p[0], p[1]-34); }
+    if (!frei) { ctx.fillStyle = '#fff'; ctx.font = '700 11px system-ui'; ctx.fillText('gesperrt', p[0], p[1]+4); }
+    ctx.globalAlpha = 1;
+  });
+  ctx.fillStyle = '#fff'; ctx.font = '700 13px system-ui'; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 3;
+  for (const [t,x,y] of [['Mischtisch',250,1370],['Büro',440,1160],['Bett',170,1320]]) { ctx.strokeText(t,x,y); ctx.fillText(t,x,y); }
+}
+function zeichneMini() {
+  const sx = 400/W, sy = 260/H;
+  mctx.setTransform(1,0,0,1,0,0); mctx.clearRect(0,0,400,260);
+  for (const k of Object.keys(ZONEN)) { const r = ZONEN[k].r; mctx.fillStyle = zoneOffen(k) || k === 'wald' ? ZONEN[k].col : '#1a1d26'; mctx.fillRect(r[0]*sx, r[1]*sy, (r[2]-r[0])*sx, (r[3]-r[1])*sy); }
+  mctx.fillStyle = '#2f7fc0'; mctx.fillRect(WASSER[0]*sx, WASSER[1]*sy, WASSER[2]*sx, WASSER[3]*sy);
+  mctx.fillStyle = '#9a7650'; mctx.fillRect(HOF[0]*sx, HOF[1]*sy, (HOF[2]-HOF[0])*sx, (HOF[3]-HOF[1])*sy);
+  const pt = (x,y,c,r) => { mctx.fillStyle = c; mctx.beginPath(); mctx.arc(x*sx, y*sy, r, 0, 7); mctx.fill(); };
+  pt(880,900,'#e8402f',5);
+  for (const c of kunden) if (c.out && kundeStatus(c).heute < 2) pt(c.x,c.y,'#ffcf4a',4);
+  S.haendler.forEach(h => pt(HAENDLER_STAND[h.zone][0], HAENDLER_STAND[h.zone][1], '#3ccf6e', 5));
+  if (S.minute >= 540 && S.minute < 1200) pt(insp.x, insp.y, '#ff5252', 5);
+  pt(P.x, P.y, '#4f8ff7', 6); mctx.strokeStyle = '#fff'; mctx.lineWidth = 2; mctx.beginPath(); mctx.arc(P.x*sx, P.y*sy, 6, 0, 7); mctx.stroke();
+}
+
+// ====================================================================================
+//  Eingabe, Hauptschleife
+// ====================================================================================
+const keys = {};
+let laeuft = false, pausiert = false, letzterHud = 0, last = 0;
+addEventListener('keydown', e => {
+  if (!laeuft) return;
+  if (panel) {
+    if (e.repeat && ['Enter','Space','KeyE','Escape','KeyQ','Backspace'].includes(e.code)) { e.preventDefault(); return; }
+    if (panelTaste(e)) e.preventDefault();
+    return;
+  }
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if (e.repeat) { keys[e.code] = true; return; }
+  keys[e.code] = true;
+  if (e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter') { const n = naechste(); if (n) { sfx('klick'); n.fn(); } }
+  else if (e.code === 'KeyB') openRezepte(null);
+  else if (e.code === 'KeyI') openRucksack();
+  else if (e.code === 'KeyM') { stumm = !stumm; toast(stumm ? 'Ton aus' : 'Ton an'); }
+  else if (e.code === 'Escape' || e.code === 'KeyP') openMenue();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && laeuft) { speichern(true); if (!panel) openMenue(); } });
+
+function frame(t) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, (t - last)/1000 || 0); last = t; tNow = t/1000;
+  if (!laeuft) return;
+  if (!panel) {
+    // Bewegung
+    let dx = (keys.ArrowRight||keys.KeyD ? 1 : 0) - (keys.ArrowLeft||keys.KeyA ? 1 : 0);
+    let dy = (keys.ArrowDown||keys.KeyS ? 1 : 0) - (keys.ArrowUp||keys.KeyW ? 1 : 0);
+    const len = Math.hypot(dx,dy); P.lauf = len;
+    if (len) {
+      const v = (keys.ShiftLeft||keys.ShiftRight ? 215 : 150) * SCHUH[S.upg.schuhe];
+      bewege(P, dx/len*v*dt, dy/len*v*dt, 11);
+    }
+    S.px = P.x; S.py = P.y;
+    schritt(dt*TS);
+    if (S.minute >= TAG_ENDE - 1) schlafen(true);
+    updateKunden(dt); updateInsp(dt);
+    for (const f of floaters) f.t += dt*.9;
+    floaters = floaters.filter(f => f.t < 1);
+  }
+  const nae = zeichneWelt();
+  if (t - letzterHud > 120) { letzterHud = t; hud(nae); zeichneMini(); }
+}
+function hud(nae) {
+  $('stats').innerHTML = `<span><b>${fr(S.money)}</b></span><span>Rang ${S.rang}: ${RAENGE[S.rang-1][0]}</span><span class="dim">Tag ${S.day} · ${hhmm(S.minute)}</span><span class="dim">Rucksack ${ruckLast()}/${RUCK[S.upg.lager]}</span>`;
+  $('obj').innerHTML = `<small>Aufgabe</small>${ziel()}`;
+  $('event').innerHTML = `<b>Heute:</b> ${S.event.t}`;
+  const p = $('prompt');
+  if (nae && !panel) { p.classList.remove('hidden'); p.innerHTML = `<kbd>E</kbd> ${nae.l}`; } else p.classList.add('hidden');
+}
+
+// ====================================================================================
+//  Start
+// ====================================================================================
+function starten(neu) {
+  S = neu ? neuS() : (laden() || neuS());
+  S.rang = rang();
+  P.x = S.px || 340; P.y = S.py || 1360;
+  if (blockiert(P.x, P.y, 11)) { P.x = 340; P.y = 1360; }
+  kundenZuruecksetzen(); inspInit();
+  $('title').classList.add('hidden'); $('hud').classList.remove('hidden');
+  laeuft = true;
+  if (neu) { toast('Willkommen! Du stehst in deinem Hinterhof. Ziel oben links.', 'gold'); toast(S.event.t); }
+  else toast('Willkommen zurück, Tag ' + S.day + '!', 'gold');
+  sfx('klick');
+}
+function titelKnoepfe() {
+  const hat = !!laden();
+  const b = $('titleBtns'); b.innerHTML = '';
+  const mk = (txt, alt, fn) => { const x = document.createElement('button'); x.className = 'btn' + (alt ? ' alt' : ''); x.textContent = txt; x.onclick = fn; b.appendChild(x); return x; };
+  if (hat) { mk('Weiterspielen', false, () => starten(false)); mk('Neues Spiel', true, () => starten(true)); }
+  else mk('Spiel starten', false, () => starten(true));
+  const f = b.querySelector('button'); if (f) f.focus();
+}
+resize();
+titelKnoepfe();
+S = neuS(); inspInit(); kundenZuruecksetzen();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
