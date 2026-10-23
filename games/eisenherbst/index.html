@@ -106,6 +106,7 @@ select { background:#0c0e12; color:var(--text); border:1px solid var(--line); bo
       <div class="card2">
         <h3>Dein Held</h3>
         <input type="text" id="name" maxlength="16" placeholder="Dein Name" autocomplete="off">
+        <select id="wmode" style="width:100%;margin-bottom:8px"><option value="endlos">Endlose Welt (zufällig erzeugt)</option><option value="tal">Tal der Granach (feste Karte)</option></select>
         <button class="btn" id="solo" style="width:100%">Allein losziehen</button>
         <button class="btn ghost" id="fresh" style="width:100%;margin-top:6px" hidden>Neuer Held (Spielstand löschen)</button>
         <div class="mut" style="font-size:12px;margin-top:6px" id="saveinfo"></div>
@@ -291,7 +292,7 @@ const RANKS = ['Daus', '3', '4', '5', '6', '7', '8', 'Unter', 'Ober', 'König'];
 const NAMES_M = ['Janko', 'Matus', 'Andrej', 'Stefan', 'Imre', 'Laszlo', 'Balint', 'Hans', 'Jörg', 'Konrad', 'Veit', 'Peter', 'Milan', 'Ondro', 'Zoltan', 'Kuno', 'Wenzel', 'Ulrich', 'Bela', 'Tomas', 'Gregor', 'Ruprecht'];
 const NAMES_F = ['Marta', 'Katarina', 'Anna', 'Agnes', 'Elsbeth', 'Zofia', 'Margit', 'Hedwig', 'Dorota', 'Barbora'];
 const SURN = ['der Müller', 'der Schmied', 'vom Hain', 'Rotbart', 'der Lange', 'Eisenfuss', 'der Alte', 'Schwarzkopf', 'der Hinkende', 'Kupfer', 'vom Berg', 'der Kleine'];
-const SKIN = ['#f0c9a0', '#e2b183', '#c98f62', '#a8704a'];
+const SKIN = ['#f0c9a0', '#e2b183', '#c98f62', '#a8704a', '#74ad4a'];
 const HAIR = ['#3b2a1a', '#6b4423', '#a07a3a', '#c9b06a', '#4a4a4a', '#8a3b1d'];
 
 const ORTE = {
@@ -316,6 +317,7 @@ function vnoise(seed) {
 }
 
 function genWorld(seed) {
+  WORLD.endless = false; WORLD.chunks = new Map();
   const R = mulberry(seed ^ 0x5eed), nz = vnoise(seed | 1);
   const T = WORLD.terr, S = WORLD.solid, D = WORLD.dec;
   T.fill(0); S.fill(0); D.fill(0);
@@ -519,7 +521,10 @@ function genWorld(seed) {
 }
 
 /* ---------- Kollision, Sicht, Pfade ---------- */
-function tileSolid(tx, ty) { return tx < 0 || ty < 0 || tx >= MW || ty >= MH || WORLD.solid[ty * MW + tx] === 1; }
+function tileSolid(tx, ty) {
+  if (WORLD.endless) { const c = getChunk(tx >> 5, ty >> 5); return c.solid[((ty & 31) << 5) | (tx & 31)] === 1; }
+  return tx < 0 || ty < 0 || tx >= MW || ty >= MH || WORLD.solid[ty * MW + tx] === 1;
+}
 function solidPx(x, y) { return tileSolid(Math.floor(x / TS), Math.floor(y / TS)); }
 function freeAt(x, y) { return !(solidPx(x - 4, y - 2) || solidPx(x + 4, y - 2) || solidPx(x - 4, y + 3) || solidPx(x + 4, y + 3)); }
 function lineClear(x0, y0, x1, y1) {
@@ -527,56 +532,299 @@ function lineClear(x0, y0, x1, y1) {
   for (let i = 1; i < n; i++) { const t = i / n; if (solidPx(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false; }
   return true;
 }
-function terrAt(x, y) { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return (tx < 0 || ty < 0 || tx >= MW || ty >= MH) ? 0 : WORLD.terr[ty * MW + tx]; }
+function terrAt(x, y) { return tTerr(Math.floor(x / TS), Math.floor(y / TS)); }
 function groundSpeed(x, y) { switch (terrAt(x, y)) { case 8: return 0.55; case 7: return 0.82; case 2: return 0.88; case 4: return 0.9; case 5: return 0.95; default: return 1; } }
 function moveBy(e, dx, dy) {
   if (dx && freeAt(e.x + dx, e.y)) e.x += dx;
   if (dy && freeAt(e.x, e.y + dy)) e.y += dy;
 }
-// freie Stelle in der Nähe
 function nearestFree(x, y) {
   if (freeAt(x, y)) return { x, y };
   for (let r = 4; r < 120; r += 4) for (let a = 0; a < 6.28; a += 0.5) { const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (freeAt(px, py)) return { x: px, y: py }; }
   return { x, y };
 }
 
-// A* auf dem Kachelraster (Wegpunkte in Pixeln)
-const _g = new Float32Array(MW * MH), _from = new Int32Array(MW * MH), _seen = new Uint32Array(MW * MH), _closed = new Uint32Array(MW * MH);
+// A* in einem Fenster um Start und Ziel (Wegpunkte in Pixeln)
+const PW = 300, PH = 240;
+const _g = new Float32Array(PW * PH), _from = new Int32Array(PW * PH), _seen = new Uint32Array(PW * PH), _closed = new Uint32Array(PW * PH);
 let _stamp = 1;
 function findPath(sx, sy, tx, ty, cap = 2600) {
-  let s = (Math.floor(sy / TS) * MW + Math.floor(sx / TS)), g = (Math.floor(ty / TS) * MW + Math.floor(tx / TS));
-  if (s === g) return [{ x: tx, y: ty }];
-  if (WORLD.solid[g]) { // nächste freie Kachel zum Ziel
-    let best = -1, bd = 1e9; const gx = g % MW, gy = (g / MW) | 0;
-    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const x = gx + dx, y = gy + dy; if (!tileSolid(x, y) && dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = y * MW + x; } }
-    if (best < 0) return null; g = best;
+  const stx = Math.floor(sx / TS), sty = Math.floor(sy / TS);
+  let gtx = Math.floor(tx / TS), gty = Math.floor(ty / TS);
+  if (stx === gtx && sty === gty) return [{ x: tx, y: ty }];
+  const ox = Math.min(stx, gtx) - 20, oy = Math.min(sty, gty) - 20, w = Math.abs(stx - gtx) + 41, h = Math.abs(sty - gty) + 41;
+  if (w > PW || h > PH) return null;
+  const solidW = (x, y) => x < ox || y < oy || x >= ox + w || y >= oy + h || tileSolid(x, y);
+  if (solidW(gtx, gty)) {
+    let best = null, bd = 1e9;
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const x = gtx + dx, y = gty + dy; if (!solidW(x, y) && dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = [x, y]; } }
+    if (!best) return null; gtx = best[0]; gty = best[1];
   }
-  const st = ++_stamp, heap = [[0, s]];
+  const s = (sty - oy) * w + (stx - ox), g = (gty - oy) * w + (gtx - ox), st = ++_stamp, heap = [[0, s]];
   _g[s] = 0; _from[s] = -1; _seen[s] = st;
-  const gx = g % MW, gy = (g / MW) | 0;
-  const hfn = i => { const dx = Math.abs((i % MW) - gx), dy = Math.abs(((i / MW) | 0) - gy); return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy); };
+  const hfn = i => { const dx = Math.abs((i % w) - (gtx - ox)), dy = Math.abs(((i / w) | 0) - (gty - oy)); return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy); };
   const push = (f, i) => { heap.push([f, i]); let k = heap.length - 1; while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
-  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { let l = 2 * k + 1, r = l + 1, m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === k) break; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
   let n = 0, found = false;
   while (heap.length && n++ < cap) {
     const [, c] = pop();
     if (_closed[c] === st) continue; _closed[c] = st;
     if (c === g) { found = true; break; }
-    const cx = c % MW, cy = (c / MW) | 0;
+    const cx = c % w + ox, cy = ((c / w) | 0) + oy;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       const nx = cx + dx, ny = cy + dy;
-      if (tileSolid(nx, ny)) continue;
-      if (dx && dy && (tileSolid(cx + dx, cy) || tileSolid(cx, cy + dy))) continue;
-      const ni = ny * MW + nx, ng = _g[c] + (dx && dy ? Math.SQRT2 : 1) * (WORLD.terr[ni] === 8 ? 2 : 1);
+      if (solidW(nx, ny)) continue;
+      if (dx && dy && (solidW(cx + dx, cy) || solidW(cx, cy + dy))) continue;
+      const ni = (ny - oy) * w + (nx - ox), ng = _g[c] + (dx && dy ? Math.SQRT2 : 1) * (tTerr(nx, ny) === 8 ? 2 : 1);
       if (_seen[ni] !== st || ng < _g[ni]) { _g[ni] = ng; _from[ni] = c; _seen[ni] = st; push(ng + hfn(ni), ni); }
     }
   }
   if (!found) return null;
-  const path = []; for (let c = g; c !== -1 && c !== s; c = _from[c]) path.push({ x: (c % MW) * TS + 8, y: ((c / MW) | 0) * TS + 8 });
+  const path = []; for (let c = g; c !== -1 && c !== s; c = _from[c]) path.push({ x: (c % w + ox) * TS + 8, y: (((c / w) | 0) + oy) * TS + 8 });
   path.reverse();
-  if (path.length) { path[path.length - 1] = { x: Math.abs(tx - path[path.length - 1].x) < 12 && !solidPx(tx, ty) ? tx : path[path.length - 1].x, y: Math.abs(ty - path[path.length - 1].y) < 12 && !solidPx(tx, ty) ? ty : path[path.length - 1].y }; }
+  if (path.length && !solidPx(tx, ty) && Math.abs(tx - path[path.length - 1].x) < 12 && Math.abs(ty - path[path.length - 1].y) < 12) path[path.length - 1] = { x: tx, y: ty };
   return path;
+}
+
+/* ================= Endlose Welt: Chunks nach Zufall ================= */
+const CS = 32;
+WORLD.endless = false; WORLD.chunks = new Map();
+let _lcK = -1, _lc = null;
+function getChunk(cx, cy) {
+  const k = (cx + 32768) * 65536 + (cy + 32768);
+  if (k === _lcK) return _lc;
+  let c = WORLD.chunks.get(k);
+  if (!c) { c = genChunk(cx, cy); WORLD.chunks.set(k, c); }
+  _lcK = k; _lc = c; return c;
+}
+function tTerr(tx, ty) {
+  if (WORLD.endless) { const c = getChunk(tx >> 5, ty >> 5); return c.terr[((ty & 31) << 5) | (tx & 31)]; }
+  return (tx < 0 || ty < 0 || tx >= MW || ty >= MH) ? 0 : WORLD.terr[ty * MW + tx];
+}
+function tDec(tx, ty) {
+  if (WORLD.endless) { const c = getChunk(tx >> 5, ty >> 5); return c.dec[((ty & 31) << 5) | (tx & 31)]; }
+  return (tx < 0 || ty < 0 || tx >= MW || ty >= MH) ? 0 : WORLD.dec[ty * MW + tx];
+}
+function viewChunks(x0, y0, x1, y1) {   // Pixelbereich -> Chunks
+  const out = []; for (let cy = Math.floor(y0 / TS) >> 5; cy <= (Math.floor(y1 / TS) >> 5); cy++) for (let cx = Math.floor(x0 / TS) >> 5; cx <= (Math.floor(x1 / TS) >> 5); cx++) out.push(getChunk(cx, cy));
+  return out;
+}
+function chunksAround(x, y, r) { const cx = Math.floor(x / TS) >> 5, cy = Math.floor(y / TS) >> 5, out = []; for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) out.push(getChunk(cx + i, cy + j)); return out; }
+function chestsNear(x, y) { if (!WORLD.endless) return WORLD.chests; const out = []; chunksAround(x, y, 1).forEach(c => c.chests.forEach(h => out.push(h))); return out; }
+function chestById(id) {
+  if (!WORLD.endless) return WORLD.chests.find(x => x.id === id);
+  const m = /^c_(-?\d+)_(-?\d+)_/.exec(id); if (!m) return null;
+  return getChunk(+m[1], +m[2]).chests.find(x => x.id === id);
+}
+function dangerAt(x, y) { const cx = Math.floor(x / TS) >> 5, cy = Math.floor(y / TS) >> 5; return clamp(Math.max(Math.abs(cx), Math.abs(cy)) / 14, 0, 1); }
+
+function genEndless(seed) {
+  WORLD.endless = true; WORLD.seed = seed; WORLD.chunks = new Map(); _lcK = -1; _lc = null;
+  WORLD.blds = []; WORLD.chests = []; WORLD.camps = []; WORLD.places = [];
+  WORLD.nz = [1, 2, 3, 4, 5].map(i => vnoise((seed ^ (i * 7919)) | 1));
+  WORLD.spots = { start: { x: 16 * TS + 8, y: 12 * TS + 8 }, markt: { x: 16 * TS, y: 16 * TS } };
+  for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) getChunk(i, j);
+}
+const BIOME_NAMES = ['Weite Wiesen', 'Dunkler Wald', 'Felsland'];
+function biomeAt(wx, wy) {
+  if (Math.max(Math.abs(wx - 16), Math.abs(wy - 16)) < 30) return 0;
+  const n = WORLD.nz;
+  if (n[1](wx / 90 + 300, wy / 90) > 0.66) return 2;
+  return (n[0](wx / 50, wy / 50) * 0.7 + n[2](wx / 18, wy / 18) * 0.3 > 0.56) ? 1 : 0;
+}
+const VNAME_A = ['Nieder', 'Ober', 'Alt', 'Neu', 'Eichen', 'Rot', 'Stein', 'Linden', 'Bach', 'Hohen'], VNAME_B = ['hain', 'dorf', 'bach', 'feld', 'au', 'berg', 'tal', 'stetten'];
+
+function genChunk(cx, cy) {
+  const seed = WORLD.seed, R = mulberry((Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663) ^ seed) | 1), n = WORLD.nz;
+  const c = { cx, cy, terr: new Uint8Array(1024), solid: new Uint8Array(1024), dec: new Uint8Array(1024), blds: [], chests: [], pop: [], pois: [], ambush: false, ambushed: false };
+  const keep = new Uint8Array(1024), x0 = cx * CS, y0 = cy * CS, start = cx === 0 && cy === 0;
+  const dg = clamp(Math.max(Math.abs(cx), Math.abs(cy)) / 14, 0, 1), tier = dg < 0.25 ? 0 : dg < 0.6 ? 1 : 2;
+  for (let ly = 0; ly < CS; ly++) for (let lx = 0; lx < CS; lx++) {
+    const wx = x0 + lx, wy = y0 + ly, i = ly * CS + lx, b = biomeAt(wx, wy), ds = Math.max(Math.abs(wx - 16), Math.abs(wy - 16));
+    let t = b === 1 ? 4 : b === 2 ? 5 : 0;
+    if (b === 0 && ds > 24 && n[2](wx / 30 + 500, wy / 30) > 0.7) { t = 2; keep[i] = 1; }
+    if (ds > 22 && Math.abs(n[3](wx / 48, wy / 48) - 0.5) < 0.03) { t = hash(wx >> 3, wy >> 3, seed & 255) < 0.3 ? 8 : 3; keep[i] = 1; }
+    else if (ds > 4 && Math.abs(n[4](wx / 70 + 90, wy / 70 + 40) - 0.5) < 0.015) { t = 1; keep[i] = 1; }
+    c.terr[i] = t;
+  }
+  const inC = (lx, ly) => lx >= 0 && ly >= 0 && lx < CS && ly < CS;
+  const rectT = (lx, ly, w, h, t, only) => { for (let j = ly; j < ly + h; j++) for (let i = lx; i < lx + w; i++) if (inC(i, j) && (!only || only.includes(c.terr[j * CS + i]))) { c.terr[j * CS + i] = t; keep[j * CS + i] = 1; } };
+  const keepR = (lx, ly, w, h) => { for (let j = ly; j < ly + h; j++) for (let i = lx; i < lx + w; i++) if (inC(i, j)) keep[j * CS + i] = 1; };
+  const dry = (lx, ly, w, h) => { for (let j = ly; j < ly + h; j++) for (let i = lx; i < lx + w; i++) { if (!inC(i, j)) return false; const t = c.terr[j * CS + i]; if (t === 3 || t === 8) return false; } return true; };
+  const bldC = (type, lx, ly, w, h, o = {}) => { c.blds.push({ type, x: x0 + lx, y: y0 + ly, w, h, roof: o.roof || 0, name: o.name || '', door: w >> 1 }); keepR(lx - 1, ly - 1, w + 2, h + 2); };
+  const decC = (lx, ly, d) => { if (inC(lx, ly)) { c.dec[ly * CS + lx] = d; keep[ly * CS + lx] = 1; } };
+  const chestC = (lx, ly, tr, lock) => { c.chests.push({ id: `c_${cx}_${cy}_${c.chests.length}`, x: (x0 + lx) * TS + 8, y: (y0 + ly) * TS + 8, tier: tr, lock }); decC(lx, ly, 0); };
+  const popC = (arch, lx, ly, o = {}) => c.pop.push({ arch, x: (x0 + lx) * TS + 8, y: (y0 + ly) * TS + 8, o, ent: null, killed: false });
+  const poi = (type, name, lx, ly, extra) => c.pois.push(Object.assign({ type, name, x: (x0 + lx) * TS + 8, y: (y0 + ly) * TS + 8 }, extra || {}));
+
+  const T3 = [[-8, -5], [6, -5], [-8, 3]];
+  const build = {
+    lager(px, py) {
+      const nb = 4 + ((R() * 3) | 0) + ((dg * 4) | 0), grp = `lg${cx}_${cy}`;
+      rectT(px - 9, py - 7, 19, 15, 6, [0, 4, 5, 2, 7]);
+      T3.slice(0, nb > 5 ? 3 : 2).forEach(([dx, dy]) => bldC('zelt', px + dx, py + dy, 3, 3, { roof: 3 }));
+      decC(px, py + 1, 11); decC(px - 3, py + 3, 10); decC(px + 4, py + 5, 8); decC(px - 5, py + 6, 16);
+      chestC(px, py - 5, tier, Math.min(3, 1 + tier));
+      for (let i = 0; i < nb; i++) { const a = i / nb * 6.283; popC(i === 0 && nb >= 5 ? 'banditenfuehrer' : 'bandit', px + Math.round(Math.cos(a) * 4.5), py + 2 + Math.round(Math.sin(a) * 3.2), { tier, grp, roam: 50 }); }
+      poi('camp', 'Räuberlager', px, py);
+    },
+    hoehle(px, py) {
+      rectT(px - 7, py - 6, 15, 12, 5, [0, 4, 2]);
+      bldC('hoehle', px - 2, py - 3, 5, 4, { name: 'Höhle' });
+      [[-6, -4], [6, -3], [-5, 4], [5, 4], [-6, 0], [6, 1], [0, 5]].forEach(([dx, dy]) => decC(px + dx, py + dy, 4));
+      chestC(px + 3, py + 3, Math.min(3, 1 + tier), Math.min(3, 2 + (tier ? 1 : 0)));
+      poi('cave', 'Goblinhöhle', px, py + 1, { x: (x0 + px) * TS + 8, y: (y0 + py + 1) * TS + 6, id: `cv_${cx}_${cy}`, spawned: 0, total: 8 + ((dg * 10) | 0), spawnT: 1, cleared: false, announced: false, tier });
+      popC('goblin', px - 3, py + 2, { tier, grp: `cv${cx}_${cy}` }); popC('goblin', px + 3, py + 2, { tier, grp: `cv${cx}_${cy}` });
+    },
+    dorf(px, py) {
+      rectT(px - 10, py - 7, 21, 15, 0, [4, 5, 2, 7]); rectT(px - 10, py, 21, 2, 1);
+      [[-9, -6], [-2, -6], [5, -6], [-9, 3], [5, 3]].forEach(([dx, dy]) => bldC('haus', px + dx, py + dy, 4, 3, { roof: (R() * 5) | 0 }));
+      decC(px, py - 2, 12); decC(px - 3, py + 3, 13); decC(px + 3, py + 3, 13); decC(px - 1, py + 5, 8);
+      popC('buerger', px - 2, py + 4, { role: 'markt', roam: 12, name: 'Händler ' + pick2(R, NAMES_M) }); popC('wache', px + 2, py + 4, { role: 'wache', roam: 40 });
+      for (let i = 0; i < 4; i++) popC('bauer', px - 6 + i * 4, py + 2, { roam: 60 });
+      chestC(px + 8, py - 3, 0, 1);
+      poi('dorf', pick2(R, VNAME_A) + pick2(R, VNAME_B), px, py, { safe: true });
+    },
+    turm(px, py) {
+      rectT(px - 5, py - 4, 11, 9, 0, [4, 5, 2, 7]);
+      bldC('turm', px - 2, py - 2, 4, 4, { name: 'Ruine' }); chestC(px + 3, py + 1, Math.min(3, tier + 1), 3);
+      popC('bandit', px - 3, py + 3, { tier: tier + 1, grp: `tm${cx}_${cy}` }); popC('bandit', px + 3, py + 3, { tier: tier + 1, grp: `tm${cx}_${cy}` });
+      poi('ruin', 'Ruine', px, py);
+    },
+    reisende(px, py) {
+      rectT(px - 4, py - 3, 9, 8, 6, [0, 4, 2]);
+      decC(px, py, 11); bldC('zelt', px + 3, py - 3, 3, 3, { roof: 0 });
+      popC('reisender', px - 2, py + 2, { role: 'markt', roam: 8, name: 'Fahrender Händler', hold: 1 }); popC('reisender', px + 1, py + 3, { roam: 10 });
+      poi('trader', 'Rastplatz', px, py, { safe: true });
+    },
+    posten(px, py) {
+      rectT(px - 6, py - 5, 13, 11, 6, [0, 4, 2]);
+      bldC('zelt', px - 5, py - 3, 3, 3, { roof: 0 }); bldC('zelt', px + 3, py - 3, 3, 3, { roof: 0 }); decC(px, py, 11); decC(px - 2, py + 3, 14);
+      popC('hauptmann', px, py + 2, { role: 'wache', roam: 20, grp: `po${cx}_${cy}` });
+      for (let i = 0; i < 3; i++) popC('soldat', px - 3 + i * 3, py + 3, { role: 'wache', roam: 30, grp: `po${cx}_${cy}` });
+      poi('post', 'Wachposten', px, py, { safe: true });
+    },
+    pferde(px, py) { for (let i = 0; i < 3; i++) popC('pferd', px - 2 + i * 2, py + (i % 2), {}); }
+  };
+  function buildStart() {
+    c.terr.fill(0);
+    rectT(0, 15, 32, 2, 1); rectT(15, 0, 2, 32, 1); rectT(11, 12, 10, 8, 1);
+    bldC('taverne', 12, 6, 7, 4, { name: 'Zum Goldenen Hahn', roof: 2 });
+    [[3, 4], [23, 3], [3, 21], [24, 21], [18, 24]].forEach(([x, y]) => bldC('haus', x, y, 4, 3, { roof: (x + y) % 5 }));
+    bldC('scheune', 3, 9, 6, 4, { roof: 3, name: 'Scheune' }); bldC('stall', 22, 8, 6, 4, { roof: 4, name: 'Stall' });
+    decC(16, 18, 12); [[12, 14], [13, 14], [19, 14], [20, 14]].forEach(([x, y]) => decC(x, y, 13)); decC(10, 18, 8); decC(11, 18, 8); decC(21, 18, 9);
+    chestC(7, 14, 0, 1);
+    popC('buerger', 13, 17, { role: 'markt', roam: 12, name: 'Händler Gerlach' }); popC('buerger', 19, 17, { role: 'markt2', roam: 12, name: 'Tuchhändlerin Elsbeth' });
+    popC('wirt', 15, 11, { role: 'wirt', roam: 10, name: 'Wirt Konrad' });
+    popC('spieler', 13, 11, { role: 'spieler', hold: 1, roam: 6, name: 'Würfler Bela', game: 'dice' }); popC('spieler', 19, 11, { role: 'spieler', hold: 1, roam: 6, name: 'Kartenspieler Imre', game: 'cards' });
+    popC('stall', 25, 13, { role: 'stall', roam: 10, name: 'Stallknecht Veit' });
+    popC('wache', 14, 19, { role: 'wache', roam: 40 }); popC('wache', 18, 19, { role: 'wache', roam: 40 });
+    for (let i = 0; i < 8; i++) popC('bauer', 6 + i * 3, 18 + (i % 3), { roam: 70 });
+    [[24, 14], [26, 14], [28, 14]].forEach(([x, y]) => popC('pferd', x, y, {}));
+    poi('dorf', 'Niederhain', 16, 15, { safe: true });
+  }
+  if (start) buildStart();
+  else {
+    const px = 10 + ((R() * 12) | 0), py = 8 + ((R() * 16) | 0), roll = R(), bc = biomeAt(x0 + 16, y0 + 16), near = Math.max(Math.abs(cx), Math.abs(cy)) <= 1;
+    let kind = null;
+    if (bc === 0) kind = roll < 0.07 ? 'dorf' : roll < 0.25 ? 'lager' : roll < 0.31 ? 'turm' : roll < 0.37 ? 'reisende' : roll < 0.41 ? 'posten' : roll < 0.52 ? 'pferde' : null;
+    else if (bc === 1) kind = roll < 0.17 ? 'lager' : roll < 0.23 ? 'turm' : roll < 0.3 ? 'hoehle' : null;
+    else kind = roll < 0.32 ? 'hoehle' : roll < 0.42 ? 'lager' : roll < 0.48 ? 'turm' : null;
+    if (bc === 1 && R() < 0.65) c.ambush = true;
+    if (near) { kind = (cx === 1 && cy === 0) ? 'lager' : (cx === -1 && cy === 1) ? 'hoehle' : (cx === 0 && cy === 1) ? 'pferde' : (kind === 'lager' || kind === 'hoehle' || kind === 'turm') ? null : kind; c.ambush = false; }
+    const fw = kind === 'dorf' ? [px - 10, py - 7, 21, 15] : [px - 9, py - 7, 19, 15];
+    if (kind && (near && (kind === 'lager' || kind === 'hoehle') ? true : dry(...fw))) {
+      if (near) rectT(px - 10, py - 8, 21, 17, 0);
+      build[kind](px, py);
+    }
+  }
+  // Natur
+  for (let ly = 0; ly < CS; ly++) for (let lx = 0; lx < CS; lx++) {
+    const i = ly * CS + lx; if (keep[i] || c.dec[i]) continue;
+    const t = c.terr[i], r = R();
+    if (t === 4) { if (r < 0.34) c.dec[i] = r < 0.1 ? 3 : r < 0.2 ? 2 : 1; else if (r < 0.4) c.dec[i] = 5; else if (r < 0.42) c.dec[i] = 10; }
+    else if (t === 0) { if (r < 0.03) c.dec[i] = r < 0.012 ? 1 : 3; else if (r < 0.055) c.dec[i] = 5; else if (r < 0.065) c.dec[i] = 4; }
+    else if (t === 5) { if (r < 0.07) c.dec[i] = 4; else if (r < 0.09) c.dec[i] = 2; }
+  }
+  for (let i = 0; i < 1024; i++) { const t = c.terr[i]; if (t === 3 || t === 10) c.solid[i] = 1; const d = c.dec[i]; if (d && DEC_SOLID[d]) c.solid[i] = 1; }
+  c.blds.forEach(b => { for (let j = b.y; j < b.y + b.h; j++) for (let i = b.x; i < b.x + b.w; i++) c.solid[((j - y0) << 5) | (i - x0)] = 1; });
+  c.chests.forEach(h => { c.solid[((Math.floor(h.y / TS) - y0) << 5) | (Math.floor(h.x / TS) - x0)] = 1; });
+  if (start) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const i = (12 + dy) * CS + 16 + dx; if (c.solid[i] && c.terr[i] !== 3) { c.solid[i] = 0; if (c.dec[i] && c.dec[i] < 11) c.dec[i] = 0; } }
+  c.blds.sort((a, b) => (a.y + a.h) - (b.y + b.h));
+  return c;
+}
+function pick2(R, a) { return a[(R() * a.length) | 0]; }
+
+/* ---------- Bevölkerung und Ereignisse (Gastgeber) ---------- */
+const GOB_NAMES = ['Gnarl', 'Rikk', 'Snik', 'Grub', 'Zakk', 'Muk', 'Piz', 'Krag', 'Nuk', 'Skrit'];
+function spawnDef(def) {
+  let e;
+  if (def.arch === 'pferd') e = addEnt(mkEnt({ id: 'h' + (_eid++), k: 'h', arch: 'pferd', name: 'Pferd', x: def.x, y: def.y, hp: 100, hr: (Math.random() * 5) | 0, home: { x: def.x, y: def.y } }));
+  else e = spawnNpc(def.arch, def.x, def.y, def.o);
+  e.def = def; def.ent = e.id; return e;
+}
+let _etAcc = 0;
+function endlessTick(dt) {
+  _etAcc += dt; if (_etAcc < 0.5) return; const step = _etAcc; _etAcc = 0;
+  const ps = playersList().filter(p => !p.dead || true); if (!ps.length) return;
+  const pc = ps.map(p => [Math.floor(p.x / TS) >> 5, Math.floor(p.y / TS) >> 5]);
+  const seen = new Set();
+  pc.forEach(([pcx, pcy]) => {
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) {
+      const c = getChunk(pcx + i, pcy + j); if (seen.has(c)) continue; seen.add(c);
+      for (const d of c.pop) if (!d.killed && !(d.ent && G.ents.has(d.ent))) spawnDef(d);
+    }
+  });
+  // Entfernte Figuren abbauen
+  G.ents.forEach((e, id) => {
+    if (e.k === 'p') return;
+    let md = 1e9; for (const p of ps) md = Math.min(md, Math.hypot(p.x - e.x, p.y - e.y));
+    if (e.def) { if (!e.dead && md > CS * TS * 3.2 && !(e.rider)) { G.ents.delete(id); e.def.ent = null; } }
+    else if (md > 1900 && !e.rider) G.ents.delete(id);
+  });
+  // Höhlen: Goblins strömen heraus
+  for (const c of seen) for (const p of c.pois) {
+    if (p.type !== 'cave' || p.cleared) continue;
+    let np = null, nd = 1e9; for (const q of ps) { if (q.dead || q.down) continue; const d = Math.hypot(q.x - p.x, q.y - p.y); if (d < nd) { nd = d; np = q; } }
+    let alive = 0; G.ents.forEach(e => { if (e.cave === p.id && !e.dead) alive++; });
+    if (np && nd < 420) {
+      p.spawnT -= step;
+      if (p.spawnT <= 0 && p.spawned < p.total && alive < 6) {
+        const k = Math.min(2 + ((Math.random() * 2) | 0), p.total - p.spawned);
+        for (let i = 0; i < k; i++) { const e = spawnNpc('goblin', p.x + rnd(-14, 14), p.y + 6 + i * 8, { tier: p.tier, grp: 'cv' + p.id, cave: p.id }); e.ai.st = 'fight'; e.ai.target = np.id; }
+        p.spawned += k; p.spawnT = 8 + Math.random() * 6;
+        if (!p.announced) { p.announced = true; emitEv({ e: 'msg', t: 'Goblins strömen aus der Höhle!' }); }
+        emitEv({ e: 's', s: 'shout', x: p.x, y: p.y });
+      }
+    }
+    if (p.spawned >= p.total && alive === 0) { p.cleared = true; emitEv({ e: 'msg', t: 'Aus der Höhle kommt kein Goblin mehr.' }); }
+  }
+  // Hinterhalt im Wald
+  ps.forEach(p => {
+    if (p.dead || p.down) return;
+    const c = getChunk(Math.floor(p.x / TS) >> 5, Math.floor(p.y / TS) >> 5);
+    if (!c.ambush || c.ambushed) return;
+    if (Math.hypot(p.x - (c.cx * CS + 16) * TS, p.y - (c.cy * CS + 16) * TS) > 9 * TS || terrAt(p.x, p.y) !== 4) return;
+    c.ambushed = true; c.ambush = false;
+    const dg = dangerAt(p.x, p.y), tier = dg < 0.25 ? 0 : dg < 0.6 ? 1 : 2, nb = 3 + ((dg * 4) | 0) + (ps.length > 1 ? 1 : 0);
+    for (let i = 0; i < nb; i++) {
+      const a = (i / nb) * 6.283 + Math.random(), d = rnd(150, 210);
+      const e = spawnNpc(i === 0 && nb >= 5 ? 'banditenfuehrer' : 'bandit', p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, { tier, grp: `hh${c.cx}_${c.cy}` });
+      e.ai.st = 'fight'; e.ai.target = p.id;
+    }
+    emitEv({ e: 'msg', t: 'Hinterhalt! Räuber brechen aus dem Dickicht!' }); emitEv({ e: 's', s: 'shout', x: p.x, y: p.y });
+  });
+}
+function spawnEndless() { G.ents.clear(); G.loot = []; G.projs = []; _eid = 1; G.spawns = []; G.chestOpen = {}; }
+function armUp(e, tier) {
+  if (!tier) return; const add = (nm) => { try { equipItem(e, findArmor(nm)); } catch (x) { /* egal */ } };
+  add('Kappe (grau)'); add('Gambeson (gut)'); add('Gepolsterte Beinlinge (gut)');
+  add(tier >= 2 ? 'Langes Kettenhemd (gut)' : 'Kurzes Kettenhemd (gut)'); add('Kettenbeinlinge (gut)');
+  add('Polsterhaube (gut)'); add('Kettenhaube (gut)'); add(tier >= 2 ? 'Beckenhaube (gut)' : 'Kesselhaube (schlicht)');
+  if (tier >= 2) { add('Kürass (gut)'); add('Armzeug (gut)'); add('Beinzeug (gut)'); }
+  e.wep = pick(tier >= 2 ? ['kriegsschwert', 'streitkolben', 'hellebarde', 'kriegshammer', 'zweihaender', 'rabenschnabel'] : ['streitaxt', 'katzbalger', 'morgenstern', 'falchion', 'kriegshammer']);
+  e.mhp = e.hp = Math.round(e.mhp + tier * 15); e.gold = Math.round(e.gold * (1 + tier));
 }
 
 /* ================= Simulation (läuft beim Gastgeber) ================= */
@@ -698,6 +946,7 @@ function checkDown(e) {
 }
 function die(e) {
   e.dead = 1; e.down = 1; e.hp = Math.min(e.hp, -40); e.deadT = G.t; e.sw = 0;
+  if (e.def) e.def.killed = true;
   if (e.k === 'n') {
     e.loot = (e.loot || []).concat(e.eq.map(id => ({ id, n: 1 })));
     if (e.wep && e.wep !== 'faust') e.loot.push({ id: e.wep, n: 1 });
@@ -897,7 +1146,7 @@ function goTo(e, tx, ty, spd, dt, arrive = 5, far = false) {
   let wx = tx, wy = ty;
   if (!lineClear(e.x, e.y, tx, ty) || ai.slide > 0) {
     ai.pathT -= dt;
-    const tt = (Math.floor(ty / TS) * MW + Math.floor(tx / TS));
+    const tt = (Math.floor(ty / TS) * 100003 + Math.floor(tx / TS));
     if (!ai.path || ai.ptt !== tt && ai.pathT <= 0 || (!ai.path.length && ai.pathT <= 0)) {
       ai.path = findPath(e.x, e.y, tx, ty, far ? 9000 : 2600); ai.ptt = tt; ai.pathT = 0.9 + Math.random() * 0.5;
       if (!ai.path) { ai.path = []; ai.pathT = 1.5; }
@@ -1082,6 +1331,7 @@ const ARCH = {
   bandit: { fac: 'bande', hp: 92, mv: 47, courage: 0.5, gold: [4, 35], wep: ['knueppel', 'handbeil', 'katzbalger', 'streitaxt', 'langbogen', 'armbrust', 'dusack', 'falchion', 'morgenstern'], eq: () => [pick(['Hemd (grau)', 'Wams (schwarz)', 'Kittel (braun)']), pick(['Beinlinge (braun)', 'Hose (schwarz)']), Math.random() < 0.65 ? 'Gambeson (schlicht)' : null, Math.random() < 0.18 ? 'Kurzes Kettenhemd (schlicht)' : null, Math.random() < 0.8 ? pick(['Kappe (grau)', 'Gugel (braun)', 'Kopftuch (rot)']) : null, Math.random() < 0.4 ? pick(['Eisenkappe (schlicht)', 'Kesselhaube (schlicht)']) : null] },
   banditenfuehrer: { fac: 'bande', hp: 125, mv: 49, courage: 1, gold: [60, 140], wep: ['kriegsschwert', 'streitaxt', 'streitkolben'], eq: () => ['Wams (schwarz)', 'Gambeson (gut)', 'Kurzes Kettenhemd (gut)', 'Hose (schwarz)', 'Gepolsterte Beinlinge (gut)', 'Gugel (schwarz)', 'Polsterhaube (gut)', 'Kettenhaube (gut)', 'Beckenhaube (gut)'], leader: 1 },
   reisender: { fac: 'haendler', hp: 88, mv: 42, courage: 0.3, gold: [10, 50], wep: ['knueppel', 'fleischmesser'], eq: () => [pick(['Kittel (ocker)', 'Tunika (gruen)', 'Wams (rot)']), 'Beinlinge (braun)', 'Filzhut (braun)'] },
+  goblin: { fac: 'bande', hp: 58, mv: 57, courage: 0.22, gold: [1, 9], wep: ['handbeil', 'hirschfaenger', 'dusack', 'wurfspeer', 'knueppel', 'fleischmesser', 'sichel', 'bauernwehr'], eq: () => [pick(['Hemd (grau)', 'Kittel (braun)', 'Hemd (braun)']), pick(['Beinlinge (braun)', 'Beinlinge (grau)']), Math.random() < 0.5 ? 'Kappe (braun)' : null] },
   spieler: { fac: 'haendler', hp: 90, mv: 40, courage: 0.45, gold: [40, 120], wep: ['dusack'], eq: () => [pick(['Wams (violett)', 'Wams (rot)', 'Tunika (gelb)']), 'Hose (schwarz)', 'Kappe (blau)'] }
 };
 function spawnNpc(arch, x, y, o = {}) {
@@ -1090,7 +1340,7 @@ function spawnNpc(arch, x, y, o = {}) {
   const e = mkEnt({
     arch, fac: A.fac, hp: A.hp, mhp: A.hp, mv: A.mv + rnd(-3, 3), courage: clamp(A.courage + rnd(-0.12, 0.12), 0, 1), x, y, a: rnd(0, 6.28),
     name: (arch === 'bauer' && !male ? pick(NAMES_F) : pick(NAMES_M)) + (arch === 'hauptmann' || arch === 'banditenfuehrer' || arch === 'ritter' ? ' ' + pick(SURN) : (Math.random() < 0.3 ? ' ' + pick(SURN) : '')),
-    sk: (Math.random() * SKIN.length) | 0, hr: (Math.random() * HAIR.length) | 0, gold: Math.round(rnd(A.gold[0], A.gold[1])), leader: A.leader || 0, home: { x, y }, ...o
+    sk: (Math.random() * 4) | 0, hr: (Math.random() * HAIR.length) | 0, gold: Math.round(rnd(A.gold[0], A.gold[1])), leader: A.leader || 0, home: { x, y }, ...o
   });
   e.eq = A.eq().filter(Boolean).map(findArmor);
   e.wep = pick(A.wep);
@@ -1098,6 +1348,8 @@ function spawnNpc(arch, x, y, o = {}) {
   const w = ITEMS[e.wep]; if (e.fac === 'bande' && Math.random() < 0.5) e.loot.push({ id: pick(['verband', 'brot', 'wurst', 'dietrich']), n: 1 });
   if (w.ammo && w.ammo !== 'stein') e.loot.push({ id: w.ammo, n: 4 + ((Math.random() * 8) | 0) });
   e.hair = male ? 0 : 1;
+  if (arch === 'goblin') { e.sk = 4; e.hair = 0; e.name = pick(GOB_NAMES); }
+  if (o.tier) armUp(e, o.tier);
   return addEnt(e);
 }
 function spawnWorld() {
@@ -1196,8 +1448,9 @@ function hostStep(dt) {
   });
   stepProjs(dt);
   // Räuberüberfall
+  if (WORLD.endless) endlessTick(dt);
   G.raidT -= dt;
-  if (G.raidT <= 0) {
+  if (!WORLD.endless && G.raidT <= 0) {
     G.raidT = 420 + Math.random() * 300;
     const grp = Math.random() < 0.5 ? 'wolf' : 'hohl', pool = [];
     G.ents.forEach(e => { if (e.k === 'n' && e.fac === 'bande' && e.grp === grp && !e.dead && !e.down && e.ai.st === 'idle' && !e.leader) pool.push(e); });
@@ -1246,7 +1499,7 @@ function newChar(me) {
   P.gold = 35; P.inv = []; P.dice = ['d0', 'd4']; P.die = 'd0'; P.wep2 = null;
   me.eq = ['Hemd (braun)', 'Beinlinge (braun)', 'Kappe (braun)'].map(findArmor); me.wep = 'knueppel';
   invAdd('verband', 3); invAdd('dietrich', 1); invAdd('brot', 2); invAdd('wurst', 1); invAdd(findArmor('Hemd (weiss)'), 1);
-  me.sk = (Math.random() * SKIN.length) | 0; me.hr = (Math.random() * HAIR.length) | 0;
+  me.sk = (Math.random() * 4) | 0; me.hr = (Math.random() * HAIR.length) | 0;
 }
 function resetPlayerState(me) {
   me.hp = me.mhp = 100; me.bleed = 0; me.down = 0; me.dead = 0; me.crawl = 0; me.lost = { al: 0, ar: 0, ll: 0, lr: 0 }; me.ld = [0, 0, 0, 0]; me.tears = {}; me.stab = 0; me.sw = 0; me.cd = 0; me.stag = 0; me.blk = 0; me.wanted = 0; me.mnt = null;
@@ -1278,7 +1531,7 @@ function hostHandle(idx, m) {
     case 'hello': {
       const e = pe || addEnt(mkEnt({ id: 'p' + idx, k: 'p', name: m.name || ('Spieler ' + (idx + 1)), x: WORLD.spots.start.x + rnd(-20, 20), y: WORLD.spots.start.y + rnd(0, 20), hp: 100, mhp: 100 }));
       e.name = (m.name || e.name).slice(0, 16); e.eq = m.eq || []; e.wep = m.w || 'faust'; e.sk = m.sk | 0; e.hr = m.hr | 0;
-      sendToPeer(idx, { t: 'init', seed: WORLD.seed, tm: G.tm, pvp: G.pvp, you: idx, co: G.chestOpen, x: e.x, y: e.y, lk: allLooks() });
+      sendToPeer(idx, { t: 'init', seed: WORLD.seed, mode: WORLD.endless ? 'endlos' : 'tal', tm: G.tm, pvp: G.pvp, you: idx, co: G.chestOpen, x: e.x, y: e.y, lk: allLooks() });
       sendToPeer(idx, { t: 'lt', l: lootPack() });
       emitEv({ e: 'msg', t: e.name + ' ist dem Spiel beigetreten.' });
       break;
@@ -1296,7 +1549,7 @@ function hostHandle(idx, m) {
     case 'fine': if (pe) { pe.wanted = 0; } break;
     case 'resp': if (pe) { const s = WORLD.spots.start; pe.x = s.x + rnd(-24, 24); pe.y = s.y + rnd(0, 24); pe.hp = 100; pe.down = 0; pe.dead = 0; pe.wanted = 0; pe.crawl = 0; } break;
     case 'chest': if (pe) {
-      const c = WORLD.chests.find(x => x.id === m.id); if (!c || G.chestOpen[c.id] || Math.hypot(c.x - pe.x, c.y - pe.y) > 60) break;
+      const c = chestById(m.id); if (!c || G.chestOpen[c.id] || Math.hypot(c.x - pe.x, c.y - pe.y) > 60) break;
       G.chestOpen[c.id] = G.t; const l = lootFor(c.tier);
       sendTo(pe.id, { t: 'give', to: pe.id, items: l.items, gold: l.gold, why: 'Truhe' }); broadcast({ t: 'co', id: c.id });
     } break;
@@ -1530,7 +1783,7 @@ function findInteract() {
     consider({ type: 'npc', e, label: 'E – ' + e.name + (e.role === 'wache' || e.fac === 'wache' ? ' (Wache)' : '') }, d, 36);
   });
   G.loot.forEach(l => { const d = Math.hypot(l.x - me.x, l.y - me.y); consider({ type: 'pick', l, label: 'E – ' + ITEMS[l.item.id].name + ' aufheben' }, d, 22); });
-  WORLD.chests.forEach(c => { if (G.chestOpen[c.id]) return; const d = Math.hypot(c.x - me.x, c.y - me.y); consider({ type: 'chest', c, label: 'E – Truhe' + (c.lock ? ' (verschlossen, Stufe ' + c.lock + ')' : '') }, d, 30); });
+  chestsNear(me.x, me.y).forEach(c => { if (G.chestOpen[c.id]) return; const d = Math.hypot(c.x - me.x, c.y - me.y); consider({ type: 'chest', c, label: 'E – Truhe' + (c.lock ? ' (verschlossen, Stufe ' + c.lock + ')' : '') }, d, 30); });
   if (me.mnt) best = { type: 'dismount', label: 'F – absteigen   G – Gangart' };
   return best;
 }
@@ -1558,8 +1811,8 @@ function mkSpr(w, h, fn) { const c = document.createElement('canvas'); c.width =
 
 /* ---------- Gelände ---------- */
 const TN = vnoise(7);
-function drawTile(c, t, tx, ty) {
-  const X = tx * TS, Y = ty * TS, r = (i) => hash(tx, ty, i);
+function drawTile(c, t, tx, ty, ox = 0, oy = 0) {
+  const X = tx * TS - ox, Y = ty * TS - oy, r = (i) => hash(tx, ty, i);
   const spk = (cols, n) => { for (let i = 0; i < n; i++) px(c, X + ((r(i + 3) * 15) | 0), Y + ((r(i + 9) * 15) | 0), 1 + (r(i + 20) < 0.3 ? 1 : 0), 1, cols[(r(i + 40) * cols.length) | 0]); };
   switch (t) {
     case 0: {
@@ -1588,7 +1841,7 @@ function drawTile(c, t, tx, ty) {
     case 8: px(c, X, Y, TS, TS, '#4c7a82'); spk(['#8aa0a0', '#6a8d8f', '#3d6a74', '#a9b4a8'], 9); break;
     case 9: px(c, X, Y, TS, TS, '#8a6a40'); for (let j = 0; j < 16; j += 4) { px(c, X, Y + j, TS, 1, '#5d4527'); } px(c, X, Y, 1, TS, '#4a361e'); px(c, X + 15, Y, 1, TS, '#4a361e'); break;
     case 10: {
-      const below = ty + 1 < MH && WORLD.terr[(ty + 1) * MW + tx] === 10;
+      const below = tTerr(tx, ty + 1) === 10;
       px(c, X, Y, TS, TS, '#9a968d');
       for (let j = 0; j < 16; j += 4) for (let i = (j / 4 % 2) * 4; i < 16; i += 8) px(c, X + i, Y + j, 1, 4, '#7d7a72');
       if (!below) { px(c, X, Y + 9, TS, 7, '#6e6b64'); for (let i = 0; i < 16; i += 5) px(c, X + i, Y + 9, 1, 7, '#575450'); px(c, X, Y + 9, TS, 1, '#8a867e'); px(c, X, Y + 15, TS, 1, '#3f3d3a'); }
@@ -1596,9 +1849,21 @@ function drawTile(c, t, tx, ty) {
     }
     case 11: px(c, X, Y, TS, TS, '#7d7a70'); for (let j = 0; j < 16; j += 5) for (let i = (j % 10 ? 0 : 3); i < 16; i += 6) { px(c, X + i, Y + j, 5, 4, hash(tx * 7 + i, ty * 7 + j, 1) < 0.5 ? '#8a877c' : '#706d63'); } break;
   }
-  if (t === 3) { if (ty > 0 && WORLD.terr[(ty - 1) * MW + tx] !== 3) { px(c, X, Y, TS, 2, '#4f7f94'); px(c, X, Y + 2, TS, 1, '#244860'); } }
+  if (t === 3) { if (tTerr(tx, ty - 1) !== 3) { px(c, X, Y, TS, 2, '#4f7f94'); px(c, X, Y + 2, TS, 1, '#244860'); } }
+}
+const CC = new Map();
+function chunkCanv(ch) {
+  let o = CC.get(ch); if (o) return o;
+  const t = document.createElement('canvas'); t.width = t.height = CS * TS; const g = t.getContext('2d');
+  for (let ly = 0; ly < CS; ly++) for (let lx = 0; lx < CS; lx++) drawTile(g, ch.terr[ly * CS + lx], ch.cx * CS + lx, ch.cy * CS + ly, ch.cx * CS * TS, ch.cy * CS * TS);
+  const b = document.createElement('canvas'); b.width = b.height = CS * TS;
+  o = { t, b, bc: b.getContext('2d') }; CC.set(ch, o);
+  if (CC.size > 40 && G.me) { let far = null, fd = -1; CC.forEach((v, k) => { const d = Math.hypot((k.cx + 0.5) * CS * TS - G.me.x, (k.cy + 0.5) * CS * TS - G.me.y); if (d > fd && k !== ch) { fd = d; far = k; } }); if (far) CC.delete(far); }
+  return o;
 }
 function buildTerrain() {
+  CC.clear(); BC = null; BCx = null;
+  if (WORLD.endless) { MM = null; return; }
   TC = document.createElement('canvas'); TC.width = MW * TS; TC.height = MH * TS;
   const c = TC.getContext('2d');
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) drawTile(c, WORLD.terr[y * MW + x], x, y);
@@ -1670,6 +1935,10 @@ function buildingSprite(b) {
         [18, 40, 62, 84, 110].forEach(x => { if (x < w - 10 && Math.abs(x - (w >> 1)) > 12) { px(c, ox + x, oy + 14, 4, 9, '#1c1814'); } });
         px(c, ox + 6, oy - 4, 1, 12, '#5d4327'); px(c, ox + 7, oy - 4, 8, 5, '#9a2d2d'); break;
       }
+      case 'hoehle': {
+        blob(c, ox + (w >> 1), oy + h - 8, w >> 1, '#625f58'); px(c, ox, oy + h - 10, w, 10, '#625f58'); blob(c, ox + (w >> 1), oy + h - 14, (w >> 1) - 5, '#85827a'); blob(c, ox + (w >> 1) - 8, oy + h - 18, 6, '#97948a');
+        px(c, ox + (w >> 1) - 10, oy + h - 20, 20, 20, '#0b0907'); blob(c, ox + (w >> 1), oy + h - 20, 10, '#0b0907'); px(c, ox + (w >> 1) - 12, oy + h - 8, 3, 8, '#4a6a30'); px(c, ox + (w >> 1) + 10, oy + h - 12, 2, 6, '#4a6a30'); break;
+      }
       case 'mine': {
         blob(c, ox + (w >> 1), oy + h - 6, (w >> 1), '#6e6a62'); px(c, ox, oy + h - 8, w, 8, '#6e6a62'); blob(c, ox + (w >> 1), oy + h - 3, 22, '#7d796f');
         px(c, ox + (w >> 1) - 14, oy + h - 22, 28, 22, '#15110d'); px(c, ox + (w >> 1) - 16, oy + h - 24, 4, 24, '#6b4a2e'); px(c, ox + (w >> 1) + 12, oy + h - 24, 4, 24, '#6b4a2e'); px(c, ox + (w >> 1) - 16, oy + h - 26, 32, 4, '#7a5a38');
@@ -1733,13 +2002,14 @@ function itemFill(c, it, x, y, w, h, fallback) {
   }
 }
 function drawHead(c, e, lk, cx, cy, dir) {
-  const skin = SKIN[e.sk % SKIN.length], hair = HAIR[e.hr % HAIR.length], it = lk.head;
+  const skin = SKIN[e.sk % SKIN.length], hair = HAIR[e.hr % HAIR.length], it = lk.head, gob = e.arch === 'goblin', EYE = gob ? '#e02a2a' : '#1c1209';
+  if (gob) { px(c, cx - 5, cy + 2, 2, 2, skin); px(c, cx + 3, cy + 2, 2, 2, skin); }
   const sh = it ? it.shape : null;
   px(c, cx - 3, cy, 6, 6, skin);
   if (dir === 3) px(c, cx - 3, cy, 6, 4, hair); else { px(c, cx - 3, cy, 6, 2, hair); if (e.hair) { px(c, cx - 4, cy, 1, 7, hair); px(c, cx + 3, cy, 1, 7, hair); } }
-  if (dir === 0) { px(c, cx - 2, cy + 3, 1, 1, '#1c1209'); px(c, cx + 1, cy + 3, 1, 1, '#1c1209'); }
-  if (dir === 1) { px(c, cx - 3, cy + 3, 1, 1, '#1c1209'); }
-  if (dir === 2) { px(c, cx + 2, cy + 3, 1, 1, '#1c1209'); }
+  if (dir === 0) { px(c, cx - 2, cy + 3, 1, 1, EYE); px(c, cx + 1, cy + 3, 1, 1, EYE); }
+  if (dir === 1) { px(c, cx - 3, cy + 3, 1, 1, EYE); }
+  if (dir === 2) { px(c, cx + 2, cy + 3, 1, 1, EYE); }
   if (!sh) return;
   const col = it.col, steel = it.layer >= 2;
   const cap = (h) => { px(c, cx - 3, cy - 1, 6, h, col); px(c, cx - 3, cy - 1, 6, 1, shade(col, 1.2)); };
@@ -1890,11 +2160,13 @@ function drawHorse(c, h, sx, sy, t, ridden) {
 
 /* ---------- Effekte ---------- */
 function splat(x, y, n, spread, col) {
+  let BCx = window.__bcx, ox = 0, oy = 0;
+  if (WORLD.endless) { const ch = getChunk(Math.floor(x / TS) >> 5, Math.floor(y / TS) >> 5); BCx = chunkCanv(ch).bc; ox = ch.cx * CS * TS; oy = ch.cy * CS * TS; }
   if (!BCx) return;
   for (let i = 0; i < n; i++) {
     const a = Math.random() * 6.28, d = Math.random() * spread;
     BCx.fillStyle = col || (Math.random() < 0.5 ? 'rgba(110,16,16,.85)' : 'rgba(140,24,24,.8)');
-    const s = Math.random() < 0.3 ? 2 : 1; BCx.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d * 0.7), s, s);
+    const s = Math.random() < 0.3 ? 2 : 1; BCx.fillRect(Math.round(x + Math.cos(a) * d) - ox, Math.round(y + Math.sin(a) * d * 0.7) - oy, s, s);
   }
 }
 function addPart(p) { if (parts.length < 400) parts.push(p); }
@@ -1973,23 +2245,26 @@ function render(dt, t) {
   const tx = me.x - cam.w / 2, ty = me.y - 10 - cam.h / 2;
   cam.fx = cam.fx == null ? tx : cam.fx + (tx - cam.fx) * Math.min(1, dt * 7); cam.fy = cam.fy == null ? ty : cam.fy + (ty - cam.fy) * Math.min(1, dt * 7);
   let sxj = 0, syj = 0; if (shake > 0.05) { sxj = (Math.random() - 0.5) * shake; syj = (Math.random() - 0.5) * shake; shake *= Math.pow(0.02, dt); }
-  cam.x = Math.round(clamp(cam.fx + sxj, -20, MW * TS - cam.w + 20)); cam.y = Math.round(clamp(cam.fy + syj, -20, MH * TS - cam.h + 20));
+  if (WORLD.endless) { cam.x = Math.round(cam.fx + sxj); cam.y = Math.round(cam.fy + syj); }
+  else { cam.x = Math.round(clamp(cam.fx + sxj, -20, MW * TS - cam.w + 20)); cam.y = Math.round(clamp(cam.fy + syj, -20, MH * TS - cam.h + 20)); }
   const c = L; c.imageSmoothingEnabled = false;
   c.fillStyle = '#1c2210'; c.fillRect(0, 0, cam.w, cam.h);
-  c.drawImage(TC, cam.x, cam.y, cam.w, cam.h, 0, 0, cam.w, cam.h);
-  c.drawImage(BC, cam.x, cam.y, cam.w, cam.h, 0, 0, cam.w, cam.h);
+  const endless = WORLD.endless;
+  if (!endless) { c.drawImage(TC, cam.x, cam.y, cam.w, cam.h, 0, 0, cam.w, cam.h); c.drawImage(BC, cam.x, cam.y, cam.w, cam.h, 0, 0, cam.w, cam.h); }
+  else for (const ch of viewChunks(cam.x, cam.y, cam.x + cam.w, cam.y + cam.h)) { const o = chunkCanv(ch), qx = ch.cx * CS * TS - cam.x, qy = ch.cy * CS * TS - cam.y; c.drawImage(o.t, qx, qy); c.drawImage(o.b, qx, qy); }
   // Wasserglanz
-  const tx0 = Math.max(0, Math.floor(cam.x / TS)), ty0 = Math.max(0, Math.floor(cam.y / TS)), tx1 = Math.min(MW - 1, Math.ceil((cam.x + cam.w) / TS)), ty1 = Math.min(MH - 1, Math.ceil((cam.y + cam.h) / TS) + 3);
-  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) if (WORLD.terr[y * MW + x] === 3 && hash(x, y, 77) < 0.35) { const o = Math.sin(t * 1.3 + x * 0.7 + y) * 3; px(c, x * TS + 4 + o - cam.x, y * TS + ((hash(x, y, 78) * 12) | 0) - cam.y, 4, 1, '#5c93ad'); }
+  const tx0 = endless ? Math.floor(cam.x / TS) : Math.max(0, Math.floor(cam.x / TS)), ty0 = endless ? Math.floor(cam.y / TS) : Math.max(0, Math.floor(cam.y / TS)), tx1 = endless ? Math.ceil((cam.x + cam.w) / TS) : Math.min(MW - 1, Math.ceil((cam.x + cam.w) / TS)), ty1 = (endless ? Math.ceil((cam.y + cam.h) / TS) + 3 : Math.min(MH - 1, Math.ceil((cam.y + cam.h) / TS) + 3));
+  for (let y = ty0; y <= ty1; y++) for (let x = tx0; x <= tx1; x++) if (tTerr(x, y) === 3 && hash(x, y, 77) < 0.35) { const o = Math.sin(t * 1.3 + x * 0.7 + y) * 3; px(c, x * TS + 4 + o - cam.x, y * TS + ((hash(x, y, 78) * 12) | 0) - cam.y, 4, 1, '#5c93ad'); }
   // Splitter am Boden
   for (const d of debris) {
     const sx = Math.round(d.x - cam.x), sy = Math.round(d.y - cam.y); if (sx < -10 || sy < -10 || sx > cam.w + 10 || sy > cam.h + 10) continue;
     const leg = d.z === 3; c.save(); c.translate(sx, sy); c.rotate(d.r); px(c, -4, -1, leg ? 8 : 6, 3, d.c); px(c, leg ? 3 : 2, -1, 2, 3, '#6e1111'); px(c, -4, -1, 1, 3, '#7a1010'); c.restore();
   }
   // Zeilen-Puffer
-  const rows = []; for (let y = ty0; y <= ty1 + 1; y++) rows[y] = [];
+  const rows = {}; for (let y = ty0; y <= ty1 + 1; y++) rows[y] = [];
   const row = (wy) => clamp(Math.floor(wy / TS), ty0, ty1 + 1);
-  WORLD.blds.forEach(b => { if (b.x * TS > cam.x + cam.w + 40 || (b.x + b.w) * TS < cam.x - 40 || (b.y + b.h) * TS < cam.y - 20 || (b.y - 1) * TS > cam.y + cam.h + 20) return; const r = b.y + b.h - 1; if (rows[r]) rows[r].unshift({ b }); });
+  const bl = endless ? viewChunks(cam.x - 70, cam.y - 70, cam.x + cam.w + 70, cam.y + cam.h + 90).flatMap(ch => ch.blds) : WORLD.blds;
+  bl.forEach(b => { if (b.x * TS > cam.x + cam.w + 40 || (b.x + b.w) * TS < cam.x - 40 || (b.y + b.h) * TS < cam.y - 20 || (b.y - 1) * TS > cam.y + cam.h + 20) return; const r = b.y + b.h - 1; if (rows[r]) rows[r].unshift({ b }); });
   const vis = [];
   G.ents.forEach(e => {
     if (!nearCam(e.x, e.y, 40)) return;
@@ -1997,13 +2272,13 @@ function render(dt, t) {
     const r = row(e.y); if (rows[r]) rows[r].push({ e, y: e.y }); vis.push(e);
   });
   G.loot.forEach(l => { if (nearCam(l.x, l.y, 20)) { const r = row(l.y); if (rows[r]) rows[r].push({ l, y: l.y - 3 }); } });
-  WORLD.chests.forEach(ch => { if (nearCam(ch.x, ch.y, 20)) { const r = row(ch.y); if (rows[r]) rows[r].push({ ch, y: ch.y }); } });
+  (endless ? chestsNear(me.x, me.y) : WORLD.chests).forEach(ch => { if (nearCam(ch.x, ch.y, 20)) { const r = row(ch.y); if (rows[r]) rows[r].push({ ch, y: ch.y }); } });
   const prj = G.host ? G.projs.map(p => [p.x, p.y, p.a, p.wp]) : (G.projsView || []).map(p => [p[0], p[1], p[2] / 40, p[3]]);
   prj.forEach(p => { if (nearCam(p[0], p[1], 20)) { const r = row(p[1] + 5); if (rows[r]) rows[r].push({ pr: p, y: p[1] }); } });
   lights.length = 0;
   for (let y = ty0; y <= ty1 + 1; y++) {
     if (y <= ty1) for (let x = tx0; x <= tx1; x++) {
-      const d = WORLD.dec[y * MW + x]; if (!d) continue;
+      const d = tDec(x, y); if (!d) continue;
       const s = SPR[d]; if (!s) continue;
       const ox = d <= 3 ? Math.round((hash(x, y, 4) - 0.5) * 4) : 0, oy = d <= 3 ? Math.round((hash(x, y, 5) - 0.5) * 3) : 0;
       const dxp = x * TS + 8 - (s.width >> 1) + ox - cam.x, dyp = y * TS + 15 - s.height + oy - cam.y;
@@ -2063,7 +2338,7 @@ function render(dt, t) {
     ctx.font = `bold ${Math.round(4.6 * cam.z)}px system-ui, sans-serif`; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(f.txt, sx, sy); ctx.fillStyle = f.col; ctx.fillText(f.txt, sx, sy); ctx.globalAlpha = 1;
   }
   // Blut allmählich verblassen
-  if (G.t - lastFade > 25) { lastFade = G.t; BCx.globalCompositeOperation = 'destination-out'; BCx.fillStyle = 'rgba(0,0,0,.05)'; BCx.fillRect(0, 0, BC.width, BC.height); BCx.globalCompositeOperation = 'source-over'; }
+  if (G.t - lastFade > 25) { lastFade = G.t; const fade = (g, w) => { g.globalCompositeOperation = 'destination-out'; g.fillStyle = 'rgba(0,0,0,.05)'; g.fillRect(0, 0, w, w); g.globalCompositeOperation = 'source-over'; }; if (WORLD.endless) CC.forEach(o => fade(o.bc, CS * TS)); else if (BCx) fade(BCx, BC.width); }
 }
 function drawLootItem(c, l, t) {
   const sx = Math.round(l.x - cam.x), sy = Math.round(l.y - cam.y), it = ITEMS[l.item.id]; if (!it) return;
@@ -2108,8 +2383,28 @@ function resize() {
   cam.z = Math.max(2, Math.round(Math.min(cv.width / 360, cv.height / 200)));
   lo.width = Math.ceil(cv.width / cam.z); lo.height = Math.ceil(cv.height / cam.z); cam.w = lo.width; cam.h = lo.height;
 }
+const MMC = ['#6c7a39', '#a58a60', '#c2a23e', '#2e566f', '#4b4a27', '#78756d', '#675839', '#5b4331', '#4c7a82', '#8a6a40', '#9a968d', '#7d7a70'].map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+const POICOL = { camp: '#ff4a3a', cave: '#c27af5', dorf: '#ffe28a', ruin: '#b8b2a0', trader: '#e6c35a', post: '#6fa0ff' };
+function drawMiniEndless(mc, m) {
+  const me = G.me, W = mc.width, H = mc.height, cx = Math.floor(me.x / TS), cy = Math.floor(me.y / TS), ox = cx - (W >> 1), oy = cy - (H >> 1);
+  if (!mc._img) mc._img = m.createImageData(W, H);
+  if (!mc._t || G.t - mc._t > 0.6 || Math.abs(cx - mc._cx) > 4 || Math.abs(cy - mc._cy) > 4) {
+    mc._t = G.t; mc._cx = cx; mc._cy = cy; mc._ox = ox; mc._oy = oy; const d = mc._img.data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const wx = ox + x, wy = oy + y, t = tTerr(wx, wy), de = tDec(wx, wy), i = (y * W + x) * 4; const col = (de >= 1 && de <= 3) ? [52, 64, 28] : MMC[t] || MMC[0]; d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255; }
+  }
+  m.putImageData(mc._img, 0, 0);
+  const bx = mc._ox, by = mc._oy;
+  chunksAround(me.x, me.y, 2).forEach(ch => {
+    ch.blds.forEach(b => { m.fillStyle = '#3a2a1a'; m.fillRect(b.x - bx, b.y - by, b.w, b.h); });
+    ch.chests.forEach(h => { if (!G.chestOpen[h.id]) { m.fillStyle = '#d8b24a'; m.fillRect(h.x / TS - bx - 1, h.y / TS - by - 1, 2, 2); } });
+    ch.pois.forEach(p => { if (p.cleared) return; m.fillStyle = POICOL[p.type] || '#fff'; m.fillRect(p.x / TS - bx - 2, p.y / TS - by - 2, 4, 4); });
+  });
+  G.ents.forEach(e => { const x = e.x / TS - bx, y = e.y / TS - by; if (e.k === 'p') { m.fillStyle = e === me ? '#ffe28a' : '#6fc3ff'; m.fillRect(x - 2, y - 2, 4, 4); } else if (e.k === 'n' && !e.dead && e.fac === 'bande' && Math.hypot(e.x - me.x, e.y - me.y) < 260) { m.fillStyle = '#ff5a4a'; m.fillRect(x - 1, y - 1, 2, 2); } });
+}
 function drawMini() {
-  const mc = document.getElementById('mini'); if (!mc || !MM) return; const m = mc.getContext('2d');
+  const mc = document.getElementById('mini'); if (!mc) return; const m = mc.getContext('2d');
+  if (WORLD.endless) { drawMiniEndless(mc, m); return; }
+  if (!MM) return;
   m.imageSmoothingEnabled = false; m.drawImage(MM, 0, 0, MW, MH, 0, 0, mc.width, mc.height);
   const sx = mc.width / MW, sy = mc.height / MH;
   WORLD.chests.forEach(ch => { if (!G.chestOpen[ch.id]) { m.fillStyle = '#d8b24a'; m.fillRect(ch.x / TS * sx - 1, ch.y / TS * sy - 1, 2, 2); } });
@@ -2595,13 +2890,15 @@ const TKEYS = helpHtml;
 function setStatus(msg, err) { const s = $('status'); s.textContent = msg || ''; s.className = 'status' + (err ? ' err' : ''); }
 function readName() { let n = $('name').value.trim().slice(0, 16); if (!n) n = 'Held'; if (HUB) n = HUB.setName(n) || n; P.name = n; return n; }
 
-function enterGame(seed, isHost, init) {
+function enterGame(seed, isHost, init, mode) {
   G.host = isHost; G.phase = 'play'; G.t = G.t || 0;
-  genWorld(seed); buildTerrain(); BSPR.clear(); parts.length = 0; floaters.length = 0; debris.length = 0; feed.length = 0;
+  mode = (init && init.mode) || mode || 'tal';
+  if (mode === 'endlos') genEndless(seed); else genWorld(seed);
+  buildTerrain(); BSPR.clear(); parts.length = 0; floaters.length = 0; debris.length = 0; feed.length = 0;
   if (!SPR[1]) buildSprites();
   G.ents.clear(); G.loot = []; G.projs = []; G.events = []; G.evOut = []; G.projsView = [];
   G.chestOpen = (init && init.co) || {};
-  if (isHost) spawnWorld();
+  if (isHost) { if (WORLD.endless) spawnEndless(); else spawnWorld(); }
   const sv = loadSave();
   const me = mkEnt({ id: 'p' + G.you, k: 'p', name: P.name, hp: 100, mhp: 100, fac: 'spieler' });
   if (sv && !G.fresh) {
@@ -2613,6 +2910,7 @@ function enterGame(seed, isHost, init) {
   const st = init && init.x ? { x: init.x, y: init.y } : { x: WORLD.spots.start.x + rnd(-16, 16), y: WORLD.spots.start.y + rnd(0, 20) };
   me.x = st.x; me.y = st.y;
   G.ents.set(me.id, me); G.me = me;
+  if (isHost && WORLD.endless) { _etAcc = 1; endlessTick(0); }
   if (init && init.lk) init.lk.forEach(applyLook);
   if (init && init.tm != null) G.tm = init.tm;
   G.pvp = init ? !!init.pvp : G.pvp;
@@ -2645,7 +2943,7 @@ function bindRoom(room) {
 }
 async function startSolo() {
   readName(); G.room = null; G.you = 0; G.host = true; G.pvp = false;
-  enterGame((Math.random() * 1e9) | 0, true, null);
+  enterGame((Math.random() * 1e9) | 0, true, null, $('wmode').value);
 }
 async function startHost() {
   if (!HUB) return;
@@ -2653,7 +2951,7 @@ async function startHost() {
   try {
     const room = HUB.connect(GAME_ID); const info = await room.create(P.name, +$('slots').value);
     G.you = info.you; G.pvp = $('pvp').checked; bindRoom(room);
-    enterGame((Math.random() * 1e9) | 0, true, null);
+    enterGame((Math.random() * 1e9) | 0, true, null, $('wmode').value);
     $('rcode').textContent = room.code;
   } catch (e) { setStatus(HUB.errorText(e), true); }
 }
@@ -2735,7 +3033,14 @@ function interact(it) {
 }
 
 /* ---------- Anzeige ---------- */
-function placeName() { const tx = G.me.x / TS, ty = G.me.y / TS; for (const p of WORLD.places) if (tx >= p.x0 && tx <= p.x1 && ty >= p.y0 && ty <= p.y1) return p.name; return 'Wildnis im Tal der Granach'; }
+function placeName() {
+  if (WORLD.endless) {
+    const me = G.me; let best = null, bd = 15 * TS;
+    chunksAround(me.x, me.y, 1).forEach(ch => ch.pois.forEach(p => { const d = Math.hypot(p.x - me.x, p.y - me.y); if (d < bd) { bd = d; best = p; } }));
+    const dg = dangerAt(me.x, me.y), bio = biomeAt(Math.floor(me.x / TS), Math.floor(me.y / TS));
+    return (best ? best.name : BIOME_NAMES[bio]) + ' · Gefahr ' + (dg < 0.25 ? 'gering' : dg < 0.6 ? 'mittel' : 'hoch');
+  }
+  const tx = G.me.x / TS, ty = G.me.y / TS; for (const p of WORLD.places) if (tx >= p.x0 && tx <= p.x1 && ty >= p.y0 && ty <= p.y1) return p.name; return 'Wildnis im Tal der Granach'; }
 function updateHud() {
   const me = G.me; if (!me) return;
   $('hb').style.width = clamp(me.hp / me.mhp * 100, 0, 100) + '%';
@@ -2753,7 +3058,7 @@ function updateHud() {
   const h = Math.floor(G.tm / 60) % 24, mi = Math.floor(G.tm % 60);
   $('timebox').textContent = String(h).padStart(2, '0') + ':' + String(mi - mi % 10).padStart(2, '0') + ' Uhr';
   $('where').textContent = placeName();
-  { let bc = null, bd = 1e9; WORLD.camps.forEach(c => { if (c.army) return; const d = Math.hypot(c.x - me.x, c.y - me.y); if (d < bd) { bd = d; bc = c; } }); if (bc) { const a = Math.atan2(bc.y - me.y, bc.x - me.x), ar = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][Math.round(((a + 6.2832) % 6.2832) / 0.7854) % 8]; $('camp').textContent = 'Räuber: ' + ar + ' ' + bc.name + ' (' + Math.round(bd / TS) + ' Felder)'; } }
+  { let bc = null, bd = 1e9; (WORLD.endless ? chunksAround(me.x, me.y, 3).flatMap(ch => ch.pois.filter(p => (p.type === 'camp' || (p.type === 'cave' && !p.cleared)))) : WORLD.camps).forEach(c => { if (c.army) return; const d = Math.hypot(c.x - me.x, c.y - me.y); if (d < bd) { bd = d; bc = c; } }); if (bc) { const a = Math.atan2(bc.y - me.y, bc.x - me.x), ar = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'][Math.round(((a + 6.2832) % 6.2832) / 0.7854) % 8]; $('camp').textContent = 'Räuber: ' + ar + ' ' + bc.name + ' (' + Math.round(bd / TS) + ' Felder)'; } }
   if (G.room) {
     let html = ''; G.ents.forEach(e => { if (e.k === 'p') html += `<div><span>${esc(e.name)}</span><span style="color:${e.hp / (e.mhp || 100) > 0.4 ? '#7bd36a' : '#e5584a'}">${e.dead ? '†' : e.down ? 'am Boden' : Math.max(0, Math.round(e.hp))}</span></div>`; });
     $('plist').innerHTML = html;
