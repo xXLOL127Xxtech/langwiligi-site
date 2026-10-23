@@ -492,7 +492,7 @@ function onMessage(ws, raw) {
       let mine = 0;
       for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
-      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(8, Math.max(2, m.max | 0 || 2)),
+      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(16, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
       room.players[0] = { ws, name: cleanName(m.name) };
       rooms.set(room.code, room); ws.room = room;
