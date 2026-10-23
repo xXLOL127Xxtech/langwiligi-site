@@ -2,7 +2,7 @@
 
 Ein Online-Sammel- und Kampfspiel in einer riesigen Dark-Fantasy-Welt für bis zu 20 Spieler gleichzeitig: Mobs fangen, mit der Party losziehen, gemeinsam gegen übermächtige Gegner kämpfen, im Duell gegeneinander antreten und überzählige Mobs verkaufen.
 
-Änderungen gegenüber Version 1 (`vorschlag-fabelfaenger.md`): neuer Name, nur Online und Bots, eine gemeinsame Welt für 20 Spieler, Party und Freunde-Tab, Biome mit Jahreszeiten und Wetter, Dark-Fantasy-Monster, Verkauf von Mobs.
+Änderungen gegenüber der ersten Fassung («Fabelfänger»): neuer Name, nur Online und Bots, eine gemeinsame Welt für 20 Spieler, Party und Freunde-Tab, Biome mit Jahreszeiten und Wetter, Dark-Fantasy-Monster, Verkauf von Mobs.
 
 | | |
 |---|---|
@@ -141,7 +141,7 @@ Duelle gleichen die Stufen auf 30 an, damit nicht nur Spielstunden zählen. Zäh
 Regeln für den Verkauf (damit er Spass macht und nicht zur Abkürzung wird):
 - Verkauf **nur an den Händler**, nicht von Spieler zu Spieler. Das verhindert Betrug und Beschwerden.
 - **Bestätigung** im Spiel (kein Popup), mit Wiederkaufspreis (3×) für Notfälle.
-- Das **Team-Maximum** (Mindestens 1 Mob im Team) und **Legendäre** sind gesperrt oder mit zusätzlicher Warnung.
+- Der letzte Mob im Team kann nicht verkauft werden, **Legendäre** nur mit zusätzlicher Warnung.
 - Preise schwanken mit der Jahreszeit (Winter: Eiswölfe teuer, Sommer: billig), was zum Spekulieren einlädt.
 - Die Wirtschaft ist lokal gespeichert. Mogeln ist im Browser technisch möglich, schadet aber nur dem eigenen Spiel, weil Gold nicht an andere übertragen wird.
 
