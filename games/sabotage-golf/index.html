@@ -175,14 +175,42 @@ PAL[PAD] = [C(255, 93, 143), C(255, 210, 58), C(255, 93, 143), C(255, 210, 58)];
 PAL[WATER] = [C(52, 130, 224, 190), C(58, 138, 230, 190), C(46, 122, 214, 195), C(62, 146, 236, 185)];
 PAL.wtop = [C(120, 190, 250, 215), C(132, 198, 252, 215), C(110, 182, 246, 215), C(140, 204, 255, 210)];
 
+function adj(c, d) {
+  const r = Math.max(0, Math.min(255, (c & 255) + d)), g = Math.max(0, Math.min(255, ((c >> 8) & 255) + d)), b = Math.max(0, Math.min(255, ((c >> 16) & 255) + d));
+  return ((c & 0xff000000) | (b << 16) | (g << 8) | r) >>> 0;
+}
+const DROW = [];
+for (let y = 0; y < H; y++) {
+  const f = Math.max(.5, Math.min(1.08, 1.1 - (y - 140) / 150 * .55)), row = [];
+  for (const d of [[0, 0, 0], [10, 8, 6], [-9, -7, -5], [17, 14, 10]]) row.push(C(Math.min(255, (138 + d[0]) * f), Math.min(255, (80 + d[1]) * f), Math.min(255, (48 + d[2]) * f)));
+  DROW.push(row);
+}
 function colorOf(i) {
   const m = mat[i];
   if (m === AIR) return 0;
-  const v = vari[i];
-  if (m === WATER) return (i >= W && mat[i - W] === WATER) ? PAL[WATER][v] : PAL.wtop[v];
-  if (m === DIRT) return ((i / W) | 0) >= 196 ? PAL.dirt2[v] : PAL[DIRT][v];
-  if (m === PAD) return PAL[PAD][((i % W) >> 1) & 1 ? 1 : 0];
-  return PAL[m][v];
+  const v = vari[i], y = (i / W) | 0, x = i - y * W;
+  if (m === WATER) return (i >= W && mat[i - W] === WATER) ? adj(PAL[WATER][v], -Math.min(40, (y - 100) * .25 | 0)) : PAL.wtop[v];
+  if (m === PAD) return PAL[PAD][(x >> 1) & 1 ? 1 : 0];
+  const up = y > 0 ? mat[i - W] : STONE;
+  const upOpen = up === AIR || up === WATER;
+  const sideOpen = (x > 0 && mat[i - 1] === AIR) || (x < W - 1 && mat[i + 1] === AIR);
+  let c;
+  if (m === DIRT) {
+    c = DROW[y][v];
+    if (upOpen) c = adj(c, 18);
+    if ((v === 3 && (i * 2654435761 >>> 27) === 5) ) c = adj(c, -30);
+  } else if (m === GRASS) {
+    if (upOpen) {
+      c = C(112, 210, 78);
+      if ((i * 2654435761 >>> 26) === 3) c = [C(255, 255, 255), C(255, 214, 64), C(255, 140, 190)][v % 3];
+    } else c = PAL[GRASS][v];
+  } else {
+    c = PAL[m][v];
+    if (upOpen) c = adj(c, 22);
+  }
+  if (sideOpen && !upOpen) c = adj(c, -22);
+  if (y < H - 1 && mat[i + W] === AIR) c = adj(c, -34);
+  return c;
 }
 function wake(x, y) {
   const cx = x >> 4, cy = y >> 4;
@@ -194,6 +222,8 @@ function wake(x, y) {
 function setCell(i, m) {
   mat[i] = m; px[i] = colorOf(i);
   if (i + W < N) px[i + W] = colorOf(i + W);
+  if (i >= W) px[i - W] = colorOf(i - W);
+  const x = i % W; if (x > 0) px[i - 1] = colorOf(i - 1); if (x < W - 1) px[i + 1] = colorOf(i + 1);
   wdirty = true;
 }
 function cellAt(x, y) { return (x < 0 || x >= W || y < 0) ? AIR : (y >= H ? STONE : mat[y * W + x]); }
@@ -272,7 +302,7 @@ function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Ma
 function surfY(x) { x = Math.max(0, Math.min(W - 1, Math.floor(x))); for (let y = 0; y < H; y++) { const m = mat[y * W + x]; if (m !== AIR) return y; } return H; }
 function groundBelow(x, y0) { x = Math.floor(x); for (let y = Math.floor(y0); y < H; y++) { if (solidI(x, y) || cellAt(x, y) === WATER) return y; } return H; }
 
-let hx = 735, gy = 150, tx = 45, tyG = 142;
+let hx = 735, gy = 150, tx = 45, tyG = 142, trees = [];
 function genWorld(seed) {
   const rnd = mulberry(seed);
   mat.fill(0); px.fill(0); stamp.fill(0); awake.fill(0);
@@ -317,6 +347,12 @@ function genWorld(seed) {
   }
   for (let y = gy - 6; y < gy; y++) for (let x = hx - 5; x <= hx + 4; x++) mat[y * W + x] = AIR;
   tx = 45; tyG = Math.round(h[tx]);
+  trees = [];
+  for (let x = 70 + rnd() * 20; x < W - 30; x += 16 + rnd() * 34) {
+    const xi = Math.floor(x), y = surfY(xi);
+    if (Math.abs(x - hx) < 34 || Math.abs(x - tx) < 22 || mat[y * W + xi] !== GRASS) continue;
+    trees.push({ x: xi, y, h: 15 + rnd() * 14, k: rnd() < .2 ? 1 : 0, ph: rnd() * 6 });
+  }
   for (let i = 0; i < N; i++) px[i] = colorOf(i);
   wdirty = true;
 }
@@ -517,7 +553,8 @@ function explode(cx, cy, r) {
     }
   }
   for (let i = 0; i < 26; i++) { const a = Math.random() * 6.28, sp = 40 + Math.random() * 120; addPart(cx, cy, Math.cos(a) * sp, Math.sin(a) * sp, .5 + Math.random() * .4, i % 2 ? '#ffd23a' : '#ff7a2a', 1.4, 'f'); }
-  shake = .6; flash = .5; snd('boom'); pops.push({ ring: true, x: cx, y: cy, r, t: 0 });
+  for (let i = 0; i < 14; i++) { const a = Math.random() * 6.28, sp = 10 + Math.random() * 40; addPart(cx + Math.cos(a) * r * .4, cy + Math.sin(a) * r * .4, Math.cos(a) * sp, Math.sin(a) * sp - 10, 1.2 + Math.random() * .8, '#555', 4 + Math.random() * 4, 's'); }
+  shake = .6; flash = .35; snd('boom'); pops.push({ ring: true, x: cx, y: cy, r, t: 0 });
 }
 function liftAir(x, y) { x = Math.floor(x); y = Math.floor(y); for (let k = 0; k < 80 && solidI(x, y); k++) y--; return y; }
 function fillDisc(cx, cy, r, m) {
@@ -599,7 +636,7 @@ function updateProps(dt) {
 function updateParts(dt) {
   for (let i = parts.length - 1; i >= 0; i--) {
     const p = parts[i];
-    p.life -= dt; p.vy += 260 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    p.life -= dt; p.vy += (p.kind === 's' ? -30 : 260) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
     let dead = p.life <= 0;
     if (p.kind === 'd') {
       if (p.x < 1 || p.x >= W - 1 || p.y >= H) dead = true;
@@ -1012,6 +1049,12 @@ function drawBg() {
   const s = cam.s, g = ctx.createLinearGradient(0, 0, 0, ch); g.addColorStop(0, '#9fd6e6'); g.addColorStop(.7, '#cfeee3'); g.addColorStop(1, '#e6f6ea');
   ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
   const tt = performance.now() / 1000;
+  const sg = ctx.createRadialGradient(cw * .8, ch * .16, 4, cw * .8, ch * .16, ch * .5); sg.addColorStop(0, 'rgba(255,250,215,.95)'); sg.addColorStop(.12, 'rgba(255,244,190,.55)'); sg.addColorStop(1, 'rgba(255,244,190,0)');
+  ctx.fillStyle = sg; ctx.fillRect(0, 0, cw, ch);
+  ctx.fillStyle = '#fffbe0'; ctx.beginPath(); ctx.arc(cw * .8, ch * .16, Math.max(16, ch * .035), 0, 6.3); ctx.fill();
+  { const hy0 = (112 - cam.y * .2) * s + ch / 2; ctx.fillStyle = '#9cc9d0'; ctx.beginPath(); ctx.moveTo(0, ch);
+    for (let x = 0; x <= cw; x += 10) { const wx = (x - cw / 2) / s + cam.x * .1; ctx.lineTo(x, hy0 - (Math.abs(Math.sin(wx * .008 + 2)) * 46 + Math.sin(wx * .03) * 5 + 14) * s); }
+    ctx.lineTo(cw, ch); ctx.fill(); }
   ctx.fillStyle = 'rgba(255,255,255,.85)';
   for (let k = 0; k < 6; k++) {
     const lx = ((k * 230 + tt * 3) % 1400) - 200, sx = (lx - cam.x * .12) * s + cw / 2, sy = (40 + (k % 3) * 22 - cam.y * .12) * s + ch / 2 - 40 * s * 0, w = (40 + k * 9) * s;
@@ -1023,8 +1066,9 @@ function drawBg() {
   const hy = (118 - cam.y * .3) * s + ch / 2;
   for (let x = 0; x <= cw; x += 12) { const wx = (x - cw / 2) / s + cam.x * .22; ctx.lineTo(x, hy - (Math.sin(wx * .012) * 16 + Math.sin(wx * .031 + 1) * 7 + 22) * s); }
   ctx.lineTo(cw, ch); ctx.fill();
-  drawTrees(.4, 140, .55, 13, 24, 40, '#2c7a5e', 3);
-  drawTrees(.65, 150, .8, 10, 22, 36, '#1d6044', 7);
+  drawTrees(.4, 140, .55, 13, 24, 40, '#3b8a6c', 3);
+  const fg = ctx.createLinearGradient(0, hy - 40 * s, 0, hy + 30 * s); fg.addColorStop(0, 'rgba(220,244,236,0)'); fg.addColorStop(1, 'rgba(220,244,236,.45)'); ctx.fillStyle = fg; ctx.fillRect(0, hy - 40 * s, cw, 70 * s);
+  drawTrees(.65, 150, .8, 10, 22, 36, '#24694c', 7);
 }
 function powerColor(p) { return p < .5 ? '#7dff7a' : p < .8 ? '#ffcc00' : '#ff4a3a'; }
 function drawFigure(p) {
@@ -1046,6 +1090,18 @@ function drawFigure(p) {
   ctx.restore();
 }
 function shade(hex, d) { const n = parseInt(hex.slice(1), 16), c = v => Math.max(0, Math.min(255, v + d)); return 'rgb(' + c(n >> 16) + ',' + c((n >> 8) & 255) + ',' + c(n & 255) + ')'; }
+function drawTree(tr, t) {
+  const x = tr.x + .5, y = tr.y, h = tr.h;
+  if (!solidI(tr.x, y) || solidI(tr.x, y - 3)) return;
+  const sw = Math.sin(t * 1.3 + tr.ph) * .25;
+  ctx.fillStyle = '#5a341c'; ctx.fillRect(x - 1, y - 4, 2, 6);
+  const tiers = 4, base = y - 3;
+  for (let k = 0; k < tiers; k++) {
+    const ty = base - h * k / tiers * .8, w = (h * .36) * (1 - k / (tiers + .6)) + 1.5, th = h / tiers * 1.5, sx = sw * k * .5;
+    ctx.fillStyle = tr.k ? '#2f8f4a' : '#1f6b3a'; ctx.beginPath(); ctx.moveTo(x - w + sx * .3, ty); ctx.lineTo(x + sx, ty - th); ctx.lineTo(x + sx, ty); ctx.fill();
+    ctx.fillStyle = tr.k ? '#47b062' : '#2f8a4c'; ctx.beginPath(); ctx.moveTo(x + w + sx * .3, ty); ctx.lineTo(x + sx, ty - th); ctx.lineTo(x + sx, ty); ctx.fill();
+  }
+}
 function drawFlag(t) {
   ctx.fillStyle = '#f4f4f4'; ctx.fillRect(hx - .35, gy - 28, .7, 28);
   const w = Math.sin(t * 4) * 1.2;
@@ -1076,6 +1132,7 @@ function render() {
   const s = cam.s, sx = shake > 0 ? (Math.random() - .5) * shake * 6 : 0, sy = shake > 0 ? (Math.random() - .5) * shake * 6 : 0;
   ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (cw / 2 - cam.x * s + sx), dpr * (ch / 2 - cam.y * s + sy));
   ctx.imageSmoothingEnabled = false;
+  for (const tr of trees) if (Math.abs(tr.x - cam.x) < cw / s / 2 + 20) drawTree(tr, t);
   ctx.drawImage(wc, 0, 0);
   drawFlag(t);
   // Abschlag
@@ -1095,7 +1152,13 @@ function render() {
     for (const p of players) {
       const b = p.ball; if (b.hidden) continue;
       const act = p === players[cur] && phase !== 'gap' || p === players[cur];
-      ctx.fillStyle = '#fff'; ctx.strokeStyle = p.color; ctx.lineWidth = .9;
+      if (b.trail && b.trail.length > 1 && p === players[cur]) {
+        ctx.lineCap = 'round';
+        for (let k = 1; k < b.trail.length; k++) { ctx.strokeStyle = 'rgba(255,255,255,' + (k / b.trail.length * .5) + ')'; ctx.lineWidth = 1.4 * k / b.trail.length + .3; ctx.beginPath(); ctx.moveTo(b.trail[k - 1][0], b.trail[k - 1][1]); ctx.lineTo(b.trail[k][0], b.trail[k][1]); ctx.stroke(); }
+      }
+      const bg = ctx.createRadialGradient(b.x - .8, b.y - .9, .3, b.x, b.y, R); bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#cfd6de');
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(b.x + .5, b.y + R * .9, R * .9, R * .35, 0, 0, 6.3); ctx.fill();
+      ctx.fillStyle = bg; ctx.strokeStyle = p.color; ctx.lineWidth = .9;
       ctx.globalAlpha = act ? 1 : .8; ctx.beginPath(); ctx.arc(b.x, b.y, R, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
     }
     const p = players[cur];
@@ -1113,14 +1176,22 @@ function render() {
   }
   for (const p of parts) {
     const a = Math.max(0, Math.min(1, p.life / p.ml * (p.kind === 'd' ? 3 : 1.6)));
+    if (p.kind === 's') { ctx.globalAlpha = Math.min(.55, p.life / p.ml * .7); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.6 - p.life / p.ml), 0, 6.3); ctx.fill(); continue; }
     ctx.globalAlpha = a; ctx.fillStyle = p.col; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
   }
   ctx.globalAlpha = 1;
   for (const o of pops) {
-    if (o.ring) { ctx.strokeStyle = 'rgba(255,230,160,' + (1 - o.t / .4) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, o.r * (.5 + o.t / .4 * .8), 0, 6.3); ctx.stroke(); }
+    if (o.ring) {
+      const k = o.t / .4, fr = o.r * (.5 + k * .7), fg = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, fr);
+      fg.addColorStop(0, 'rgba(255,255,230,' + (1 - k) + ')'); fg.addColorStop(.4, 'rgba(255,190,60,' + (.9 - k) + ')'); fg.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(o.x, o.y, fr, 0, 6.3); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,230,160,' + (1 - o.t / .4) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(o.x, o.y, o.r * (.5 + o.t / .4 * .8), 0, 6.3); ctx.stroke(); }
     else { ctx.fillStyle = o.col; ctx.globalAlpha = Math.max(0, 1 - o.t / 1.6); ctx.font = '700 7px system-ui'; ctx.textAlign = 'center'; ctx.fillText(o.text, o.x, o.y - o.t * 14); ctx.globalAlpha = 1; }
   }
   if (phase === 'sabPlace' && sab.cur) drawPreview(sab.cur.item);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const vg = ctx.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * .45, cv.width / 2, cv.height / 2, cv.width * .72); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,20,30,.28)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, cv.width, cv.height);
   if (flash > 0) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = 'rgba(255,240,200,' + flash * .5 + ')'; ctx.fillRect(0, 0, cv.width, cv.height); }
 }
 
@@ -1142,6 +1213,7 @@ function update(dt) {
     while (acc >= SUB && n < 16) { acc -= SUB; n++; for (const p of players) if (!p.ball.hidden) ballStep(p.ball, SUB); }
     if (acc > SUB * 16) acc = 0;
     if (pullAnim > 0) { pullAnim = Math.max(0, pullAnim - dt * 5); }
+    { const a = players[cur]; if (a) { const b = a.ball; if (!b.trail) b.trail = []; if (phase === 'fly' && !b.rest) { b.trail.push([b.x, b.y]); if (b.trail.length > 28) b.trail.shift(); } else if (b.trail.length) b.trail.shift(); } }
     updatePlay(dt);
   } else if (phase === 'sabPlace' || phase === 'sabFx') updateSab(dt);
   updateCam(dt);
