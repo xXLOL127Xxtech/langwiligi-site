@@ -27,7 +27,7 @@
 | [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
 | [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Federsturm](https://langwiligi.site/federsturm/) | Lokal · Solo | Spann die Schleuder und schiess die Waschbär-Bande aus ihren Burgen – allein, im Duell oder im Koop. |
-| [Eisenherbst 1438](https://langwiligi.site/eisenherbst/) | Solo · Online | Realistisches 2D-Mittelalter-Rollenspiel von oben: Rüstung in Schichten, tödliche Kämpfe, Pferde, Würfel und Karnöffel – allein oder im Koop bis 8. |
+| [Eisenherbst 1438](https://langwiligi.site/eisenherbst/) | Solo · Online | Realistisches 2D-Mittelalter-Rollenspiel von oben mit endloser Zufallswelt: Rüstung in Schichten, tödliche Kämpfe, Räuberlager, Goblin-Höhlen, Pferde, Würfel und Karnöffel – allein oder im Koop bis 8. |
 | [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
 | [Flucht-Schiesserei](https://langwiligi.site/flucht-schiesserei/) | Online · Bots | Wackelige Gauner hüpfen zum Fluchtfahrzeug – über Züge, Flugzeuge und Brücken. |
 | [Formenfabrik](https://langwiligi.site/formenfabrik/) | Solo | Formen schneiden, drehen, färben und eine riesige Fabrik automatisieren. Original: shapez von tobspr Games (GPL-3.0). |
