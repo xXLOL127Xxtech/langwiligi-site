@@ -1028,9 +1028,9 @@ function doAttack(att, zone, ang) {
     if (d > 9 && Math.abs(angDiff(Math.atan2(dy, dx), ang)) > 1.3) return;
     if (d < bd) { bd = d; best = o; }
   });
-  noise(att.x, att.y, 260, att);
   emitEv({ e: 's', s: 'swing', x: att.x, y: att.y });
-  if (!best) return;
+  if (!best) return; // Luftschlag: kein Kampflärm, NPCs bleiben ruhig
+  noise(att.x, att.y, 260, att);
   let power = 1;
   if (att.mnt) { const sp = [0.6, 0.85, 1.25][att.gait || 0]; power += (sp - 0.6) * (wp.mount ? 0.9 : 0.25); }
   meleeHit(att, best, zone, wp, power, ang);
@@ -1751,7 +1751,7 @@ function updateMe(dt) {
     if (k.ArrowLeft || k.a) dx -= 1; if (k.ArrowRight || k.d) dx += 1; if (k.ArrowUp || k.w) dy -= 1; if (k.ArrowDown || k.s) dy += 1;
     me.blk = (k.Shift ? 1 : 0); me.blkT = me.blk ? 0.4 : 0;
     if (me.mnt) me.blk = 0;
-    if (k[' '] && !me.sw) playerAttack();
+    if (k[' '] && !(me.sw > 0)) playerAttack();
   } else me.blk = 0;
   K.aim = K.mouseSeen && !ui;
   me.moving = 0;
@@ -1761,7 +1761,7 @@ function updateMe(dt) {
     const px = me.x, py = me.y;
     moveBy(me, dx * sp * dt, dy * sp * dt);
     me.moving = (me.x !== px || me.y !== py) ? 1 : 0;
-    if (!K.aim && !me.sw) me.a = Math.atan2(dy, dx);
+    if (!K.aim && !(me.sw > 0)) me.a = Math.atan2(dy, dx);
     K.lastDir = Math.atan2(dy, dx);
   }
   if (K.aim && !me.down) me.a = facing();
