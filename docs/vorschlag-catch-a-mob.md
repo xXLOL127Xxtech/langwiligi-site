@@ -121,6 +121,25 @@ Rundenbasiert und mit Tastatur wie Touchpad gut bedienbar (`1`–`4` für Attack
 
 Duelle gleichen die Stufen auf 30 an, damit nicht nur Spielstunden zählen. Zählt für die Online-Rangliste.
 
+### 6.1 Duelle: Einverständnis oder Überfall
+
+Alle Spieler sind in **derselben Lobby**, also in derselben Welt. Duelle gibt es auf zwei Arten:
+
+| Art | Ablauf |
+|---|---|
+| **Herausforderung** | Person anwählen (`E`), «Duell» wählen. Die andere Person sieht eine Karte oben im Bild und nimmt mit `J` an oder lehnt mit `N` ab. Nur bei Zustimmung beginnt der Kampf. |
+| **Überfall** | Jeder Spieler darf **einmal pro 30 Minuten** eine andere Person überfallen. Der Kampf beginnt sofort, ohne zu fragen. Der Überfallene darf trotzdem fliehen (siehe Schutzregeln). |
+
+Schutzregeln, damit der Überfall Spannung bringt und nicht nervt:
+- **Sichere Zonen:** In Dörfern, Läden, Heilhäusern und innerhalb der Party gibt es keinen Überfall.
+- **Schutzzeit:** Wer überfallen wurde, ist die nächsten 30 Minuten vor weiteren Überfällen geschützt (auch durch andere Spieler).
+- **Mindeststufe:** Neulinge unter Stufe 10 können nicht überfallen werden.
+- **Fliehen:** Der Überfallene kann die erste Runde fliehen. Die Flucht gelingt nach Tempo-Vergleich, ein Überfall ist also kein sicherer Sieg.
+- **Einsatz:** Der Verlierer verliert einen kleinen Teil seines Goldes (höchstens 5 %), der Gewinner erhält davon die Hälfte. **Kein Mob geht verloren.**
+- **Rangliste:** Nur Herausforderungen zählen. Überfälle sind Spass und zählen nicht, damit niemand Anfänger «farmt».
+- Pro Spieler läuft der 30-Minuten-Zähler im Spiel mit und wird als kleine Anzeige gezeigt.
+- Die Überfall-Grenze wird bei jedem Client geprüft und vom Host gegengeprüft, damit nicht jeder sie umgehen kann.
+
 ## 7. Fangen, Team und Fortschritt
 
 - **Fangsiegel** statt Bälle: einfach, stark, Meister. Je tiefer die Lebenspunkte, desto höher die Fangchance.
@@ -159,18 +178,29 @@ Regeln für den Verkauf (damit er Spass macht und nicht zur Abkürzung wird):
 - **Steuerung:** Pfeile/WASD, `Leertaste`/`Enter`, `E` (Interagieren, Party), `M` (Karte), `Esc` (Menü). Alles auch per Touchpad-Klick.
 - **Grösse:** Ziel unter 10 MB.
 
-## 10. Etappen
+## 10. Etappen (Reihenfolge nach deiner Priorität)
+
+Zuerst Riesenraid und Freundesduell, dann der Rest der Welt.
 
 | Etappe | Inhalt | Ergebnis |
 |---|---|---|
 | **1. Kern** | Kampf, Fangen, Team, 12 Mobs, 2 Biome, Bots-Modus, Speichern | Spielbar gegen Bots |
-| **2. Offene Welt** | Grosse Karte, alle Biome, Tag/Nacht, Wetter, Jahreszeiten, Läden, Heilhaus, Verkauf | Komplette Welt allein mit Bots |
-| **3. Online** | Welt mit mehreren Spielern (zuerst 8), Namen, Positionen, Duelle, Rangliste | Mit Freunden |
-| **4. Party** | Party, Standortanzeige, Karte, Riesen-Raids, Tauschen | Zusammen stark |
+| **2. Freundesduell** | Gemeinsame Lobby (zuerst 8 Plätze), Namen, Positionen, Duell mit Zustimmung, Rangliste, Überfall mit 30-Minuten-Grenze | Gegen Freunde spielen |
+| **3. Party und Riesenraid** | Party (bis 4), Standortanzeige, Karte, erster Riesen-Boss mit Phasen, Belohnungen | Zusammen gegen Starke |
+| **4. Offene Welt** | Alle Biome, Tag/Nacht, Wetter, Jahreszeiten, Läden, Heilhaus, Mob-Verkauf | Grosse, lebendige Welt |
 | **5. 20 Spieler** | Serveranpassung, Host-Wechsel, Weltbosse, mehrere Welten | Grosse Gemeinschaft |
 | **6. Feinschliff** | Balancing, Ton, Barrierefreiheit, neue Mobs | Dauerhaft pflegbar |
 
 Jede Etappe wird einzeln gebaut, geprüft und als Pull Request abgegeben.
+
+## Schwierigkeit
+
+**Mittel, fordernd, aber gut machbar.**
+- Wilde Mobs: Gegner etwa gleich stark wie dein Team, ab dem zweiten Biom brauchen Elemente und Wetter Aufmerksamkeit.
+- Trainer-Bots: Leicht bis Mittel, Zwischenbosse Mittel bis Schwer.
+- Riesenraid: Er ist allein kaum zu schaffen, in der Party von 3 bis 4 aber gut lösbar. Bossphasen zeigen ihre Angriffe eine Runde vorher an (Telegraph), damit Taktik belohnt wird, nicht Glück.
+- Niederlage kostet etwas Gold (5 %), aber keine Mobs. Das Heilhaus ist immer gratis.
+- Tipps im Spiel zu Schwächen und Wetter, damit man nicht raten muss.
 
 ## 11. Risiken
 
@@ -178,6 +208,7 @@ Jede Etappe wird einzeln gebaut, geprüft und als Pull Request abgegeben.
 |---|---|
 | Server erlaubt nur 8 Spieler pro Raum | Zuerst mit 8 starten (Etappe 3), Erhöhung auf 20 als eigene kleine Serveränderung (Etappe 5) |
 | Host verlässt die Welt | Automatischer Host-Wechsel; alle halten den wichtigen Zustand lokal, der Host verwaltet nur Wetterzeit, Weltboss und Zusammenführung |
+| Überfälle nerven Neulinge | Sichere Zonen, Schutzzeit, Mindeststufe, kein Mobverlust |
 | Zu viele Nachrichten bei 20 Spielern | Wenige Positionsmeldungen, private Kämpfe, berechnetes Wetter; ideal mit Einzelnachricht (`sendTo`) |
 | Spielstand geht verloren | Spielstand-Code |
 | Mogeln (Gold, Stufen) | Stufen im Duell angeglichen, Gold nicht übertragbar, Rangliste nur mit Duell |
@@ -187,8 +218,8 @@ Jede Etappe wird einzeln gebaut, geprüft und als Pull Request abgegeben.
 
 ## 12. Noch offen
 
-1. **Serveränderung:** Darf der Besitzer der Seite den Server auf 20 Spieler pro Raum (und Einzelnachrichten) anpassen? Ohne das sind es 8.
-2. **Weltboss:** Soll es einen festen Zeitplan geben (z. B. jede Stunde) oder zufällig?
-3. **Altersfreigabe:** Düster ja, aber ohne Blut und Gewalt gegen Menschen (nur Mob gegen Mob). Einverstanden?
-4. **Mob-Verkauf:** Soll es ein Verkaufslimit pro Tag geben, damit man nicht alles sofort verscherbelt?
+1. **Server:** Darf der Besitzer der Seite den Server auf 20 Spieler pro Raum (und Einzelnachrichten) anpassen? Ohne das sind es 8 in der gemeinsamen Lobby.
+2. **Weltboss:** Fester Zeitplan (z. B. jede Stunde) oder zufällig?
+3. **Altersfreigabe:** Düster, aber ohne Blut und Gewalt gegen Menschen (nur Mob gegen Mob). Einverstanden?
+4. **Mob-Verkauf:** Verkaufslimit pro Tag, damit man nicht alles sofort verscherbelt?
 5. **Start:** Mit Etappe 1 beginnen?
