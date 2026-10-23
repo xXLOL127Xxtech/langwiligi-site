@@ -49,6 +49,7 @@
 | [Pfeilhagel](https://langwiligi.site/pfeilhagel/) | Lokal · Online · Bots | Pixel-Bogenduell für bis zu 4: Pfeile sammeln, ausweichen, treffen oder draufspringen. |
 | [Reversi](https://langwiligi.site/reversi/) | Lokal · Online · Bots | Steine einschliessen und umdrehen. |
 | [Road-Runner](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
+| [Sabotage-Golf](https://langwiligi.site/sabotage-golf/) | Online · Bots | Echtzeit-Golf in der Pixel-Sandkiste: Wer zuerst das Loch trifft, gewinnt. Sprenge und überflute die Bahn der anderen. Bis 16 online. |
 | [SBB Runner](https://langwiligi.site/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
 | [Schach](https://langwiligi.site/schach/) | Lokal · Online · Bots | Gegen einen Bot mit vier Stärken und drei Stilen. |
 | [Snake](https://langwiligi.site/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
