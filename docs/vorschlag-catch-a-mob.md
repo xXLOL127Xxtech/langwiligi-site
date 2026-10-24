@@ -26,6 +26,8 @@ Das Spiel ist gebaut (`games/catch-a-mob/`) und enthält bereits:
 
 Online landen alle automatisch in derselben offenen Welt (bis 20 Spieler, danach öffnet sich die nächste). Dafür gibt es neu `room.quick()` im GameHub und den Server (Plätze bis 20).
 
+Kämpfe laufen Zug um Zug mit Animationen für jeden Angriff (Schlag, Biss, Schuss, Peitsche, Strahl, Regen, Welle …); der Gegner wartet kurz, bevor er zurückschlägt. Wilde Mobs laufen in der Welt herum: friedliche greift man nur an, wenn man will, bösartige (Totenkopf, rot) jagen dich, und manchmal springt einer aus dem hohen Gras.
+
 Noch offen: Weltboss für alle und Duell-Rangliste auf dem Server (heute nur pro Welt).
 
 ## 1. Die Idee

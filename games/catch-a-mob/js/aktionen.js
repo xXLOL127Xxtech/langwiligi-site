@@ -387,7 +387,8 @@
   }
   function dexSet(fam, w) { S.save.dex[fam] = Math.max(S.save.dex[fam] || 0, w); }
 
-  A.wildKampf = async function (mob) {
+  A.wildKampf = async function (mob, opt) {
+    opt = opt || {};
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
@@ -395,7 +396,7 @@
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
-    const intro = 'Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!' + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
+    const intro = (opt.intro || ('Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!')) + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
     const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro }));
     const b = res.b; nachbereiten(S.save.team);
     const lines = [];
@@ -410,10 +411,23 @@
       const gold = 5 + mob.lv * 3; S.save.gold += gold; lines.push('Du findest ' + gold + ' Gold.');
       if (Math.random() < 0.35) { const k = CAM.FUNDE[Welt.biomeAt(S.x, S.y)][Math.floor(Math.random() * 2)]; CAM.itemAdd(k, 1); lines.push('Fundstück: ' + CAM.ITEMS[k].n); }
     }
+    if (opt.entity) {
+      if (b.winner === 0) CAM.Wilde.entfernen(opt.entity);
+      else opt.entity.ruheBis = Date.now() + (b.result.fled ? 9000 : 20000);
+    }
     Save.speichern();
     S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
     if (b.winner === 1 && !b.result.fled) { await verloren(); return; }
     if (lines.length) await UI.info(lines.join('<br>'), b.result.caught ? 'Gefangen!' : 'Kampf vorbei');
+  };
+
+  A.wildMenue = async function (w) {
+    const m = w.mob, f = CAM.FAMILIEN[m.fam], boese = CAM.Wilde.boese(m);
+    S.save.dex[m.fam] = Math.max(S.save.dex[m.fam] || 0, 1);
+    const lust = boese ? '<b style="color:#ff6b5e">Bösartig:</b> Er greift Spieler an.' : 'Friedlich: Er greift nur an, wenn du es willst.';
+    const r = await UI.choose([{ label: 'Angreifen', sub: CAM.lebend() ? '' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() }, { label: 'In Ruhe lassen' }],
+      { title: mobNameFull(m), sub: 'Stufe ' + m.lv + ' · ' + CAM.RARITAET[f.rar], before: '<div class="row">' + spriteImg(m, 96) + '<div>' + elTags(m) + '<p>' + lust + '</p></div></div>', numbers: false });
+    if (r === 0) { await A.wildKampf(m, { entity: w, intro: 'Du forderst ' + mobNameFull(m) + ' (Lv ' + m.lv + ') heraus!' }); }
   };
 
   A.trainerKampf = async function (tr) {

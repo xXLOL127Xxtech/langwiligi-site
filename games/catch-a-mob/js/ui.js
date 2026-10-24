@@ -144,6 +144,20 @@
       case 'schritt': ton(90, 0.04, 'triangle', 0.02); break;
       case 'geld': ton(990, 0.06, 'square', 0.04); ton(1320, 0.1, 'square', 0.04, 0.06); break;
       case 'ruf': ton(880, 0.1, 'triangle', 0.05); ton(1175, 0.14, 'triangle', 0.05, 0.1); break;
+      case 'schwung': ton(300, 0.16, 'sawtooth', 0.025, 0, 900); break;
+      case 'beben': ton(70, 0.5, 'sawtooth', 0.09, 0, 35); ton(55, 0.5, 'square', 0.05, 0.05, 30); break;
+      case 'status': ton(500, 0.12, 'triangle', 0.05, 0, 250); ton(300, 0.2, 'triangle', 0.05, 0.1, 150); break;
+      case 'niederlage2': ton(260, 0.35, 'sawtooth', 0.06, 0, 70); break;
+      case 'einsaugen': ton(1200, 0.4, 'sine', 0.05, 0, 250); break;
+      case 'platzen': ton(200, 0.15, 'square', 0.06, 0, 900); ton(900, 0.2, 'triangle', 0.05, 0.05, 300); break;
+      case 'el_Feuer': ton(180, 0.25, 'sawtooth', 0.08, 0, 520); ton(900, 0.1, 'square', 0.03, 0.03, 200); break;
+      case 'el_Wasser': ton(700, 0.2, 'sine', 0.08, 0, 220); ton(350, 0.2, 'sine', 0.05, 0.05, 160); break;
+      case 'el_Pflanze': ton(420, 0.09, 'triangle', 0.07); ton(300, 0.14, 'sawtooth', 0.05, 0.05, 140); break;
+      case 'el_Erde': ton(95, 0.28, 'square', 0.1, 0, 45); break;
+      case 'el_Luft': ton(1100, 0.2, 'triangle', 0.05, 0, 400); ton(700, 0.18, 'sine', 0.04, 0.05, 300); break;
+      case 'el_Licht': ton(1320, 0.12, 'sine', 0.06); ton(1760, 0.2, 'sine', 0.05, 0.06); break;
+      case 'el_Schatten': ton(140, 0.3, 'sawtooth', 0.08, 0, 60); ton(95, 0.3, 'triangle', 0.06, 0.1); break;
+      case 'el_Normal': ton(170, 0.14, 'square', 0.09, 0, 70); break;
     }
   };
 })(window);

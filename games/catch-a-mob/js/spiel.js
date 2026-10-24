@@ -64,9 +64,9 @@
         if (kk !== S.letzteKachel) {
           S.letzteKachel = kk; S.schritte++;
           const t = Welt.get(S.x, S.y);
-          if (t === T.GRAS && S.schritte >= 3 && !Welt.istSicher(S.x, S.y) && CAM.lebend() && Math.random() < 0.1) {
-            S.schritte = 0; UI.snd('kampf');
-            A.wildKampf(A.wildMob(S.x, S.y, now));
+          if (t === T.GRAS && S.schritte >= 7 && !Welt.istSicher(S.x, S.y) && CAM.lebend() && Math.random() < 0.035) {
+            S.schritte = 0;
+            CAM.Wilde.sprung(now);
           }
         }
       }
@@ -91,6 +91,7 @@
         } else tr.alarm = 0;
       }
     }
+    CAM.Wilde.update(dt, now, frei);
     // Biome, Wetter
     S.biome = Welt.biomeAt(S.x, S.y);
     S.wetter = CAM.wetterBei(S.biome, now);
@@ -103,6 +104,8 @@
       let best = null, bd = 2.0;
       for (const tr of Welt.trainer) { const d = Math.hypot(tr.x + 0.5 - S.x, tr.y + 0.5 - S.y); if (d < bd && !(S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000)) { bd = d; best = tr; } }
       if (best && !S.ziel) S.ziel = { typ: 'trainer', tr: best };
+      const wm = CAM.Wilde.naechster(S.x, S.y, 1.9);
+      if (wm && !S.ziel) S.ziel = { typ: 'mob', w: wm };
       if (S.online && !S.ziel) {
         let bp = null, pd = 1.9;
         for (const p of S.peers.values()) { const d = Math.hypot(p.x - S.x, p.y - S.y); if (d < pd) { pd = d; bp = p; } }
@@ -131,6 +134,20 @@
       if (tr.x < vx - 2 || tr.x > vx + W / TS + 2 || tr.y < vy - 2 || tr.y > vy + H / TS + 2) continue;
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
       liste.push({ y: tr.y + 1, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tr.x + 0.5), sy(tr.y + 1), TS, tr.farbe, tr.dir, false, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', blase: tr.alarm ? '❗' : '' }); ctx.globalAlpha = 1; } });
+    }
+    for (const w of CAM.Wilde.liste) {
+      if (w.x < vx - 2 || w.x > vx + W / TS + 2 || w.y < vy - 2 || w.y > vy + H / TS + 2) continue;
+      liste.push({ y: w.y + 0.45, f: () => wilderMob(w, sx(w.x), sy(w.y + 0.45), now, tick) });
+    }
+    if (S.sp) {
+      const sp = S.sp, q = Math.min(1, (performance.now() - sp.t0) / sp.dauer), ex = S.x + [0, 1.3, 0, -1.3][S.dir], ey = S.y + [-1.3, 0, 1.3, 0][S.dir];
+      // Das Gras raschelt, dann springt der Mob heraus
+      if (q < 0.45) { ctx.fillStyle = 'rgba(120,200,110,.8)'; for (let i = 0; i < 6; i++) ctx.fillRect(sx(sp.x0) + Math.sin(tick / 25 + i * 2) * TS * 0.4, sy(sp.y0) - TS * 0.2 + Math.cos(tick / 30 + i * 3) * TS * 0.3, 4, 4); }
+      else {
+        const f = (q - 0.45) / 0.55, bx = sp.x0 + (ex - sp.x0) * f, by = sp.y0 + (ey - sp.y0) * f, hoch = Math.sin(f * Math.PI) * 1.6;
+        liste.push({ y: by + 0.5, f: () => wilderMob({ mob: sp.mob, x: bx, y: by - hoch, dir: (S.dir + 2) % 4, z: 'jagt', geht: true, huepf: 0 }, sx(bx), sy(by + 0.45) - hoch * TS, now, tick, true) });
+      }
+      if (q > 0.35) { ctx.font = Math.round(TS * 0.9) + 'px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ff6b5e'; ctx.fillText('❗', sx(S.x), sy(S.y) - TS * 1.8); }
     }
     for (const p of S.peers.values()) {
       if (p.x < vx - 2 || p.x > vx + W / TS + 2 || p.y < vy - 2 || p.y > vy + H / TS + 2) continue;
@@ -161,6 +178,30 @@
     CAM.WetterAnzeige.zeichnen(ctx, W, H, tick, dunkel, S.biome, S.qualitaet);
   }
 
+  function wilderMob(w, x, y, now, tick, ohneName) {
+    const m = w.mob, f = CAM.FAMILIEN[m.fam], boese = CAM.Wilde.boese(m);
+    const gr = TS * (f.legend ? 3.2 : [2.0, 2.4, 2.8][m.stufe - 1]);
+    const hop = w.geht ? Math.abs(Math.sin(tick / 120 + w.id)) * TS * 0.14 : (w.huepf > 0 ? Math.sin((1 - w.huepf / 0.35) * Math.PI) * TS * 0.5 : 0);
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36, gr * 0.08, 0, 0, 6.3); ctx.fill();
+    if (boese) { ctx.fillStyle = 'rgba(255,50,40,' + (0.14 + 0.08 * Math.sin(tick / 200)) + ')'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.55, gr * 0.16, 0, 0, 6.3); ctx.fill(); }
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    const flip = w.dir === 3 || w.dir === 0 ? 0 : 1; // Bilder schauen nach rechts
+    ctx.translate(x, y - hop); ctx.scale(w.dir === 3 ? -1 : 1, 1);
+    ctx.drawImage(CAM.sprite(m), -gr / 2, -gr * 0.94, gr, gr);
+    ctx.restore();
+    const d = Math.hypot(w.x - S.x, w.y - S.y);
+    if (!ohneName && d < 8) {
+      const txt = (boese ? '☠ ' : '') + CAM.name(m) + ' Lv ' + m.lv;
+      ctx.font = '700 ' + Math.max(11, Math.round(TS * 0.28)) + 'px system-ui,sans-serif'; ctx.textAlign = 'center';
+      const tw = ctx.measureText(txt).width + 8;
+      ctx.globalAlpha = Math.min(1, (8 - d) / 2.5);
+      ctx.fillStyle = 'rgba(8,6,16,.72)'; ctx.fillRect(x - tw / 2, y - gr - TS * 0.32, tw, TS * 0.36);
+      ctx.fillStyle = boese ? '#ff8a7a' : (f.rar >= 2 ? '#c9a6ff' : '#e8ffe0'); ctx.fillText(txt, x, y - gr - TS * 0.04);
+      ctx.globalAlpha = 1;
+    }
+    if (w.z === 'jagt' && !ohneName) { ctx.font = Math.round(TS * 0.7) + 'px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#ff6b5e'; ctx.fillText('❗', x, y - gr - TS * 0.5); }
+  }
+
   function hud(now) {
     if (S.modus !== 'welt' || K.aktiv) { $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('keys').classList.add('hidden'); return; }
     $('hud').classList.remove('hidden'); $('keys').classList.remove('hidden');
@@ -174,6 +215,7 @@
     const z = S.ziel; let h = '';
     if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : ['', 'Heilhaus', 'Siegel-Laden', 'Mob-Händler'][z.z.meta];
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
+    else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
@@ -213,6 +255,7 @@
         const m = z.z.meta;
         if (m === 1) await A.heilhaus(); else if (m === 2) await A.laden(); else if (m === 3) await A.haendler(); else if (m === 4) await A.wegstein(); else if (m === 5) await A.runeMenue(z.z);
       } else if (z.typ === 'trainer') { menueOffen = false; await A.trainerKampf(z.tr); }
+      else if (z.typ === 'mob') await A.wildMenue(z.w);
       else if (z.typ === 'spieler') await A.spielerMenue(z.p);
     } finally { menueOffen = false; Save.speichern(); }
   }
@@ -293,7 +336,7 @@
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
-    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null;
+    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = [];
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
     S.save.team.forEach(m => { delete m.faintDone; m.status = null; if (!m.moves) CAM.neuBerechnen(m); });
     $('start').classList.add('hidden'); UI.closePanel();
