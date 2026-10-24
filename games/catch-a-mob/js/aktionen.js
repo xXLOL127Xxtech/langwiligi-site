@@ -44,22 +44,34 @@
   A.heileTeam = function () { S.save.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; }); };
 
   // ---------- Heilhaus ----------
-  // Jeder Mob wird einzeln behandelt. Preis und Dauer (1 Sekunde bis 3 Minuten) hängen von Stufe, Seltenheit und Schaden ab.
+  // Mobs werden in einem Heilhaus abgegeben (bezahlt wird sofort) und gepflegt, während du weiterziehst.
+  // Fertige Mobs holst du im selben Dorf gratis ab oder in einem anderen Dorf gegen eine Transportgebühr (sie werden dorthin geschickt).
+  // Dauer: Stufe 5 etwa 1 Sekunde, Stufe 100 etwa 3 Minuten.
   const dauerText = sek => sek >= 60 ? Math.floor(sek / 60) + ' Min ' + (sek % 60 ? (sek % 60) + ' s' : '') : sek + ' s';
+  const hierDorf = () => { const d = Welt.dorfBei(S.x, S.y); if (d) return Welt.dorf.indexOf(d); let best = 0, bd = 1e9; Welt.dorf.forEach((d2, i) => { const dd = Math.hypot(d2.x - S.x, d2.y - S.y); if (dd < bd) { bd = dd; best = i; } }); return best; };
+  const pflegeListe = () => S.save.pflege || (S.save.pflege = []);
+  const transportGebuehr = (e, hier) => { if (e.dorf === hier) return 0; const a = Welt.dorf[e.dorf], b = Welt.dorf[hier]; return Math.max(5, Math.round(5 + Math.hypot(a.x - b.x, a.y - b.y) / 8 + e.m.lv * 1.5)); };
+  A.pflegeFertig = () => pflegeListe().filter(e => e.ende <= Date.now()).length;
   A.heilhaus = async function () {
     let start = 0;
     for (;;) {
+      const hier = hierDorf(), pf = pflegeListe(), jetzt = Date.now();
       const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
       const verletzt = alle.filter(o => CAM.heilInfo(o.m)).length;
-      const r = await UI.choose([{ label: 'Mob heilen', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' }, { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
-        { title: 'Heilhaus', sub: 'Du hast ' + S.save.gold + ' Gold.\nDie Pflege kostet pro Mob und dauert je nach Stufe, Seltenheit und Schaden bis zu 3 Minuten.', start });
-      if (r === 0) await A.mobHeilen();
-      else if (r === 1) { start = 1; await A.zwinger(); }
+      const fertig = pf.filter(e => e.ende <= jetzt).length;
+      const r = await UI.choose([{ label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
+        { label: 'Mobs abholen', sub: pf.length ? fertig + ' fertig · ' + (pf.length - fertig) + ' in Pflege' : 'niemand in Pflege', disabled: !pf.length },
+        { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
+        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nGib Mobs ab und zieh weiter: Sie werden gepflegt (Stufe 5: 1 Sekunde, Stufe 100: 3 Minuten). Abholen kannst du sie hier gratis oder in einem anderen Dorf gegen eine Transportgebühr.', start });
+      if (r === 0) await A.mobHeilen(hier);
+      else if (r === 1) { start = 1; await A.mobAbholen(hier); }
+      else if (r === 2) { start = 2; await A.zwinger(); }
       else return;
     }
   };
-  A.mobHeilen = async function () {
+  A.mobHeilen = async function (hier) {
     let start = 0;
+    if (hier === undefined) hier = hierDorf();
     for (;;) {
       const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
       const items = alle.map(o => {
@@ -71,41 +83,42 @@
         const nur = alle.some(o => CAM.heilInfo(o.m));
         await UI.info(nur ? 'Dir fehlt das Gold für die Pflege. Mit Heiltränken kannst du unterwegs selbst heilen.' : 'Alle deine Mobs sind gesund.', 'Heilhaus'); return;
       }
-      const r = await UI.choose(items, { title: 'Welchen Mob heilen?', sub: 'Du hast ' + S.save.gold + ' Gold.', start, numbers: false, wide: true });
+      const r = await UI.choose(items, { title: 'Welchen Mob abgeben?', sub: 'Du hast ' + S.save.gold + ' Gold. Bezahlt wird jetzt.', start, numbers: false, wide: true });
       if (r < 0) return;
       start = r;
       const o = alle[r], h = CAM.heilInfo(o.m);
       if (!h || S.save.gold < h.preis) continue;
-      await A.heilenAblauf(o.m, h);
+      if (o.ort === 'Team' && S.save.team.length <= 1 && !S.save.box.length) { await UI.info('Dein letzter Mob muss bei dir bleiben. Nimm einen Heiltrank oder fang einen zweiten.', 'Heilhaus'); continue; }
+      if (o.ort === 'Team') S.save.team.splice(S.save.team.indexOf(o.m), 1); else S.save.box.splice(S.save.box.indexOf(o.m), 1);
+      if (!S.save.team.length && S.save.box.length) S.save.team.push(S.save.box.shift());
+      S.save.gold -= h.preis;
+      pflegeListe().push({ m: o.m, dorf: hier, ende: Date.now() + h.sek * 1000, preis: h.preis });
+      UI.snd('heil'); Save.speichern();
+      UI.toast(mobNameFull(o.m) + ' ist in Pflege (' + dauerText(h.sek) + ').', 2500);
     }
   };
-  // Wartebild mit Fortschrittsbalken. Bezahlt wird erst, wenn der Mob fertig ist. Esc bricht ab.
-  A.heilenAblauf = function (m, h) {
-    return new Promise(res => {
-      const host = UI.openPanel('Heilhaus', 'Das Pflegeteam kümmert sich um ' + mobNameFull(m) + ' …');
-      const t0 = Date.now(), ms = h.sek * 1000, anz = (m.wunden || []).length;
-      host.innerHTML = '<div class="row" style="align-items:center"><div id="hh-bild"></div><div style="flex:1"><p><b>' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>Kosten: ' + ge(h.preis) + '</p><div class="bar" style="height:14px"><i id="hh-bar" style="width:0%"></i></div><p id="hh-t" style="color:#a9a59b;font-size:13px"></p></div></div><div class="foot">Esc: Abbrechen (dann kostet es nichts)</div>';
-      let letzteAnz = -1, fertig = false;
-      const zeige = () => {
-        const p = Math.min(1, (Date.now() - t0) / ms);
-        $('hh-bar').style.width = Math.round(p * 100) + '%';
-        $('hh-t').textContent = 'Noch ' + dauerText(Math.max(1, Math.ceil(ms * (1 - p) / 1000))) + ' …';
-        const n = Math.ceil(anz * (1 - p));
-        if (n !== letzteAnz) { letzteAnz = n; const kopie = Object.assign({}, m, { wunden: (m.wunden || []).slice(0, n) }); $('hh-bild').innerHTML = spriteImg(kopie, 96); }
-        if (p >= 1) fin(true);
-      };
-      const key = e => { if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'q' || e.key === 'Q') fin(false); return true; };
-      const iv = setInterval(zeige, 100);
-      function fin(ok) {
-        if (fertig) return; fertig = true; clearInterval(iv); UI.popKeys(key);
-        if (ok && S.save.gold >= h.preis) {
-          S.save.gold -= h.preis; m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; UI.snd('heil'); Save.speichern();
-          UI.closePanel();
-          UI.info(esc(mobNameFull(m)) + ' ist wieder fit. Das kostet ' + ge(h.preis) + '.', 'Geheilt').then(res);
-        } else { UI.closePanel(); res(); }
-      }
-      UI.pushKeys(key); zeige();
-    });
+  A.mobAbholen = async function (hier) {
+    let start = 0;
+    if (hier === undefined) hier = hierDorf();
+    for (;;) {
+      const pf = pflegeListe(), jetzt = Date.now();
+      if (!pf.length) { await UI.info('Niemand ist in Pflege.', 'Heilhaus'); return; }
+      const items = pf.map(e => {
+        const rest = Math.ceil((e.ende - jetzt) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
+        const sub = rest > 0 ? 'noch ' + dauerText(rest) + ' · Heilhaus ' + ort : e.dorf === hier ? 'fertig · gratis abholen' : 'fertig in ' + ort + ' · Transport ' + ge(fee);
+        return { label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar), sub, disabled: rest > 0 || S.save.gold < fee };
+      });
+      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. In einem anderen Dorf kostet der Transport extra.', start, numbers: false, wide: true });
+      if (r < 0) return;
+      start = r;
+      const e = pf[r], fee = transportGebuehr(e, hier);
+      if (e.ende > Date.now() || S.save.gold < fee) continue;
+      const m = e.m; m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone;
+      const wo = A.mobDazu(m);
+      if (!wo) { await UI.info('Team und Zwinger sind voll.', 'Heilhaus'); continue; }
+      pf.splice(r, 1); S.save.gold -= fee; UI.snd('heil'); Save.speichern();
+      await UI.info(esc(mobNameFull(m)) + ' ist wieder fit' + (wo === 'box' ? ' und wartet im Zwinger' : '') + '.' + (fee ? ' Transport: ' + ge(fee) + '.' : ''), 'Abgeholt');
+    }
   };
 
   // ---------- Fangkugel-Laden ----------

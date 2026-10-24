@@ -114,6 +114,10 @@
       S.sendeT -= dt;
       if (S.sendeT <= 0) { Netz.senden({ t: 'p', ...A.praesenz() }); S.sendeT = S.bewegt ? 0.2 : 1.5; }
     }
+    if (welt && now - (S.pflegeT || 0) > 2000) {
+      S.pflegeT = now;
+      for (const e of (S.save.pflege || [])) if (e.ende <= now && !e.gemeldet) { e.gemeldet = true; UI.snd('heil'); UI.toast(A.mobNameFull(e.m) + ' ist fertig gepflegt (Heilhaus ' + Welt.dorf[e.dorf].name + ').', 3500); }
+    }
     if (welt && now - (S.speicherT || 0) > 20000) { S.speicherT = now; Save.speichern(); }
   }
 

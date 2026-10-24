@@ -5,7 +5,7 @@
   const CAM = G.CAM, UI = CAM.UI, $ = UI.$, esc = UI.esc, S = CAM.S, Welt = CAM.Welt, K = CAM.Kampf, A = CAM.A, Save = CAM.Save;
   const H = A.h, ge = H.ge, sleep = H.sleep;
   const Bots = CAM.Bots = { liste: [] };
-  const ANZAHL = 18, CHAMPIONS = 3, WEITE = 16;
+  const ANZAHL = 18, CHAMPIONS = 3, WEITE = 16, SUCHE = 32;
 
   // ---------- Hilfen für faire Duelle ----------
   const lebende = team => team.filter(m => m.hp > 0);
@@ -56,7 +56,7 @@
     return { id: 'b' + i, name: CAM.TRAINER_VORNAMEN[(i * 7 + 3) % CAM.TRAINER_VORNAMEN.length] + (champ ? ' der Champion' : ''), col: Math.floor(rnd() * CAM.FARBEN.length), champ,
       hx, hy, x: hx, y: hy, team, gold: Math.round((60 + lv * 25) * (champ ? 3 : 1) * (0.7 + rnd() * 0.6)), ego: -0.1 + rnd() * 0.4 + (champ ? 0.15 : 0), mut: rnd() };
   }
-  function laufzeit(b) { Object.assign(b, { dir: 2, geht: false, z: 'ruhe', t: 1 + Math.random() * 3, tx: b.x, ty: b.y, ruheBis: 0, provBis: Date.now() + 20000 + Math.random() * 60000, alarm: 0 }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); return b; }
+  function laufzeit(b) { Object.assign(b, { dir: 2, geht: false, z: 'ruhe', t: 1 + Math.random() * 3, tx: b.x, ty: b.y, ruheBis: 0, provBis: Date.now() + 8000 + Math.random() * 30000, alarm: 0 }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); return b; }
 
   Bots.erzeugen = function () {
     Bots.liste = [];
@@ -89,22 +89,31 @@
       const ziel = frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && !Welt.dorfBei(b.x, b.y) && now > b.provBis && now > b.ruheBis;
       if (b.z === 'prov') {
         // läuft auf dich zu und fordert dich heraus
-        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 14) { b.z = 'ruhe'; b.t = 2; }
+        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > SUCHE + 12) { b.z = 'ruhe'; b.t = 2; }
         else if (now - b.alarm < 600) { /* kurz erschrecken */ }
-        else if (d > 1.5) { vx = (S.x - b.x) / d; vy = (S.y - b.y) / d; tempo = 3.6; }
-        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 120000 + Math.random() * 120000; A.botProvokation(b); continue; }
-      } else if (ziel && d < 9 && d > 3 && Math.random() < dt * 0.05 && b.lv >= CAM.maxLv() * 0.6 && b.lv <= CAM.maxLv() * 1.7 + 3) {
+        else if (d > 1.5) { vx = (S.x - b.x) / d; vy = (S.y - b.y) / d; tempo = 3.9; }
+        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; A.botProvokation(b); continue; }
+      } else if (ziel && d < SUCHE && d > 3 && Math.random() < dt * 0.12 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
         b.z = 'prov'; b.alarm = now; UI.snd('ruf');
       } else {
         b.t -= dt;
         if (b.z === 'ruhe' && b.t <= 0) {
           const a = Math.random() * 6.283, r = 2 + Math.random() * 6;
-          b.tx = Math.max(2, Math.min(Welt.W - 2, b.hx + (Math.random() - 0.5) * 2 * WEITE + Math.cos(a) * r * 0.3)); b.ty = Math.max(2, Math.min(Welt.H - 2, b.hy + (Math.random() - 0.5) * 2 * WEITE + Math.sin(a) * r * 0.3));
-          b.z = 'geht'; b.t = 5 + Math.random() * 6;
+          if (Math.random() < 0.12) {
+            // Wanderer: zieht in eine neue Gegend (manchmal in die Nähe des Spielers oder eines Dorfs) und bleibt dort
+            const dorf = Welt.dorf[Math.floor(Math.random() * Welt.dorf.length)];
+            const nah = Math.random() < 0.4 && d < 90;
+            const cx = nah ? S.x : dorf.x, cy = nah ? S.y : dorf.y, rr = 8 + Math.random() * 20;
+            b.hx = Math.max(12, Math.min(Welt.W - 12, cx + Math.cos(a) * rr)); b.hy = Math.max(12, Math.min(Welt.H - 12, cy + Math.sin(a) * rr));
+            b.tx = b.hx; b.ty = b.hy; b.z = 'geht'; b.t = 40;
+          } else {
+            b.tx = Math.max(2, Math.min(Welt.W - 2, b.hx + (Math.random() - 0.5) * 2 * WEITE + Math.cos(a) * r * 0.3)); b.ty = Math.max(2, Math.min(Welt.H - 2, b.hy + (Math.random() - 0.5) * 2 * WEITE + Math.sin(a) * r * 0.3));
+            b.z = 'geht'; b.t = 5 + Math.random() * 6;
+          }
         } else if (b.z === 'geht') {
           const dd = Math.hypot(b.tx - b.x, b.ty - b.y);
           if (dd < 0.3 || b.t <= 0) { b.z = 'ruhe'; b.t = 2 + Math.random() * 5; }
-          else { vx = (b.tx - b.x) / dd; vy = (b.ty - b.y) / dd; tempo = 1.7; }
+          else { vx = (b.tx - b.x) / dd; vy = (b.ty - b.y) / dd; tempo = b.t > 12 ? 2.6 : 1.7; }
         } else if (b.z !== 'ruhe') b.z = 'ruhe';
       }
       if (tempo) {
