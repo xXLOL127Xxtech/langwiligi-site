@@ -360,7 +360,12 @@
       const q = qualitaet === 0 ? 0.35 : 1;
       const I = k => intens[k] || 0;
       // Nacht
-      if (dunkel > 0.02) { c.fillStyle = FARBE_NACHT + (0.62 * dunkel).toFixed(3) + ')'; c.fillRect(0, 0, w, h); }
+      if (dunkel > 0.02) {
+        // Nacht: dunkel, aber um dich herum bleibt es hell genug
+        const g = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.12, w / 2, h / 2, Math.max(w, h) * 0.62);
+        g.addColorStop(0, FARBE_NACHT + (0.16 * dunkel).toFixed(3) + ')'); g.addColorStop(1, FARBE_NACHT + (0.62 * dunkel).toFixed(3) + ')');
+        c.fillStyle = g; c.fillRect(0, 0, w, h);
+      }
       if (I('blutmond') > 0.02) { c.fillStyle = 'rgba(150,10,10,' + (0.2 * I('blutmond')).toFixed(3) + ')'; c.fillRect(0, 0, w, h); }
       if (I('hitze') > 0.02) { c.fillStyle = 'rgba(255,150,40,' + (0.1 * I('hitze')).toFixed(3) + ')'; c.fillRect(0, 0, w, h); }
       // Regen und Gewitter
