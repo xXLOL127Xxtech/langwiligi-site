@@ -18,6 +18,7 @@
   function lpText(m) { return m.hp <= 0 ? '<span style="color:#ff6b5e">besiegt</span>' : m.hp + '/' + m.mhp + ' LP'; }
   function spriteImg(m, px) { const c = CAM.spriteMit(m); return '<img src="' + c.toDataURL() + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated">'; }
   A.mobNameFull = mobNameFull;
+  A.h = { ge, tagEl, tagRar, elTags, mobZeile, lpText, spriteImg, sleep };
 
   A.eingabe = function (titel, sub, start, ph) {
     return new Promise(res => {
@@ -261,14 +262,14 @@
       const dex = S.save.dex, F = CAM.FAMILIEN;
       const seen = Object.keys(dex).length, caught = Object.values(dex).filter(v => v >= 2).length;
       const items = F.map((f, i) => ({
-        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (dex[i] ? esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
+        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (f.spezial ? '<span style="color:#ffb36b">★</span> ' : '') + (dex[i] ? esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
         sub: dex[i] >= 2 ? '<span style="color:#5fd38a">gefangen</span>' : dex[i] ? 'gesehen' : '–',
       }));
       const r = await UI.choose(items, { title: 'Mob-Buch', sub: 'Gesehen ' + seen + ' / ' + F.length + ' · Gefangen ' + caught + ' / ' + F.length, numbers: false, wide: true });
       if (r < 0) return;
       if (!dex[r]) continue;
       const f = F[r];
-      const orte = CAM.BIOME.filter(b => b.spawn.some(s => s[0] === r)).map(b => b.n).join(', ') || 'nur durch Riesen-Raids';
+      const orte = CAM.BIOME.filter(b => b.spawn.some(s => s[0] === r)).map(b => b.n).join(', ') || f.spezial || 'nur durch Riesen-Raids';
       const stufen = f.n.map((n, i) => spriteImg({ fam: r, stufe: i + 1 }, 72)).join('');
       await UI.info('<div class="row">' + stufen + '</div><p>' + f.n.join(' › ') + '<br>' + tagEl(f.el) + (f.el2 ? tagEl(f.el2) : '') + tagRar(f.rar) + '</p><p>Lebt in: ' + esc(orte) + '</p>', 'Mob-Buch');
     }
@@ -388,6 +389,9 @@
     });
     let r = Math.random() * tot, fam = l[0][0];
     for (const [f, g] of l) { r -= g; if (r <= 0) { fam = f; break; } }
+    // Spezial-Mobs: nur unter besonderen Umständen
+    if (nacht && w === 'klar' && Math.random() < 0.012) fam = 24;
+    else if (w === 'blutmond' && Math.random() < 0.05) fam = 25;
     const lv = Welt.wildLevel(x, y, Math.random());
     return CAM.neuerMob(fam, lv, { glanz: Math.random() < 1 / 64 });
   };
@@ -533,6 +537,21 @@
     return '';
   };
 
+  A.einsatzOnline = async function (p) {
+    const eigen = S.save.team, mid = Math.max(1, Math.round((CAM.schnitt(eigen) + (p.lv || 1)) / 2));
+    const mo = await UI.choose([{ label: 'Fairer Kampf', sub: 'alle auf Stufe ' + mid }, { label: 'Echter Kampf', sub: 'Stufen wie sie sind (deine Ø ' + Math.round(CAM.schnitt(eigen)) + ', seine höchste ' + (p.lv || '?') + ')' }, { label: '← Zurück' }], { title: 'Duell mit ' + p.name, sub: 'Du siehst: höchste Stufe ' + (p.lv || '?') + '. ' + p.name + ' kann annehmen oder ablehnen.' });
+    if (mo < 0 || mo === 2) return null;
+    const o = { fair: mo === 0 ? mid : 0, gold: 0, mob: 0 };
+    const stufen = [25, 50, 100, 250, 500];
+    const ei = [{ label: 'Kein Einsatz' }].concat(stufen.map(g => ({ label: g + ' Gold', disabled: g > S.save.gold })));
+    ei.push({ label: 'Vorderstes Fabelwesen setzen', sub: 'Verlierer gibt seins ab', disabled: S.save.team.filter(m => m.hp > 0).length < 2 }); ei.push({ label: '← Zurück' });
+    const e = await UI.choose(ei, { title: 'Einsatz', sub: 'Du hast ' + S.save.gold + ' Gold. Bei einer Mob-Wette setzen beide ihr vorderstes Team-Mitglied.', numbers: false });
+    if (e < 0 || e === ei.length - 1) return null;
+    if (e >= 1 && e <= stufen.length) o.gold = stufen[e - 1];
+    if (e === ei.length - 2) { o.mob = 1; o.mA = CAM.name(S.save.team[0]) + ' Lv ' + S.save.team[0].lv; }
+    return o;
+  };
+
   // Menü bei einer anderen Person
   A.spielerMenue = async function (p) {
     if (S.busy) return;
@@ -547,9 +566,10 @@
     const sch = (S.prot[p.idx] || 0) > Date.now() ? ' 🛡' : '';
     const r = await UI.choose(items, { title: p.name + sch, sub: 'Höchste Stufe: ' + p.lv + ' · Duelle ' + (p.w || 0) + ' Siege / ' + (p.l || 0) + ' Niederlagen' });
     if (r === 0) {
+      const o = await A.einsatzOnline(p); if (!o) return;
       UI.toast('Duell-Anfrage an ' + p.name + ' gesendet …');
-      A.angebot = { idx: p.idx, art: 'chal', t: Date.now() };
-      Netz.senden({ t: 'chal', to: p.idx, from: S.idx });
+      A.angebot = { idx: p.idx, art: 'chal', t: Date.now(), o };
+      Netz.senden({ t: 'chal', to: p.idx, from: S.idx, o });
       setTimeout(() => { if (A.angebot && A.angebot.art === 'chal' && Date.now() - A.angebot.t >= 15000) { A.angebot = null; UI.toast(p.name + ' hat nicht geantwortet.'); } }, 15500);
     } else if (r === 1) {
       Netz.senden({ t: 'amb', a: S.idx, b: p.idx });
@@ -585,18 +605,23 @@
       case 'chal': {
         const p = S.peers.get(von); if (!p) return;
         if (S.busy || !CAM.lebend()) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
-        UI.addCard('<b>' + esc(p.name) + '</b> fordert dich zum Duell heraus!', 15, () => Netz.senden({ t: 'chalr', to: von, ok: true }), () => Netz.senden({ t: 'chalr', to: von, ok: false }));
+        const o = d.o || {};
+        if ((o.gold || 0) > S.save.gold) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
+        const txt = (o.fair ? 'Fairer Kampf (alle auf Stufe ' + (o.fair | 0) + ')' : 'Echter Kampf') + ' · ' + (o.gold ? 'Einsatz ' + (o.gold | 0) + ' Gold' : 'ohne Gold') + (o.mob ? ' · Wette: ' + esc(String(o.mA || 'Mob')) + ' gegen dein vorderstes Fabelwesen (' + esc(S.save.team[0] ? CAM.name(S.save.team[0]) + ' Lv ' + S.save.team[0].lv : '–') + ')' : '') + ' · ' + esc(p.name) + ' hat höchste Stufe ' + (p.lv | 0);
+        if (o.mob && S.save.team.filter(m => m.hp > 0).length < 2) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
+        UI.addCard('<b>' + esc(p.name) + '</b> fordert dich zum Duell heraus!<br><small>' + txt + '</small>', 20, () => Netz.senden({ t: 'chalr', to: von, ok: true }), () => Netz.senden({ t: 'chalr', to: von, ok: false }));
         UI.snd('ruf');
         break;
       }
       case 'chalr': {
         if (!A.angebot || A.angebot.art !== 'chal' || A.angebot.idx !== von) return;
-        A.angebot = null;
+        A.angebotO = A.angebot.o; A.angebot = null;
         if (!d.ok) { UI.toast((S.peers.get(von) ? S.peers.get(von).name : 'Die Person') + ' lehnt das Duell ab.'); return; }
-        const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter() };
+        const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter(), o: A.angebotO || null };
         Netz.senden(m); A.duellStart(m);
         break;
       }
+      case 'prize': { if (d.mob && CAM.FAMILIEN[d.mob.fam]) { const m = d.mob; CAM.neuBerechnen(m); m.hp = m.mhp; m.wunden = []; A.mobDazu(m); S.save.dex[m.fam] = 2; Save.speichern(); UI.toast('Du hast ' + CAM.name(m) + ' (Lv ' + m.lv + ') gewonnen!', 4000); } break; }
       case 'duelgo': if (d.a === von && d.b === S.idx) A.duellStart(d); break;
       case 'amb': if (Netz.gastgeber() === S.idx) A.hostUeberfall(d); break;
       case 'ambno': if (d.a === S.idx) UI.toast(d.grund || 'Der Überfall ist nicht möglich.'); break;
@@ -654,7 +679,8 @@
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     const andere = d.a === S.idx ? d.b : d.a, bid = 'd' + d.seed;
-    const mein = duellTeam();
+    const o = d.o || null, lvl = o ? (o.fair | 0) : 30, stake = o && o.mob ? S.save.team[0] : null;
+    const mein = CAM.duellKopien(S.save.team, lvl);
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: S.save.gold });
     UI.toast(d.amb ? 'Überfall!' : 'Duell beginnt …', 1500);
     const ok = await warteAuf(() => S.teams[bid] && S.teams[bid][andere], 10000);
@@ -676,7 +702,9 @@
     if (b.over) {
       const gewonnen = b.winner === meineSeite;
       const loserGold = gewonnen ? gegnerTeam.gold : S.save.gold;
-      const einsatz = Math.min(500, Math.floor(loserGold * 0.05));
+      const einsatz = o ? 0 : Math.min(500, Math.floor(loserGold * 0.05));
+      if (o && o.gold) { const g = o.gold | 0; if (gewonnen) { S.save.gold += g; lines.push('Einsatz: Du bekommst ' + ge(g) + '.'); } else { const z = Math.min(g, S.save.gold); S.save.gold -= z; lines.push('Einsatz: Du zahlst ' + ge(z) + '.'); } }
+      if (stake && !gewonnen) { const i = S.save.team.indexOf(stake); if (i >= 0 && S.save.team.length > 1) { S.save.team.splice(i, 1); Netz.senden({ t: 'prize', to: andere, mob: CAM.kopie(stake) }); lines.push('<b style="color:#ff6b5e">' + esc(CAM.name(stake)) + ' geht an ' + esc(pn(andere)) + '.</b>'); } }
       if (gewonnen) { S.save.gold += Math.floor(einsatz / 2); lines.push('<b style="color:#5fd38a">Du hast gewonnen!</b>' + (einsatz ? ' Beute: ' + ge(Math.floor(einsatz / 2)) : '')); UI.snd('sieg'); }
       else { S.save.gold = Math.max(0, S.save.gold - einsatz); lines.push('<b style="color:#ff6b5e">Du hast verloren.</b>' + (einsatz ? ' Du zahlst ' + ge(einsatz) + '.' : '')); UI.snd('niederlage'); }
       if (!d.amb) { if (gewonnen) S.save.w++; else S.save.l++; Netz.senden({ t: 'st', w: S.save.w, l: S.save.l }); }
@@ -752,6 +780,7 @@
       lines.push(...await xpVerteilen(b, la));
       const gold = 150 + lv * 25; S.save.gold += gold; lines.push('Beute: ' + ge(gold));
       CAM.itemAdd('siegel2', 2); lines.push('2 × Starke Fangkugel');
+      if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
       if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
       if (Math.random() < 0.25) {
         const z = CAM.neuerMob(bossDef.fam, Math.max(10, lv - 4)); const wo = A.mobDazu(z); dexSet(bossDef.fam, 2);

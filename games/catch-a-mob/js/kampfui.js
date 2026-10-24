@@ -172,7 +172,7 @@
           if (r === -2) return standard();
           if (r >= 0) return { t: 'switch', i: r };
         } else if (lab === 'Beutel') {
-          const verfuegbar = Object.keys(CAM.ITEMS).filter(k => !CAM.ITEMS[k].fund && !CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
+          const verfuegbar = Object.keys(CAM.ITEMS).filter(k => !CAM.ITEMS[k].fund && !CAM.ITEMS[k].nurBeute && !CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
           if (!verfuegbar.length) { UI.log('Du hast nichts Brauchbares im Beutel.'); await sleep(900); zeigeLog(); continue; }
           const ii = verfuegbar.map(k => ({ label: CAM.ITEMS[k].n, sub: '× ' + cfg.beutel()[k] + ' · ' + CAM.ITEMS[k].info }));
           ii.push({ label: '← Zurück' });

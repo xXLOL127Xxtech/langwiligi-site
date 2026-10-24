@@ -21,7 +21,8 @@
   function person(c, x, y, ts, col, dir, gehen, name, tick, extra) {
     const u = ts / 16;
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y - u, 5.5 * u, 2 * u, 0, 0, 6.3); c.fill();
-    CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(name));
+    CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(extra && extra.look || name));
+    if (extra && extra.lv) name = name + ' · Lv ' + extra.lv;
     if (name) {
       c.font = '700 ' + Math.max(11, Math.round(ts * 0.3)) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
       const tw = c.measureText(name).width + 8;
@@ -53,8 +54,9 @@
         const kk = Math.floor(S.x) + ',' + Math.floor(S.y);
         if (kk !== S.letzteKachel) {
           S.letzteKachel = kk; S.schritte++;
+          if (S.save.items.ei) { S.save.eiS = (S.save.eiS || 0) + 1; if (S.save.eiS >= 600) { S.save.eiS = 0; CAM.itemAdd('ei', -1); const z = CAM.neuerMob(26, Math.max(5, Math.floor(CAM.maxLv() * 0.8))); const wo = A.mobDazu(z); S.save.dex[26] = 2; UI.snd('fang'); UI.toast('Das Drachenei ist geschlüpft: ' + CAM.name(z) + (wo === 'box' ? ' (im Zwinger)' : '') + '!', 4000); } }
           const t = Welt.get(S.x, S.y);
-          if (t === T.GRAS && S.schritte >= 7 && !Welt.istSicher(S.x, S.y) && CAM.lebend() && Math.random() < 0.035) {
+          if (t === T.GRAS && S.schritte >= 14 && !Welt.istSicher(S.x, S.y) && CAM.lebend() && Math.random() < 0.012) {
             S.schritte = 0;
             CAM.Wilde.sprung(now);
           }
@@ -82,6 +84,7 @@
       }
     }
     CAM.Wilde.update(dt, now, frei);
+    CAM.Bots.update(dt, now, frei);
     // Biome, Wetter
     S.biome = Welt.biomeAt(S.x, S.y);
     S.wetter = CAM.wetterBei(S.biome, now);
@@ -94,6 +97,8 @@
       let best = null, bd = 2.0;
       for (const tr of Welt.trainer) { const d = Math.hypot(tr.x + 0.5 - S.x, tr.y + 0.5 - S.y); if (d < bd && !(S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000)) { bd = d; best = tr; } }
       if (best && !S.ziel) S.ziel = { typ: 'trainer', tr: best };
+      const bm = !S.online ? CAM.Bots.naechster(S.x, S.y, 1.9) : null;
+      if (bm && !S.ziel) S.ziel = { typ: 'bot', b: bm };
       const wm = CAM.Wilde.naechster(S.x, S.y, 1.9);
       if (wm && !S.ziel) S.ziel = { typ: 'mob', w: wm };
       if (S.online && !S.ziel) {
@@ -125,6 +130,10 @@
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
       liste.push({ y: tr.y + 1, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tr.x + 0.5), sy(tr.y + 1), TS, tr.farbe, tr.dir, false, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', blase: tr.alarm ? '❗' : '' }); ctx.globalAlpha = 1; } });
     }
+    if (!S.online) for (const b of CAM.Bots.liste) {
+      if (b.x < vx - 2 || b.x > vx + W / TS + 2 || b.y < vy - 2 || b.y > vy + H / TS + 2) continue;
+      liste.push({ y: b.y + 0.5, f: () => person(ctx, sx(b.x), sy(b.y + 0.5), TS, CAM.FARBEN[b.col] || '#999', b.dir, b.geht, b.name, tick, { farbe: CAM.Bots.farbe(b.lv), lv: b.lv, blase: b.z === 'prov' ? '❗' : '' }) });
+    }
     for (const w of CAM.Wilde.liste) {
       if (w.x < vx - 2 || w.x > vx + W / TS + 2 || w.y < vy - 2 || w.y > vy + H / TS + 2) continue;
       liste.push({ y: w.y + 0.45, f: () => wilderMob(w, sx(w.x), sy(w.y + 0.45), now, tick) });
@@ -143,7 +152,7 @@
       if (p.x < vx - 2 || p.x > vx + W / TS + 2 || p.y < vy - 2 || p.y > vy + H / TS + 2) continue;
       const bl = p.gestT && now - p.gestT < 3500 ? p.gest : '';
       const prot = (S.prot[p.idx] || 0) > now;
-      liste.push({ y: p.y + 0.5, f: () => person(ctx, sx(p.x), sy(p.y + 0.5), TS, CAM.FARBEN[p.col] || '#999', p.dir, p.geht, p.name + (prot ? ' 🛡' : '') + (p.bs ? ' ⚔' : ''), tick, { farbe: (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#f2efe8', blase: bl }) });
+      liste.push({ y: p.y + 0.5, f: () => person(ctx, sx(p.x), sy(p.y + 0.5), TS, CAM.FARBEN[p.col] || '#999', p.dir, p.geht, p.name + (prot ? ' 🛡' : '') + (p.bs ? ' ⚔' : ''), tick, { lv: p.lv, look: p.name, farbe: (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : CAM.Bots.farbe(p.lv), blase: bl }) });
     }
     const bl = S.gest && now - S.gest.t < 3500 ? S.gest.z : '';
     liste.push({ y: S.y + 0.5, f: () => person(ctx, sx(S.x), sy(S.y + 0.5), TS, CAM.FARBEN[S.save.col] || '#4f8ff7', S.dir, S.bewegt, S.name, tick, { farbe: '#c9a6ff', blase: bl }) });
@@ -177,7 +186,8 @@
     ctx.save(); ctx.imageSmoothingEnabled = false;
     const flip = w.dir === 3 || w.dir === 0 ? 0 : 1; // Bilder schauen nach rechts
     ctx.translate(x, y - hop); ctx.scale(w.dir === 3 ? -1 : 1, 1);
-    ctx.drawImage(CAM.sprite(m), -gr / 2, -gr * 0.94, gr, gr);
+    if (w.geht) { const ph = Math.sin(tick / 85 + w.id * 2); ctx.rotate(ph * 0.07); ctx.scale(1 + ph * 0.035, 1 - ph * 0.035); }   // Laufschritt: wippen und stauchen
+    ctx.drawImage(CAM.spriteMit(m), -gr / 2, -gr * 0.94, gr, gr);
     ctx.restore();
     const d = Math.hypot(w.x - S.x, w.y - S.y);
     if (!ohneName && d < 8) {
@@ -207,6 +217,7 @@
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
+    else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell mit Einsatz';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
@@ -247,6 +258,7 @@
       } else if (z.typ === 'trainer') { menueOffen = false; await A.trainerKampf(z.tr); }
       else if (z.typ === 'mob') await A.wildMenue(z.w);
       else if (z.typ === 'spieler') await A.spielerMenue(z.p);
+      else if (z.typ === 'bot') await A.botMenue(z.b);
     } finally { menueOffen = false; Save.speichern(); }
   }
   UI.worldKey = function (e, k) {
@@ -263,7 +275,7 @@
   // ---------- Titelbild ----------
   async function anleitung() {
     await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten (mit Shift schneller).<br><b>Ansprechen:</b> E oder Enter bei Türen, Trainern und Mitspielern.<br><b>Menü:</b> Esc · <b>Karte:</b> M · <b>Gesten:</b> 1–4 (online).<br>Menüs bedienst du mit Pfeiltasten und Enter oder per Klick mit dem Touchpad.</p>' +
-      '<p><b>Ziel:</b> Fang Mobs im hohen Gras, trainiere sie und besiege die Riesen an den roten Runen. Wetter, Tageszeit und Jahreszeit verändern Kämpfe und Preise.</p>' +
+      '<p><b>Bots:</b> Bot-Spieler laufen herum. Sprich sie mit E an: Du siehst ihre Stufe und deine Siegchance, wählst «Fairer Kampf» (alle Mobs auf die mittlere Stufe) oder «Echter Kampf» und setzt Gold oder ein Fabelwesen. Der Bot nimmt an oder lehnt ab. Manche fordern dich auch selbst heraus.</p><p><b>Ziel:</b> Fang Mobs im hohen Gras, trainiere sie und besiege die Riesen an den roten Runen. Wetter, Tageszeit und Jahreszeit verändern Kämpfe und Preise.</p>' +
       '<p><b>Online:</b> Alle in derselben Welt. Lade Freunde über den Knopf «Freunde» ein, bildet eine Party (E bei einer Person) und besiegt zusammen die Riesen. Duelle gibt es mit Einverständnis oder als Überfall: Wer überfallen wurde, ist 30 Minuten geschützt. In Dörfern und unter Stufe 10 ist man sicher.</p>', 'Anleitung');
   }
 
@@ -341,10 +353,12 @@
   function betreten() {
     S.modus = 'welt'; S.idx = S.online ? Netz.idx : 0; S.pt = -1; S.peers.clear(); S.prot = {}; S.busy = false; S.trainerT = {}; S.teams = {};
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];
+    if (S.save.welt !== 2) { S.save.welt = 2; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
     S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = [];
+    CAM.Bots.erzeugen();
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
     S.save.team.concat(S.save.box).forEach(m => { delete m.faintDone; m.status = null; CAM.angleichen(m); });
     $('start').classList.add('hidden'); UI.closePanel();

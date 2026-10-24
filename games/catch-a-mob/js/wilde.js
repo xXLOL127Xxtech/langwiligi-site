@@ -24,7 +24,7 @@
       const mob = CAM.A.wildMob(x, y, now);
       // bösartige Mobs gibt es nachts öfter
       if (W.boese(mob) && CAM.tageslicht(now) > 0.6 && Math.random() < 0.4) continue;
-      W.liste.push({ id: W.nextId++, mob, x, y, dir: Math.floor(Math.random() * 4), z: 'ruhe', t: 1 + Math.random() * 3, tx: x, ty: y, geboren: now, ruheBis: 0, scheu: Math.random() < 0.45, geht: false, huepf: 0 });
+      W.liste.push({ id: W.nextId++, mob, x, y, dir: Math.floor(Math.random() * 4), z: 'ruhe', t: 1 + Math.random() * 3, tx: x, ty: y, geboren: now, ruheBis: 0, scheu: Math.random() < 0.45 || !!CAM.FAMILIEN[mob.fam].spezial, geht: false, huepf: 0 });
       return;
     }
   };

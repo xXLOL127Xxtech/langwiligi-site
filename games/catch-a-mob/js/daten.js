@@ -117,6 +117,11 @@
     { n: ['Aschekönig'], el: 'Feuer', el2: 'Schatten', base: [92, 92, 74, 60], rar: 3, kind: 'ghoul', opt: { horns: true, fire: true, big: true }, legend: true, pal: ['#4a1414', '#1e0606', '#ff7a2e', '#fff27a'] },
     { n: ['Totenlord'], el: 'Schatten', base: [94, 88, 78, 54], rar: 3, kind: 'ghoul', opt: { horns: true, big: true }, legend: true, pal: ['#6d6a58', '#26241c', '#9affb0', '#9affb0'] },
     { n: ['Prismagolem'], el: 'Licht', el2: 'Erde', base: [102, 84, 100, 30], rar: 3, kind: 'golem', opt: { big: true }, legend: true, pal: ['#5a4f78', '#241e3a', '#ffe680', '#ffffff'] },
+    // Spezial-Mobs: kommen in keinem Biom normal vor, nur auf besonderen Wegen (spezial = Erklärung im Mob-Buch)
+    { n: ['Sternschnuppe', 'Sternenfuchs', 'Himmelsfuchs'], el: 'Licht', base: [50, 64, 50, 84], rar: 2, kind: 'quad', opt: { ears: 'point', tail: 'fluff', mane: true }, pal: ['#c9d4ff', '#6a6fb8', '#fff3a8', '#7de4ff'], spezial: 'Taucht nur in klaren Nächten auf und rennt schnell davon.' },
+    { n: ['Blutschemen', 'Mondschlächter', 'Blutgraf'], el: 'Schatten', base: [58, 72, 50, 64], rar: 2, kind: 'ghoul', opt: { horns: true }, pal: ['#5a1020', '#26060c', '#ff3b5a', '#ffd0d8'], spezial: 'Zeigt sich nur bei Blutmond.' },
+    { n: ['Glutei', 'Ascheschlüpfer', 'Weltendrache'], el: 'Feuer', el2: 'Licht', base: [66, 74, 62, 58], rar: 2, kind: 'dragon', pal: ['#ffb36b', '#7a3a1a', '#ffe14d', '#fff3a8'], spezial: 'Schlüpft aus dem Drachenei, das manchmal als Beute von Riesen fällt (600 Schritte im Beutel tragen).' },
+    { n: ['Zwillingskopf', 'Chimäre', 'Urchimäre'], el: 'Normal', el2: 'Schatten', base: [72, 72, 66, 60], rar: 2, kind: 'quad', opt: { ears: 'round', tail: 'flame', mane: true }, pal: ['#c9a24a', '#6a4a1a', '#ff6a2e', '#fff3a8'], spezial: 'Gehört den Champion-Bots. Du bekommst sie nur, wenn du sie im Einsatz-Duell gewinnst.' },
   ];
   F.forEach((f, i) => { f.id = i; f.stufen = f.n.length; });
 
@@ -236,6 +241,26 @@
     [['prismafaust', 'Prismafaust', 'Licht', 60, 100, { t: 'lunge', deco: 'faust', gross: true, cols: ['#ffe680', '#ffffff'] }],
      ['lichtbrechung', 'Lichtbrechung', 'Licht', 88, 95, { t: 'strahl', dick: true, prisma: true }],
      ['kristallsturm', 'Kristallsturm', 'Erde', 108, 90, { t: 'spiesse', shape: 'kristall', gross: true, cols: ['#ffe680', '#7de4ff'] }, 'furcht', 20]],
+    // 24 Sternschnuppe
+    [['sternenbiss', 'Sternenbiss', 'Licht', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#fff3a8', '#7de4ff'] }],
+     ['funkenregen', 'Funkenregen', 'Licht', 54, 100, { t: 'salve', shape: 'funke', n: 8, cols: ['#fff3a8', '#c9d4ff'] }],
+     ['kometenschweif', 'Kometenschweif', 'Licht', 78, 95, { t: 'meteor', shape: 'stern', n: 6, cols: ['#fff3a8', '#7de4ff'] }],
+     ['himmelssturz', 'Himmelssturz', 'Licht', 100, 90, { t: 'saeule', cols: ['#c9d4ff', '#ffffff', '#fff3a8'] }]],
+    // 25 Blutschemen
+    [['blutbiss', 'Blutbiss', 'Schatten', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#ff3b5a', '#5a1020'] }],
+     ['blutregen', 'Blutregen', 'Schatten', 56, 100, { t: 'salve', shape: 'klumpen', n: 7, cols: ['#a01a30', '#ff3b5a'] }],
+     ['mondsichel', 'Mondsichel', 'Schatten', 78, 95, { t: 'lunge', deco: 'schweif', cols: ['#ff3b5a', '#ffd0d8'] }, 'furcht', 20],
+     ['blutmondnova', 'Blutmond-Nova', 'Schatten', 100, 90, { t: 'nova', cols: ['#ff3b5a', '#a01a30', '#5a1020'], ringe: 4 }, 'furcht', 25]],
+    // 26 Glutei
+    [['glutschnabel', 'Glutschnabel', 'Feuer', 42, 100, { t: 'lunge', deco: 'schnabel', cols: ['#ffe14d', '#ff6a2e'] }],
+     ['schalensplitter', 'Schalensplitter', 'Feuer', 56, 100, { t: 'salve', shape: 'fels', n: 5, cols: ['#ffb36b', '#7a3a1a'] }],
+     ['drachenatem', 'Drachenatem', 'Feuer', 80, 95, { t: 'atem', cols: ['#fff3a8', '#ffb36b', '#ff6a2e'] }, 'brand', 20],
+     ['weltenbrand', 'Weltenbrand', 'Licht', 102, 90, { t: 'meteor', shape: 'feuer', n: 9, cols: ['#ff6a2e', '#fff3a8', '#ffe14d'] }, 'brand', 25]],
+    // 27 Zwillingskopf
+    [['doppelbiss', 'Doppelbiss', 'Normal', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#fff3a8', '#c9a24a'] }],
+     ['loewenpranke', 'Löwenpranke', 'Normal', 58, 100, { t: 'lunge', deco: 'kralle', cols: ['#ffd54a', '#fff'] }],
+     ['chimaerenatem', 'Chimärenatem', 'Schatten', 82, 95, { t: 'atem', cols: ['#ff6a2e', '#8a3ffc', '#fff3a8'] }, 'brand', 20],
+     ['urgewalt', 'Urgewalt', 'Normal', 104, 90, { t: 'nova', cols: ['#ffd54a', '#ff6a2e', '#8a3ffc'], ringe: 4 }]],
   ];
   SIG.forEach((list, i) => {
     const f = F[i];
@@ -247,7 +272,7 @@
     f.sigLv = f.legend ? [1, 6, 12] : [1, 4, 12, 24];
   });
 
-  CAM.ANZ_FAMILIEN = 16;                // normale Familien; danach kommen die 8 Riesen
+  CAM.ANZ_FAMILIEN = 16;                // normale Familien; danach kommen die 8 Riesen und 4 Spezial-Mobs (ab Nummer 24)
   CAM.RARITAET = ['Gewöhnlich', 'Selten', 'Episch', 'Legendär'];
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
   CAM.FANGRATE = [0.9, 0.55, 0.3, 0.06];
@@ -427,6 +452,7 @@
     siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 99, info: 'Fängt immer' },
     trank: { n: 'Heiltrank', preis: 30, heil: 40, info: 'Heilt 40 LP' },
     trank2: { n: 'Grosser Heiltrank', preis: 100, heil: 120, info: 'Heilt 120 LP' },
+    ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
     beleber: { n: 'Wiederbeleber', preis: 150, beleb: 0.5, info: 'Belebt einen Mob mit halben LP' },
     gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt Gift, Brand, Schlaf und Angst' },
     // Fundstücke (nur zum Verkaufen)

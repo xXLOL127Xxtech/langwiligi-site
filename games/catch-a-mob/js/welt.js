@@ -3,13 +3,13 @@
 // Alle Spieler bauen aus demselben Seed dieselbe Karte, sie muss nicht übertragen werden.
 (function (G) {
   const CAM = G.CAM;
-  const W = 400, H = 400;
+  const W = 640, H = 640;          // grosse Welt: bis zum nächsten Dorf läuft man mehrere Minuten
   const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13 };
   const BLOCK = new Uint8Array(16); [T.WASSER, T.BAUM, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH].forEach(i => BLOCK[i] = 1);
-  const START = { x: 200, y: 200 };
+  const START = { x: 320, y: 320 };
   const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' } };
 
-  CAM.BIOME.forEach(b => { b.P = Object.assign({ obst: b.obst }, b.pal); });
+  CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
   const Welt = CAM.Welt = { W, H, T, START, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -97,7 +97,7 @@
     let id = 0;
     for (const p of B) {
       let n = 0, tries = 0;
-      while (n < 6 && tries++ < 400) {
+      while (n < 11 && tries++ < 700) {
         const x = 12 + Math.floor(rnd() * (W - 24)), y = 12 + Math.floor(rnd() * (H - 24));
         const i = y * W + x;
         if (biome[i] !== p.id || (tiles[i] !== T.BODEN && tiles[i] !== T.GRAS)) continue;
@@ -128,8 +128,8 @@
   Welt.wildLevel = function (x, y, r) {
     const d = Math.hypot(x - START.x, y - START.y);
     const n = r !== undefined ? r : CAM.hash2(Math.floor(x), Math.floor(y), 9);
-    // Rund um den Startpunkt Stufe 5 (so stark wie dein Starter), pro 6 Felder Entfernung etwa eine Stufe mehr
-    return Math.max(5, Math.min(50, Math.round(5 + d / 6 + (n - 0.5) * 2)));
+    // Rund um den Startpunkt Stufe 5 (so stark wie dein Starter), pro 13 Felder Entfernung etwa eine Stufe mehr (nach 100 Feldern Stufe 13, nach 300 Feldern Stufe 28)
+    return Math.max(5, Math.min(50, Math.round(5 + d / 13 + (n - 0.5) * 2)));
   };
 
   // Was steht neben dem Feld? Gibt { x, y, meta, t } für Dinge zum Ansprechen zurück (Türen, Wegstein, Rune)
