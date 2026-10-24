@@ -71,7 +71,11 @@
     zorn_luft:     { n: 'Federhagel',      el: 'Luft',     pow: 65, acc: 100, aoe: true },
     zorn_licht:    { n: 'Prismasturm',     el: 'Licht',    pow: 65, acc: 100, aoe: true },
   };
+  // Weitere Spezialeffekte auf bestehenden Attacken
+  const FX = { rammen: ['betaeubt', 10], steinwurf: ['betaeubt', 12], beben: ['betaeubt', 20], bergsturz: ['betaeubt', 25], sturmschwinge: ['blind', 25], lichtblitz: ['blind', 15],
+    strahlenlanze: ['blind', 30], tiefenwoge: ['laehmung', 20], dornenpeitsche: ['laehmung', 15], moorspritzer: ['schwaeche', 15], schattenbiss: ['schwaeche', 20], krallenhieb: ['schwaeche', 12] };
   for (const k in M) M[k].id = k;
+  for (const k in FX) if (M[k] && !M[k].st) { M[k].st = FX[k][0]; M[k].p = FX[k][1]; }
   // Die drei Attacken pro Element in der Reihenfolge, wie sie gelernt werden
   CAM.EL_MOVES = {
     Normal: ['rammen', 'genesung', 'rammen'],
@@ -85,8 +89,13 @@
   };
   CAM.EL_ZORN = { Feuer: 'zorn_feuer', Wasser: 'zorn_wasser', Pflanze: 'zorn_pflanze', Erde: 'zorn_erde', Luft: 'zorn_luft', Licht: 'zorn_licht', Schatten: 'verderben', Normal: 'verderben' };
 
-  CAM.STATUS = { gift: 'vergiftet', brand: 'brennt', schlaf: 'schläft', furcht: 'verängstigt' };
-  CAM.STATUS_KURZ = { gift: 'GIF', brand: 'BRA', schlaf: 'SCH', furcht: 'ANG' };
+  // Gift/Brand: Schaden pro Runde. Schlaf: setzt aus. Furcht: 30 % Aussetzer. Betäubt: verliert genau den nächsten Zug.
+  // Gelähmt: 40 % Aussetzer (3 Züge). Geblendet: Treffer 40 % seltener (3 Züge). Geschwächt: 30 % weniger Schaden (3 Züge).
+  CAM.STATUS = { gift: 'vergiftet', brand: 'brennt', schlaf: 'schläft', furcht: 'verängstigt', betaeubt: 'betäubt', laehmung: 'gelähmt', blind: 'geblendet', schwaeche: 'geschwächt' };
+  CAM.STATUS_KURZ = { gift: 'GIF', brand: 'BRA', schlaf: 'SCH', furcht: 'ANG', betaeubt: 'BET', laehmung: 'LÄH', blind: 'BLI', schwaeche: 'SCW' };
+  CAM.STATUS_COL = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0', betaeubt: '#ffd54a', laehmung: '#e8e04a', blind: '#fff3b0', schwaeche: '#8fa0b8' };
+  CAM.STATUS_NAME = { gift: 'Gift', brand: 'Brand', schlaf: 'Schlaf', furcht: 'Angst', betaeubt: 'Betäubung', laehmung: 'Lähmung', blind: 'Blendung', schwaeche: 'Schwäche' };
+  CAM.fxText = mv => mv.st ? mv.p + ' % Chance auf ' + CAM.STATUS_NAME[mv.st] : '';
 
   // ---------- Mobs ----------
   // el/el2: Elemente (el2 ab Stufe el2ab), base: LP/Angriff/Verteidigung/Tempo, rar: 0 gewöhnlich, 1 selten, 2 episch, 3 legendär
@@ -154,6 +163,7 @@
     { tile: 'gras', herde: [2, 4], scheu: true }, { nah: 'wasser', tile: 'boden', herde: [1, 3] }, { nah: 'baum', herde: [2, 3], scheu: false }, { herde: [2, 3] }, { tile: 'boden' }, { nah: 'lava' }, { nah: 'kristall' }, { nah: 'grab', zeit: 'nacht' },
   ];
   F.forEach((f, i) => { if (!f.hab) f.hab = HAB[i] || {}; });
+  [9, 10, 29, 33, 35].forEach(i => { if (F[i] && F[i].hab) delete F[i].hab.herde; });   // Krabben, Pilze, Raupen, Frösche und Quallen leben allein: als Herde ergibt das keinen Sinn
   CAM.habText = function (f) {
     const h = f.hab || {}, t = [];
     if (h.herde) t.push('Gruppen');
@@ -413,6 +423,8 @@
     f.sigLv = f.legend ? [1, 6, 12] : [1, 4, 12, 24];
   });
 
+  const FX2 = { blasenreigen: ['blind', 20], blubberbiss: ['laehmung', 15] };
+  for (const k in FX2) if (M[k] && !M[k].st) { M[k].st = FX2[k][0]; M[k].p = FX2[k][1]; }
   CAM.ANZ_FAMILIEN = 16;                // normale Familien am Anfang; danach 8 Riesen, 4 Spezial-Mobs (24 bis 27) und 20 weitere Fabelwesen (28 bis 47)
   CAM.RARITAET = ['Gewöhnlich', 'Selten', 'Episch', 'Legendär'];
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
@@ -617,7 +629,7 @@
     trank2: { n: 'Grosser Heiltrank', preis: 150, heil: 120, info: 'Heilt 120 LP' },
     ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
     beleber: { n: 'Wiederbeleber', preis: 150, beleb: 0.5, info: 'Belebt einen Mob mit halben LP' },
-    gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt Gift, Brand, Schlaf und Angst' },
+    gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt alle Statuseffekte (Gift, Brand, Schlaf, Angst, Betäubung …)' },
     // Fundstücke (nur zum Verkaufen)
     knochen: { n: 'Knochensplitter', preis: 12, fund: true, info: 'Verkaufsware' },
     kristall: { n: 'Mondkristall', preis: 45, fund: true, info: 'Verkaufsware' },

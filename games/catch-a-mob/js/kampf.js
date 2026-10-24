@@ -182,15 +182,26 @@
       const me = this.cur(a); const mv = MOVES[me.moves[act.i]];
       if (!mv) return;
       // Status vor dem Zug
+      const blind = !!(me.status && me.status.t === 'blind'), schwach = !!(me.status && me.status.t === 'schwaeche');
       if (me.status) {
-        if (me.status.t === 'schlaf') {
-          me.status.n--;
-          if (me.status.n > 0) { ev.push({ k: 'msg', t: CAM.name(me) + ' schläft tief.' }); return; }
+        const st = me.status;
+        if (st.t === 'schlaf') {
+          st.n--;
+          if (st.n > 0) { ev.push({ k: 'msg', t: CAM.name(me) + ' schläft tief.' }); return; }
           me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' wacht auf!' });
-        } else if (me.status.t === 'furcht') {
-          me.status.n--;
-          if (me.status.n <= 0) me.status = null;
+        } else if (st.t === 'furcht') {
+          st.n--;
+          if (st.n <= 0) me.status = null;
           if (this.rnd() < 0.3) { ev.push({ k: 'msg', t: CAM.name(me) + ' ist vor Angst wie gelähmt.' }); return; }
+        } else if (st.t === 'betaeubt') {
+          me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' ist betäubt und verliert den Zug!' }); return;
+        } else if (st.t === 'laehmung') {
+          st.n--;
+          if (st.n <= 0) me.status = null;
+          if (this.rnd() < 0.4) { ev.push({ k: 'msg', t: CAM.name(me) + ' ist gelähmt und kann sich nicht bewegen!' }); return; }
+        } else if (st.t === 'blind' || st.t === 'schwaeche') {
+          st.n--;
+          if (st.n <= 0) { me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' ist wieder ganz bei sich.' }); }
         }
       }
       // Ziele bestimmen
@@ -212,7 +223,7 @@
         ev.push({ k: 'heal', a: a.id, i: a.active, hp: me.hp, t: CAM.name(me) + ' heilt sich um ' + (me.hp - before) + ' LP.' });
         return;
       }
-      const accMul = (CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1;
+      const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1);
       for (const t of targets) {
         const tm = t.team[t.active];
         if (this.rnd() * 100 >= mv.acc * accMul) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }
@@ -220,7 +231,7 @@
         const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
         const crit = this.rnd() < 1 / 8 ? 1.5 : 1;
         const rand = 0.85 + this.rnd() * 0.15;
-        const atk = me.atk * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (a.enraged ? 1.25 : 1);
+        const atk = me.atk * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (schwach ? 0.7 : 1) * (a.enraged ? 1.25 : 1);
         let dmg = Math.floor(((2 * me.lv / 5 + 2) * mv.pow * atk / tm.def) / 50 + 2);
         dmg = Math.max(1, Math.floor(dmg * stab * eff * crit * rand * this.wFx(mv.el) * (mv.aoe ? 0.8 : 1)));
         tm.hp = Math.max(0, tm.hp - dmg);
@@ -229,7 +240,7 @@
         if (eff > 1) ev.push({ k: 'msg', t: 'Sehr effektiv!' });
         else if (eff < 1) ev.push({ k: 'msg', t: 'Das ist nicht sehr effektiv ...' });
         if (tm.hp > 0 && mv.st && !tm.status && this.rnd() * 100 < mv.p) {
-          tm.status = { t: mv.st, n: mv.st === 'schlaf' ? 1 + Math.floor(this.rnd() * 3) : 3 };
+          tm.status = { t: mv.st, n: mv.st === 'schlaf' ? 1 + Math.floor(this.rnd() * 3) : mv.st === 'betaeubt' ? 1 : 3 };
           ev.push({ k: 'status', a: t.id, i: t.active, st: mv.st, t: CAM.name(tm) + ' ist ' + CAM.STATUS[mv.st] + '!' });
         }
       }

@@ -6,7 +6,7 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_GRUPPEN = 14, MAX_TIERE = 36, RAD_MIN = 7, RAD_MAX = 26, DESPAWN = 44, LEBEN = 300000;
+  const MAX_SICHT = 3, MAX_GRUPPEN = 4, MAX_TIERE = 6, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
   const RAR_FAKTOR = [1, 0.6, 0.22, 0.1];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -77,11 +77,21 @@
     W.liste.push(w);
     return w;
   }
-  W.spawnen = function (now, nah) {
-    const r0 = nah ? 5 : RAD_MIN, r1 = nah ? 16 : RAD_MAX;
+  // Bildschirmgrösse in Feldern (S.sicht wird in spiel.js gesetzt)
+  const sicht = () => S.sicht || { w: 24, h: 15 };
+  const imBild = (x, y, rand) => { const v = sicht(); return Math.abs(x - S.x) < v.w / 2 + (rand || 0) && Math.abs(y - S.y) < v.h / 2 + (rand || 0); };
+  const umgebung = (x, y) => { const v = sicht(); return Math.abs(x - S.x) < v.w && Math.abs(y - S.y) < v.h; };
+  W.neuAn = function (mob, x, y, now) { return neu(mob, x, y, now, W.nextHerde++, true); };
+  // Neue Mobs tauchen nur ausserhalb des Bildes auf (im Ring knapp daneben), nie vor deinen Augen
+  W.spawnen = function (now) {
+    const v = sicht();
+    if (W.liste.filter(w => imBild(w.x, w.y)).length >= MAX_SICHT) return false;
+    const frei = MAX_TIERE - W.liste.filter(w => umgebung(w.x, w.y)).length;
+    if (frei <= 0) return false;
     for (let versuch = 0; versuch < 40; versuch++) {
-      const a = Math.random() * 6.283, r = r0 + Math.random() * (r1 - r0);
+      const a = Math.random() * 6.283, rmin = Math.hypot(v.w / 2, v.h / 2) + 1.5, r = rmin + Math.random() * 9;
       const x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
+      if (imBild(x, y, 1.5)) continue;
       if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6) continue;
       const t = Welt.get(x, y);
       if ((t !== T.BODEN && t !== T.GRAS) || !gehbar(x, y)) continue;
@@ -91,7 +101,7 @@
       // bösartige Mobs gibt es nachts öfter
       if (f.bos && CAM.tageslicht(now) > 0.6 && Math.random() < 0.4) continue;
       const lv = Welt.wildLevel(x, y, Math.random());
-      const n = h.herde ? h.herde[0] + Math.floor(Math.random() * (h.herde[1] - h.herde[0] + 1)) : 1;
+      const n = h.herde ? Math.min(frei, h.herde[0] + Math.floor(Math.random() * (h.herde[1] - h.herde[0] + 1))) : 1;
       const id = W.nextHerde++;
       neu(W.wildMob(x, y, now, fam, lv), x, y, now, id, true);
       for (let i = 1; i < n; i++) {
@@ -122,13 +132,13 @@
   }
 
   W.update = function (dt, now, frei) {
-    // Neue nachspawnen: selten, und nur wenige Gruppen gleichzeitig
-    if (W.fuell > 0 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) { W.fuell--; W.spawnen(now, true); }
+    // Neue nachspawnen: selten, nur ausserhalb des Bildes und nie über das Limit
+    if (W.fuell > 0 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) { W.fuell--; W.spawnen(now); }
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
-      W.spawnT = 1 + Math.random() * 2;
+      W.spawnT = 6 + Math.random() * 8;
       const gruppen = new Set(W.liste.map(w => w.herde)).size;
-      if (gruppen < MAX_GRUPPEN && W.liste.length < MAX_TIERE && Math.random() < 0.9 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
+      if (gruppen < MAX_GRUPPEN && Math.random() < 0.65 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
     }
     const fuehrer = {};
     for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;
@@ -136,7 +146,7 @@
     const sicher = Welt.istSicher(S.x, S.y);
     for (const w of W.liste.slice()) {
       const d = Math.hypot(w.x - S.x, w.y - S.y);
-      if (d > DESPAWN || now - w.geboren > LEBEN) { W.entfernen(w); continue; }
+      if (d > Math.hypot(sicht().w, sicht().h) * 1.15 || now - w.geboren > LEBEN) { W.entfernen(w); continue; }
       if (d < 6 && !w.gesehen) { w.gesehen = true; if (!S.save.dex[w.mob.fam]) { S.save.dex[w.mob.fam] = 1; } }
       w.huepf = Math.max(0, w.huepf - dt);
       const boese = W.boese(w.mob), kann = frei && CAM.lebend() && !sicher && now > w.ruheBis;
@@ -173,6 +183,7 @@
           else { vx = (w.tx - w.x) / dd; vy = (w.ty - w.y) / dd; tempo = w.eilt ? 1.9 : 1.1; }
         }
       }
+      if (w.fest && (w.z === 'geht' || w.z === 'flieht')) { w.z = 'ruhe'; vx = vy = tempo = 0; }
       w.geht = false;
       if (tempo) {
         const ok = schritt(w, vx * tempo * dt, vy * tempo * dt);
@@ -185,6 +196,7 @@
   };
 
   // Ein Mob springt aus dem hohen Gras
+  function gehbarFuerSprung(x, y) { return !(Welt.blockiert(x - 0.3, y - 0.2) || Welt.blockiert(x + 0.3, y - 0.2) || Welt.blockiert(x - 0.3, y + 0.25) || Welt.blockiert(x + 0.3, y + 0.25)); }
   W.sprung = function (now) {
     if (S.sp || S.busy || !CAM.lebend()) return false;
     const grass = [];
@@ -196,7 +208,14 @@
     S.busy = true; CAM.UI.snd('ruf');
     setTimeout(() => {
       const sp = S.sp; S.sp = null; S.busy = false;
-      if (sp) CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!', erster: 1 });
+      if (sp) {
+        // Der Mob steht danach dort, wo er herausgesprungen ist (auch wenn man flieht)
+        const ex = S.x + [0, 1.3, 0, -1.3][S.dir], ey = S.y + [-1.3, 0, 1.3, 0][S.dir];
+        const ok = gehbarFuerSprung(ex, ey), px = ok ? ex : sp.x0, py = ok ? ey : sp.y0;
+        const ent = W.neuAn(sp.mob, px, py, Date.now());
+        ent.fest = true; ent.scheu = false; ent.dir = (S.dir + 2) % 4;
+        CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!', erster: 1, entity: ent });
+      }
     }, S.sp.dauer + 150);
     return true;
   };

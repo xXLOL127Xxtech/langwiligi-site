@@ -161,7 +161,7 @@
         const lab = labels[w];
         BS.sub = true;
         if (lab === 'Attacke') {
-          const mi = me.moves.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) }; });
+          const mi = me.moves.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) + (mv.st ? ' · <span style="color:' + CAM.STATUS_COL[mv.st] + '">' + CAM.fxText(mv) + '</span>' : '') }; });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
@@ -602,7 +602,7 @@
         case 'status': {
           if (s && s.i === e.i) {
             s.st = e.st;
-            if (e.st) { const P = mitte(e.a), col = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#9fd8ff', furcht: '#cfc9e0' }[e.st]; burst(P[0], P[1], col, 14, 90, -30); schwebe(e.a, CAM.STATUS_KURZ[e.st], col, true); UI.snd('status'); }
+            if (e.st) { const P = mitte(e.a), col = CAM.STATUS_COL[e.st]; burst(P[0], P[1], col, 14, 90, -30); schwebe(e.a, CAM.STATUS_KURZ[e.st], col, true); UI.snd('status'); }
           }
           await UI.say(e.t, 900);
           break;
@@ -682,7 +682,7 @@
     if (pz < p) { c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(x + 10, y + 25, bw * p, 8); }
     c.fillStyle = pz > 0.5 ? '#5fd38a' : pz > 0.2 ? '#ffd54a' : '#ff6b5e'; c.fillRect(x + 10, y + 25, bw * Math.min(p, pz) + (pz > p ? bw * (pz - p) * 0 : 0), 8);
     if (s.hup > 0) { c.fillStyle = 'rgba(255,255,255,' + (s.hup / 320 * 0.6) + ')'; c.fillRect(x + 10, y + 25, bw * p, 8); }
-    if (s.st) { const col = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0' }[s.st]; c.fillStyle = col; roundRect(c, x + 10, y + 38, 34, 14, 7); c.fill(); c.fillStyle = '#fff'; c.font = '700 10px system-ui'; c.textAlign = 'center'; c.fillText(CAM.STATUS_KURZ[s.st], x + 27, y + 48.5); }
+    if (s.st) { const col = CAM.STATUS_COL[s.st]; c.fillStyle = col; roundRect(c, x + 10, y + 38, 34, 14, 7); c.fill(); c.fillStyle = '#fff'; c.font = '700 10px system-ui'; c.textAlign = 'center'; c.fillText(CAM.STATUS_KURZ[s.st], x + 27, y + 48.5); }
     if (gross) {
       c.fillStyle = '#cfc9e0'; c.font = '12px system-ui'; c.textAlign = 'right'; c.fillText(Math.ceil(s.hp) + ' / ' + m.mhp, x + w - 10, y + 49);
       if (xp) { const need = CAM.xpBedarf(m.lv); c.fillStyle = 'rgba(138,63,252,.25)'; c.fillRect(x + 10, y + 53, bw, 3); c.fillStyle = '#8a3ffc'; c.fillRect(x + 10, y + 53, bw * Math.min(1, m.xp / need), 3); }

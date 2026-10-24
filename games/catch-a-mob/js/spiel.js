@@ -237,6 +237,7 @@
     if (document.hidden && !S.online) return;
     const now = Date.now();
     if (!Welt.tiles) return;
+    S.sicht = { w: W / TS, h: H / TS };
     update(dt, now, ts);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
     if (K.aktiv) {
@@ -366,7 +367,7 @@
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
-    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 2; CAM.Wilde.fuell = 9;
+    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 3; CAM.Wilde.fuell = 3;
     CAM.Bots.erzeugen();
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
     while (S.save.team.length > CAM.TEAM_MAX) S.save.box.push(S.save.team.pop());   // alte Spielstände: Überzählige kommen in den Zwinger
