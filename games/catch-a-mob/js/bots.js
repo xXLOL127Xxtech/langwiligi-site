@@ -28,7 +28,10 @@
       if (b.winner === 0) w++; else if (b.winner == null) w += 0.5;
     }
     // geglättet (Laplace) und nie ganz 0 oder 100: Auch ein klarer Favorit kann durch Treffer, Kritische und Fehlgriffe verlieren
-    return Math.max(5, Math.min(95, Math.round((w + 1) / (n + 2) * 100)));
+    // Rohwert s (0 bis 1) aus den Probekämpfen, dann abgeflacht: Gleich starke Teams ergeben etwa 50 %, ein klarer Favorit höchstens 80 % und ein klarer Aussenseiter nie unter 10 %,
+    // denn ein Kampf hat Glück (Treffer, Kritische, Fehlgriffe) und wer die besseren Elemente hat, hat es leichter. Gute Mobs beim Gegner drücken deine Chance spürbar.
+    const sr = (w + 1) / (n + 2);
+    return Math.round(10 + 70 * Math.pow(sr, 0.8));
   };
   const wert = m => CAM.preis(m) * (CAM.FAMILIEN[m.fam].spezial ? 4 : 1);
   CAM.mobWert = wert;
@@ -37,7 +40,7 @@
   function gehbar(x, y) { return !(Welt.blockiert(x - 0.3, y - 0.2) || Welt.blockiert(x + 0.3, y - 0.2) || Welt.blockiert(x - 0.3, y + 0.25) || Welt.blockiert(x + 0.3, y + 0.25)); }
   function teamFuer(rnd, hx, hy, champ) {
     const bi = Welt.biomeAt(hx, hy), B = CAM.BIOME[bi], lv = Welt.wildLevel(hx, hy, rnd());
-    const n = 2 + (lv > 12 ? 1 : 0) + (lv > 25 ? 1 : 0), team = [];
+    const n = CAM.TEAM_MAX, team = [];   // so viele Mobs wie du (Team-Maximum)
     if (champ) team.push(CAM.neuerMob(27, Math.min(50, lv + 4)));
     while (team.length < n) {
       let tot = 0; B.spawn.forEach(s => tot += s[1]);
@@ -66,6 +69,7 @@
     const gespeichert = S.save && S.save.bots;
     if (gespeichert && gespeichert.length) {
       Bots.liste = gespeichert.map(b => laufzeit({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, x: b.hx, y: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
+      Bots.liste.forEach(b => { while (b.team.length < CAM.TEAM_MAX) { const m = CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2)); b.team.push(m); } });   // alte Spielstände: auf 3 Mobs auffüllen
       return;
     }
     const rnd = CAM.mulberry32(Welt.seed * 31 + 7);
@@ -73,7 +77,7 @@
   };
   Bots.speichern = () => Bots.liste.map(b => ({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
   Bots.naechster = function (x, y, rad) { let best = null, bd = rad; for (const b of Bots.liste) { const d = Math.hypot(b.x - x, b.y - y); if (d < bd) { bd = d; best = b; } } return best; };
-  const auffuellen = b => { while (b.team.length < 2) b.team.push(CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2))); b.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); };
+  const auffuellen = b => { while (b.team.length < CAM.TEAM_MAX) b.team.push(CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2))); b.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); };
 
   // ---------- Bewegung ----------
   function schritt(b, dx, dy) {
@@ -276,7 +280,7 @@
     try {
       UI.snd('ruf');
       const eigen = S.save.team, fair = Math.random() < 0.7, mid = CAM.lvlMitte(eigen, b.team), lvl = fair ? mid : 0;
-      const p = 100 - CAM.siegChance(b.team, eigen, lvl);
+      const p = CAM.siegChance(eigen, b.team, lvl);
       const gMax = Math.min(S.save.gold, b.gold);
       const gold = Math.random() < 0.4 || gMax < 20 ? 0 : Math.max(10, Math.round(gMax * [0.05, 0.1, 0.2][Math.floor(Math.random() * 3)] / 5) * 5);
       const offer = { modus: fair ? 'fair' : 'echt', gold, mobA: null, mobB: null };

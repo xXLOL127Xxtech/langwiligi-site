@@ -583,7 +583,7 @@
             await spieleAngriff(e.anim);
             // Folgt kein Schaden (Daneben), weicht das Ziel aus
             const nxt = ev[k + 1];
-            if (nxt && nxt.k === 'msg' && nxt.t === 'Die Attacke geht daneben!') { ausweichen(e.anim.to[0]); }
+            if (nxt && nxt.k === 'msg' && nxt.t === 'Die Attacke geht daneben!') { ausweichen(e.anim.to[0]); BS.lastFloat = e.anim.to[0]; schwebe(e.anim.to[0], 'DANEBEN!', '#cfc9e0', true); UI.snd('tick'); }
           } else {
             const ziel = e.t.indexOf('Sehr effektiv') === 0 ? '#5fd38a' : e.t.indexOf('Kritisch') === 0 ? '#ffd54a' : '';
             if (ziel && BS.lastFloat) { const krit = e.t.indexOf('Kritisch') === 0; schwebe(BS.lastFloat, krit ? 'KRITISCH!' : e.t.replace('!', '').replace(' ...', ''), ziel, krit); if (krit) { BS.shake = Math.max(BS.shake, 12); UI.snd('treffer'); } }

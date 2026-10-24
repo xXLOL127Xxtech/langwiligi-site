@@ -271,7 +271,7 @@
       const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1);
       for (const t of targets) {
         const tm = t.team[t.active];
-        if (this.rnd() * 100 >= mv.acc * accMul) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }
+        if (this.rnd() * 100 >= mv.acc * accMul * 0.9) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // Grundchance zu verfehlen: 10 % (schwächere Attacken öfter)
         const eff = CAM.effekt(mv.el, CAM.elemente(tm));
         const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
         const crit = this.rnd() < 1 / 8 ? 1.5 : 1;
