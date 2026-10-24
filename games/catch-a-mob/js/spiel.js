@@ -77,7 +77,7 @@
         }
         if (sieht && !Welt.istSicher(S.x, S.y)) {
           if (!tr.alarm) { tr.alarm = now; UI.snd('ruf'); }
-          else if (now - tr.alarm > 700) { tr.alarm = 0; A.trainerKampf(tr); break; }
+          else if (now - tr.alarm > 700) { tr.alarm = 0; A.trainerKampf(tr, { erster: 1 }); break; }
         } else tr.alarm = 0;
       }
     }
@@ -203,7 +203,7 @@
     const prot = (S.prot[S.idx] || 0) - now;
     $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';
     const z = S.ziel; let h = '';
-    if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : ['', 'Heilhaus', 'Siegel-Laden', 'Mob-Händler'][z.z.meta];
+    if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
@@ -346,7 +346,7 @@
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
     S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = [];
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
-    S.save.team.forEach(m => { delete m.faintDone; m.status = null; if (!m.moves) CAM.neuBerechnen(m); });
+    S.save.team.concat(S.save.box).forEach(m => { delete m.faintDone; m.status = null; CAM.angleichen(m); });
     $('start').classList.add('hidden'); UI.closePanel();
     if (S.online) {
       A.hallo();

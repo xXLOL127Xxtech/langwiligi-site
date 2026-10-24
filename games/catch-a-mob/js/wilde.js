@@ -64,7 +64,7 @@
         if (now - w.alarm > 450) { vx = ux; vy = uy; tempo = 3.4; }
         if (d < 0.95 && now - w.alarm > 450) {
           w.z = 'ruhe'; w.t = 2;
-          CAM.A.wildKampf(w.mob, { intro: 'Ein bösartiger ' + CAM.name(w.mob) + ' (Lv ' + w.mob.lv + ') greift dich an!', entity: w });
+          CAM.A.wildKampf(w.mob, { intro: 'Ein bösartiger ' + CAM.name(w.mob) + ' (Lv ' + w.mob.lv + ') greift dich an!', entity: w, erster: 1 });
           continue;
         }
       } else if (w.z === 'jagt') { w.z = 'ruhe'; w.t = 1.5; }
@@ -104,7 +104,7 @@
     S.busy = true; CAM.UI.snd('ruf');
     setTimeout(() => {
       const sp = S.sp; S.sp = null; S.busy = false;
-      if (sp) CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!' });
+      if (sp) CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!', erster: 1 });
     }, S.sp.dauer + 150);
     return true;
   };
