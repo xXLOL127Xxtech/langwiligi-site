@@ -39,7 +39,9 @@
     const r = await UI.choose(items, { title: titel, numbers: true, wide: false });
     return r;
   };
-  function verlierGold() { const v = Math.floor(S.save.gold * 0.05); S.save.gold -= v; return v; }
+  function verlierGold() { const v = Math.floor(S.save.gold * 0.8); S.save.gold -= v; return v; }
+  // Niederlage: 10 % der Erfahrung, die für die aktuelle Stufe nötig ist, gehen bei jedem Mob im Team verloren (nie unter 0, keine Stufe weniger)
+  function verlierXp() { S.save.team.forEach(m => { m.xp = Math.max(0, (m.xp || 0) - Math.floor(CAM.xpBedarf(m.lv) * 0.1)); }); }
 
   A.heileTeam = function () { S.save.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; }); };
 
@@ -59,15 +61,40 @@
       const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
       const verletzt = alle.filter(o => CAM.heilInfo(o.m)).length;
       const fertig = pf.filter(e => e.ende <= jetzt).length;
-      const r = await UI.choose([{ label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
+      const plan = A.alleHeilenPlan();
+      const r = await UI.choose([{ label: 'Alle heilen (' + (plan.liste.length ? plan.preis + ' G' : 'nichts zu tun') + ')', sub: plan.liste.length ? plan.liste.length + ' Mobs · längste Pflege ' + dauerText(plan.sek) + (plan.bleibt ? ' · ' + plan.bleibt + ' bleibt bei dir' : '') : 'alle gesund', disabled: !plan.liste.length || S.save.gold < plan.preis },
+        { label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
         { label: 'Mobs abholen', sub: pf.length ? fertig + ' fertig · ' + (pf.length - fertig) + ' in Pflege' : 'niemand in Pflege', disabled: !pf.length },
         { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
         { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nGib Mobs ab und zieh weiter: Sie werden gepflegt (Stufe 5: 1 Sekunde, Stufe 100: 3 Minuten). Abholen kannst du sie hier gratis oder in einem anderen Dorf gegen eine Transportgebühr.', start });
-      if (r === 0) await A.mobHeilen(hier);
-      else if (r === 1) { start = 1; await A.mobAbholen(hier); }
-      else if (r === 2) { start = 2; await A.zwinger(); }
+      if (r === 0) { start = 0; A.alleHeilen(hier, plan); }
+      else if (r === 1) { start = 1; await A.mobHeilen(hier); }
+      else if (r === 2) { start = 2; await A.mobAbholen(hier); }
+      else if (r === 3) { start = 3; await A.zwinger(); }
       else return;
     }
+  };
+  // Alle verletzten Mobs auf einmal abgeben. Mindestens ein Mob bleibt im Team bei dir.
+  A.alleHeilenPlan = function () {
+    const alle = S.save.team.map(m => ({ m, ort: 'team' })).concat(S.save.box.map(m => ({ m, ort: 'box' })));
+    let liste = alle.map(o => Object.assign(o, { h: CAM.heilInfo(o.m) })).filter(o => o.h);
+    let bleibt = 0;
+    if (liste.length && S.save.team.every(m => liste.some(o => o.m === m)) && !S.save.box.some(m => !liste.some(o => o.m === m))) {
+      const teuer = liste.filter(o => o.ort === 'team').sort((a, b) => a.h.preis - b.h.preis)[0];   // der günstigste bleibt
+      liste = liste.filter(o => o !== teuer); bleibt = 1;
+    }
+    return { liste, bleibt, preis: liste.reduce((s, o) => s + o.h.preis, 0), sek: liste.reduce((s, o) => Math.max(s, o.h.sek), 0) };
+  };
+  A.alleHeilen = function (hier, plan) {
+    if (!plan.liste.length || S.save.gold < plan.preis) return;
+    const jetzt = Date.now();
+    for (const o of plan.liste) {
+      if (o.ort === 'team') S.save.team.splice(S.save.team.indexOf(o.m), 1); else S.save.box.splice(S.save.box.indexOf(o.m), 1);
+      pflegeListe().push({ m: o.m, dorf: hier, ende: jetzt + o.h.sek * 1000, preis: o.h.preis });
+    }
+    if (!S.save.team.length && S.save.box.length) S.save.team.push(S.save.box.shift());
+    S.save.gold -= plan.preis; UI.snd('heil'); Save.speichern();
+    UI.toast(plan.liste.length + ' Mobs in Pflege (' + dauerText(plan.sek) + ').', 2500);
   };
   A.mobHeilen = async function (hier) {
     let start = 0;
@@ -191,7 +218,7 @@
   // Neuen Mob ins Team oder in den Zwinger
   A.mobDazu = function (m) {
     delete m.faintDone; m.status = null; CAM.wundenVerbinden(m);
-    if (S.save.team.length < 6) { S.save.team.push(m); return 'team'; }
+    if (S.save.team.length < CAM.TEAM_MAX) { S.save.team.push(m); return 'team'; }
     if (S.save.box.length < 100) { S.save.box.push(m); return 'box'; }
     return null;
   };
@@ -240,16 +267,16 @@
     let start = 0;
     for (;;) {
       const b = S.save.box;
-      if (!b.length) { await UI.info('Der Zwinger ist leer. Gefangene Mobs landen hier, wenn dein Team voll ist (6 Plätze).', 'Zwinger'); return; }
+      if (!b.length) { await UI.info('Der Zwinger ist leer. Gefangene Mobs landen hier, wenn dein Team voll ist (3 Plätze).', 'Zwinger'); return; }
       const items = b.map(m => ({ label: mobZeile(m) + tagRar(CAM.FAMILIEN[m.fam].rar), sub: lpText(m) }));
       const r = await UI.choose(items, { title: 'Zwinger', sub: b.length + ' von 100 Plätzen belegt', start, wide: true, numbers: false });
       if (r < 0) return;
       start = Math.min(r, b.length - 2 < 0 ? 0 : r);
       const m = b[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: S.save.team.length < 6 ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
       else if (w === 1) {
-        if (S.save.team.length < 6) { b.splice(r, 1); S.save.team.push(m); }
+        if (S.save.team.length < CAM.TEAM_MAX) { b.splice(r, 1); S.save.team.push(m); }
         else { const i = await A.waehleMob('Wen ersetzt er?'); if (i >= 0) { const alt = S.save.team[i]; S.save.team[i] = m; b[r] = alt; } }
       }
     }
@@ -432,13 +459,13 @@
     return lines;
   }
   async function verloren(titelText) {
-    const v = verlierGold();
+    const v = verlierGold(); verlierXp();
     // zum nächsten Dorf, Mobs heilen
     let best = null, bd = 1e9;
     for (const d of Welt.dorf) { const dd = Math.hypot(d.x - S.x, d.y - S.y); if (dd < bd) { bd = dd; best = d; } }
     A.heileTeam(); S.x = best.x + 0.5; S.y = best.y + 3.5; S.schritte = 0; Save.speichern();
     UI.snd('niederlage');
-    await UI.info((titelText || 'Dein Team ist erschöpft.') + '<br>Du verlierst ' + ge(v) + ' und wachst im Heilhaus von <b>' + esc(best.name) + '</b> auf. Alle Mobs sind geheilt.', 'Niederlage');
+    await UI.info((titelText || 'Dein Team ist erschöpft.') + '<br>Du verlierst ' + ge(v) + ' (80 %) und 10 % Erfahrung und wachst im Heilhaus von <b>' + esc(best.name) + '</b> auf. Alle Mobs sind geheilt.', 'Niederlage');
   }
   function dexSet(fam, w) { S.save.dex[fam] = Math.max(S.save.dex[fam] || 0, w); }
 

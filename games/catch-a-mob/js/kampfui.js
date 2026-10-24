@@ -161,7 +161,7 @@
         const lab = labels[w];
         BS.sub = true;
         if (lab === 'Attacke') {
-          const mi = me.moves.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) }; });
+          const mi = me.moves.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) + (mv.st ? ' · <span style="color:' + CAM.STATUS_COL[mv.st] + '">' + CAM.fxText(mv) + '</span>' : '') }; });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
@@ -582,8 +582,8 @@
             const nxt = ev[k + 1];
             if (nxt && nxt.k === 'msg' && nxt.t === 'Die Attacke geht daneben!') { ausweichen(e.anim.to[0]); }
           } else {
-            const ziel = e.t.indexOf('Das ist sehr effektiv') === 0 ? '#5fd38a' : e.t.indexOf('kritischer') > 0 ? '#ffd54a' : '';
-            if (ziel && BS.lastFloat) schwebe(BS.lastFloat, e.t.replace('!', '').replace(' ...', ''), ziel);
+            const ziel = e.t.indexOf('Sehr effektiv') === 0 ? '#5fd38a' : e.t.indexOf('Kritisch') === 0 ? '#ffd54a' : '';
+            if (ziel && BS.lastFloat) { const krit = e.t.indexOf('Kritisch') === 0; schwebe(BS.lastFloat, krit ? 'KRITISCH!' : e.t.replace('!', '').replace(' ...', ''), ziel, krit); if (krit) { BS.shake = Math.max(BS.shake, 12); UI.snd('treffer'); } }
             await UI.say(e.t, e.t.length > 50 ? 1500 : 1000);
           }
           break;
@@ -602,7 +602,7 @@
         case 'status': {
           if (s && s.i === e.i) {
             s.st = e.st;
-            if (e.st) { const P = mitte(e.a), col = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#9fd8ff', furcht: '#cfc9e0' }[e.st]; burst(P[0], P[1], col, 14, 90, -30); schwebe(e.a, CAM.STATUS_KURZ[e.st], col, true); UI.snd('status'); }
+            if (e.st) { const P = mitte(e.a), col = CAM.STATUS_COL[e.st]; burst(P[0], P[1], col, 14, 90, -30); schwebe(e.a, CAM.STATUS_KURZ[e.st], col, true); UI.snd('status'); }
           }
           await UI.say(e.t, 900);
           break;
@@ -641,12 +641,17 @@
     const y0 = ball.y;
     await ani(420, t => { const f = Math.abs(Math.cos(t * Math.PI * 1.5)) * (1 - t); ball.y = y0 + (boden - y0) * Math.min(1, t * 1.6) - f * 28; });
     ball.y = boden; ball.glow = 0;
+    // Die Kugel wackelt langsam und wird spannender: erst Stille, dann Wackeln mit leuchtender Kugel
     for (let i = 0; i < n; i++) {
-      await sleep(350); UI.snd('tick');
-      await ani(480, t => { ball.rot = Math.sin(t * Math.PI * 2) * 0.55; });
-      ball.rot = 0;
+      await ani(650 + i * 150, t => { ball.glow = 0.15 * (0.5 + 0.5 * Math.sin(t * Math.PI * (4 + i * 2))); });
+      UI.snd('tick');
+      await ani(820, t => { ball.rot = Math.sin(t * Math.PI * 2) * (0.55 + i * 0.12) * (1 - 0.25 * t); ball.glow = 0.25 * Math.sin(t * Math.PI); });
+      ball.rot = 0; ball.glow = 0;
     }
-    await sleep(300);
+    // Der Moment der Wahrheit: die Kugel schimmert, dann klickt sie oder zerspringt
+    await ani(900, t => { ball.glow = 0.3 + 0.5 * Math.abs(Math.sin(t * Math.PI * 3)); ball.sc = 1 + 0.06 * Math.sin(t * Math.PI * 6); });
+    ball.sc = 1; ball.glow = 0;
+    await sleep(500);
     if (ok) {
       UI.snd('fang');
       burst(ball.x, ball.y, '#ffe680', 22, 200, 40); burst(ball.x, ball.y, '#c9a6ff', 18, 160, 0);
@@ -677,7 +682,7 @@
     if (pz < p) { c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(x + 10, y + 25, bw * p, 8); }
     c.fillStyle = pz > 0.5 ? '#5fd38a' : pz > 0.2 ? '#ffd54a' : '#ff6b5e'; c.fillRect(x + 10, y + 25, bw * Math.min(p, pz) + (pz > p ? bw * (pz - p) * 0 : 0), 8);
     if (s.hup > 0) { c.fillStyle = 'rgba(255,255,255,' + (s.hup / 320 * 0.6) + ')'; c.fillRect(x + 10, y + 25, bw * p, 8); }
-    if (s.st) { const col = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0' }[s.st]; c.fillStyle = col; roundRect(c, x + 10, y + 38, 34, 14, 7); c.fill(); c.fillStyle = '#fff'; c.font = '700 10px system-ui'; c.textAlign = 'center'; c.fillText(CAM.STATUS_KURZ[s.st], x + 27, y + 48.5); }
+    if (s.st) { const col = CAM.STATUS_COL[s.st]; c.fillStyle = col; roundRect(c, x + 10, y + 38, 34, 14, 7); c.fill(); c.fillStyle = '#fff'; c.font = '700 10px system-ui'; c.textAlign = 'center'; c.fillText(CAM.STATUS_KURZ[s.st], x + 27, y + 48.5); }
     if (gross) {
       c.fillStyle = '#cfc9e0'; c.font = '12px system-ui'; c.textAlign = 'right'; c.fillText(Math.ceil(s.hp) + ' / ' + m.mhp, x + w - 10, y + 49);
       if (xp) { const need = CAM.xpBedarf(m.lv); c.fillStyle = 'rgba(138,63,252,.25)'; c.fillRect(x + 10, y + 53, bw, 3); c.fillStyle = '#8a3ffc'; c.fillRect(x + 10, y + 53, bw * Math.min(1, m.xp / need), 3); }
@@ -783,7 +788,7 @@
     }
     // Fangkugel
     if (BS.ball && BS.ball.vis) {
-      const bl = BS.ball; c.save(); c.translate(bl.x, bl.y); c.rotate(bl.rot);
+      const bl = BS.ball; c.save(); c.translate(bl.x, bl.y); c.rotate(bl.rot); c.scale(bl.sc || 1, bl.sc || 1);
       if (bl.glow > 0) { c.fillStyle = 'rgba(255,240,170,' + (bl.glow * 0.5) + ')'; c.beginPath(); c.arc(0, 0, 30 + bl.glow * 8, 0, 6.3); c.fill(); }
       // Fangkugel: dunkle Kugel mit violettem Äquatorband, Knopf und Glanzpunkt
       const kg = c.createRadialGradient(-5, -6, 2, 0, 0, 18); kg.addColorStop(0, '#6a4aa0'); kg.addColorStop(0.55, '#2a1f3d'); kg.addColorStop(1, '#120a1e');
