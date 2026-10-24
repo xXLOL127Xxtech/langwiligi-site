@@ -35,6 +35,11 @@
   #keys { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); pointer-events: none; font-size: 12px; color: #cfc9e0; white-space: nowrap; }
   #keys kbd { background: rgba(255, 255, 255, 0.12); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font: 700 11px ui-monospace, Consolas, monospace; color: #fff; }
 
+  /* Grosse Schrift (Überfall) */
+  .banner { position: fixed; left: 0; right: 0; top: 34%; z-index: 40; text-align: center; font: 900 clamp(48px, 11vw, 120px)/1 system-ui, sans-serif; letter-spacing: 0.08em; color: #ff4a3d;
+    text-shadow: 0 4px 0 #3a0a08, 0 0 28px rgba(255, 60, 40, 0.65), 4px 4px 0 #000, -4px 4px 0 #000; pointer-events: none; animation: bannerIn 1.4s ease-out forwards; }
+  @keyframes bannerIn { 0% { transform: scale(2.6); opacity: 0; } 14% { transform: scale(1); opacity: 1; } 22% { transform: translateX(-10px) scale(1); } 30% { transform: translateX(10px); } 38% { transform: translateX(0); } 85% { opacity: 1; } 100% { opacity: 0; transform: scale(1.06); } }
+
   /* Fenster */
   #panel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(5, 4, 10, 0.5); z-index: 10; }
   #panel-box { background: var(--panel); border: 1px solid var(--accent); border-radius: 14px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0,0,0,.5);

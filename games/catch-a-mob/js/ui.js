@@ -84,6 +84,15 @@
   UI.info = (text, title, btn) => UI.choose([{ label: btn || 'Weiter' }], { title: title || '', before: '<p>' + text + '</p>', nocancel: false, numbers: false }).then(() => {});
   UI.confirm = (text, title, yes, no) => UI.choose([{ label: yes || 'Ja' }, { label: no || 'Nein' }], { title: title || '', before: '<p>' + text + '</p>', numbers: false, start: 1 }).then(i => i === 0);
 
+  // Grosse Schrift über dem Bildschirm (z. B. «ÜBERFALL!»), wartet bis sie wieder weg ist
+  UI.banner = function (text, ms, farbe) {
+    return new Promise(res => {
+      const d = document.createElement('div'); d.className = 'banner'; d.textContent = text; if (farbe) d.style.color = farbe;
+      document.body.appendChild(d); UI.snd('ruf');
+      setTimeout(() => { d.remove(); res(); }, ms || 1400);
+    });
+  };
+
   UI.toast = function (text, ms) {
     const t = document.createElement('div'); t.textContent = text; $('toast').appendChild(t);
     setTimeout(() => t.remove(), ms || 2600);

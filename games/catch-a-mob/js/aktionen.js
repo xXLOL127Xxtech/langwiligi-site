@@ -241,27 +241,43 @@
   A.mobDetails = async function (m) {
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
-    const moves = m.moves.map(id => CAM.moveFuer(m, id)).map(mv => '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '–') + (mv.st ? ' · ' + CAM.fxText(mv) : '') + '</td></tr>').join('');
+    const moves = m.moves.map(id => CAM.moveFuer(m, id)).map(mv => '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>').join('');
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
       '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>';
     await UI.info(html, 'Mob-Details');
   };
+  A.attackenWaehlen = async function (m) {
+    let start = 0;
+    for (;;) {
+      const alle = CAM.gelernt(m), slots = CAM.MOVE_SLOTS(m.lv), aktiv = m.moves.slice();
+      const items = alle.map(id => { const mv = CAM.moveFuer(m, id); return { label: (aktiv.includes(id) ? '✔ ' : '') + esc(mv.n) + ' ' + tagEl(mv.el), sub: CAM.moveText(mv) }; });
+      items.push({ label: 'Fertig', sub: aktiv.length + ' von ' + slots + ' Plätzen belegt' });
+      const r = await UI.choose(items, { title: mobNameFull(m) + ': Attacken', sub: 'Wähle bis zu ' + slots + ' Attacken für den Kampf.', numbers: false, wide: true, start });
+      if (r < 0 || r === alle.length) return;
+      start = r;
+      const id = alle[r];
+      if (aktiv.includes(id)) { if (aktiv.length <= 1) { UI.toast('Eine Attacke muss bleiben.'); continue; } m.wahl = aktiv.filter(x => x !== id); }
+      else { if (aktiv.length >= slots) { UI.toast('Alle ' + slots + ' Plätze belegt. Nimm zuerst eine ab.'); continue; } m.wahl = aktiv.concat(id); }
+      m.moves = CAM.attackenFuer(m.fam, m.lv, m); UI.snd('tick');
+    }
+  };
   A.teamMenue = async function () {
     let start = 0;
     for (;;) {
       const t = S.save.team;
       const items = t.map(m => ({ label: mobZeile(m) + elTags(m), sub: lpText(m) }));
-      const r = await UI.choose(items, { title: 'Dein Team', sub: 'Enter: Details und Ordnen', start, wide: true });
+      const r = await UI.choose(items, { title: 'Dein Team', sub: (() => { const sy = CAM.synergien(t).liste; return sy.length ? 'Teamgeist: ' + sy.map(x => x.n + ' (' + x.text + ')').join(' · ') : 'Teamgeist: keiner. Mische Elemente, z. B. Feuer + Pflanze.'; })(), start, wide: true });
       if (r < 0) return;
       start = r;
       const m = t[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Attacken wählen', sub: CAM.gelernt(m).length + ' bekannt · ' + CAM.MOVE_SLOTS(m.lv) + ' Plätze' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
-      else if (w === 1) await A.veredeln(m);
-      else if (w === 2) { t.splice(r, 1); t.unshift(m); start = 0; }
-      else if (w === 3) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
+      else if (w === 1) await A.attackenWaehlen(m);
+      else if (w === 2) await A.veredeln(m);
+      else if (w === 3) { t.splice(r, 1); t.unshift(m); start = 0; }
+      else if (w === 4) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
   A.zwinger = async function () {
@@ -452,12 +468,12 @@
       m.xp += teil;
       while (m.xp >= CAM.xpBedarf(m.lv) && m.lv < 50) {
         m.xp -= CAM.xpBedarf(m.lv);
-        const altS = m.stufe, altMhp = m.mhp, altAtk = m.atk, altDef = m.def, altSpd = m.spd, altN = CAM.name(m), altMoves = m.moves.slice();
+        const altS = m.stufe, altMhp = m.mhp, altAtk = m.atk, altDef = m.def, altSpd = m.spd, altN = CAM.name(m), altMoves = m.moves.slice(), altGel = CAM.gelernt(m);
         m.lv++; CAM.neuBerechnen(m);
         if (m.hp > 0) m.hp += m.mhp - altMhp;
         lines.push('<b style="color:#ffd54a">' + esc(altN) + ' steigt auf Stufe ' + m.lv + '!</b> <small style="color:#5fd38a">LP +' + (m.mhp - altMhp) + ' · Angriff +' + (m.atk - altAtk) + ' · Verteidigung +' + (m.def - altDef) + (m.spd > altSpd ? ' · Tempo +' + (m.spd - altSpd) : '') + '</small>');
         if (m.stufe > altS) lines.push('<b style="color:#c9a6ff">' + esc(altN) + ' entwickelt sich zu ' + esc(CAM.name(m)) + '!</b>');
-        m.moves.filter(x => !altMoves.includes(x)).forEach(x => lines.push('Neue Attacke: ' + esc(CAM.MOVES[x].n)));
+        CAM.gelernt(m).filter(x => !altGel.includes(x)).forEach(x => lines.push('Neue Attacke: ' + esc(CAM.MOVES[x].n) + (m.moves.includes(x) ? '' : ' <small>(Team, Mob, «Attacken wählen»)</small>')));
       }
     }
     return lines;
@@ -479,6 +495,7 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     dexSet(mob.fam, 1);
+    if (opt.erster === 1) await UI.banner(opt.hinterhalt ? 'HINTERHALT!' : 'ANGRIFF!');
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team, fang: CAM.fangStufe(S.save.team, S.save.fangXp) };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
@@ -522,9 +539,10 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     const team = trainerTeam(tr); team.forEach(m => dexSet(m.fam, 1));
+    if (opt.erster === 1) await UI.banner('ÜBERFALL!');
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team };
     const gegner = { id: 't', name: tr.name, side: 1, ctrl: 'ai', team };
-    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: tr.name + ' fordert dich heraus!', erster: opt.erster }));
+    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: opt.erster === 1 ? tr.name + ' überfällt dich!' : tr.name + ' fordert dich heraus!', erster: opt.erster }));
     const b = res.b; nachbereiten(S.save.team);
     const lines = [];
     if (b.winner === 0) {
@@ -729,7 +747,7 @@
     const meinGold = o ? (ichBinA ? o.gm : o.gt) | 0 : 0, seinGold = o ? (ichBinA ? o.gt : o.gm) | 0 : 0, stake = o && (ichBinA ? o.mm : o.mt) ? S.save.team[0] : null, seinStake = !!(o && (ichBinA ? o.mt : o.mm));
     const mein = CAM.duellKopien(S.save.team, lvl), goldStart = S.save.gold;
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: goldStart });
-    UI.toast(d.amb ? 'Überfall!' : 'Duell beginnt …', 1500);
+    if (d.amb) await UI.banner('ÜBERFALL!'); else UI.toast('Duell beginnt …', 1500);
     const ok = await warteAuf(() => S.teams[bid] && S.teams[bid][andere], 10000);
     if (!ok) { S.busy = false; UI.toast('Das Duell konnte nicht starten.'); delete S.teams[bid]; return; }
     const gegnerTeam = S.teams[bid][andere];

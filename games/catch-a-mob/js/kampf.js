@@ -5,6 +5,7 @@
 (function (G) {
   const CAM = G.CAM;
   const MOVES = CAM.MOVES;
+  const STG_NAME = { atk: 'Angriff', def: 'Verteidigung', acc: 'Genauigkeit' };
 
   class Battle {
     // o: { kind: 'wild'|'trainer'|'duel'|'raid', seed, weather, actors: [{ id, name, side, ctrl: 'local'|'remote'|'ai', team: [mob], boss, fleeFirst }] }
@@ -27,6 +28,14 @@
       }));
       this.actors.forEach(a => a.used.add(a.active));
       this.needRep = [];
+      this.kst = new Map();        // Mob → Stufen { atk, def, acc } von -4 bis +4
+      this.ein = new Map();        // Mob → einmalige Attacken, die schon benutzt wurden
+      this.rast = new Set();       // Mobs, die sich nach einer kräftigen Attacke ausruhen müssen
+      this.schild = new Set();     // Mobs mit Schutzschild
+      this.schutzT = new Map();    // Mob → Runde des letzten Schutzes (zweimal hintereinander klappt es kaum)
+      this.boost = new Map();      // Mob → { st, add, n }: Status-Chancen seiner Attacken steigen
+      this.wetterAlt = this.weather; this.wetterN = 0;
+      this.actors.forEach(a => { a.syn = CAM.synergien(a.team).fx; });
       this.lastSide = null;        // Seite, die zuletzt wirklich gehandelt hat: Es wird strikt abwechselnd gehandelt, nie zweimal dieselbe Seite hintereinander
       this.fortsetzen = false;     // Ersatz mitten in der Runde (nach einem Vorspiel des Gegners): danach wählt der Spieler seine Aktion
       this.rundeErste = this.erster != null ? this.erster : this.bestimmeErste();
@@ -51,6 +60,30 @@
     planAll() {
       for (const a of this.actors) if (!a.out && a.ctrl === 'ai') a.plan = this.aiChoose(a);
     }
+    stufe(m, w) { return (this.kst.get(m) || {})[w] || 0; }
+    stufeMul(m, w) { const n = this.stufe(m, w); return w === 'acc' ? (n >= 0 ? (3 + n) / 3 : 3 / (3 - n)) : (n >= 0 ? (2 + n) / 2 : 2 / (2 - n)); }
+    aendern(m, w, n) { const k = this.kst.get(m) || {}; const alt = k[w] || 0; k[w] = Math.max(-4, Math.min(4, alt + n)); this.kst.set(m, k); return k[w] - alt; }
+    einmalGenutzt(m, id) { const x = this.ein.get(m); return !!(x && x.has(id)); }
+    // Wie gut ist diese Attacke jetzt für den Computer?
+    bewerte(a, me, tm, mv) {
+      if (mv.einmal && this.einmalGenutzt(me, mv.id)) return -1;
+      const hpA = me.hp / me.mhp, hpF = tm.hp / tm.mhp;
+      let v = 0;
+      if (mv.pow) {
+        v = mv.pow * CAM.effekt(mv.el, CAM.elemente(tm)) * (CAM.elemente(me).includes(mv.el) ? 1.25 : 1) * (mv.multi ? (mv.multi[0] + mv.multi[1]) / 2 : 1);
+        v *= 1 - (mv.rueck || 0) * 0.5; if (mv.erschoepft) v *= 0.6; if (mv.saug && hpA < 0.7) v *= 1.2;
+        if (mv.st && !tm.status) v += mv.p * 0.3;
+        if (mv.boost && !this.boost.has(me)) v += 12;
+        return v;
+      }
+      if (mv.heal) return hpA < 0.35 ? 75 : hpA < 0.6 ? 25 : 0;
+      if (mv.schutz) return hpF > 0.3 && hpA < 0.6 ? 22 : 8;
+      if (mv.self && mv.stg) { const nutz = mv.stg.filter(g => g.z === 'self' && this.stufe(me, g.w) < 2).length; return nutz && hpA > (mv.selbst ? 0.7 : 0.35) ? 34 * nutz : 0; }
+      if (mv.wetter) return this.weather !== mv.wetter && this.wetterN === 0 ? 24 : 0;
+      if (mv.st) return !tm.status ? mv.p * (mv.acc / 100) * 0.55 : 0;
+      if (mv.stg) { const nutz = mv.stg.filter(g => g.z === 'foe' && this.stufe(tm, g.w) > -2).length; return nutz ? 30 * nutz : 0; }
+      return 0;
+    }
     aiChoose(a) {
       const me = this.cur(a);
       const foes = this.foes(a).filter(f => f.team[f.active] && f.team[f.active].hp > 0);
@@ -61,18 +94,17 @@
         // Riesen-Gegner: jede dritte Runde ein Flächenangriff, sonst eine seiner Attacken
         const aoe = me.moves.findIndex(id => MOVES[id].aoe);
         if (aoe >= 0 && this.turn % 3 === 0) return { t: 'move', i: aoe, target: target.id };
-        const non = me.moves.map((id, i) => i).filter(i => !MOVES[me.moves[i]].aoe);
+        const non = me.moves.map((id, i) => i).filter(i => !MOVES[me.moves[i]].aoe && MOVES[me.moves[i]].pow > 0);
         return { t: 'move', i: non[Math.floor(this.rnd() * non.length)], target: target.id };
       }
       // normale Gegner: meist die beste Attacke, manchmal eine zufällige
       let best = 0, bestV = -1;
       me.moves.forEach((id, i) => {
-        const mv = MOVES[id];
-        let v = mv.pow ? mv.pow * CAM.effekt(mv.el, CAM.elemente(tm)) * (CAM.elemente(me).includes(mv.el) ? 1.25 : 1) : (me.hp < me.mhp * 0.4 ? 40 : 0);
+        let v = this.bewerte(a, me, tm, CAM.moveFuer(me, id));
         v *= 0.8 + this.rnd() * 0.4;
         if (v > bestV) { bestV = v; best = i; }
       });
-      if (this.rnd() < 0.2) best = Math.floor(this.rnd() * me.moves.length);
+      if (this.rnd() < 0.15) { const ok = me.moves.map((id, i) => i).filter(i => !(MOVES[me.moves[i]].einmal && this.einmalGenutzt(me, me.moves[i]))); best = ok[Math.floor(this.rnd() * ok.length)]; }
       return { t: 'move', i: best, target: target.id };
     }
 
@@ -172,7 +204,7 @@
       const m = a.team[i];
       if (!m || m.hp <= 0 || i === a.active) return;
       const old = this.cur(a);
-      if (old) old.status = old.status && old.status.t !== 'furcht' ? old.status : null;
+      if (old) { old.status = old.status && old.status.t !== 'furcht' ? old.status : null; this.kst.delete(old); this.boost.delete(old); this.rast.delete(old); this.schild.delete(old); }
       a.active = i; a.used.add(i);
       ev.push({ k: 'switch', a: a.id, i, hp: m.hp, st: m.status ? m.status.t : null, t: a.name + ' ruft ' + CAM.name(m) + '!' });
     }
@@ -249,10 +281,17 @@
           if (st.n <= 0) { me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' ist wieder ganz bei sich.' }); }
         }
       }
+      const name = CAM.name(me);
+      if (this.rast.has(me)) { this.rast.delete(me); ev.push({ k: 'msg', t: name + ' ruht sich aus.' }); return; }
+      if (mv.einmal) {
+        if (this.einmalGenutzt(me, mv.id)) { ev.push({ k: 'msg', t: name + ' kann ' + mv.n + ' nur einmal pro Kampf einsetzen!' }); return; }
+        const x = this.ein.get(me) || new Set(); x.add(mv.id); this.ein.set(me, x);
+      }
       // Ziele bestimmen
-      let targets;
+      const selbst = !!(mv.heal || mv.self);
+      let targets = [];
       const foes = this.foes(a).filter(f => f.team[f.active] && f.team[f.active].hp > 0);
-      if (!mv.heal) {
+      if (!selbst) {
         if (!foes.length) return;
         if (mv.aoe) targets = foes;
         else {
@@ -261,34 +300,94 @@
           targets = [t];
         }
       }
-      ev.push({ k: 'msg', t: CAM.name(me) + ' setzt ' + mv.n + ' ein!', anim: { a: a.id, move: mv.id, to: mv.heal ? [a.id] : targets.map(t => t.id) } });
-      // Selbstheilung
+      // Kosten der Attacke (eigene LP)
+      if (mv.selbst) {
+        const kosten = Math.max(1, Math.floor(me.mhp * mv.selbst));
+        if (me.hp <= kosten) { ev.push({ k: 'msg', t: name + ' hat zu wenig LP für ' + mv.n + '!' }); return; }
+      }
+      ev.push({ k: 'msg', t: name + ' setzt ' + mv.n + ' ein!', anim: { a: a.id, move: mv.id, to: selbst ? [a.id] : targets.map(t => t.id) } });
+      if (mv.selbst) {
+        const kosten = Math.max(1, Math.floor(me.mhp * mv.selbst)); me.hp -= kosten;
+        ev.push({ k: 'hp', a: a.id, i: a.active, hp: me.hp, dmg: kosten, t: name + ' opfert LP!' });
+      }
+      // Selbstheilung (auch Tiefschlaf)
       if (mv.heal) {
         const before = me.hp; me.hp = Math.min(me.mhp, me.hp + Math.floor(me.mhp * mv.heal));
-        ev.push({ k: 'heal', a: a.id, i: a.active, hp: me.hp, t: CAM.name(me) + ' heilt sich um ' + (me.hp - before) + ' LP.' });
+        ev.push({ k: 'heal', a: a.id, i: a.active, hp: me.hp, t: name + ' heilt sich um ' + (me.hp - before) + ' LP.' });
+        if (mv.schlaf) { me.status = { t: 'schlaf', n: mv.schlaf + 1 }; ev.push({ k: 'status', a: a.id, i: a.active, st: 'schlaf', t: name + ' schläft ein!' }); }
         return;
       }
-      const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1);
+      // Schutzschild
+      if (mv.schutz) {
+        if (this.schutzT.get(me) === this.turn - 1 && this.rnd() < 0.67) { ev.push({ k: 'msg', t: 'Der Schutz klappt nicht noch einmal!' }); return; }
+        this.schild.add(me); this.schutzT.set(me, this.turn);
+        ev.push({ k: 'msg', t: name + ' schützt sich vor dem nächsten Treffer.' });
+        return;
+      }
+      const stufenAendern = (ziel, tm, g) => {
+        const d = this.aendern(tm, g.w, g.n);
+        const wn = STG_NAME[g.w], who = CAM.name(tm);
+        ev.push({ k: 'msg', t: d === 0 ? wn + ' von ' + who + ' geht nicht weiter ' + (g.n > 0 ? 'hoch' : 'runter') + '.' : wn + ' von ' + who + (d > 0 ? (d > 1 ? ' steigt stark!' : ' steigt!') : (d < -1 ? ' sinkt stark!' : ' sinkt!')) });
+      };
+      if (mv.boost) { this.boost.set(me, { st: mv.boost.st, add: mv.boost.add, n: mv.boost.n }); if (!mv.pow) ev.push({ k: 'msg', t: name + ' bereitet sich vor: ' + CAM.STATUS_NAME[mv.boost.st] + '-Chancen +' + mv.boost.add + ' %!' }); }
+      if (mv.wetter) { this.weather = mv.wetter; this.wetterN = 5; ev.push({ k: 'msg', t: 'Das Wetter wechselt: ' + CAM.WETTER[mv.wetter] + '!' }); }
+      if (selbst) {
+        (mv.stg || []).forEach(g => stufenAendern(a, me, g));
+        if (mv.erschoepft) this.rast.add(me);
+        return;
+      }
+      const syn = a.syn || {};
+      const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1) * this.stufeMul(me, 'acc') * (1 + (syn.accSelf || 0) / 100);
+      let gesamt = 0;
       for (const t of targets) {
         const tm = t.team[t.active];
-        if (this.rnd() * 100 >= mv.acc * accMul * 0.9) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // Grundchance zu verfehlen: 10 % (schwächere Attacken öfter)
-        const eff = CAM.effekt(mv.el, CAM.elemente(tm));
-        const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
-        const crit = this.rnd() < 1 / 8 ? 1.5 : 1;
-        const rand = 0.85 + this.rnd() * 0.15;
-        const atk = me.atk * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (schwach ? 0.7 : 1) * (a.enraged ? 1.25 : 1);
-        let dmg = Math.floor(((2 * me.lv / 5 + 2) * mv.pow * atk / tm.def) / 50 + 2);
-        dmg = Math.max(1, Math.floor(dmg * stab * eff * crit * rand * this.wFx(mv.el) * (mv.aoe ? 0.8 : 1)));
-        tm.hp = Math.max(0, tm.hp - dmg);
-        ev.push({ k: 'hp', a: t.id, i: t.active, hp: tm.hp, dmg, hit: true });
-        if (crit > 1) ev.push({ k: 'msg', t: 'Kritisch! Ein Volltreffer!' });
-        if (eff > 1) ev.push({ k: 'msg', t: 'Sehr effektiv!' });
-        else if (eff < 1) ev.push({ k: 'msg', t: 'Das ist nicht sehr effektiv ...' });
-        if (tm.hp > 0 && mv.st && !tm.status && this.rnd() * 100 < mv.p) {
-          tm.status = { t: mv.st, n: mv.st === 'schlaf' ? 1 + Math.floor(this.rnd() * 3) : mv.st === 'betaeubt' ? 1 : 3 };
-          ev.push({ k: 'status', a: t.id, i: t.active, st: mv.st, t: CAM.name(tm) + ' ist ' + CAM.STATUS[mv.st] + '!' });
+        if (this.schild.has(tm)) { this.schild.delete(tm); ev.push({ k: 'msg', t: CAM.name(tm) + ' schützt sich vor dem Angriff!' }); continue; }
+        const ausw = 1 - ((t.syn && t.syn.ausw) || 0) / 100;
+        if (this.rnd() * 100 >= mv.acc * accMul * ausw * 0.9) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // Grundchance zu verfehlen: 10 % (schwächere Attacken öfter)
+        if (mv.pow) {
+          const eff = CAM.effekt(mv.el, CAM.elemente(tm));
+          const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
+          const treffer = mv.multi ? mv.multi[0] + Math.floor(this.rnd() * (mv.multi[1] - mv.multi[0] + 1)) : 1;
+          let kritisch = false, n = 0;
+          for (let h = 0; h < treffer && tm.hp > 0; h++) {
+            const crit = this.rnd() < 1 / 8 + (mv.krit || 0) + (syn.krit || 0) / 100 ? 1.5 : 1;
+            const rand = 0.85 + this.rnd() * 0.15;
+            const atk = me.atk * this.stufeMul(me, 'atk') * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (schwach ? 0.7 : 1) * (a.enraged ? 1.25 : 1);
+            const def = tm.def * this.stufeMul(tm, 'def');
+            let dmg = Math.floor(((2 * me.lv / 5 + 2) * mv.pow * atk / def) / 50 + 2);
+            dmg = Math.max(1, Math.floor(dmg * stab * eff * crit * rand * this.wFx(mv.el) * (mv.aoe ? 0.8 : 1) * (1 + (syn.dmg || 0) / 100) * (1 - ((t.syn && t.syn.def) || 0) / 100)));
+            tm.hp = Math.max(0, tm.hp - dmg); gesamt += dmg; n++; if (crit > 1) kritisch = true;
+            ev.push({ k: 'hp', a: t.id, i: t.active, hp: tm.hp, dmg, hit: true });
+          }
+          if (mv.multi && n > 1) ev.push({ k: 'msg', t: n + ' Treffer!' });
+          if (kritisch) ev.push({ k: 'msg', t: 'Kritisch! Ein Volltreffer!' });
+          if (eff > 1) ev.push({ k: 'msg', t: 'Sehr effektiv!' });
+          else if (eff < 1) ev.push({ k: 'msg', t: 'Das ist nicht sehr effektiv ...' });
         }
+        // Status mit Chance (Vorbereitung und Teamgeist erhöhen sie)
+        if (tm.hp > 0 && mv.st && !tm.status) {
+          const bo = this.boost.get(me);
+          const p = mv.p + (bo && (!bo.st || bo.st === mv.st) ? bo.add : 0) + (mv.st === 'brand' ? (syn.brand || 0) : 0);
+          if (this.rnd() * 100 < p) {
+            tm.status = { t: mv.st, n: mv.st === 'schlaf' ? 1 + Math.floor(this.rnd() * 3) : mv.st === 'betaeubt' ? 1 : 3 };
+            ev.push({ k: 'status', a: t.id, i: t.active, st: mv.st, t: CAM.name(tm) + ' ist ' + CAM.STATUS[mv.st] + '!' });
+          } else if (!mv.pow) ev.push({ k: 'msg', t: 'Es wirkt nicht.' });
+        } else if (!mv.pow && mv.st && tm.status) ev.push({ k: 'msg', t: 'Es wirkt nicht: ' + CAM.name(tm) + ' hat schon einen Zustand.' });
+        // Stufen des Gegners (Schwächen, Nebelwand ...)
+        if (tm.hp > 0) (mv.stg || []).filter(g => g.z === 'foe').forEach(g => { if (this.rnd() * 100 < (g.p || 100)) stufenAendern(t, tm, g); });
       }
+      const bo = this.boost.get(me);
+      if (bo && mv.st && !mv.boost) { bo.n--; if (bo.n <= 0) this.boost.delete(me); }
+      // Saugen, Rückstoss, Erschöpfung
+      if (gesamt > 0 && mv.saug && me.hp > 0) {
+        const before = me.hp; me.hp = Math.min(me.mhp, me.hp + Math.max(1, Math.floor(gesamt * mv.saug)));
+        if (me.hp > before) ev.push({ k: 'heal', a: a.id, i: a.active, hp: me.hp, t: name + ' saugt ' + (me.hp - before) + ' LP auf.' });
+      }
+      if (gesamt > 0 && mv.rueck) {
+        const r = Math.max(1, Math.floor(gesamt * mv.rueck)); me.hp = Math.max(0, me.hp - r);
+        ev.push({ k: 'hp', a: a.id, i: a.active, hp: me.hp, dmg: r, t: name + ' erleidet Rückstoss!' });
+      }
+      if (mv.erschoepft && me.hp > 0) { this.rast.add(me); ev.push({ k: 'msg', t: name + ' ist erschöpft.' }); }
     }
 
     checkFaints(ev) {
@@ -313,6 +412,14 @@
     }
 
     endOfTurn(ev) {
+      this.schild.clear();
+      if (this.wetterN > 0 && --this.wetterN === 0) { this.weather = this.wetterAlt; ev.push({ k: 'msg', t: 'Das Wetter beruhigt sich.' }); }
+      for (const a of this.actors) {
+        const m = this.cur(a);
+        if (a.out || !m || m.hp <= 0 || !a.syn || !a.syn.heal || m.hp >= m.mhp) continue;
+        const h = Math.max(1, Math.floor(m.mhp * a.syn.heal)); m.hp = Math.min(m.mhp, m.hp + h);
+        ev.push({ k: 'heal', a: a.id, i: a.active, hp: m.hp, t: 'Teamgeist Gedeihen: ' + CAM.name(m) + ' heilt ' + h + ' LP.' });
+      }
       for (const a of this.actors) {
         const m = this.cur(a);
         if (a.out || !m || m.hp <= 0) continue;
