@@ -226,7 +226,7 @@
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
-    else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell mit Einsatz';
+    else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
@@ -273,7 +273,7 @@
   }
   UI.worldKey = function (e, k) {
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
-    if (UI.cards.length && (k === 'j' || k === 'n')) { const c = UI.cards[0]; k === 'j' ? c.yes() : c.no(); return true; }
+    if (UI.cards.length && (k === 'j' || k === 'n' || (k === 'g' && UI.cards[0].counter))) { const c = UI.cards[0]; k === 'j' ? c.yes() : k === 'g' ? c.counter() : c.no(); return true; }
     if (S.modus !== 'welt') return false;
     if (k === 'escape') { menue(); return true; }
     if (k === 'e' || k === 'enter' || k === ' ') { aktion(); return true; }

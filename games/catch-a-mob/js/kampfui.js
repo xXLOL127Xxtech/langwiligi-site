@@ -61,6 +61,9 @@
         const la = b.actor(BS.local);
         pump();
         if (b.phase === 'action') {
+          // Beginnt der Gegner die Runde, greift er jetzt an, erst danach wählst du
+          const vor = b.vorspiel();
+          if (vor.length) { await abspielen(vor); continue; }
           if (b.pending().includes(BS.local)) {
             const act = await frageAktion(la);
             b.submit(BS.local, act);

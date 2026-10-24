@@ -18,14 +18,17 @@
   };
   // Siegchance der Seite A in Prozent (viele Probekämpfe der Kampfregeln, Computer gegen Computer)
   CAM.siegChance = function (teamA, teamB, lvl, n) {
-    n = n || 20; let w = 0;
+    n = n || 240; let w = 0;
     for (let i = 0; i < n; i++) {
+      // Tagesform: Jeder Mob ist pro Probekampf bis zu 12 % stärker oder schwächer (Taktik, Reihenfolge, Glück), sonst gewinnt immer der Höhere
+      const rnd = CAM.mulberry32(77 + i * 131), form = t => { t.forEach(m => { const f = () => 0.88 + rnd() * 0.24; m.atk = Math.round(m.atk * f()); m.def = Math.round(m.def * f()); m.spd = Math.round(m.spd * f()); m.mhp = Math.round(m.mhp * f()); m.hp = m.mhp; }); return t; };
       const b = new CAM.Battle({ kind: 'duel', seed: 1000 + i * 7919, actors: [
-        { id: 'a', name: 'a', side: 0, ctrl: 'ai', team: CAM.duellKopien(teamA, lvl) }, { id: 'b', name: 'b', side: 1, ctrl: 'ai', team: CAM.duellKopien(teamB, lvl) }] });
+        { id: 'a', name: 'a', side: 0, ctrl: 'ai', team: form(CAM.duellKopien(teamA, lvl)) }, { id: 'b', name: 'b', side: 1, ctrl: 'ai', team: form(CAM.duellKopien(teamB, lvl)) }] });
       let g = 0; while (!b.over && g++ < 70) b.resolve();
       if (b.winner === 0) w++; else if (b.winner == null) w += 0.5;
     }
-    return Math.round(w / n * 100);
+    // geglättet (Laplace) und nie ganz 0 oder 100: Auch ein klarer Favorit kann durch Treffer, Kritische und Fehlgriffe verlieren
+    return Math.max(5, Math.min(95, Math.round((w + 1) / (n + 2) * 100)));
   };
   const wert = m => CAM.preis(m) * (CAM.FAMILIEN[m.fam].spezial ? 4 : 1);
   CAM.mobWert = wert;
@@ -79,6 +82,45 @@
     if (gehbar(b.x, b.y + dy)) { b.y += dy; ok = true; }
     return ok;
   }
+
+  // ---------- Wegfindung (A* auf dem Feldraster) ----------
+  // Nur wer auf dich zuläuft, sucht sich einen Weg um Hindernisse (Wasser, Bäume, Felsen, Mauern). Es jagt immer höchstens ein NPC gleichzeitig.
+  const feldFrei = (x, y, trainer) => !Welt.blockiert(x + 0.5, y + 0.5) && !(trainer && Welt.istSicher(x + 0.5, y + 0.5, 1));
+  function sucheWeg(sx, sy, tx, ty, trainer) {
+    sx = Math.floor(sx); sy = Math.floor(sy); tx = Math.floor(tx); ty = Math.floor(ty);
+    const key = (x, y) => x * 4096 + y, h = (x, y) => Math.abs(x - tx) + Math.abs(y - ty);
+    const start = { x: sx, y: sy, g: 0, f: h(sx, sy), p: null }, offen = [start], zu = new Map([[key(sx, sy), start]]), lim = SUCHE + 16;
+    let best = start, n = 0;
+    while (offen.length && n++ < 3000) {
+      let bi = 0; for (let i = 1; i < offen.length; i++) if (offen[i].f < offen[bi].f) bi = i;
+      const c = offen.splice(bi, 1)[0];
+      if (h(c.x, c.y) < h(best.x, best.y)) best = c;
+      if (c.x === tx && c.y === ty) { best = c; break; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = c.x + dx, y = c.y + dy, k = key(x, y);
+        if (Math.abs(x - sx) > lim || Math.abs(y - sy) > lim || x < 1 || y < 1 || x >= Welt.W - 1 || y >= Welt.H - 1) continue;
+        if (!(x === tx && y === ty) && !feldFrei(x, y, trainer)) continue;
+        const g = c.g + 1, alt = zu.get(k);
+        if (alt && alt.g <= g) continue;
+        const nd = { x, y, g, f: g + h(x, y), p: c };
+        zu.set(k, nd); offen.push(nd);
+      }
+    }
+    const weg = []; for (let c = best; c && c.p; c = c.p) weg.unshift([c.x + 0.5, c.y + 0.5]);
+    return weg;
+  }
+  // Richtung zum nächsten Wegpunkt (neu berechnet alle 0.7 s oder wenn sich das Ziel bewegt hat)
+  function lenke(n, x, y, tx, ty, now, trainer) {
+    if (!n.pfad || now - n.pfadT > 700 || Math.hypot(n.pfadZ[0] - tx, n.pfadZ[1] - ty) > 2) { n.pfad = sucheWeg(x, y, tx, ty, trainer); n.pfadT = now; n.pfadZ = [tx, ty]; }
+    while (n.pfad.length && Math.hypot(n.pfad[0][0] - x, n.pfad[0][1] - y) < 0.3) n.pfad.shift();
+    const wp = n.pfad.length ? n.pfad[0] : [tx, ty], dd = Math.hypot(wp[0] - x, wp[1] - y) || 1;
+    return [(wp[0] - x) / dd, (wp[1] - y) / dd];
+  }
+  // Nur ein Jäger auf einmal, danach eine Pause
+  const jagdFrei = now => now > (Bots.jagdPause || 0) && !(Bots.jaeger && Bots.jaeger.z === 'prov');
+  function jagdStart(n, now) { Bots.jaeger = n; n.pfad = null; }
+  function jagdEnde(now, pause) { Bots.jaeger = null; Bots.jagdPause = now + (pause || 25000) + Math.random() * 15000; }
+
   Bots.update = function (dt, now, frei) {
     if (S.modus !== 'welt') return;
     for (const b of Bots.liste) {
@@ -89,12 +131,12 @@
       const ziel = frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && !Welt.dorfBei(b.x, b.y) && now > b.provBis && now > b.ruheBis;
       if (b.z === 'prov') {
         // läuft auf dich zu und fordert dich heraus
-        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > SUCHE + 12) { b.z = 'ruhe'; b.t = 2; }
+        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > SUCHE + 12) { b.z = 'ruhe'; b.t = 2; jagdEnde(now, 5000); }
         else if (now - b.alarm < 600) { /* kurz erschrecken */ }
-        else if (d > 1.5) { vx = (S.x - b.x) / d; vy = (S.y - b.y) / d; tempo = 3.9; }
-        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; A.botProvokation(b); continue; }
-      } else if (ziel && d < SUCHE && d > 3 && Math.random() < dt * 0.3 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
-        b.z = 'prov'; b.alarm = now; UI.snd('ruf');
+        else if (d > 1.5) { [vx, vy] = lenke(b, b.x, b.y, S.x, S.y, now, false); tempo = 3.9; }
+        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; jagdEnde(now); A.botProvokation(b); continue; }
+      } else if (ziel && jagdFrei(now) && d < SUCHE && d > 3 && Math.random() < dt * 0.3 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
+        b.z = 'prov'; b.alarm = now; jagdStart(b, now); UI.snd('ruf');
       } else {
         b.t -= dt;
         if (b.z === 'ruhe' && b.t <= 0) {
@@ -122,7 +164,7 @@
         if (!ok && b.z === 'geht') { b.z = 'ruhe'; b.t = 0.6; }
         if (b.z === 'prov') {
           // hängt er an einer Wand fest, probiert er seitlich vorbeizukommen und gibt nach 2.5 s auf
-          if (!ok) { b.stuck = (b.stuck || 0) + dt; if (!schritt(b, -vy * tempo * dt, vx * tempo * dt)) schritt(b, vy * tempo * dt, -vx * tempo * dt); if (b.stuck > 2.5) { b.z = 'ruhe'; b.t = 2; b.stuck = 0; b.provBis = now + 20000; } }
+          if (!ok) { b.stuck = (b.stuck || 0) + dt; if (!schritt(b, -vy * tempo * dt, vx * tempo * dt)) schritt(b, vy * tempo * dt, -vx * tempo * dt); if (b.stuck > 2.5) { b.z = 'ruhe'; b.t = 2; b.stuck = 0; b.provBis = now + 20000; jagdEnde(now, 5000); } }
           else b.stuck = Math.max(0, (b.stuck || 0) - dt);
         }
         if (Math.abs(vx) > Math.abs(vy)) b.dir = vx > 0 ? 1 : 3; else b.dir = vy > 0 ? 2 : 0;
@@ -141,12 +183,12 @@
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
       let vx = 0, vy = 0, tempo = 0;
       const wild = tr.id % 5 < 2;
-      if (wild && !aus && frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && now > tr.provBis && d < 11 && tr.z !== 'prov') { tr.z = 'prov'; tr.pa = now; UI.snd('ruf'); }
+      if (wild && !aus && frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && now > tr.provBis && d < 11 && tr.z !== 'prov' && jagdFrei(now)) { tr.z = 'prov'; tr.pa = now; jagdStart(tr, now); UI.snd('ruf'); }
       if (tr.z === 'prov') {
-        if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; }
+        if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; jagdEnde(now, 5000); }
         else if (now - tr.pa < 600) { /* kurz erschrecken */ }
-        else if (d > 1.4) { vx = (S.x - tr.px) / d; vy = (S.y - tr.py) / d; tempo = 3.4; }
-        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; A.trainerKampf(tr, { erster: 1 }); continue; }
+        else if (d > 1.4) { [vx, vy] = lenke(tr, tr.px, tr.py, S.x, S.y, now, true); tempo = 3.4; }
+        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; jagdEnde(now); A.trainerKampf(tr, { erster: 1 }); continue; }
       } else {
         tr.t -= dt;
         if (tr.z === 'ruhe' && tr.t <= 0) {
@@ -164,7 +206,7 @@
         tr.geht = ok;
         if (!ok && tr.z === 'geht') { tr.z = 'ruhe'; tr.t = 0.6; }
         if (tr.z === 'prov') {
-          if (!ok) { tr.stuck = (tr.stuck || 0) + dt; if (!trSchritt(tr, -vy * tempo * dt, vx * tempo * dt)) trSchritt(tr, vy * tempo * dt, -vx * tempo * dt); if (tr.stuck > 2.5) { tr.z = 'ruhe'; tr.t = 2; tr.stuck = 0; tr.provBis = now + 20000; } }
+          if (!ok) { tr.stuck = (tr.stuck || 0) + dt; if (!trSchritt(tr, -vy * tempo * dt, vx * tempo * dt)) trSchritt(tr, vy * tempo * dt, -vx * tempo * dt); if (tr.stuck > 2.5) { tr.z = 'ruhe'; tr.t = 2; tr.stuck = 0; tr.provBis = now + 20000; jagdEnde(now, 5000); } }
           else tr.stuck = Math.max(0, (tr.stuck || 0) - dt);
         }
         if (Math.abs(vx) > Math.abs(vy)) tr.dir = vx > 0 ? 1 : 3; else tr.dir = vy > 0 ? 2 : 0;
@@ -185,6 +227,8 @@
     const gain = offer.gold + (offer.mobA ? wert(offer.mobA) : 0), lose = offer.gold + (offer.mobB ? wert(offer.mobB) : 0);
     if (offer.gold > b.gold) return { ok: false, text: 'So viel Gold habe ich gar nicht.' };
     if (offer.mobB && b.team.length < 2) return { ok: false, text: 'Das ist mein letztes Fabelwesen, das setze ich nicht.' };
+    // Kleiner Einsatz (höchstens 50 Gold, kein Mob): fast immer ja, solange er das Gold hat
+    if (offer.gold > 0 && offer.gold <= 50 && !offer.mobA && !offer.mobB && Math.random() < 0.96) return { ok: true, text: p < 40 ? 'Für so wenig Gold? Klar, versuchen wir es.' : 'Gerne, die paar Münzen sind es mir wert.' };
     let score = (p / 100 - 0.5) * 2 + b.ego + (Math.random() - 0.5) * 0.3;
     if (gain + lose > 0) score += (gain - lose) / (gain + lose) * 0.5 - (lose > b.gold * 0.5 ? 0.25 : 0);
     if (offer.mobB && CAM.FAMILIEN[offer.mobB.fam].spezial) score -= 0.35;
@@ -204,10 +248,16 @@
   A.botMenue = async function (b) {
     if (S.busy) return;
     for (;;) {
-      const r = await UI.choose([{ label: 'Zum Duell herausfordern', sub: CAM.lebend() ? 'mit Einsatz' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() || Date.now() < b.ruheBis }, { label: 'Team ansehen' }, { label: 'Zurück' }],
+      const grund = !CAM.lebend() ? 'Dein Team ist erschöpft' : Welt.istSicher(S.x, S.y) ? 'In einer sicheren Zone nicht erlaubt' : Welt.istSicher(b.x, b.y) ? b.name + ' steht in einer sicheren Zone' : b.team.length < 1 ? 'Kein Team' : '';
+      const r = await UI.choose([{ label: 'Zum Duell herausfordern', sub: CAM.lebend() ? 'mit Einsatz' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() || Date.now() < b.ruheBis }, { label: 'Team ansehen' },
+        { label: 'Überfallen', sub: grund || 'Du schlägst zuerst zu · gewinnst du, klaust du ' + (b.gold < 150 ? '70 %' : '100 Gold'), disabled: !!grund }, { label: 'Zurück' }],
         { title: b.name + ' (Bot)', sub: 'Höchste Stufe ' + b.lv + ' · ' + staerkeText(b.team) + '\n' + b.gold + ' Gold' + (b.champ ? ' · Champion' : '') + (Date.now() < b.ruheBis ? '\nMöchte gerade nicht kämpfen.' : '') });
       if (r === 0) { await A.einsatzDuell(b); return; }
-      if (r === 1) await botTeamAnsehen(b); else return;
+      if (r === 1) await botTeamAnsehen(b);
+      else if (r === 2) {
+        if (!await UI.confirm('Du überfällst ' + esc(b.name) + ' ohne Vorwarnung. Du schlägst zuerst zu, es gibt keinen Einsatz. Gewinnst du, klaust du ' + (b.gold < 150 ? '70 % seines Goldes' : '100 Gold') + '.<br><small>Stufe ' + b.lv + ' · ' + staerkeText(b.team) + '</small>', 'Überfall bestätigen', 'Überfallen', 'Abbrechen')) continue;
+        b.ruheBis = 0; await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
+      } else return;
     }
   };
   async function botTeamAnsehen(b) {
@@ -216,42 +266,8 @@
     await UI.choose(items, { title: 'Team von ' + b.name, numbers: false });
   }
 
-  // Wählt Modus und Einsatz, fragt den Bot und startet das Duell
-  A.einsatzDuell = async function (b) {
-    const eigen = S.save.team, mid = CAM.lvlMitte(eigen, b.team);
-    const pFair = 100 - CAM.siegChance(b.team, eigen, mid), pEcht = 100 - CAM.siegChance(b.team, eigen, 0);
-    const mo = await UI.choose([
-      { label: 'Fairer Kampf', sub: 'alle auf Stufe ' + mid + ' · deine Chance ca. ' + pFair + ' %' },
-      { label: 'Echter Kampf', sub: 'Ø ' + Math.round(CAM.schnitt(eigen)) + ' gegen Ø ' + Math.round(CAM.schnitt(b.team)) + ' · deine Chance ca. ' + pEcht + ' %' },
-      { label: '← Zurück' }], { title: 'Wie wollt ihr kämpfen?', sub: 'Im fairen Kampf werden beide Teams auf die Stufe in der Mitte gesetzt, damit nur Wahl und Taktik zählen.' });
-    if (mo < 0 || mo === 2) return;
-    const offer = { modus: mo === 0 ? 'fair' : 'echt', gold: 0, mobA: null, mobB: null };
-    const lvl = mo === 0 ? mid : 0;
-    const maxG = Math.min(S.save.gold, b.gold);
-    const stufen = [25, 50, 100, 250, 500, 1000];
-    const ei = [{ label: 'Kein Einsatz', sub: 'nur für die Ehre' }].concat(stufen.map(g => ({ label: g + ' Gold', sub: g > maxG ? (g > S.save.gold ? 'du hast zu wenig' : b.name + ' hat zu wenig') : '', disabled: g > maxG })));
-    ei.push({ label: 'Fabelwesen setzen', sub: 'Wer verliert, gibt seinen Mob ab' }); ei.push({ label: '← Zurück' });
-    const e = await UI.choose(ei, { title: 'Einsatz', sub: 'Du hast ' + S.save.gold + ' Gold, ' + b.name + ' hat ' + b.gold + ' Gold.', numbers: false });
-    if (e < 0 || e === ei.length - 1) return;
-    if (e >= 1 && e <= stufen.length) offer.gold = stufen[e - 1];
-    if (e === ei.length - 2) {
-      const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
-      const frei = o => !(o.ort === 'Team' && S.save.team.filter(x => x !== o.m && x.hp > 0).length === 0);
-      const a = await UI.choose(alle.map(o => ({ label: H.mobZeile(o.m) + H.tagRar(CAM.FAMILIEN[o.m.fam].rar), sub: o.ort + ' · Wert ' + wert(o.m) + ' G', disabled: !frei(o) })), { title: 'Welches Fabelwesen setzt du?', sub: 'Verlierst du, gehört es dem Gegner.', numbers: false, wide: true });
-      if (a < 0) return;
-      offer.mobA = alle[a].m;
-      const bb = await UI.choose(b.team.map(m => ({ label: H.mobZeile(m) + H.tagRar(CAM.FAMILIEN[m.fam].rar) + (CAM.FAMILIEN[m.fam].spezial ? ' <span style="color:#ffb36b">★</span>' : ''), sub: 'Wert ' + wert(m) + ' G', disabled: b.team.length < 2 })), { title: 'Welches Fabelwesen verlangst du von ' + b.name + '?', sub: 'Gewinnst du, bekommst du es.', numbers: false, wide: true });
-      if (bb < 0) return;
-      offer.mobB = b.team[bb];
-    }
-    const pBot = 100 - (offer.modus === 'fair' ? pFair : pEcht);
-    const antw = Bots.entscheide(b, offer, pBot);
-    const zus = (offer.gold ? offer.gold + ' Gold' : '') + (offer.mobA ? (offer.gold ? ' und ' : '') + CAM.name(offer.mobA) + ' gegen ' + CAM.name(offer.mobB) : '') || 'kein Einsatz';
-    await UI.info('<b>' + esc(b.name) + ':</b> «' + esc(antw.text) + '»<br><small>Einsatz: ' + esc(zus) + ' · ' + (offer.modus === 'fair' ? 'Fairer Kampf auf Stufe ' + mid : 'Echter Kampf') + '</small>', antw.ok ? 'Angenommen' : 'Abgelehnt');
-    if (!antw.ok) { if (Math.random() < 0.3) b.ruheBis = Date.now() + 60000; return; }
-    if (!await UI.confirm(esc(b.name) + ' ist einverstanden.<br><small>' + esc(zus) + ' · ' + (offer.modus === 'fair' ? 'Fairer Kampf auf Stufe ' + mid : 'Echter Kampf') + '</small><br>Kampf jetzt bestätigen?', 'Kampf bestätigen')) return;
-    await A.botDuell(b, offer, lvl);
-  };
+  // Handelsfenster: siehe handel.js
+  A.einsatzDuell = b => A.botHandel(b);
 
   // Der Bot fordert dich heraus
   A.botProvokation = async function (b) {
@@ -264,8 +280,13 @@
       const gMax = Math.min(S.save.gold, b.gold);
       const gold = Math.random() < 0.4 || gMax < 20 ? 0 : Math.max(10, Math.round(gMax * [0.05, 0.1, 0.2][Math.floor(Math.random() * 3)] / 5) * 5);
       const offer = { modus: fair ? 'fair' : 'echt', gold, mobA: null, mobB: null };
-      const r = await UI.choose([{ label: 'Annehmen', sub: 'Deine Chance ca. ' + p + ' %' }, { label: 'Ablehnen', sub: 'kostet nichts' }],
-        { title: b.name + ' fordert dich heraus!', before: '<p>«Lust auf einen Kampf?»<br><small>' + (fair ? 'Fairer Kampf: alle Mobs auf Stufe ' + mid : 'Echter Kampf mit den echten Stufen') + ' · ' + (gold ? 'Einsatz ' + gold + ' Gold' : 'kein Einsatz') + '<br>Er: ' + staerkeText(b.team) + ' (Höchste Stufe ' + b.lv + ')</small></p>', numbers: false, start: 1, nocancel: true });
+      const r = await UI.choose([{ label: 'Annehmen', sub: 'Deine Chance ca. ' + p + ' %' }, { label: 'Gegenangebot', sub: 'Handelsfenster öffnen und selbst setzen' }, { label: 'Ablehnen', sub: 'kostet nichts' }],
+        { title: b.name + ' fordert dich heraus!', before: '<p>«Lust auf einen Kampf?»<br><small>' + (fair ? 'Fairer Kampf: alle Mobs auf Stufe ' + mid : 'Echter Kampf mit den echten Stufen') + ' · ' + (gold ? 'Einsatz ' + gold + ' Gold' : 'kein Einsatz') + '<br>Er: ' + staerkeText(b.team) + ' (Höchste Stufe ' + b.lv + ')</small></p>', numbers: false, start: 2, nocancel: true });
+      if (r === 1) {
+        S.busy = false;
+        await A.botHandel(b, { modus: offer.modus, goldMe: gold, goldThem: gold, mobMe: null, mobThem: null, vomBot: true }, '<b>' + esc(b.name) + ':</b> «Das ist mein Vorschlag. Setz selbst, was du willst.»');
+        b.ruheBis = Date.now() + 90000; return;
+      }
       if (r !== 0) { b.ruheBis = Date.now() + 240000; UI.toast(b.name + ' zieht enttäuscht ab.'); return; }
       S.busy = false;
       await A.botDuell(b, offer, lvl, 1);
@@ -274,22 +295,24 @@
 
   // Kampf Spieler gegen Bot und Auszahlung des Einsatzes
   A.botDuell = async function (b, offer, lvl, erster) {
+    offer.goldMe = offer.goldMe !== undefined ? offer.goldMe : (offer.gold || 0); offer.goldThem = offer.goldThem !== undefined ? offer.goldThem : (offer.gold || 0);
     S.busy = true; CAM.Netz.senden({ t: 'p', ...A.praesenz() });
     const mein = CAM.duellKopien(S.save.team, lvl), seine = CAM.duellKopien(b.team, lvl);
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: mein };
     const gegner = { id: 'bot', name: b.name, side: 1, ctrl: 'ai', team: seine };
     const res = await K.starten({ kind: 'duel', actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, weather: CAM.wetterBei(Welt.biomeAt(S.x, S.y), Date.now()), biome: Welt.biomeAt(S.x, S.y), erster,
-      beutel: () => ({}), verbrauch() {}, intro: b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
+      beutel: () => ({}), verbrauch() {}, intro: offer.klau ? S.name + ' überfällt ' + b.name + '!' : b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
     const bt = res.b, lines = [];
     const gewonnen = bt.over && bt.winner === 0;
-    if (bt.over && (offer.gold || offer.mobA || offer.mobB)) {
-      const was = [offer.gold ? ge(offer.gold) : '', gewonnen ? (offer.mobB ? esc(CAM.name(offer.mobB)) : '') : (offer.mobA ? esc(CAM.name(offer.mobA)) : '')].filter(Boolean).join(' und ');
+    if (bt.over && (offer.goldMe || offer.goldThem || offer.mobA || offer.mobB)) {
+      const was = [(gewonnen ? offer.goldThem : offer.goldMe) ? ge(gewonnen ? offer.goldThem : offer.goldMe) : '', gewonnen ? (offer.mobB ? esc(CAM.name(offer.mobB)) : '') : (offer.mobA ? esc(CAM.name(offer.mobA)) : '')].filter(Boolean).join(' und ');
       await UI.info((gewonnen ? '<b style="color:#5fd38a">Du hast gewonnen!</b><br>Dein Preis: ' : '<b style="color:#ff6b5e">' + esc(b.name) + ' hat gewonnen.</b><br>Dein Einsatz geht an ' + esc(b.name) + ': ') + was + '<br><small>Mit OK bestätigst du den Preis.</small>', gewonnen ? 'Preis bestätigen' : 'Einsatz bestätigen');
     }
     if (bt.over) {
       if (gewonnen) {
         UI.snd('sieg'); lines.push('<b style="color:#5fd38a">Du hast gegen ' + esc(b.name) + ' gewonnen!</b>');
-        if (offer.gold) { S.save.gold += offer.gold; b.gold = Math.max(0, b.gold - offer.gold); lines.push('Du bekommst ' + ge(offer.gold) + '.'); }
+        if (offer.goldThem) { S.save.gold += offer.goldThem; b.gold = Math.max(0, b.gold - offer.goldThem); lines.push('Du bekommst ' + ge(offer.goldThem) + '.'); }
+        if (offer.klau) { const g = b.gold < 150 ? Math.floor(b.gold * 0.7) : 100; S.save.gold += g; b.gold = Math.max(0, b.gold - g); lines.push('Beute: Du klaust ' + ge(g) + '.'); }
         if (offer.mobB) {
           const i = b.team.indexOf(offer.mobB);
           if (i >= 0) { b.team.splice(i, 1); const m = offer.mobB; m.hp = m.mhp; m.status = null; m.wunden = []; const wo = A.mobDazu(m); S.save.dex[m.fam] = 2; lines.push('<b style="color:#c9a6ff">' + esc(CAM.name(m)) + ' (Lv ' + m.lv + ') gehört jetzt dir!</b>' + (wo === 'box' ? ' (im Zwinger)' : wo ? '' : ' (Zwinger voll, er ist weg)')); }
@@ -297,7 +320,7 @@
         b.gold += 15 + b.lv;
       } else {
         UI.snd('niederlage'); lines.push('<b style="color:#ff6b5e">' + esc(b.name) + ' hat gewonnen.</b>');
-        if (offer.gold) { const g = Math.min(offer.gold, S.save.gold); S.save.gold -= g; b.gold += g; lines.push('Du zahlst ' + ge(g) + '.'); }
+        if (offer.goldMe) { const g = Math.min(offer.goldMe, S.save.gold); S.save.gold -= g; b.gold += g; lines.push('Du zahlst ' + ge(g) + '.'); }
         if (offer.mobA) {
           let i = S.save.team.indexOf(offer.mobA);
           if (i >= 0) S.save.team.splice(i, 1); else { i = S.save.box.indexOf(offer.mobA); if (i >= 0) S.save.box.splice(i, 1); }
