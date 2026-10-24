@@ -261,6 +261,29 @@ button, input, select { font-family: inherit; }
 .dnb-box.own-p2 { background: rgba(77, 208, 225, 0.35); color: #fff; }
 .dnb-box.claimed { animation: dnb-pop 0.25s ease-out; }
 
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Schulheft: Karopapier, Kugelschreiber, handgezeichnete Rahmen */
+#menuView { --panel:#fffdf3; --panel-2:#eef2ff; --line:#3b57c4; --text:#1b2a6b; --muted:#4f5f9e; --radius:3px; color:#1b2a6b; }
+body { background-color:#fbf7e6; background-image:linear-gradient(rgba(70,110,200,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(70,110,200,.28) 1px,transparent 1px); background-size:24px 24px; font-family:"Segoe Print","Bradley Hand","Comic Sans MS","Chalkboard SE",cursive; }
+#menuView .menu-head h1 { font-family:"Segoe Print","Bradley Hand","Comic Sans MS",cursive; font-weight:700; color:#c0392b; text-shadow:none; transform:rotate(-1.5deg); text-decoration:underline wavy #3b57c4 2px; text-underline-offset:8px; }
+#menuView .menu-head p { color:#1b2a6b; }
+#menuView .panel { background:rgba(255,253,243,.94); border:2px solid #1b2a6b; border-radius:255px 14px 225px 14px/14px 225px 14px 255px; box-shadow:4px 5px 0 rgba(27,42,107,.35); backdrop-filter:none; color:#1b2a6b; padding:20px 24px; }
+#menuView .panel h2 { font-family:inherit; color:#c0392b; font-size:1.15rem; }
+#menuView .opt-row label, #menuView .msg { color:#4f5f9e; }
+#menuView .mode-card { background:#fff; color:#1b2a6b; border:2px solid #1b2a6b; border-radius:12px 3px 12px 3px; }
+#menuView .mode-card span { color:#4f5f9e; }
+#menuView .mode-card:hover { transform:rotate(-.8deg); }
+#menuView .mode-card.selected { background:#fff6a8; border-color:#c0392b; }
+#menuView .seg button { background:#fff; color:#1b2a6b; border:2px solid #1b2a6b; border-radius:10px 2px 10px 2px; }
+#menuView .seg button.on { background:#c0392b; color:#fff; border-color:#c0392b; }
+#menuView .btn { background:#fff; color:#1b2a6b; border:2px solid #1b2a6b; border-radius:12px 3px 12px 3px; box-shadow:3px 3px 0 rgba(27,42,107,.4); font-family:inherit; }
+#menuView .btn:hover { background:#eef2ff; }
+#menuView .btn.primary { background:#ffe14d; color:#1b2a6b; }
+#menuView .field { background:#fff; border:2px solid #1b2a6b; border-radius:6px 2px 6px 2px; color:#1b2a6b; font-family:inherit; }
+#menuView .code-big { display:inline-block; padding:6px 22px 6px 32px; color:#c0392b; border:3px solid #c0392b; border-radius:50%/60%; transform:rotate(-3deg); letter-spacing:.3em; }
+#menuView .howto { background:rgba(255,253,243,.94); }
+#menuView .howto ol { color:#1b2a6b; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

@@ -860,6 +860,28 @@ button, input, select { font-family: inherit; }
 .pig-die.rolling { animation: none !important; }
 }
 
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Billardsaal: grüner Filz, Holzbande, Messingschilder */
+#menuView { --panel:#0d5a33; --panel-2:#146b3e; --line:rgba(255,255,255,.25); --muted:#b8e6c9; --radius:6px; --font-head:Georgia,serif; }
+body { background-color:#06301b; background-image:radial-gradient(ellipse at 50% 0%,rgba(255,244,200,.18),transparent 55%),repeating-linear-gradient(45deg,rgba(255,255,255,.02) 0 1px,transparent 1px 4px); font-family:Georgia,"Times New Roman",serif; }
+#menuView .menu-head h1 { font-family:Georgia,serif; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#e6c36a; text-shadow:0 2px 0 #3a2208,0 0 18px rgba(0,0,0,.5); }
+#menuView .menu-head p { color:#cfeedd; font-style:italic; }
+#menuView .panel { background:#0f6a3c; border:10px solid #5a3515; border-image:linear-gradient(#7a4a1e,#4a2a0e) 1; border-radius:0; box-shadow:inset 0 0 28px rgba(0,0,0,.45),0 10px 22px rgba(0,0,0,.55); backdrop-filter:none; }
+#menuView .panel h2 { font-family:Georgia,serif; font-weight:700; text-transform:uppercase; letter-spacing:.14em; font-size:.9rem; color:#e6c36a; }
+#menuView .mode-card { background:#0a4a2a; border:2px solid #e6c36a; border-radius:2px; box-shadow:inset 0 0 14px rgba(0,0,0,.4); }
+#menuView .mode-card:hover { transform:none; background:#0d5a33; }
+#menuView .mode-card.selected { background:#e6c36a; color:#2a1a05; border-color:#fff1b8; }
+#menuView .mode-card.selected span { color:#4a3410; }
+#menuView .seg button { border-radius:50%; min-width:46px; height:46px; background:#fff; color:#111; border:3px solid #111; font-weight:900; }
+#menuView .seg button.on { background:#e6c36a; border-color:#7a5510; }
+#menuView .btn { border-radius:3px; background:linear-gradient(#f0d98a,#c39a3a); color:#2a1a05; border:2px solid #6b4a10; box-shadow:0 3px 0 #4a3008; font-family:Georgia,serif; font-weight:700; text-transform:uppercase; letter-spacing:.08em; font-size:.85rem; }
+#menuView .btn:hover { filter:brightness(1.1); background:linear-gradient(#f0d98a,#c39a3a); }
+#menuView .btn:active { transform:translateY(2px); box-shadow:0 1px 0 #4a3008; }
+#menuView .btn.primary { background:linear-gradient(#ffffff,#d9d9d9); color:#111; border-color:#444; box-shadow:0 3px 0 #222; }
+#menuView .field { background:#06301b; border:2px solid #5a3515; border-radius:2px; box-shadow:inset 0 3px 8px rgba(0,0,0,.6); font-family:Georgia,serif; }
+#menuView .code-big { display:inline-block; padding:6px 30px 6px 40px; background:linear-gradient(#f0d98a,#c39a3a); color:#2a1a05; border:3px solid #6b4a10; border-radius:3px; letter-spacing:.35em; box-shadow:0 4px 0 #4a3008; font-family:Georgia,serif; }
+#menuView .howto { background:#0a4a2a; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

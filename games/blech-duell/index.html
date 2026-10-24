@@ -154,6 +154,28 @@
   .end-lines { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 14px; font-size: 14px; margin: 12px 0; }
   .end-lines .h { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
   .end-lines .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Schrottplatz: zerbeulte Stahlplatten mit Nieten, Warnorange, Schablonenschrift */
+:root { --panel:#34312c; --panel-2:#46423a; --line:rgba(0,0,0,.6); --muted:#c9c1ad; }
+.screen { background:radial-gradient(ellipse at center,rgba(20,14,8,.55),rgba(14,10,6,.92)); }
+.panel, .side { background-color:#3c3830; background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 6px),linear-gradient(#4a453b,#34312a); border:4px solid #14110c; border-radius:3px; box-shadow:inset 0 0 0 2px #6a6354,6px 6px 0 rgba(0,0,0,.6); position:relative; }
+.panel::before, .panel::after { content:""; position:absolute; top:9px; width:9px; height:9px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#d9d0bb,#6a6354); box-shadow:0 0 0 1px #14110c; }
+.panel::before { left:9px; } .panel::after { right:9px; }
+h1 { font-family:Impact,"Arial Black",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.04em; text-shadow:3px 3px 0 #000; }
+h1 em { color:#ff8c1a; }
+h2 { font-family:Impact,"Arial Black",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.06em; color:#ff8c1a; }
+.lbl { color:#e0d6bd; letter-spacing:.14em; }
+.btn { border-radius:2px; background:#5a554a; color:#f2efe8; border:3px solid #14110c; box-shadow:3px 3px 0 #000,inset 0 0 0 2px #7d7565; text-transform:uppercase; letter-spacing:.08em; font-size:13px; }
+.btn:hover { filter:none; background:#6a6457; }
+.btn:active { transform:translate(3px,3px); box-shadow:inset 0 0 0 2px #7d7565; }
+.btn.primary { background:repeating-linear-gradient(-45deg,#ff8c1a 0 14px,#e07400 14px 28px); color:#1a0e00; border-color:#14110c; text-shadow:0 1px 0 rgba(255,255,255,.35); }
+.btn.sel { background:#ff8c1a; color:#1a0e00; border-color:#14110c; }
+input[type=text] { border-radius:2px; background:#1c1a15; border:3px solid #14110c; box-shadow:inset 0 3px 6px rgba(0,0,0,.6); }
+.code { border-radius:2px; background:#14110c; color:#ff8c1a; border:3px solid #6a6354; letter-spacing:.3em; text-shadow:0 0 10px rgba(255,140,26,.5); }
+.vcard { border-radius:2px; background:#2a2721; border:3px solid #14110c; }
+.vcard.on { border-color:#ff8c1a; box-shadow:0 0 0 2px #ff8c1a inset; }
+.sw button { border-radius:2px; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

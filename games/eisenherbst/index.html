@@ -77,6 +77,23 @@ select { background:#0c0e12; color:var(--text); border:1px solid var(--line); bo
 .card { width:70px; height:98px; background:#efe6cf; border:2px solid #3a2f1e; border-radius:9px; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:6px 2px; font-size:14px; }
 .card span { font-size:26px; } .card i { font-size:10px; font-style:normal; color:#554; } .card:hover { transform:translateY(-4px); } .card.dis { cursor:default; } .card.empty { background:transparent; border:2px dashed var(--line); }
 @media (max-width:900px) { .cols,.trade,.grid2,.keys { grid-template-columns:1fr; } }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Burg Rabenfels 1438: Leder, Pergament, Eisen, dunkles Rostrot */
+:root { --panel:#2a211a; --line:rgba(230,195,90,.28); --acc:#9b2f22; }
+.screen { background:radial-gradient(ellipse at 50% 35%,rgba(70,38,18,.8),rgba(8,6,5,.97)); }
+.screen .box { background-color:#2b2118; background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.015) 0 2px,transparent 2px 5px),radial-gradient(ellipse at top,rgba(255,200,120,.08),transparent 60%); border:4px double #8a6a2e; border-radius:3px; box-shadow:0 0 0 3px #0d0907,0 26px 60px rgba(0,0,0,.7); font-family:Georgia,"Times New Roman",serif; }
+.screen h1 { font-family:Georgia,serif; font-variant:small-caps; letter-spacing:.1em; color:#e6c35a; text-shadow:0 3px 0 #000; border-bottom:1px solid #8a6a2e; padding-bottom:8px; }
+.screen .sub2 { font-style:italic; color:#cdbf9f; }
+.card2 { background:rgba(0,0,0,.28); border:2px solid #4a3a22; border-radius:2px; }
+.card2 h3 { font-family:Georgia,serif; font-variant:small-caps; letter-spacing:.08em; color:#e6c35a; font-size:16px; }
+.btn { border-radius:2px; background:linear-gradient(#a9392a,#7a2118); border:2px solid #14100a; box-shadow:inset 0 0 0 2px rgba(230,195,90,.45),3px 3px 0 #000; font-family:Georgia,serif; font-variant:small-caps; letter-spacing:.06em; font-size:16px; }
+.btn.ghost { background:#3a2e22; box-shadow:inset 0 0 0 2px rgba(230,195,90,.25),3px 3px 0 #000; }
+.btn:active { transform:translate(3px,3px); }
+input[type=text] { border-radius:2px; background:#eadcb4; color:#2a1d08; border:2px solid #14100a; font-family:Georgia,serif; }
+.panel { background:#2b2118; border:4px double #8a6a2e; border-radius:3px; font-family:Georgia,serif; }
+.tab { border-radius:2px; background:#3a2e22; font-family:Georgia,serif; } .tab.on { background:#9b2f22; }
+.opt { border-radius:2px; background:rgba(0,0,0,.25); border:2px solid #4a3a22; } .opt.sel, .opt:hover { background:rgba(155,47,34,.45); border-color:#e6c35a; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

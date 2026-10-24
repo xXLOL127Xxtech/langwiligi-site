@@ -257,6 +257,28 @@ button, input, select { font-family: inherit; }
 .ptg-rotgroup { display: flex; align-items: center; gap: 4px; }
 .ptg-rotgroup span { font-size: 0.8rem; color: var(--muted); margin-right: 2px; }
 @media (max-width:420px){.ptg-board{gap:6px;padding:6px}.ptg-quad{gap:4px;padding:5px}}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Konstruktionsplan: Blaupause, Masslinien, technische Schrift */
+#menuView { --panel:#0b3a66; --panel-2:#12507f; --line:rgba(190,230,255,.55); --muted:#9fd3ee; --radius:0px; --font-head:"Courier New",monospace; }
+body { background-color:#082c4e; background-image:linear-gradient(rgba(190,230,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(190,230,255,.12) 1px,transparent 1px),linear-gradient(rgba(190,230,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(190,230,255,.05) 1px,transparent 1px); background-size:80px 80px,80px 80px,16px 16px,16px 16px; font-family:"Courier New",Consolas,monospace; }
+#menuView .menu-head h1 { font-family:"Courier New",monospace; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:#e8f7ff; text-shadow:none; border-top:2px solid #26c6da; border-bottom:2px solid #26c6da; padding:8px 0; display:block; }
+#menuView .menu-head p { color:#9fd3ee; }
+#menuView .panel { background:rgba(8,44,78,.82); border:2px solid rgba(190,230,255,.7); border-radius:0; box-shadow:none; backdrop-filter:none; position:relative; }
+#menuView .panel::before { content:"+"; position:absolute; left:-9px; top:-14px; color:#26c6da; font-size:20px; } 
+#menuView .panel h2 { font-family:"Courier New",monospace; text-transform:uppercase; letter-spacing:.2em; font-size:.85rem; color:#26c6da; }
+#menuView .panel h2::before { content:"// "; }
+#menuView .mode-card { background:transparent; color:#e8f7ff; border:1px solid rgba(190,230,255,.7); border-radius:0; }
+#menuView .mode-card:hover { transform:none; background:rgba(38,198,218,.12); }
+#menuView .mode-card.selected { background:rgba(38,198,218,.22); border:2px solid #26c6da; }
+#menuView .seg button { border-radius:0; background:transparent; color:#e8f7ff; border:1px solid rgba(190,230,255,.7); font-family:inherit; }
+#menuView .seg button.on { background:#26c6da; color:#04202e; }
+#menuView .btn { border-radius:0; background:transparent; color:#e8f7ff; border:2px solid #e8f7ff; font-family:inherit; text-transform:uppercase; letter-spacing:.1em; font-size:.85rem; }
+#menuView .btn:hover { background:#e8f7ff; color:#082c4e; }
+#menuView .btn.primary { background:#26c6da; color:#04202e; border-color:#26c6da; box-shadow:none; }
+#menuView .field { background:rgba(0,0,0,.25); border:1px solid rgba(190,230,255,.7); border-radius:0; font-family:inherit; }
+#menuView .code-big { display:inline-block; padding:6px 20px 6px 30px; border:2px dashed #26c6da; color:#26c6da; letter-spacing:.4em; font-family:"Courier New",monospace; }
+#menuView .howto { background:rgba(8,44,78,.82); }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

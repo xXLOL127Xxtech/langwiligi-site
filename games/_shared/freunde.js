@@ -279,7 +279,7 @@
         '<h3>Einstellungen</h3>' +
         '<div class="lw-fr-set"><div class="lw-fr-name"><input id="lw-fr-name" maxlength="16" placeholder="Dein Benutzername" autocomplete="off" aria-label="Dein Benutzername"><button type="button" class="lw-b" data-a="save-name">Ändern</button></div>' +
         '<p class="lw-fr-m" style="margin:0 0 8px">Jeder Name gibt es nur einmal und gilt in allen Spielen.</p>' +
-        '<label><input type="checkbox" id="lw-fr-vis"> <span>In der Lobby sichtbar<br><small style="color:#8e89a8">Sonst können dich nur Freunde als online sehen. Aus = unsichtbar.</small></span></label>' +
+        '<label><input type="checkbox" id="lw-fr-vis"> <span>Für andere Online-Spieler sichtbar<br><small style="color:#8e89a8">Sonst sehen dich nur Freunde als online. Aus = unsichtbar.</small></span></label>' +
         '<label><input type="checkbox" id="lw-fr-only"> <span>Einladungen nur von Freunden</span></label></div>' +
       '</div>' +
     '</aside>' +

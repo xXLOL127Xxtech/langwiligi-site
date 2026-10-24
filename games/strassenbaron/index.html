@@ -196,6 +196,21 @@ input:focus, select:focus { border-color: var(--gold); }
 #toast.on { opacity: 1; transform: translateX(-50%) translateY(6px); }
 #info { position: fixed; z-index: 35; pointer-events: auto; animation: popIn .25s cubic-bezier(.2, 1.4, .4, 1); }
 @media (max-height: 700px) { .pc .money { font-size: 18px; margin: 1px 0 2px; } .pc { padding: 6px 10px 6px 14px; } #log { max-height: 18vh; } }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Spielbrett-Karten: cremefarbene Grundbuchkarten mit farbigem Kopfband */
+.mpanel { background:#f4ecd2; color:#1c1a14; border:3px solid #1c1a14; border-radius:4px; box-shadow:8px 8px 0 rgba(0,0,0,.55); backdrop-filter:none; }
+.mpanel .logo .sub { color:#4a4436; }
+.mbtns .btn { border-radius:2px; background:#fffaf0; color:#1c1a14; border:3px solid #1c1a14; box-shadow:4px 4px 0 #1c1a14; border-left:18px solid #a65a28; }
+.mbtns .btn small { color:#5a5242; }
+.mbtns .btn:nth-child(2) { border-left-color:#4fa3e0; } .mbtns .btn:nth-child(3) { border-left-color:#2e9e4d; } .mbtns .btn:nth-child(4) { border-left-color:#e0a300; }
+.mbtns .btn:hover:not(:disabled) { transform:translate(-2px,-2px); filter:none; box-shadow:6px 6px 0 #1c1a14; }
+.mbtns .btn.main { background:#e8402f; color:#fff; border-left-color:#7a1208; }
+.mbtns .btn.main small { color:#ffe2dc; }
+#menu input[type=text], #menu input[type=number], #menu select { background:#fffaf0; color:#1c1a14; border:2px solid #1c1a14; border-radius:2px; }
+#menu .code { color:#c0392b; border:4px solid #c0392b; display:inline-block; padding:0 20px; transform:rotate(-2deg); letter-spacing:.3em; }
+#menu .opts label { color:#4a4436; }
+#menu .btn:not(.main):not(.gold):not(.green) { background:#fffaf0; color:#1c1a14; border:3px solid #1c1a14; border-radius:2px; box-shadow:3px 3px 0 #1c1a14; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

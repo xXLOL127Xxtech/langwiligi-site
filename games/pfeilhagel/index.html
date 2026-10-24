@@ -103,6 +103,22 @@
   .res th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; border-top: 0; }
   .res td:nth-child(n+2), .res th:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
   .dot { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Pixel-Verlies: Steinplatte mit Pixelrahmen, Pixelschrift */
+:root { --panel:#241c36; --panel-2:#352a52; --line:#0b0714; }
+.screen.solid, .screen { background:rgba(8,5,16,.6); }
+.panel { background:#2b2142; border:0; border-radius:0; box-shadow:0 -6px 0 0 #0b0714,0 6px 0 0 #0b0714,-6px 0 0 0 #0b0714,6px 0 0 0 #0b0714,inset 0 0 0 4px #4a3a74,inset 0 0 0 8px #1a1330,12px 12px 0 0 rgba(0,0,0,.45); padding:28px; font-family:"Courier New",Consolas,monospace; }
+h1 { font-family:"Courier New",monospace; font-weight:900; text-transform:uppercase; letter-spacing:.04em; text-shadow:4px 4px 0 #0b0714; }
+h2 { font-family:"Courier New",monospace; text-transform:uppercase; letter-spacing:.08em; color:#ffb02e; text-shadow:3px 3px 0 #0b0714; }
+.lbl { color:#c8b7ff; letter-spacing:.16em; }
+.btn { border-radius:0; background:#4a3a74; color:#fff; border:0; box-shadow:0 -3px 0 0 #0b0714,0 3px 0 0 #0b0714,-3px 0 0 0 #0b0714,3px 0 0 0 #0b0714,inset 0 -4px 0 rgba(0,0,0,.35),inset 0 4px 0 rgba(255,255,255,.2); font-family:"Courier New",monospace; font-weight:900; text-transform:uppercase; letter-spacing:.06em; margin:4px 0; }
+.btn:hover { filter:brightness(1.2); }
+.btn:active { transform:translateY(3px); }
+.btn.primary { background:#ffb02e; color:#2a1a05; }
+.btn.sel { background:#ef5350; color:#fff; }
+input[type=text], select { border-radius:0; background:#120c22; border:0; box-shadow:0 0 0 3px #0b0714,inset 0 3px 0 rgba(0,0,0,.5); font-family:"Courier New",monospace; }
+.code { border-radius:0; background:#120c22; color:#ffb02e; box-shadow:0 0 0 3px #0b0714; letter-spacing:.3em; font-family:"Courier New",monospace; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

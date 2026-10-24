@@ -316,6 +316,23 @@ table.tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .uic .ic { width: 32px; height: 32px; }
   .card h1 { font-size: 30px; }
 }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Kriegsraum: Kartentisch, Pergamentkarte, Messing, Schablonenschrift */
+:root { --panel:#2a2f26; --panel-2:#3a4034; --line:rgba(220,200,140,.3); --accent:#d6a53a; --accent-2:#e8c26a; }
+body { background-color:#161a14; background-image:radial-gradient(ellipse at 50% 20%,rgba(214,165,58,.12),transparent 60%),repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 40px),repeating-linear-gradient(90deg,rgba(255,255,255,.02) 0 1px,transparent 1px 40px); }
+.card { background-color:#e3d3a8; background-image:radial-gradient(ellipse at 20% 0%,rgba(255,255,255,.4),transparent 50%),linear-gradient(rgba(60,40,10,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(60,40,10,.16) 1px,transparent 1px); background-size:auto,32px 32px,32px 32px; color:#2a2010; border:0; border-radius:2px; box-shadow:0 0 0 8px #2f3328,0 0 0 10px #d6a53a,0 24px 60px rgba(0,0,0,.7); font-family:Georgia,"Times New Roman",serif; }
+.card h1 { font-family:"Courier New",monospace; font-weight:900; text-transform:uppercase; letter-spacing:.16em; color:#7a1f14; text-shadow:none; border-bottom:3px double #2a2010; padding-bottom:6px; }
+.card h2, .card h3 { color:#2a2010; font-family:"Courier New",monospace; letter-spacing:.14em; }
+.sub { color:#4a3a1c; }
+.seg { background:rgba(42,32,16,.12); border-radius:0; border:2px solid #2a2010; padding:0; }
+.seg button { border-radius:0; color:#2a2010; font-family:"Courier New",monospace; text-transform:uppercase; }
+.seg button.on { background:#2a2010; color:#e3d3a8; }
+.btn { border-radius:0; background:#f1e4bf; color:#2a2010; border:3px solid #2a2010; box-shadow:3px 3px 0 #2a2010; font-family:"Courier New",monospace; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+.btn:hover { background:#fff3d2; }
+.btn:active { transform:translate(3px,3px); box-shadow:none; }
+.card input, .card select { border-radius:0; background:#f7edcc; color:#2a2010; border:3px solid #2a2010; font-family:"Courier New",monospace; }
+.card label, .card small, .card .lbl, .card h3 { color:#4a3a1c; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

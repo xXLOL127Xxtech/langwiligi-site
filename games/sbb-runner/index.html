@@ -182,6 +182,27 @@ label.lab{display:block;font-size:11px;letter-spacing:.08em;text-transform:upper
 .newbest{color:var(--gold);text-align:center;font-weight:900;margin-top:8px;font-size:15px}
 .ring{width:84px;height:84px;margin:12px auto 4px;display:block}
 #loaderr{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;background:#3a1010;border:1px solid #ff6b6b;border-radius:10px;padding:10px 14px;font-size:13.5px;max-width:92%}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* SBB-Fahrplantafel: weisse Schweizer Beschriftung, roter Balken, Uhr-Rot */
+:root { --panel:#ffffff; --panel2:#f1f1f1; --line:#c8c8c8; --text:#1a1a1a; --muted:#5a5a5a; }
+.panel { background:#fff; color:#1a1a1a; border:0; border-top:14px solid #eb0000; border-radius:0; box-shadow:0 20px 60px rgba(0,0,0,.6); font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; }
+.panel h1, .panel h2, .panel b { color:#1a1a1a; }
+.tabs { background:#1a1a1a; border-radius:0; padding:0; }
+.tabs button { border-radius:0; color:#e0e0e0; font-weight:700; text-transform:uppercase; letter-spacing:.06em; font-size:12px; }
+.tabs button.on { background:#eb0000; color:#fff; }
+.mode { background:#f1f1f1; color:#1a1a1a; border:2px solid #1a1a1a; border-radius:0; }
+.mode span { color:#5a5a5a; }
+.mode:hover { background:#e6e6e6; border-color:#1a1a1a; }
+.mode.on { background:#eb0000; color:#fff; border-color:#eb0000; }
+.mode.on span { color:#ffe0e0; }
+.btn { border-radius:0; background:#fff; color:#1a1a1a; border:2px solid #1a1a1a; text-transform:uppercase; letter-spacing:.06em; }
+.btn:hover { background:#f1f1f1; }
+.btn.red { background:#eb0000; border-color:#eb0000; color:#fff; box-shadow:none; }
+.codebox { border-radius:0; background:#ffd34d; color:#1a1a1a; border:2px solid #1a1a1a; font-family:"Courier New",monospace; letter-spacing:.3em; }
+.panel input { border-radius:0; background:#fff; color:#1a1a1a; border:2px solid #1a1a1a; }
+.panel .muted, .panel small { color:#5a5a5a; }
+.mode.on b, .mode.on span { color:#fff; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

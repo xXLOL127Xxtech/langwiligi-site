@@ -221,6 +221,32 @@ button, input, select { font-family: inherit; }
 .gmk-cell.win { background: rgba(110, 231, 183, 0.7); }
 .gmk-cell.win .gmk-stone { color: #0b3d2e; }
 
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Goban-Brett: helles Holz mit Linienraster, Tusche-Schrift, roter Stempel */
+#menuView { --panel:#e9c98a; --panel-2:#d9b270; --line:rgba(60,35,10,.55); --text:#2b1a08; --muted:#6b4a22; --radius:2px; --font-head:Georgia,"Times New Roman",serif; color:#2b1a08; }
+body { background-color:#3a2412; background-image:repeating-linear-gradient(90deg,rgba(0,0,0,.18) 0 1px,transparent 1px 7px),repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 38px); font-family:Georgia,"Times New Roman",serif; }
+#menuView .menu-head h1 { font-family:Georgia,serif; font-weight:400; letter-spacing:.18em; text-transform:uppercase; color:#f1dcae; text-shadow:0 2px 0 #1a0e04; }
+#menuView .menu-head p { color:#d8bd8a; }
+#menuView .panel { background-color:#e9c98a; background-image:linear-gradient(rgba(60,35,10,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(60,35,10,.25) 1px,transparent 1px); background-size:26px 26px; background-position:13px 13px; border:3px solid #2b1a08; border-radius:2px; box-shadow:6px 6px 0 rgba(0,0,0,.45); backdrop-filter:none; color:#2b1a08; }
+#menuView .panel h2 { font-weight:400; letter-spacing:.2em; text-transform:uppercase; font-size:.9rem; color:#8c1f1f; }
+#menuView .msg, #menuView .opt-row label { color:#5b3a16; }
+#menuView .mode-card { background:#f4dba5; color:#2b1a08; border:2px solid #2b1a08; border-radius:2px; }
+#menuView .mode-card span { color:#6b4a22; }
+#menuView .mode-card:hover { transform:none; background:#fbe9bd; }
+#menuView .mode-card.selected { background:#2b1a08; color:#f1dcae; border-color:#2b1a08; }
+#menuView .mode-card.selected span { color:#d8bd8a; }
+#menuView .seg button { border-radius:50%; min-width:44px; height:44px; background:#f4dba5; color:#2b1a08; border:2px solid #2b1a08; }
+#menuView .seg button.on { background:#111; color:#f4dba5; }
+#menuView .btn { border-radius:2px; background:#f4dba5; color:#2b1a08; border:2px solid #2b1a08; box-shadow:3px 3px 0 #2b1a08; letter-spacing:.04em; }
+#menuView .btn:hover { background:#fff1cc; }
+#menuView .btn:active { transform:translate(3px,3px); box-shadow:none; }
+#menuView .btn.primary { background:#b3261e; color:#fff4dc; border-color:#2b1a08; }
+#menuView .field { background:#fbeccb; border:2px solid #2b1a08; border-radius:2px; color:#2b1a08; }
+#menuView .code-big { display:inline-block; padding:6px 24px 6px 34px; border:4px solid #b3261e; color:#b3261e; border-radius:6px; transform:rotate(-2deg); letter-spacing:.35em; font-family:Georgia,serif; background:rgba(255,255,255,.35); }
+#menuView .howto { background-image:none; }
+#menuView .howto ol { color:#2b1a08; }
+#menuView .lb summary { color:#5b3a16; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

@@ -279,6 +279,28 @@ button, input, select { font-family: inherit; }
 .mnc-stone { width: 10px; height: 10px; }
 }
 
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Holzbrett mit Mulden, Steine als Zierde */
+#menuView { --panel:#4a2c14; --panel-2:#6a4222; --line:rgba(255,220,160,.3); --muted:#dcbf92; --radius:28px; --font-head:Georgia,serif; }
+body { background-color:#24140a; background-image:repeating-linear-gradient(95deg,rgba(255,200,120,.05) 0 3px,transparent 3px 9px,rgba(0,0,0,.12) 9px 11px); font-family:Georgia,"Times New Roman",serif; }
+#menuView .menu-head h1 { font-family:Georgia,serif; font-weight:700; letter-spacing:.06em; color:#ffb347; text-shadow:0 3px 0 #2a1608,0 0 0 #000; }
+#menuView .menu-head p { color:#e8cfa4; }
+#menuView .panel { background:linear-gradient(180deg,#7a4e28,#5e3a1c); border:3px solid #2a1608; border-radius:34px; box-shadow:inset 0 3px 0 rgba(255,220,160,.25),inset 0 -6px 12px rgba(0,0,0,.35),0 8px 0 #1a0d05; backdrop-filter:none; }
+#menuView .panel h2 { font-family:Georgia,serif; font-weight:700; color:#ffd89a; letter-spacing:.04em; }
+#menuView .mode-card { background:radial-gradient(ellipse at 50% 30%,#3a2010,#26140a); border:3px solid #1a0d05; border-radius:50px; box-shadow:inset 0 8px 14px rgba(0,0,0,.65),0 1px 0 rgba(255,220,160,.35); padding:18px 22px; }
+#menuView .mode-card:hover { transform:none; border-color:#ffb347; }
+#menuView .mode-card.selected { background:radial-gradient(ellipse at 50% 30%,#4a2a14,#2e1a0c); border-color:#ffb347; }
+#menuView .mode-card.selected::after { content:""; position:absolute; }
+#menuView .seg button { border-radius:999px; background:radial-gradient(ellipse at 50% 30%,#3a2010,#26140a); border:2px solid #1a0d05; color:#e8cfa4; box-shadow:inset 0 4px 8px rgba(0,0,0,.6); }
+#menuView .seg button.on { background:#ffa726; color:#2a1608; box-shadow:0 3px 0 #a86300; }
+#menuView .btn { border-radius:999px; background:#8a5a2e; border:2px solid #2a1608; box-shadow:0 4px 0 #1a0d05; font-family:Georgia,serif; }
+#menuView .btn:hover { background:#a46b36; }
+#menuView .btn:active { transform:translateY(3px); box-shadow:0 1px 0 #1a0d05; }
+#menuView .btn.primary { background:#ffa726; color:#2a1608; box-shadow:0 4px 0 #a86300; }
+#menuView .field { background:#26140a; border:2px solid #1a0d05; border-radius:999px; padding-left:18px; box-shadow:inset 0 4px 8px rgba(0,0,0,.6); }
+#menuView .code-big { display:inline-block; padding:10px 34px 10px 44px; border-radius:50px; background:radial-gradient(ellipse at 50% 30%,#2a160a,#1a0d05); box-shadow:inset 0 8px 14px rgba(0,0,0,.8),0 1px 0 rgba(255,220,160,.4); color:#ffd89a; letter-spacing:.35em; }
+#menuView .howto { background:#3a2210; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>
