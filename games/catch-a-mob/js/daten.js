@@ -459,15 +459,15 @@
   };
 
   // ---------- Heilhaus: Preis und Dauer pro Mob ----------
-  // Je höher Stufe und Seltenheit und je mehr Schaden, desto teurer und länger (1 Sekunde bis 3 Minuten).
+  // Dauer nach Stufe und Schaden: Stufe 5 = 1 Sekunde, Stufe 100 = 3 Minuten (bei vollem Schaden, linear dazwischen).
   const HEIL_RAR = [1, 1.7, 2.8, 5];
   CAM.heilInfo = function (m) {
     const f = F[m.fam];
     const schaden = m.hp <= 0 ? 1 : Math.max(0, 1 - m.hp / m.mhp), stat = m.status ? 1 : 0;
     if (schaden <= 0 && !stat) return null;
     const preis = Math.max(2, Math.round((6 + m.lv * 2.2) * HEIL_RAR[f.rar] * (0.2 + 0.8 * schaden) * (m.hp <= 0 ? 1.25 : 1) + stat * 3));
-    const lvF = Math.min(1, 0.12 + (m.lv / 50) * 0.68 + f.rar * 0.06);
-    const sek = Math.max(1, Math.min(180, Math.round(1 + 179 * schaden * lvF)));
+    const lvF = Math.max(0, Math.min(1, (m.lv - 5) / 95));
+    const sek = Math.max(1, Math.min(180, Math.round(1 + 179 * Math.max(schaden, stat ? 0.15 : 0) * lvF)));
     return { preis, sek, schaden };
   };
 
