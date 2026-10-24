@@ -97,6 +97,23 @@
   #end-table td:nth-child(3), #end-table td:nth-child(4), #end-table th:nth-child(3), #end-table th:nth-child(4) { text-align: right; }
   #pause { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(8,10,14,.6); }
   .logo { image-rendering: pixelated; width: 100%; max-width: 360px; height: auto; display: block; margin: 0 0 6px; }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Wild-West-Steckbrief: vergilbtes Papier, Holzbrett, Schreibmaschine */
+:root { --panel:#e8d5a3; --panel-2:#d6bf86; --line:rgba(60,35,10,.6); --text:#2a1a08; --muted:#6a4a22; --accent:#a8301c; --accent-2:#a8301c; }
+.screen { background:radial-gradient(ellipse at center,rgba(60,30,10,.5),rgba(10,6,3,.92)); }
+.panel { background-color:#e8d5a3; background-image:radial-gradient(ellipse at 15% 10%,rgba(255,255,255,.4),transparent 50%),radial-gradient(ellipse at 95% 100%,rgba(120,70,20,.35),transparent 55%); color:#2a1a08; border:6px solid #3a2410; border-radius:2px; box-shadow:0 0 0 3px #7a5230,0 22px 50px rgba(0,0,0,.7); font-family:"Courier New",Courier,monospace; transform:rotate(-.4deg); }
+h1 { font-family:Georgia,"Times New Roman",serif; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#2a1a08; text-shadow:none; }
+h1 em { color:#a8301c; }
+h2 { font-family:Georgia,serif; font-weight:900; text-transform:uppercase; letter-spacing:.1em; border-bottom:3px double #2a1a08; padding-bottom:4px; }
+.sub, .lbl { color:#5a3a16; }
+.btn { border-radius:2px; background:#f3e3b8; color:#2a1a08; border:3px solid #2a1a08; box-shadow:3px 3px 0 #2a1a08; font-family:Georgia,serif; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
+.btn:hover { filter:none; background:#fff1cc; }
+.btn:active { transform:translate(3px,3px); box-shadow:none; }
+.btn.primary { background:#a8301c; color:#fff1d2; }
+.btn.sel { background:#2a1a08; color:#f3e3b8; border-color:#2a1a08; }
+input[type=text], select { border-radius:2px; background:#f7ecca; color:#2a1a08; border:3px solid #2a1a08; font-family:"Courier New",monospace; }
+.code { border-radius:2px; background:transparent; color:#a8301c; border:4px solid #a8301c; letter-spacing:.3em; transform:rotate(-2deg); font-family:Georgia,serif; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

@@ -316,6 +316,28 @@ button, input, select { font-family: inherit; }
 .rv-coin.flip { transform: rotateY(360deg); }
 }
 @media (max-width:480px){.rv-hud{gap:6px;flex-wrap:wrap}.rv-side{padding:5px 8px;font-size:.85rem}}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Filztisch: grüner Filz, weisse Naht, Steine als Zierde */
+#menuView { --panel:#0c2a1c; --panel-2:#1a4a30; --line:rgba(255,255,255,.28); --muted:#a9d3b8; --radius:6px; --font-head:Georgia,"Times New Roman",serif; }
+body { background-color:#0b2418; background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.025) 0 2px,transparent 2px 5px),repeating-linear-gradient(-45deg,rgba(0,0,0,.08) 0 2px,transparent 2px 5px); font-family:Georgia,"Times New Roman",serif; }
+#menuView .menu-head h1 { font-family:Georgia,serif; font-style:italic; font-weight:700; letter-spacing:.02em; color:#f3efe2; text-shadow:0 2px 0 #06150e; }
+#menuView .menu-head p { color:#bfe0c9; font-style:italic; }
+#menuView .panel { background:#14472c; border:2px dashed rgba(255,255,255,.55); outline:6px solid #14472c; outline-offset:-10px; border-radius:6px; box-shadow:0 10px 24px rgba(0,0,0,.5); backdrop-filter:none; padding:20px; }
+#menuView .panel h2 { font-family:Georgia,serif; font-weight:700; font-size:1.1rem; letter-spacing:.03em; color:#f3efe2; border-bottom:1px solid rgba(255,255,255,.3); padding-bottom:6px; }
+#menuView .mode-card { background:#0f3a24; border:2px solid rgba(255,255,255,.35); border-radius:4px; box-shadow:none; }
+#menuView .mode-card:hover { transform:none; background:#17502f; }
+#menuView .mode-card.selected { background:#f3efe2; color:#0b2418; border-color:#f3efe2; }
+#menuView .mode-card.selected span { color:#2c4a38; }
+#menuView .seg button { border-radius:50%; width:auto; min-width:44px; height:44px; background:#0b2418; color:#f3efe2; border:2px solid #f3efe2; }
+#menuView .seg button.on { background:#f3efe2; color:#0b2418; }
+#menuView .btn { border-radius:4px; background:#0b2418; border:2px solid #f3efe2; color:#f3efe2; font-family:Georgia,serif; letter-spacing:.02em; }
+#menuView .btn:hover { background:#f3efe2; color:#0b2418; }
+#menuView .btn.primary { background:#111; color:#fff; border:3px solid #f3efe2; box-shadow:0 4px 0 #000; }
+#menuView .btn.primary:hover { background:#fff; color:#111; }
+#menuView .field { background:#0b2418; border:2px solid rgba(255,255,255,.5); border-radius:4px; font-family:Georgia,serif; }
+#menuView .code-big { display:inline-grid; place-items:center; min-width:11rem; padding:6px 22px; background:#111; color:#fff; border:4px solid #f3efe2; border-radius:50%/60%; letter-spacing:.3em; box-shadow:0 5px 0 #000; }
+#menuView .howto { background:#0f3a24; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

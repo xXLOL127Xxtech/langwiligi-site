@@ -238,6 +238,34 @@ button, input, select { font-family: inherit; }
 .kam-tower.sel { outline: 4px solid var(--accent) !important; outline-offset: 2px; transform: scale(1.06); }
 .kam-tower.win { animation: kam-win 0.85s ease-in-out infinite; }
 
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Farbkleckse: Papier, dicke Klötze in Primärfarben, wilde Schrift */
+#menuView { --panel:#ffffff; --panel-2:#fff3fb; --line:#16121c; --text:#16121c; --muted:#5a4a63; --radius:0; color:#16121c; }
+body { background-color:#fff0f7; background-image:radial-gradient(circle at 12% 18%,#ff6fb5 0 70px,transparent 71px),radial-gradient(circle at 88% 30%,#4dd0e1 0 90px,transparent 91px),radial-gradient(circle at 20% 80%,#ffd54a 0 80px,transparent 81px),radial-gradient(circle at 85% 85%,#8e6bff 0 70px,transparent 71px); background-attachment:fixed; font-family:"Trebuchet MS",system-ui,sans-serif; }
+#menuView .menu-head h1 { font-family:Impact,"Arial Black",sans-serif; font-weight:400; font-size:clamp(2.4rem,8vw,3.6rem); color:#ff3d9a; text-transform:uppercase; letter-spacing:.03em; -webkit-text-stroke:3px #16121c; text-shadow:5px 5px 0 #16121c; transform:rotate(-2deg); }
+#menuView .menu-head p { color:#16121c; font-weight:700; }
+#menuView .panel { background:#fff; border:4px solid #16121c; border-radius:0; box-shadow:8px 8px 0 #16121c; backdrop-filter:none; color:#16121c; }
+#menuView .panel:nth-of-type(2n) { box-shadow:8px 8px 0 #4dd0e1,8px 8px 0 4px #16121c; }
+#menuView .panel h2 { font-family:Impact,"Arial Black",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.05em; font-size:1.2rem; background:#ffd54a; display:inline-block; padding:2px 10px; border:3px solid #16121c; transform:rotate(-1deg); }
+#menuView .opt-row label, #menuView .msg { color:#5a4a63; }
+#menuView .mode-card { background:#fff; color:#16121c; border:4px solid #16121c; border-radius:0; box-shadow:4px 4px 0 #16121c; }
+#menuView .mode-card span { color:#5a4a63; }
+#menuView .mode-card:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 #16121c; }
+#menuView .mode-card.selected { background:#4dd0e1; }
+#menuView .modes .mode-card:nth-child(2).selected { background:#ffd54a; }
+#menuView .modes .mode-card:nth-child(3).selected { background:#ff6fb5; }
+#menuView .mode-card.selected span { color:#16121c; }
+#menuView .seg button { border-radius:0; background:#fff; color:#16121c; border:3px solid #16121c; font-weight:800; }
+#menuView .seg button.on { background:#8e6bff; color:#fff; }
+#menuView .btn { border-radius:0; background:#fff; color:#16121c; border:4px solid #16121c; box-shadow:4px 4px 0 #16121c; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+#menuView .btn:hover { background:#fff3fb; }
+#menuView .btn:active { transform:translate(4px,4px); box-shadow:none; }
+#menuView .btn.primary { background:#ff3d9a; color:#fff; }
+#menuView .field { background:#fff; border:3px solid #16121c; border-radius:0; color:#16121c; }
+#menuView .code-big { display:inline-block; padding:4px 22px 4px 32px; background:#ffd54a; border:4px solid #16121c; color:#16121c; box-shadow:5px 5px 0 #16121c; transform:rotate(-2deg); letter-spacing:.3em; font-family:Impact,sans-serif; font-weight:400; }
+#menuView .howto { background:#fff; }
+#menuView .howto ol { color:#16121c; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

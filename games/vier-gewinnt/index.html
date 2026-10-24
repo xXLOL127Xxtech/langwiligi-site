@@ -224,6 +224,31 @@ button, input, select { font-family: inherit; }
 .c4-cell { width: 40px; height: 40px; }
 }
 .c4-cell{background:radial-gradient(circle at 38% 32%,#141b2e,#0b101c)}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Spielzeug-Brett: blaue Plastikrahmen, runde Löcher, dicke Knöpfe */
+#menuView { --panel:#0c1436; --panel-2:#1d3a86; --line:rgba(255,255,255,.2); --muted:#a9b8e8; --radius:20px; --font-head:"Trebuchet MS","Arial Rounded MT Bold",system-ui,sans-serif; }
+body { background-color:#080d2a; background-image:radial-gradient(circle,#0f1a4a 0 11px,transparent 12px); background-size:40px 40px; font-family:"Trebuchet MS",system-ui,sans-serif; }
+#menuView .menu-head h1 { font-weight:900; text-transform:uppercase; letter-spacing:.05em; color:#ffca28; text-shadow:3px 3px 0 #d83a52,6px 6px 0 rgba(0,0,0,.4); }
+#menuView .menu-head p { color:#c9d4f5; }
+#menuView .panel { background:linear-gradient(165deg,#2c4aa8,#1a2c66); border:3px solid #0a1236; border-radius:22px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.14),0 7px 0 #060b24; backdrop-filter:none; }
+#menuView .panel h2 { text-transform:uppercase; letter-spacing:.1em; font-size:.92rem; color:#ffe27a; }
+#menuView .mode-card { background:#0a1030; border:3px solid #050a20; border-radius:18px; box-shadow:inset 0 5px 10px rgba(0,0,0,.7); }
+#menuView .mode-card:hover { transform:none; border-color:#ffca28; }
+#menuView .mode-card.selected { background:#0a1030; border-color:#ffca28; box-shadow:inset 0 5px 10px rgba(0,0,0,.7),0 0 0 3px #ffca28 inset; }
+#menuView .mode-card.selected b { color:#ffca28; }
+#menuView .mode-card .ico { filter:saturate(1.3); }
+#menuView .seg button { border-radius:999px; border:0; background:#0a1030; color:#dfe6ff; box-shadow:inset 0 3px 6px rgba(0,0,0,.6); }
+#menuView .seg button.on { background:#ffca28; color:#3a2a00; box-shadow:0 3px 0 #b88a00; }
+#menuView .btn { border-radius:999px; border:0; background:#2f55c4; box-shadow:0 5px 0 #14275e; font-weight:800; }
+#menuView .btn:hover { background:#3a63dc; }
+#menuView .btn:active { transform:translateY(4px); box-shadow:0 1px 0 #14275e; }
+#menuView .btn.primary { background:#ffca28; color:#3a2a00; box-shadow:0 5px 0 #b88a00; }
+#menuView .btn.ghost { background:transparent; box-shadow:none; border:2px solid rgba(255,255,255,.35); }
+#menuView .field { background:#0a1030; border:3px solid #050a20; border-radius:14px; box-shadow:inset 0 4px 8px rgba(0,0,0,.6); }
+#menuView .code-big { display:inline-block; padding:8px 30px 8px 40px; border-radius:999px; background:#d83a52; color:#fff; letter-spacing:.35em; box-shadow:inset 0 -6px 10px rgba(0,0,0,.35),inset 0 5px 8px rgba(255,255,255,.4),0 5px 0 #7d1c2c; text-shadow:0 2px 0 rgba(0,0,0,.3); }
+#onlineWait { text-align:center; }
+#menuView .howto { background:rgba(10,16,48,.85); box-shadow:none; border-style:dashed; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

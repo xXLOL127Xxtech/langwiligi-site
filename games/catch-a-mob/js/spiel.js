@@ -20,18 +20,8 @@
   // ---------- Figuren ----------
   function person(c, x, y, ts, col, dir, gehen, name, tick, extra) {
     const u = ts / 16;
-    c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y - u, 5 * u, 1.8 * u, 0, 0, 6.3); c.fill();
-    const w = gehen ? Math.sin(tick / 90) : 0, bob = gehen ? -Math.abs(Math.sin(tick / 90)) * u * 0.6 : 0;
-    c.fillStyle = '#241a32';
-    c.fillRect(x - 3.5 * u, y - 5 * u + bob, 2.6 * u, 4.2 * u + (w > 0 ? -u * 0.6 : 0)); c.fillRect(x + 0.9 * u, y - 5 * u + bob, 2.6 * u, 4.2 * u + (w < 0 ? -u * 0.6 : 0));
-    c.fillStyle = col; c.fillRect(x - 4.5 * u, y - 12 * u + bob, 9 * u, 8 * u);
-    c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x - 4.5 * u, y - 7 * u + bob, 9 * u, 3 * u);
-    c.fillStyle = '#f1c9a0'; c.beginPath(); c.arc(x, y - 14.5 * u + bob, 3.6 * u, 0, 6.3); c.fill();
-    c.fillStyle = '#2a1c2e'; c.beginPath(); c.arc(x, y - 15.3 * u + bob, 3.8 * u, Math.PI, 0); c.fill();
-    c.fillStyle = '#111';
-    if (dir === 2) { c.fillRect(x - 2 * u, y - 14.5 * u + bob, 1.2 * u, 1.2 * u); c.fillRect(x + 0.8 * u, y - 14.5 * u + bob, 1.2 * u, 1.2 * u); }
-    else if (dir === 1) c.fillRect(x + 1.4 * u, y - 14.5 * u + bob, 1.2 * u, 1.2 * u);
-    else if (dir === 3) c.fillRect(x - 2.6 * u, y - 14.5 * u + bob, 1.2 * u, 1.2 * u);
+    c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y - u, 5.5 * u, 2 * u, 0, 0, 6.3); c.fill();
+    CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(name));
     if (name) {
       c.font = '700 ' + Math.max(11, Math.round(ts * 0.3)) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
       const tw = c.measureText(name).width + 8;
@@ -292,8 +282,25 @@
     S.modus = 'titel'; $('start').classList.remove('hidden'); $('bbar').classList.add('hidden');
     const hashCode = G.GameHub ? G.GameHub.cleanCode(location.hash) : '';
     S.save = S.save || Save.laden() || Save.neu();
-    let name = S.save.name || (G.GameHub ? G.GameHub.getName() : '') || '';
+    let name = (G.GameHub ? G.GameHub.getName() : '') || S.save.name || '';   // der Benutzername gilt in allen Spielen
     let col = S.save.col || 0;
+    // Einladung angenommen: direkt in die Welt der Freundin oder des Freundes
+    if (hashCode.length === 4 && Netz.verfuegbar() && name) {
+      try {
+        wartePanel('Verbinde mit Welt ' + hashCode + ' …');
+        const info = await Netz.beitreten(hashCode, name);
+        UI.closePanel();
+        name = (info.players && info.players[info.you]) || name;
+        S.name = name; S.save.name = name; S.save.col = col; S.online = true;
+        if (!S.save.start) await starterWahl();
+        titelLaeuft = false;
+        betreten();
+        return;
+      } catch (e) {
+        UI.closePanel(); Netz.schliessen();
+        await UI.info(esc(G.GameHub.errorText(e)), 'Einladung hat nicht geklappt');
+      }
+    }
     for (;;) {
       const gh = Netz.verfuegbar();
       const items = [];
@@ -315,7 +322,7 @@
       if (lab === 'Anleitung') { await anleitung(); continue; }
       if (lab === 'Spielstand-Code') { await A.spielstandCode(); continue; }
       if (!name) { UI.toast('Bitte gib zuerst einen Namen ein.'); continue; }
-      S.name = name; S.save.name = name; S.save.col = col; if (G.GameHub) G.GameHub.setName(name);
+      S.name = name; S.save.col = col; if (G.GameHub) name = G.GameHub.setName(name) || name; S.name = name; S.save.name = name;
       try {
         if (lab === 'Bots – allein spielen') { S.online = false; }
         else if (lab.startsWith('Online – mit allen')) { wartePanel('Verbinde mit der Welt …'); await Netz.mitspielen(name); UI.closePanel(); S.online = true; }
@@ -323,6 +330,7 @@
       } catch (e) {
         UI.closePanel(); await UI.info(esc(G.GameHub ? G.GameHub.errorText(e) : String(e)), 'Das hat nicht geklappt'); continue;
       }
+      if (G.GameHub && S.online) { S.name = S.save.name = G.GameHub.getName(); }   // der Server kann einen anderen (freien) Namen vergeben haben
       if (!S.save.start) await starterWahl();
       titelLaeuft = false;
       betreten();

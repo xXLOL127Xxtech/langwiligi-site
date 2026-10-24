@@ -231,4 +231,99 @@
     else ctx.drawImage(img, x, y + bob, size, size);
     ctx.restore();
   };
+
+  // ---------- Menschen (Spieler und Trainer) ----------
+  // Pixelfigur mit Umriss, Schattierung, Mütze oder Kapuze, Gürtel und Umhängetasche. 4 Blickrichtungen (0 oben, 1 rechts, 2 unten, 3 links)
+  // und Laufschritt. Raster 16 x 24 plus Rand für den Umriss, wird wie die Mobs ohne Glättung vergrössert.
+  const HAARE = ['#2a1c2e', '#5a3420', '#c9a24a', '#8e2f2f', '#d8d4cc'];
+  const menschen = {};
+  function mix(hex, k) {      // k > 0 heller, k < 0 dunkler
+    const n = parseInt(hex.slice(1, 7), 16), t = k < 0 ? 0 : 255, a = Math.abs(k);
+    const f = v => Math.round(v + (t - v) * a).toString(16).padStart(2, '0');
+    return '#' + f(n >> 16) + f((n >> 8) & 255) + f(n & 255);
+  }
+  function zeichneMensch(col, dir, frame, look) {
+    const cv = document.createElement('canvas'); cv.width = 20; cv.height = 28;
+    const c = cv.getContext('2d');
+    const R = (x, y, w, h, f) => { c.fillStyle = f; c.fillRect(2 + x, 2 + y, w, h); };
+    const sk = '#f1c9a0', skD = '#d49f78', hair = HAARE[look % HAARE.length], hairD = mix(hair, -0.35);
+    const cl = col, clL = mix(col, 0.3), clD = mix(col, -0.35), clDD = mix(col, -0.55);
+    const pant = '#2d2840', pantD = '#1f1b2e', boot = '#46321f', bootD = '#2a1d12', belt = '#5a3d28', gold = '#e8c04a';
+    const bag = '#8a5c33', bagD = '#5d3d22', dark = '#1a1420';
+    const kopf = look % 3;                       // 0 Mütze, 1 Kapuze, 2 nur Haare
+    const bein = (x, hoch, breit) => {           // Bein + Stiefel, hoch = angehoben im Laufschritt
+      R(x, 20, breit, hoch ? 1 : 2, pant); R(x, hoch ? 21 : 22, breit, 2, boot); R(x, hoch ? 22 : 23, breit, 1, bootD);
+    };
+    const links = frame === 1, rechts = frame === 2;
+    if (dir === 2 || dir === 0) {
+      const vorne = dir === 2;
+      // Arme (hinter dem Rumpf)
+      R(1, 11, 2, 6, clD); R(13, 11, 2, 6, clD); R(1, 17, 2, 2, sk); R(13, 17, 2, 2, sk);
+      bein(4, links, 3); bein(9, rechts, 3);
+      R(3, 11, 10, 8, cl); R(3, 11, 1, 8, clL); R(11, 11, 2, 8, clD); R(3, 18, 10, 1, clD);
+      R(3, 17, 10, 1, belt);
+      if (vorne) {
+        R(5, 11, 6, 1, clL); R(7, 12, 2, 1, clD); R(7, 17, 2, 1, gold);
+        for (let i = 0; i < 7; i++) R(4 + i, 11 + i, 1, 1, bag);       // Gurt der Tasche
+        R(10, 16, 4, 3, bag); R(10, 16, 4, 1, bagD); R(11, 17, 1, 1, gold);
+      } else {
+        R(4, 12, 8, 6, bag); R(4, 12, 8, 1, bagD); R(7, 12, 2, 6, bagD); R(5, 16, 6, 1, bagD);
+      }
+      R(6, 10, 4, 1, skD);
+      // Kopf
+      R(4, 3, 8, 7, vorne ? sk : hair); if (vorne) R(4, 9, 8, 1, skD);
+      if (kopf === 0) {                           // Mütze mit Schirm
+        R(3, 1, 10, 4, cl); R(4, 1, 3, 1, clL); R(3, 4, 10, 1, clD); R(8, 0, 4, 1, cl);
+        if (vorne) R(4, 5, 8, 1, clDD);
+      } else if (kopf === 1) {                    // Kapuze
+        R(2, 1, 12, 3, cl); R(3, 0, 8, 1, cl); R(2, 4, 3, 7, cl); R(11, 4, 3, 7, cl); R(2, 4, 1, 7, clL); R(13, 4, 1, 7, clD);
+        R(5, 3, 6, 1, clDD); if (!vorne) R(5, 4, 6, 6, clD);
+      } else {                                    // Haare
+        R(3, 1, 10, 3, hair); R(4, 0, 6, 1, hair); R(3, 4, 2, vorne ? 4 : 6, hair); R(11, 4, 2, vorne ? 4 : 6, hair); R(5, 1, 3, 1, mix(hair, 0.25));
+        if (vorne) R(5, 3, 6, 1, hairD);
+      }
+      if (vorne) { R(5, 6, 2, 2, dark); R(9, 6, 2, 2, dark); R(5, 6, 1, 1, '#fff'); R(9, 6, 1, 1, '#fff'); R(7, 8, 2, 1, '#b5755a'); }
+    } else {
+      const r = dir === 1;
+      const X = (x, w) => r ? x : 16 - x - w;      // links = gespiegelt
+      const sw = frame === 1 ? 1 : frame === 2 ? -1 : 0;
+      // hinteres Bein / vorderes Bein
+      R(X(5, 3) + (r ? -sw : sw), 20, 3, frame && sw < 0 ? 1 : 2, pantD); R(X(5, 3) + (r ? -sw : sw), frame && sw < 0 ? 21 : 22, 4, 2, bootD);
+      R(X(8, 3) + (r ? sw : -sw), 20, 3, frame && sw > 0 ? 1 : 2, pant); R(X(8, 4) + (r ? sw : -sw), frame && sw > 0 ? 21 : 22, 5, 2, boot);
+      R(X(4, 8), 11, 8, 8, cl); R(X(4, 1), 11, 1, 8, clL); R(X(11, 1), 11, 1, 8, clD); R(X(4, 8), 18, 8, 1, clD); R(X(4, 8), 17, 8, 1, belt);
+      R(X(2, 4), 12, 4, 6, bag); R(X(2, 4), 12, 4, 1, bagD); R(X(2, 4), 17, 4, 1, bagD);     // Tasche am Rücken
+      R(X(6, 4), 12 + (sw ? -sw : 0) * 0, 4, 6, clD); R(X(6, 4), 18 + (sw ? -sw : 0) * 0, 4, 1, sk);   // Arm
+      R(X(8, 1), 17, 2, 1, gold);
+      R(X(6, 3), 10, 3, 1, skD);
+      R(X(5, 7), 3, 7, 7, sk); R(X(12, 1), 6, 1, 2, sk); R(X(5, 7), 9, 7, 1, skD);
+      if (kopf === 0) { R(X(4, 9), 1, 9, 4, cl); R(X(5, 3), 1, 3, 1, clL); R(X(4, 9), 4, 9, 1, clD); R(X(11, 4), 4, 4, 1, clDD); R(X(8, 3), 0, 3, 1, cl); }
+      else if (kopf === 1) { R(X(3, 11), 1, 11, 4, cl); R(X(5, 7), 0, 7, 1, cl); R(X(3, 6), 4, 6, 7, cl); R(X(3, 1), 4, 1, 7, clL); R(X(7, 3), 3, 3, 1, clDD); }
+      else { R(X(4, 9), 1, 9, 3, hair); R(X(5, 5), 0, 5, 1, hair); R(X(4, 4), 4, 4, 5, hair); R(X(6, 3), 1, 3, 1, mix(hair, 0.25)); R(X(9, 3), 3, 3, 1, hairD); }
+      R(X(10, 1), 6, 1, 2, dark); R(X(10, 1), 6, 1, 1, '#fff'); R(X(11, 2), 9, 2, 1, '#b5755a');
+    }
+    // Umriss
+    const img = c.getImageData(0, 0, 20, 28), d = img.data, out = new Uint8ClampedArray(d.length); out.set(d);
+    const at = (x, y) => (x < 0 || y < 0 || x >= 20 || y >= 28) ? 0 : d[(y * 20 + x) * 4 + 3];
+    for (let y = 0; y < 28; y++) for (let x = 0; x < 20; x++) {
+      if (at(x, y)) continue;
+      if (at(x - 1, y) || at(x + 1, y) || at(x, y - 1) || at(x, y + 1)) { const i = (y * 20 + x) * 4; out[i] = 14; out[i + 1] = 9; out[i + 2] = 20; out[i + 3] = 255; }
+    }
+    c.putImageData(new ImageData(out, 20, 28), 0, 0);
+    return cv;
+  }
+  CAM.lookVon = function (txt) {
+    let h = 7; txt = String(txt || '').replace(/[^A-Za-zÄÖÜäöü0-9]/g, '');
+    for (let i = 0; i < txt.length; i++) h = (h * 31 + txt.charCodeAt(i)) >>> 0;
+    return h % 30;
+  };
+  // x = Mitte, y = Boden (Füsse). ts = Kachelgrösse. gehen: Laufschritt aus tick
+  CAM.zeichneMensch = function (ctx, x, y, ts, col, dir, gehen, tick, look) {
+    const frame = gehen ? [1, 0, 2, 0][Math.floor(tick / 120) % 4] : 0;
+    const key = col + '|' + dir + '|' + frame + '|' + look;
+    const img = menschen[key] || (menschen[key] = zeichneMensch(col, dir, frame, look));
+    const p = ts / 16 * 0.95, bob = gehen && frame === 0 ? -p * 0.5 : 0;
+    ctx.save(); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, Math.round(x - 10 * p), Math.round(y - 26 * p + bob), Math.round(20 * p), Math.round(28 * p));
+    ctx.restore();
+  };
 })(window);

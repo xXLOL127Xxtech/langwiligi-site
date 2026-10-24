@@ -101,6 +101,7 @@ function recordScore(game, name, score, jumps) {
   return result;
 }
 const lastScorePost = new Map();
+const namePosts = new Map();   // ip -> Zeitpunkte der letzten Namensabfragen
 
 // ---------- Spiel-Empfehlungen (Knopf "Spiel empfehlen" auf der Startseite) ----------
 // Ansehen nur mit Schlüssel: https://langwiligi.site/api/empfehlungen#SCHLUESSEL (steht in admin-key.txt).
@@ -440,6 +441,10 @@ call('aufrufe.json','GET').then(showVisits,err);call('empfehlungen.json','GET').
 function cleanName(n) {
   return String(n || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 16) || 'Spieler';
 }
+// Wie cleanName, aber leer bleibt leer und mehrfache Leerzeichen werden eins (für Benutzernamen)
+function rawName(n) {
+  return String(n || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16).trim();
+}
 function cleanGame(g) { return String(g || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40); }
 function rows(game) {
   const g = board[game] || {};
@@ -495,7 +500,7 @@ function onMessage(ws, raw) {
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
       const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
-      room.players[0] = { ws, name: cleanName(m.name) };
+      room.players[0] = { ws, name: roomName(ws, m) };
       rooms.set(room.code, room); ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
       roomChanged(room);
@@ -514,7 +519,7 @@ function onMessage(ws, raw) {
       }
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
-      room.players[idx] = { ws, name: cleanName(m.name) }; ws.room = room;
+      room.players[idx] = { ws, name: roomName(ws, m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -536,7 +541,7 @@ function onMessage(ws, raw) {
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
       leave(ws);
-      room.players[idx] = { ws, name: cleanName(m.name) }; ws.room = room;
+      room.players[idx] = { ws, name: roomName(ws, m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -585,6 +590,87 @@ try { accounts = JSON.parse(fs.readFileSync(FRIENDS_FILE, 'utf8')); } catch (e) 
 {
   const oldest = Date.now() - ACCOUNT_DAYS * 86400000;
   Object.keys(accounts).forEach(c => { if ((accounts[c].seen || 0) < oldest) delete accounts[c]; });
+}
+
+// ---------- Benutzernamen ----------
+// Jeder Name gibt es nur einmal (Gross-/Kleinschreibung, Akzente, Leerzeichen und Striche zählen nicht), für alle Spiele.
+// Der Name gehört dem Konto (Gerät) und bleibt gespeichert, bis er geändert wird. Wer keinen wählt, bekommt einen Zufallsnamen.
+const TIERE = ['Fuchs', 'Luchs', 'Dachs', 'Igel', 'Hase', 'Rabe', 'Wolf', 'Otter', 'Falke', 'Kauz', 'Biber', 'Marder', 'Specht', 'Molch', 'Gecko',
+  'Panda', 'Lama', 'Puma', 'Kiwi', 'Adler', 'Hirsch', 'Frosch', 'Krebs', 'Bär', 'Pinguin', 'Delfin'];
+const RESERVIERT = new Set(['spieler', 'gast', 'admin', 'administrator', 'server', 'langwiligi', 'bot', 'computer', 'ich', 'du', 'niemand', 'anonym', 'unbekannt', 'wild']);
+const nameOwner = new Map();   // Namensschlüssel -> Freundescode
+function nameKey(n) {
+  return String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[\s_.\-]+/g, '');
+}
+function validName(n) { const k = nameKey(n); return n.length >= 2 && k.length >= 2 && !RESERVIERT.has(k); }
+function randomName() {
+  for (let i = 0; ; i++) {
+    const n = TIERE[Math.floor(Math.random() * TIERE.length)] + (10 + Math.floor(Math.random() * (i < 50 ? 990 : 99000)));
+    if (!nameOwner.has(nameKey(n))) return n;
+  }
+}
+// Gewünschter Name ist frei? Sonst eine Variante mit Zahl (nur für alte Konten mit doppeltem Namen)
+function freeVariant(n) {
+  n = rawName(n);
+  if (!validName(n)) return randomName();
+  for (let i = 2; i < 100; i++) { const v = n.slice(0, 16 - String(i).length) + i; if (!nameOwner.has(nameKey(v))) return v; }
+  return randomName();
+}
+{
+  // Alte Konten mit gleichem Namen: wer zuletzt aktiv war, behält ihn
+  Object.keys(accounts).sort((a, b) => (accounts[b].seen || 0) - (accounts[a].seen || 0)).forEach(c => {
+    const acc = accounts[c];
+    let n = rawName(acc.name);
+    if (!validName(n) || nameOwner.has(nameKey(n))) n = freeVariant(n);
+    acc.name = n; nameOwner.set(nameKey(n), c);
+  });
+}
+function setAccountName(code, n) {
+  const acc = accounts[code];
+  if (nameOwner.get(nameKey(acc.name)) === code) nameOwner.delete(nameKey(acc.name));
+  acc.name = n; nameOwner.set(nameKey(n), code);
+  const set = online.get(code);
+  if (set) set.forEach(w => { if (w.pres) w.pres.name = n; });
+  saveAccounts();
+  notifyFriends(code);
+  if (set) set.forEach(w => { if (w.pres && w.pres.game) dirtyGames.add(w.pres.game); });
+}
+// Versucht, dem Konto den Namen zu geben. { ok, name } oder { ok: false, error: 'taken' | 'invalid', name: bisheriger Name }
+function claimName(code, wanted) {
+  const acc = accounts[code], n = rawName(wanted);
+  if (!acc) return { ok: false, error: 'invalid', name: '' };
+  if (n === acc.name) return { ok: true, name: n };
+  if (!validName(n)) return { ok: false, error: 'invalid', name: acc.name };
+  const o = nameOwner.get(nameKey(n));
+  if (o && o !== code) return { ok: false, error: 'taken', name: acc.name };
+  setAccountName(code, n);
+  return { ok: true, name: n };
+}
+// Konto zum geheimen Schlüssel des Geräts. Gibt es noch keins, wird es angelegt (mit dem Wunschnamen, falls frei, sonst mit Zufallsnamen).
+function ensureAccount(ip, secret, wanted) {
+  secret = String(secret || '');
+  if (!/^[A-Za-z0-9]{16,64}$/.test(secret)) return null;
+  const code = friendCode(secret), now = Date.now();
+  if (!accounts[code]) {
+    const list = (newAccountPosts.get(ip) || []).filter(t => now - t < 3600000);
+    if (list.length >= 30 || Object.keys(accounts).length >= MAX_ACCOUNTS) return null;
+    list.push(now); newAccountPosts.set(ip, list);
+    if (newAccountPosts.size > 5000) newAccountPosts.clear();
+    const w = rawName(wanted), n = validName(w) && !nameOwner.has(nameKey(w)) ? w : randomName();
+    accounts[code] = { name: n, friends: [], req: [], out: [], seen: now, since: now };
+    nameOwner.set(nameKey(n), code);
+    saveAccounts();
+  }
+  return code;
+}
+// Name für einen Raum: der Name des Kontos (so kann sich niemand als jemand anderes ausgeben). Ohne Schlüssel (alte Seiten) der angegebene Name.
+function roomName(ws, m) {
+  const code = ensureAccount(ws.ip, m.secret, m.name);
+  if (!code) return cleanName(m.name);
+  const acc = accounts[code], w = rawName(m.name);
+  if (w && w !== acc.name) claimName(code, w);
+  acc.seen = Date.now();
+  return acc.name;
 }
 let accountsTimer = null;
 function saveAccounts() {
@@ -699,7 +785,16 @@ function makeFriends(a, b) {
 }
 function applyStatus(ws, m) {
   const p = ws.pres, acc = accounts[p.code], oldGame = p.game;
-  if (m.name !== undefined) { p.name = cleanName(m.name); acc.name = p.name; saveAccounts(); }
+  if (m.name !== undefined) {
+    const now = Date.now();
+    p.nameTries = (p.nameTries || []).filter(t => now - t < 60000);
+    if (p.nameTries.length >= 10) send(ws, { t: 'name-error', msg: 'too-fast', name: acc.name });
+    else {
+      p.nameTries.push(now);
+      const r = claimName(p.code, m.name);
+      send(ws, r.ok ? { t: 'name-ok', name: r.name } : { t: 'name-error', msg: r.error, name: r.name, wanted: rawName(m.name) });
+    }
+  }
   if (m.game !== undefined) p.game = cleanGame(m.game);
   if (m.room !== undefined) p.room = String(m.room || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
   if (m.visible !== undefined) p.visible = m.visible !== false;
@@ -715,21 +810,17 @@ function social(ws, m) {
     const secret = String(m.secret || '');
     if (!/^[A-Za-z0-9]{16,64}$/.test(secret)) return;
     const code = friendCode(secret);
-    let acc = accounts[code];
-    if (!acc) {
-      const ip = ws.ip, list = (newAccountPosts.get(ip) || []).filter(t => now - t < 3600000);
-      if (list.length >= 30 || Object.keys(accounts).length >= MAX_ACCOUNTS) return send(ws, { t: 'error', msg: 'too-fast' });
-      list.push(now); newAccountPosts.set(ip, list);
-      if (newAccountPosts.size > 5000) newAccountPosts.clear();
-      acc = accounts[code] = { name: cleanName(m.name), friends: [], req: [], out: [], seen: now };
-    }
+    if (!accounts[code] && !ensureAccount(ws.ip, secret, m.name)) return send(ws, { t: 'error', msg: 'too-fast' });
+    const acc = accounts[code], wanted = rawName(m.name);
+    // Der Name des Geräts kann vergeben sein (oder fehlen): dann bleibt der bisherige und das Gerät übernimmt ihn aus "me"
+    if (wanted && wanted !== acc.name) claimName(code, wanted);
     acc.out = acc.out || [];
-    ws.pres = { code, name: cleanName(m.name), game: cleanGame(m.game), room: '', visible: m.visible !== false, onlyFriends: !!m.onlyFriends,
+    ws.pres = { code, name: acc.name, game: cleanGame(m.game), room: '', visible: m.visible !== false, onlyFriends: !!m.onlyFriends,
       lastInvite: new Map(), invites: [] };
-    acc.name = ws.pres.name; acc.seen = now; saveAccounts();
+    acc.seen = now; saveAccounts();
     if (!online.has(code)) online.set(code, new Set());
     online.get(code).add(ws);
-    send(ws, { t: 'me', code, name: acc.name, feat: 2 });
+    send(ws, { t: 'me', code, name: acc.name, feat: 3 });
     pushFriends(code);
     if (ws.pres.game) dirtyGames.add(ws.pres.game);
     notifyFriends(code);
@@ -740,7 +831,10 @@ function social(ws, m) {
   switch (m.t) {
     case 'status': applyStatus(ws, m); break;
     case 'friend-add': {
-      const to = cleanFriendCode(m.code), b = accounts[to];
+      // Per Benutzername (oder, wie früher, per 8-stelligem Freundescode)
+      let to = m.name !== undefined ? nameOwner.get(nameKey(rawName(m.name))) : null;
+      if (!to) to = cleanFriendCode(m.code !== undefined ? m.code : m.name);
+      const b = accounts[to];
       p.adds = (p.adds || []).filter(t => now - t < 60000);
       if (p.adds.length >= 10) return send(ws, { t: 'friend-error', msg: 'too-fast' });
       p.adds.push(now);
@@ -878,12 +972,32 @@ const server = http.createServer((req, res) => {
     const game = cleanGame(url.searchParams.get('game'));
     return json(res, 200, { game, rows: scoreRows(game) });
   }
+  // Benutzername des Geräts festlegen oder abfragen: { secret, name } -> { ok, name } oder { ok: false, error: 'taken' | 'invalid' | 'too-fast', name }
+  if (url.pathname === '/api/name' && req.method === 'POST') {
+    return readBody(req, 1024, m => {
+      if (!m) return json(res, 400, { error: 'bad-json' });
+      const ip = clientIp(req), now = Date.now();
+      const list = (namePosts.get(ip) || []).filter(t => now - t < 60000);
+      if (list.length >= 60) return json(res, 429, { ok: false, error: 'too-fast' });
+      list.push(now); namePosts.set(ip, list);
+      if (namePosts.size > 5000) namePosts.clear();
+      const code = ensureAccount(ip, m.secret, m.name);
+      if (!code) return json(res, 400, { ok: false, error: 'invalid-secret' });
+      const acc = accounts[code], w = rawName(m.name);
+      const r = w ? claimName(code, w) : { ok: true, name: acc.name };
+      acc.seen = now;
+      json(res, 200, r.ok ? { ok: true, name: acc.name } : { ok: false, error: r.error, name: acc.name });
+    });
+  }
   if (url.pathname === '/api/score' && req.method === 'POST') {
     let body = '';
     req.on('data', c => { body += c; if (body.length > 2048) req.destroy(); });
     req.on('end', () => {
       let m; try { m = JSON.parse(body); } catch (e) { return json(res, 400, { error: 'bad-json' }); }
-      const game = cleanGame(m && m.game), name = cleanName(m && m.name);
+      const game = cleanGame(m && m.game);
+      // Mit dem geheimen Schlüssel des Geräts zählt der Name des Kontos (so kann niemand unter fremdem Namen eintragen)
+      const sec = String(m && m.secret || ''), acct = /^[A-Za-z0-9]{16,64}$/.test(sec) ? accounts[friendCode(sec)] : null;
+      const name = acct ? acct.name : cleanName(m && m.name);
       const score = Math.floor(Number(m && m.score)), jumps = Math.floor(Number(m && m.jumps) || 0);
       // Grobe Plausibilitätsprüfung: pro Sprung sind höchstens ~450 Punkte möglich
       if (!game || !Number.isFinite(score) || score < 0 || score > 10000000 || jumps < 0 || jumps > 100000 ||

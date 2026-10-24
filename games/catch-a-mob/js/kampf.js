@@ -84,10 +84,12 @@
         const act = a.ctrl === 'ai' ? a.plan : a.chosen;
         list.push({ a, act: act || { t: 'pass' }, r: this.rnd() });
       }
-      // Reihenfolge: Wechseln/Gegenstand/Fangen/Fliehen zuerst, dann nach Tempo
+      // Reihenfolge: Wechseln/Gegenstand/Fangen/Fliehen zuerst, dann immer zuerst die Spieler (Seite 0) und erst danach die Gegner.
+      // Nur im Duell, wo zwei Menschen gegeneinander kämpfen, entscheidet das Tempo (sonst wäre es unfair).
       const prio = x => (x.act.t === 'move' || x.act.t === 'pass') ? 0 : 1;
-      const spd = x => { const m = this.cur(x.a); return m ? m.spd * (m.status && m.status.t === 'brand' ? 1 : 1) : 0; };
-      list.sort((p, q) => prio(q) - prio(p) || spd(q) - spd(p) || p.r - q.r);
+      const seite = x => this.kind === 'duel' ? 0 : x.a.side;
+      const spd = x => { const m = this.cur(x.a); return m ? m.spd : 0; };
+      list.sort((p, q) => prio(q) - prio(p) || seite(p) - seite(q) || spd(q) - spd(p) || p.r - q.r);
       for (const x of list) {
         if (this.over) break;
         if (x.a.out) continue;

@@ -840,6 +840,31 @@ button, input, select { font-family: inherit; }
 .btn.danger { border-color: rgba(255,93,115,0.5); color: #ff8fa1; }
 .btn.danger:hover { background: var(--p1); color: #fff; box-shadow: 0 6px 18px rgba(255,93,115,0.35); }
 @media (max-width:640px){.ta-board{--ta-cell:calc((100vw - 64px - (var(--ta-n) - 1) * 3px) / var(--ta-n));max-width:none;overflow:visible}}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Kartentisch: Olivgrün, Schablonenschrift, Nietenplatten */
+#menuView { --panel:#3d4630; --panel-2:#4f5a3d; --line:rgba(220,230,180,.35); --muted:#c3cfa6; --radius:0; --font-head:"Courier New",monospace; }
+body { background-color:#262c1e; background-image:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px),radial-gradient(ellipse at 50% 0%,rgba(190,210,120,.16),transparent 60%); font-family:"Courier New",Consolas,monospace; }
+#menuView .menu-head h1 { font-family:"Courier New",monospace; font-weight:900; letter-spacing:.22em; text-transform:uppercase; color:#d8e6a0; text-shadow:2px 2px 0 #000; border:3px solid #d8e6a0; display:inline-block; padding:4px 18px; }
+#menuView .menu-head { display:flex; flex-direction:column; align-items:center; }
+#menuView .menu-head p { color:#c3cfa6; }
+#menuView .panel { background:#47523a; border:3px solid #1c2114; border-radius:0; box-shadow:inset 0 0 0 2px #5d6b4b,5px 5px 0 rgba(0,0,0,.5); backdrop-filter:none; position:relative; }
+#menuView .panel::before, #menuView .panel::after { content:""; position:absolute; top:8px; width:8px; height:8px; border-radius:50%; background:#8d9a78; box-shadow:inset -1px -1px 0 #2a3220; }
+#menuView .panel::before { left:8px; } #menuView .panel::after { right:8px; }
+#menuView .panel h2 { font-family:"Courier New",monospace; text-transform:uppercase; letter-spacing:.2em; font-size:.85rem; color:#f0f5d0; margin-left:18px; }
+#menuView .mode-card { background:#2f3825; color:#e8f0c8; border:2px solid #1c2114; border-radius:0; }
+#menuView .mode-card:hover { transform:none; background:#3a452d; }
+#menuView .mode-card.selected { background:#9ccc65; color:#17200a; }
+#menuView .mode-card.selected span { color:#2a3a14; }
+#menuView .seg button { border-radius:0; background:#2f3825; color:#e8f0c8; border:2px solid #1c2114; font-family:inherit; }
+#menuView .seg button.on { background:#9ccc65; color:#17200a; }
+#menuView .btn { border-radius:0; background:#2f3825; color:#e8f0c8; border:2px solid #1c2114; box-shadow:3px 3px 0 #000; font-family:inherit; text-transform:uppercase; letter-spacing:.14em; font-size:.82rem; font-weight:800; }
+#menuView .btn:hover { background:#3d4930; }
+#menuView .btn:active { transform:translate(3px,3px); box-shadow:none; }
+#menuView .btn.primary { background:#9ccc65; color:#17200a; }
+#menuView .field { background:#1c2114; color:#e8f0c8; border:2px solid #5d6b4b; border-radius:0; font-family:inherit; }
+#menuView .code-big { display:inline-block; padding:6px 22px 6px 32px; border:3px solid #d8e6a0; color:#d8e6a0; letter-spacing:.45em; font-family:"Courier New",monospace; background:#1c2114; }
+#menuView .howto { background:#47523a; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

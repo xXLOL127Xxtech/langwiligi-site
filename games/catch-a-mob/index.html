@@ -99,6 +99,25 @@
   #toast div { background: rgba(10, 8, 18, 0.9); border: 1px solid var(--accent-2); padding: 7px 14px; border-radius: 10px; font-size: 14px; }
   #gesten { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); font-size: 12px; color: #cfc9e0; pointer-events: none; }
   @media (max-width: 900px) { #panel-box, #start .box { margin-left: 0; width: calc(100vw - 24px); } #bbar { padding-left: 14px; flex-direction: column; align-items: stretch; } #bmenu { width: auto; } }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Dunkle Fantasy mit Pixelrahmen: Steinplatten, Fackelschein, Pixelschrift */
+#start { background:radial-gradient(ellipse at 50% 22%,rgba(255,170,60,.16),transparent 45%),radial-gradient(ellipse at 50% 30%,rgba(138,63,252,.22),rgba(6,4,12,.97) 72%); }
+#start h1 { font-family:"Courier New",Consolas,monospace; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#f2e6c8; text-shadow:3px 3px 0 #3b1a72,6px 6px 0 #0a0612; }
+#start h1 span { color:#c9a6ff; }
+#start .tl { color:#bfae8a; font-style:italic; font-family:Georgia,serif; }
+#panel-box, #bmenu, #blog, .card, #start .box > #start-body { font-family:"Courier New",Consolas,monospace; }
+#panel-box, #bmenu, #blog { background:#1b1328; border:0; border-radius:0; box-shadow:0 -4px 0 0 #07040e,0 4px 0 0 #07040e,-4px 0 0 0 #07040e,4px 0 0 0 #07040e,inset 0 0 0 3px #4a3578,inset 0 0 0 6px #120b1d,10px 10px 0 0 rgba(0,0,0,.45); }
+#panel-box h2 { font-family:"Courier New",monospace; text-transform:uppercase; letter-spacing:.08em; color:#ffd54a; text-shadow:2px 2px 0 #07040e; }
+.it { border-radius:0; background:#2a1f40; border:0; box-shadow:0 -3px 0 0 #07040e,0 3px 0 0 #07040e,-3px 0 0 0 #07040e,3px 0 0 0 #07040e,inset 0 -3px 0 rgba(0,0,0,.35),inset 0 3px 0 rgba(255,255,255,.1); margin:3px 0; }
+.it:hover { background:#3b2c5c; }
+.it.sel { background:#6a35c9; box-shadow:0 -3px 0 0 #ffd54a,0 3px 0 0 #ffd54a,-3px 0 0 0 #ffd54a,3px 0 0 0 #ffd54a,inset 0 -3px 0 rgba(0,0,0,.35); }
+.btn { border-radius:0; background:#6a35c9; color:#fff; box-shadow:0 -3px 0 0 #07040e,0 3px 0 0 #07040e,-3px 0 0 0 #07040e,3px 0 0 0 #07040e,inset 0 -4px 0 rgba(0,0,0,.35),inset 0 4px 0 rgba(255,255,255,.2); text-transform:uppercase; letter-spacing:.06em; font-family:"Courier New",monospace; }
+.btn.alt { background:#2a1f40; border:0; }
+input[type=text], textarea { border-radius:0; background:#0e0817; border:0; box-shadow:0 0 0 3px #07040e,inset 0 3px 0 rgba(0,0,0,.6); font-family:"Courier New",monospace; }
+.farben button { border-radius:0; border:3px solid #07040e; } .farben button.on { box-shadow:0 0 0 3px #fff; }
+.card, #toast div { border-radius:0; background:#1b1328; box-shadow:0 0 0 3px #07040e,inset 0 0 0 3px #4a3578; border:0; }
+.hbox { border-radius:0; border:0; background:rgba(14,8,23,.82); box-shadow:0 0 0 3px #07040e,inset 0 0 0 2px #4a3578; font-family:"Courier New",monospace; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

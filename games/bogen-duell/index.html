@@ -133,6 +133,21 @@
     #opp-box { display: none; } #help { display: none; } #me-box { width: 180px; }
     h1 { font-size: 28px; }
   }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Waldlager: Pergament in Holzrahmen, Federkiel-Schrift */
+:root { --panel:#e7d2a2; --line:rgba(70,40,10,.5); --text:#2b1a08; --muted:#6b4a22; }
+.panel { background-color:#e7d2a2; background-image:radial-gradient(ellipse at 20% 10%,rgba(255,255,255,.35),transparent 55%),radial-gradient(ellipse at 90% 100%,rgba(120,70,20,.3),transparent 50%); color:#2b1a08; border:10px solid #5a3a1a; border-image:linear-gradient(#7a5028,#4a2c12) 1; border-radius:0; box-shadow:0 18px 40px rgba(0,0,0,.6),inset 0 0 40px rgba(110,60,10,.35); font-family:Georgia,"Times New Roman",serif; }
+h1 { font-family:Georgia,serif; font-weight:700; letter-spacing:.02em; color:#2b1a08; text-shadow:none; }
+h1 span { color:#9b2d1a; }
+h2 { font-family:Georgia,serif; color:#2b1a08; border-bottom:2px solid rgba(70,40,10,.5); padding-bottom:4px; }
+.sub, .lbl { color:#5b3a16; }
+.lbl b { color:#2b1a08; }
+button { font-family:Georgia,serif; }
+.panel button { border-radius:2px; background:#f3e3bb; color:#2b1a08; border:2px solid #4a2c12; box-shadow:2px 2px 0 rgba(43,26,8,.6); }
+.panel button:hover { background:#fff1cc; }
+.panel button.primary, .panel #btn-create, .panel #btn-join { background:#9b2d1a; color:#fff3d6; border-color:#4a2c12; }
+input[type=text] { border-radius:2px; background:#f7ecc9; color:#2b1a08; border:2px solid #4a2c12; font-family:Georgia,serif; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

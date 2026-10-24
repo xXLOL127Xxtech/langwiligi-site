@@ -523,6 +523,6 @@ function renderSolo() {
   for (const b of document.querySelectorAll('#so-level .btn')) b.classList.toggle('sel', +b.dataset.v === SET.level);
   $('so-map').value = SET.map;
 }
-initUi();
 show('menu');
+initUi();   // bei einer Einladung (#CODE) öffnet initUi() danach den Online-Bildschirm
 requestAnimationFrame(frame);

@@ -135,6 +135,23 @@
   #menu-board, #over-board { text-align: left; margin-top: 6px; }
   .over-status { font-size: 13px; color: var(--good); min-height: 18px; margin: 6px 0 2px; }
   @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } h1 { font-size: 30px; } .panel { padding: 20px 16px; } }
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Seifenblasen: glänzende Blasen, Pastell, runde Schrift, hüpfende Knöpfe */
+:root { --panel:#2a1f5c; --line:rgba(255,255,255,.28); --muted:#cfc6f5; }
+body { background-image:radial-gradient(circle at 15% 25%,rgba(79,168,255,.35) 0 60px,transparent 62px),radial-gradient(circle at 85% 20%,rgba(255,95,162,.35) 0 90px,transparent 92px),radial-gradient(circle at 75% 80%,rgba(111,220,140,.3) 0 70px,transparent 72px),radial-gradient(circle at 10% 85%,rgba(255,211,110,.3) 0 50px,transparent 52px); background-attachment:fixed; }
+.panel { background:linear-gradient(160deg,#3b2a86,#241a58); border:3px solid rgba(255,255,255,.55); border-radius:40px; box-shadow:inset 0 6px 14px rgba(255,255,255,.28),inset 0 -10px 24px rgba(0,0,0,.35),0 16px 40px rgba(0,0,0,.45); padding:28px 30px; font-family:"Trebuchet MS","Arial Rounded MT Bold",system-ui,sans-serif; }
+h1 { font-family:"Arial Rounded MT Bold","Trebuchet MS",sans-serif; font-weight:900; text-shadow:0 4px 0 rgba(0,0,0,.3); }
+h1 span { color:#ff7ab8; }
+h2 { font-family:"Arial Rounded MT Bold","Trebuchet MS",sans-serif; }
+button { border-radius:999px; background:radial-gradient(circle at 30% 25%,#ffb3d6 0,#ff5fa2 55%,#d93a82); color:#fff; text-shadow:0 1px 0 rgba(0,0,0,.25); box-shadow:inset 0 3px 6px rgba(255,255,255,.55),0 5px 0 #8f1f56; }
+button:active { transform:translateY(4px); box-shadow:inset 0 3px 6px rgba(255,255,255,.55),0 1px 0 #8f1f56; }
+button.ghost { background:rgba(255,255,255,.1); color:#fff; border:2px solid rgba(255,255,255,.55); box-shadow:none; }
+.mode { border-radius:26px; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.35); box-shadow:inset 0 4px 8px rgba(255,255,255,.2); color:#fff; text-shadow:none; }
+.mode.sel { background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.35),rgba(255,95,162,.35)); border-color:#fff; }
+input[type=text], select { border-radius:999px; background:rgba(10,6,40,.55); border:2px solid rgba(255,255,255,.4); padding-left:18px; }
+.code { border-radius:999px; background:radial-gradient(circle at 30% 20%,#fff6c4,#ffd36e 60%,#e0a52a); color:#5a3a00; border:3px solid #fff; letter-spacing:.3em; box-shadow:inset 0 -6px 10px rgba(0,0,0,.2),0 5px 0 #a8731a; }
+.box { border-radius:24px; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

@@ -94,6 +94,24 @@ input.txt:focus{border-color:var(--acc)}
 .gstat .bar i{background:linear-gradient(#ffd56a,#ff9f1c)}
 .garrow{width:56px;flex:none!important;font-size:22px}
 @media (max-height:520px){.panel{padding:14px}.btn{padding:10px 14px;margin:6px 0}.title{font-size:34px}}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Polizeifunk: Asphalt mit Mittellinie, Blaulichtbalken, Warnschilder */
+:root { --panel:#23262b; --line:rgba(255,255,255,.14); }
+.panel { background:#2a2d33; border:3px solid #0d0e10; border-radius:6px; box-shadow:0 14px 40px rgba(0,0,0,.6); backdrop-filter:none; position:relative; padding-top:34px; overflow:hidden; }
+.panel::before { content:""; position:absolute; left:0; right:0; top:0; height:14px; background:linear-gradient(90deg,#e53935 0 25%,#fff 25% 30%,#1e66ff 30% 55%,#fff 55% 60%,#e53935 60% 85%,#fff 85% 90%,#1e66ff 90%); animation:lw-sirene 1.1s steps(2) infinite; }
+@keyframes lw-sirene { 50% { filter:hue-rotate(180deg) brightness(1.15); } }
+.panel::after { content:""; position:absolute; left:50%; bottom:0; width:6px; height:100%; background:repeating-linear-gradient(#ffd400 0 22px,transparent 22px 44px); opacity:.07; pointer-events:none; }
+h2 { color:#ffd400; text-shadow:3px 3px 0 #000; letter-spacing:.04em; }
+.btn { border-radius:4px; background:#3a3e46; border:2px solid #0d0e10; box-shadow:0 4px 0 #0d0e10; text-transform:uppercase; letter-spacing:.06em; font-size:14px; }
+.btn:hover { background:#4a4f59; }
+.btn:active { transform:translateY(3px); box-shadow:0 1px 0 #0d0e10; }
+.btn.main { background:#ffd400; color:#1b1500; border-color:#0d0e10; box-shadow:0 4px 0 #8a7000; }
+.btn.main:hover { background:#ffe14d; }
+input.txt { border-radius:3px; background:#111317; border:2px solid #3a3e46; font-family:"Courier New",monospace; letter-spacing:.06em; }
+.lbl { color:#ffd400; opacity:.9; letter-spacing:.14em; }
+.seg button { border-radius:3px; background:#3a3e46; border:2px solid #0d0e10; }
+.seg button.on { background:#ffd400; color:#1b1500; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

@@ -94,6 +94,21 @@ input.txt:focus{box-shadow:0 0 0 2px var(--acc)}
 #hItemBox{left:50%;bottom:14px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 16px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap}
 #hItemBox.has{border-color:var(--acc);box-shadow:0 0 0 2px rgba(255,176,46,.35),0 8px 24px rgba(0,0,0,.4)}
 #hItemBox b{color:var(--acc)}
+/* ---- Lobby-Optik (Anfang) ---- */
+/* Wilde Minigolf-Bahn: handbemaltes Holzschild, Rasenkante, Warnband */
+:root { --panel:#6a4a2a; --line:rgba(0,0,0,.45); }
+.panel { background-color:#7a5632; background-image:repeating-linear-gradient(88deg,rgba(255,220,160,.07) 0 3px,transparent 3px 10px,rgba(0,0,0,.12) 10px 12px); border:5px solid #3a2410; border-radius:6px; box-shadow:0 0 0 4px #4f9a35,0 0 0 8px #2e6a1e,0 24px 60px rgba(0,0,0,.6); backdrop-filter:none; transform:rotate(-.6deg); }
+h1.logo { font-family:Impact,"Arial Black",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.06em; background:none; -webkit-text-fill-color:#ffd24a; color:#ffd24a; text-shadow:3px 3px 0 #3a2410,6px 6px 0 rgba(0,0,0,.35); }
+h2 { font-family:Impact,"Arial Black",sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.06em; color:#ffe9b8; text-shadow:3px 3px 0 #3a2410; }
+.sub { color:#f6e3c0; opacity:1; }
+.btn, .sbtn, .seg button { border-radius:4px; background:#e9d3a2; color:#2a1808; border:3px solid #2a1808; box-shadow:0 4px 0 #2a1808; font-family:Georgia,serif; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+.btn:hover, .btn:focus-visible, .seg button:hover, .sbtn:hover { background:#fff0c8; box-shadow:0 4px 0 #2a1808,0 0 0 3px #ffd24a; }
+.btn:active { transform:translateY(3px); box-shadow:0 1px 0 #2a1808; }
+.btn.haupt { background:#ffb02e; color:#2a1808; }
+.seg button.on { background:#c0392b; color:#fff; }
+.modeinfo { border-radius:3px; background:repeating-linear-gradient(-45deg,#ffd24a 0 12px,#2a1808 12px 24px); color:#fff; font-weight:800; text-shadow:0 0 4px #000,1px 1px 0 #000; }
+input.txt { border-radius:3px; background:#f7ecca; color:#2a1808; border:3px solid #2a1808; }
+/* ---- Lobby-Optik (Ende) ---- */
 </style>
 </head>
 <body>

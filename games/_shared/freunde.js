@@ -67,6 +67,7 @@
     switch (m.t) {
       case 'me':
         S.me = { code: m.code, name: m.name }; S.feat = m.feat | 0; S.connected = true;
+        adoptName(m.name);
         if (S.room) wsSend({ t: 'status', room: S.room.code });
         mount();
         draw();
@@ -90,13 +91,27 @@
         pulse();
         break;
       case 'friend-new': msg('', ''); toast({ kicker: 'Freundschaft', html: 'Du und <b>' + esc(m.name) + '</b> seid jetzt Freunde.', ttl: 5000 }); break;
+      case 'name-ok': adoptName(m.name); msg('Name gespeichert. Du heisst jetzt ' + m.name + '.', 'ok'); break;
+      case 'name-error':
+        adoptName(m.name);
+        msg(m.msg === 'taken' ? 'Der Name «' + m.wanted + '» ist schon vergeben. Du bleibst ' + m.name + '.' : m.msg === 'too-fast' ? 'Bitte kurz warten.' : 'Dieser Name geht nicht. Er braucht mindestens 2 Zeichen.', 'err');
+        break;
       case 'friend-sent': msg('Anfrage an ' + m.name + ' geschickt. Sobald er oder sie annimmt, seid ihr Freunde.', 'ok'); break;
       case 'friend-error': msg(FRIEND_ERR[m.msg] || 'Hat nicht geklappt.', 'err'); break;
       case 'invite-sent': S.invited[m.to] = Date.now(); setTimeout(draw, 10100); draw(); break;
       case 'invite-error': msg(INVITE_ERR[m.msg] || 'Einladung hat nicht geklappt.', 'err'); break;
     }
   }
-  var FRIEND_ERR = { self: 'Das ist dein eigener Code.', 'not-found': 'Diesen Code gibt es nicht. Bitte nochmal prüfen.', already: 'Ihr seid schon Freunde.',
+  // Der Server ist die Quelle für den Namen (jeder Name gibt es nur einmal)
+  function adoptName(n) {
+    if (!n) return;
+    if (myName() !== n) { save('lw-name', n); }
+    lastName = n;
+    var el = mounted && $('#lw-fr-name'); if (el && document.activeElement !== el) el.value = n;
+    var nm = mounted && $('#lw-fr-myname'); if (nm) nm.textContent = n;
+    if (mounted) draw();
+  }
+  var FRIEND_ERR = { self: 'Das bist du selbst.', 'not-found': 'Diesen Benutzernamen gibt es nicht. Bitte nochmal prüfen.', already: 'Ihr seid schon Freunde.',
     limit: 'Zu viele Freunde oder Anfragen.', 'too-fast': 'Bitte kurz warten und nochmal versuchen.' };
   var INVITE_ERR = { 'no-room': 'Du bist in keinem offenen Raum.', 'not-found': 'Diese Person gibt es nicht mehr.', 'too-fast': 'Du hast gerade schon eingeladen. Kurz warten.',
     offline: 'Ist gerade offline gegangen.', denied: 'Nimmt nur Einladungen von Freunden an.' };
@@ -129,9 +144,10 @@
     var orig = hub.connect;
     hub.connect = function () {
       var api = orig.apply(hub, arguments);
-      ['create', 'join'].forEach(function (k) {
+      ['create', 'join', 'quick'].forEach(function (k) {
         var f = api[k];
-        api[k] = function () { return f.apply(api, arguments).then(function (m) { trackRoom(api, m, k === 'create'); return m; }); };
+        if (!f) return;
+        api[k] = function () { return f.apply(api, arguments).then(function (m) { trackRoom(api, m, k !== 'join'); if (k === 'join') inviteDone(m.code); return m; }); };
       });
       var close = api.close;
       api.close = function () { if (S.room && S.room.api === api) { S.room = null; status({ room: '' }); draw(); } return close.apply(api, arguments); };
@@ -223,7 +239,7 @@
     '.lw-fr-who small{display:block;color:#8e89a8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
     '.lw-fr-who small em{font-style:normal;color:#ffe14d}' +
     '.lw-fr-act{display:flex;gap:5px;flex:none}' +
-    '.lw-fr-add{display:flex;gap:6px}.lw-fr-add input{flex:1;min-width:0;padding:8px 10px;background:#07060d;border:1px solid #3d3660;outline:none;text-transform:uppercase;letter-spacing:.14em;font-family:ui-monospace,Consolas,monospace;user-select:text;-webkit-user-select:text}' +
+    '.lw-fr-add{display:flex;gap:6px}.lw-fr-add input{flex:1;min-width:0;padding:8px 10px;background:#07060d;border:1px solid #3d3660;outline:none;user-select:text;-webkit-user-select:text}' +
     '.lw-fr-add input:focus{border-color:#22e4ff}' +
     '.lw-fr-set label{display:flex;align-items:flex-start;gap:8px;margin:7px 0;color:#c9c6dc;font-size:13px;cursor:pointer}.lw-fr-set input[type=checkbox]{margin-top:2px;accent-color:#22e4ff}' +
     '.lw-fr-set .lw-fr-name{display:flex;gap:6px;margin-bottom:8px}.lw-fr-name input{flex:1;min-width:0;padding:8px 10px;background:#07060d;border:1px solid #3d3660;outline:none;user-select:text;-webkit-user-select:text}.lw-fr-name input:focus{border-color:#22e4ff}' +
@@ -256,14 +272,14 @@
         '<h3 id="lw-fr-h-friends">Freunde</h3><div id="lw-fr-friends"></div>' +
         '<div id="lw-fr-lobbybox"><h3 id="lw-fr-h-lobby">In der Lobby</h3><div id="lw-fr-lobby"></div></div>' +
         '<h3>Freund hinzufügen</h3>' +
-        '<p class="lw-fr-m">Dein Freundescode. Schick ihn weiter oder gib den Code deines Freundes ein.</p>' +
-        '<div class="lw-fr-code lw-small"><strong id="lw-fr-mycode">–</strong><button type="button" class="lw-b" data-a="copy-code">Kopieren</button></div>' +
+        '<p class="lw-fr-m">Gib den Benutzernamen deiner Freundin oder deines Freundes ein. Dein eigener Name: <b id="lw-fr-myname">–</b></p>' +
+        '<form class="lw-fr-add" id="lw-fr-add"><input id="lw-fr-code-in" maxlength="16" placeholder="Benutzername" autocomplete="off" spellcheck="false" aria-label="Benutzername"><button type="submit" class="lw-b lw-go">Hinzufügen</button></form>' +
         '<div class="lw-fr-btns"><button type="button" class="lw-b" data-a="copy-flink">Freundes-Link kopieren</button></div>' +
-        '<form class="lw-fr-add" id="lw-fr-add" style="margin-top:10px"><input id="lw-fr-code-in" maxlength="9" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Freundescode"><button type="submit" class="lw-b lw-go">Hinzufügen</button></form>' +
         '<p id="lw-fr-msg" role="status"></p>' +
         '<h3>Einstellungen</h3>' +
-        '<div class="lw-fr-set"><div class="lw-fr-name"><input id="lw-fr-name" maxlength="16" placeholder="Dein Name" autocomplete="off" aria-label="Dein Name"><button type="button" class="lw-b" data-a="save-name">Speichern</button></div>' +
-        '<label><input type="checkbox" id="lw-fr-vis"> <span>In der Lobby sichtbar<br><small style="color:#8e89a8">Sonst können dich nur Freunde als online sehen. Aus = unsichtbar.</small></span></label>' +
+        '<div class="lw-fr-set"><div class="lw-fr-name"><input id="lw-fr-name" maxlength="16" placeholder="Dein Benutzername" autocomplete="off" aria-label="Dein Benutzername"><button type="button" class="lw-b" data-a="save-name">Ändern</button></div>' +
+        '<p class="lw-fr-m" style="margin:0 0 8px">Jeder Name gibt es nur einmal und gilt in allen Spielen.</p>' +
+        '<label><input type="checkbox" id="lw-fr-vis"> <span>Für andere Online-Spieler sichtbar<br><small style="color:#8e89a8">Sonst sehen dich nur Freunde als online. Aus = unsichtbar.</small></span></label>' +
         '<label><input type="checkbox" id="lw-fr-only"> <span>Einladungen nur von Freunden</span></label></div>' +
       '</div>' +
     '</aside>' +
@@ -291,9 +307,9 @@
     panel.addEventListener('click', onClick);
     $('#lw-fr-add').addEventListener('submit', function (e) {
       e.preventDefault();
-      var input = $('#lw-fr-code-in'), c = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (c.length !== 8) return msg('Ein Freundescode hat 8 Zeichen, z.B. K7QD-93MX.', 'err');
-      wsSend({ t: 'friend-add', code: c }); input.value = '';
+      var input = $('#lw-fr-code-in'), n = input.value.trim();
+      if (n.length < 2) return msg('Bitte den Benutzernamen eingeben.', 'err');
+      wsSend({ t: 'friend-add', name: n }); input.value = '';
     });
     $('#lw-fr-name').value = myName();
     var vis = $('#lw-fr-vis'), only = $('#lw-fr-only');
@@ -314,7 +330,7 @@
     if (m) {
       var c = m[1].toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
       try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {}
-      if (c.length === 8 && S.me && c !== S.me.code) { $('#lw-fr-code-in').value = fmtCode(c); setOpen(true); msg('Freund hinzufügen? Prüf den Code und tippe auf „Hinzufügen“.', 'ok'); }
+      if (c.length === 8 && S.me && c !== S.me.code) { $('#lw-fr-code-in').value = c; setOpen(true); msg('Freund hinzufügen? Tippe auf „Hinzufügen“.', 'ok'); }
     }
   }
 
@@ -404,7 +420,7 @@
     // Knopf: Zahl der Freunde online
     $('#lw-fr-btn .lw-n').textContent = online.length ? String(online.length) : '';
     $('#lw-fr-title').textContent = room ? 'Spieler einladen' : 'Freunde';
-    $('#lw-fr-mycode').textContent = S.me ? fmtCode(S.me.code) : '–';
+    var mn = $('#lw-fr-myname'); if (mn && S.me) mn.textContent = S.me.name;
     if (!S.open) return;
 
     // Raum + Link
@@ -437,11 +453,12 @@
       '<p class="lw-fr-m">' + (friendsLoaded ? 'Noch keine Freunde. Gib unten den Code deines Freundes ein oder schick ihm deinen.' : 'Lade …') + '</p>';
 
     // Lobby: nur auf Spiel-Seiten
-    $('#lw-fr-lobbybox').style.display = GAME ? '' : 'none';
-    if (GAME) {
+    // Online-Spieler zeigt die Lobby nur, solange man im Raum des Spiels wartet
+    $('#lw-fr-lobbybox').style.display = GAME && room ? '' : 'none';
+    if (GAME && room) {
       var pending = {}; S.sent.forEach(function (s) { pending[s.code] = 1; });
       var lobby = S.lobby.filter(function (p) { return !p.friend; });   // Freunde stehen schon oben in der Freundesliste
-      $('#lw-fr-h-lobby').innerHTML = 'Gerade in der Lobby' + (lobby.length ? ' <b>' + lobby.length + '</b>' : '');
+      $('#lw-fr-h-lobby').innerHTML = 'Online-Spieler' + (lobby.length ? ' <b>' + lobby.length + '</b>' : '');
       $('#lw-fr-lobby').innerHTML = lobby.length ? lobby.map(function (p) {
         var acts = '';
         if (open) {
@@ -451,8 +468,8 @@
         }
         if (pending[p.code]) acts += '<button class="lw-b lw-done" disabled>Angefragt</button>';
         else acts += '<button class="lw-b" data-a="befriend" data-c="' + p.code + '" title="Freundschaft anfragen">+ Freund</button>';
-        return '<div class="lw-fr-row lw-on"><i class="lw-fr-dot"></i><div class="lw-fr-who"><b>' + esc(p.name) + '</b><small>in der Lobby</small></div><div class="lw-fr-act">' + acts + '</div></div>';
-      }).join('') : '<p class="lw-fr-m">Gerade ist sonst niemand auf dieser Seite. Wer dieses Spiel öffnet, erscheint hier.</p>';
+        return '<div class="lw-fr-row lw-on"><i class="lw-fr-dot"></i><div class="lw-fr-who"><b>' + esc(p.name) + '</b><small>online in diesem Spiel</small></div><div class="lw-fr-act">' + acts + '</div></div>';
+      }).join('') : '<p class="lw-fr-m">Gerade ist sonst niemand in diesem Spiel online. Wer es öffnet, erscheint hier.</p>';
     }
   }
 
@@ -477,20 +494,68 @@
       var text = 'Spiel mit mir ' + (document.title.replace(/( \([^)]*\))? – [^|]*\| KEI Langwiligi site$/, '') || 'ein Spiel') + '! ' + inviteLink();
       window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
     }
-    else if (a === 'copy-code') S.me && copy(fmtCode(S.me.code)).then(function () { msg('Dein Code ist kopiert.', 'ok'); }, function () { msg('Kopieren hat nicht geklappt.', 'err'); });
     else if (a === 'copy-flink') S.me && copy(SEITE + '/?freund=' + S.me.code).then(function () { msg('Freundes-Link kopiert. Wer ihn öffnet, kann dich direkt hinzufügen.', 'ok'); }, function () { msg('Kopieren hat nicht geklappt.', 'err'); });
     else if (a === 'save-name') {
       var n = $('#lw-fr-name').value.trim().slice(0, 16);
       if (!n) return msg('Bitte einen Namen eingeben.', 'err');
-      save('lw-name', n);
-      if (window.GameHub && GameHub.setName) GameHub.setName(n);
-      status({ name: n }); msg('Name gespeichert.', 'ok');
+      if (n === myName()) return msg('Das ist schon dein Name.', 'ok');
+      status({ name: n });   // der Server prüft, ob er frei ist, und antwortet mit name-ok / name-error
     }
   }
 
   // Spielername wurde im Spiel geändert: dem Server mitteilen
   var lastName = myName();
-  setInterval(function () { var n = myName(); if (n !== lastName) { lastName = n; if (n) status({ name: n }); } }, 3000);
+  setInterval(function () { var n = myName(); if (n !== lastName) { lastName = n; if (n && S.me && n !== S.me.name) status({ name: n }); } }, 3000);
+
+  // ---------- Einladung annehmen: direkt in den Raum ----------
+  // Der Einladungslink (und der Knopf „Beitreten“ auf der Einladungskarte) öffnet das Spiel mit #CODE. Die Spiele tragen den Code nur ins Feld ein.
+  // Hier tippen wir für die Person auf „Beitreten“ (und tragen den Namen ein), damit sie sofort im Raum landet.
+  var inviteCode = ON_START ? '' : (/^#[A-Za-z0-9]{4}$/.test(location.hash) ? location.hash.slice(1).toUpperCase() : '');
+  var inviteJoined = false;
+  function inviteDone(code) {
+    if (!inviteCode || code !== inviteCode) return;
+    inviteJoined = true;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+  function visible(el) {
+    if (!el.getClientRects().length) return false;
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) { var cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') return false; }
+    return true;
+  }
+  function codeOf(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-4); }
+  function findJoin() {
+    var btns = document.querySelectorAll('button, [role=button], input[type=button], input[type=submit]');
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i], t = String(b.textContent || b.value || '').replace(/[^A-Za-zÄÖÜäöüß\s]/g, '').trim().toLowerCase();
+      if (!/^((raum|spiel|jetzt|online) )?beitreten$|^mitspielen$/.test(t) || b.disabled || !visible(b)) continue;
+      for (var sc = b.parentElement, d = 0; sc && d < 7; sc = sc.parentElement, d++) {
+        var ins = sc.querySelectorAll('input'), ci = null;
+        for (var k = 0; k < ins.length; k++) if ((ins[k].type === 'text' || !ins[k].type) && codeOf(ins[k].value) === inviteCode && ins[k].value.length <= 12) { ci = ins[k]; break; }
+        if (ci) return { btn: b, input: ci, scope: sc };
+      }
+    }
+    return null;
+  }
+  function autoJoin() {
+    if (!inviteCode) return;
+    var tries = 0, clicks = 0, last = 0;
+    var iv = setInterval(function () {
+      if (inviteJoined || ++tries > 80) return clearInterval(iv);
+      if (Date.now() - last < 4000) return;   // dem Beitritt Zeit lassen
+      var f = findJoin();
+      if (!f) return;
+      var name = (window.GameHub && GameHub.getName && GameHub.getName()) || myName();
+      var ins = f.scope.querySelectorAll('input');
+      for (var k = 0; k < ins.length; k++) {
+        var el = ins[k];
+        if (el !== f.input && (el.type === 'text' || !el.type) && !el.value && name && el.offsetParent !== null) { el.value = name; el.dispatchEvent(new Event('input', { bubbles: true })); }
+      }
+      last = Date.now();
+      if (++clicks > 2) return clearInterval(iv);
+      f.btn.click();
+    }, 300);
+  }
+  autoJoin();
 
   window.LW = window.LW || {};
   window.LW.freunde = { open: function () { setOpen(true); }, close: function () { setOpen(false); } };
