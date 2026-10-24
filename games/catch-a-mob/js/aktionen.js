@@ -479,6 +479,7 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     dexSet(mob.fam, 1);
+    if (opt.erster === 1) await UI.banner(opt.hinterhalt ? 'HINTERHALT!' : 'ANGRIFF!');
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team, fang: CAM.fangStufe(S.save.team, S.save.fangXp) };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
@@ -522,9 +523,10 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     const team = trainerTeam(tr); team.forEach(m => dexSet(m.fam, 1));
+    if (opt.erster === 1) await UI.banner('ÜBERFALL!');
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team };
     const gegner = { id: 't', name: tr.name, side: 1, ctrl: 'ai', team };
-    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: tr.name + ' fordert dich heraus!', erster: opt.erster }));
+    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: opt.erster === 1 ? tr.name + ' überfällt dich!' : tr.name + ' fordert dich heraus!', erster: opt.erster }));
     const b = res.b; nachbereiten(S.save.team);
     const lines = [];
     if (b.winner === 0) {
@@ -729,7 +731,7 @@
     const meinGold = o ? (ichBinA ? o.gm : o.gt) | 0 : 0, seinGold = o ? (ichBinA ? o.gt : o.gm) | 0 : 0, stake = o && (ichBinA ? o.mm : o.mt) ? S.save.team[0] : null, seinStake = !!(o && (ichBinA ? o.mt : o.mm));
     const mein = CAM.duellKopien(S.save.team, lvl), goldStart = S.save.gold;
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: goldStart });
-    UI.toast(d.amb ? 'Überfall!' : 'Duell beginnt …', 1500);
+    if (d.amb) await UI.banner('ÜBERFALL!'); else UI.toast('Duell beginnt …', 1500);
     const ok = await warteAuf(() => S.teams[bid] && S.teams[bid][andere], 10000);
     if (!ok) { S.busy = false; UI.toast('Das Duell konnte nicht starten.'); delete S.teams[bid]; return; }
     const gegnerTeam = S.teams[bid][andere];

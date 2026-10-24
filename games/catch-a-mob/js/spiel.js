@@ -78,8 +78,7 @@
           if (Math.floor(S.x) === tx && Math.floor(S.y) === ty) { sieht = true; break; }
         }
         if (sieht && !Welt.istSicher(S.x, S.y)) {
-          if (!tr.alarm) { tr.alarm = now; UI.snd('ruf'); }
-          else if (now - tr.alarm > 700) { tr.alarm = 0; A.trainerKampf(tr, { erster: 1 }); break; }
+          tr.alarm = now; CAM.Bots.trainerJagd(tr, now);   // er sieht dich und rennt los
         } else tr.alarm = 0;
       }
     }

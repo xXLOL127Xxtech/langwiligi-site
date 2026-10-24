@@ -214,7 +214,7 @@
         const ok = gehbarFuerSprung(ex, ey), px = ok ? ex : sp.x0, py = ok ? ey : sp.y0;
         const ent = W.neuAn(sp.mob, px, py, Date.now());
         ent.fest = true; ent.scheu = false; ent.dir = (S.dir + 2) % 4;
-        CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!', erster: 1, entity: ent });
+        CAM.A.wildKampf(sp.mob, { intro: 'Ein ' + CAM.name(sp.mob) + ' (Lv ' + sp.mob.lv + ') springt aus dem Gebüsch!', erster: 1, hinterhalt: true, entity: ent });
       }
     }, S.sp.dauer + 150);
     return true;

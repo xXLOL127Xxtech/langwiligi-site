@@ -178,6 +178,11 @@
 
   // ---------- Trainer (NPCs) laufen auch herum und gehen manche auf dich los ----------
   // tr.px/py = Position (Mitte des Feldes), tr.hx/hy = Heimatfeld. Trainer mit id % 5 < 2 sind angriffslustig: Sie sehen dich auf 11 Felder, laufen her und fordern dich heraus.
+  // Ein Trainer sieht dich und rennt los, um dich zu überfallen (nur ein Jäger auf einmal)
+  Bots.trainerJagd = function (tr, now) {
+    if (tr.z === 'prov' || !jagdFrei(now) || now < (tr.provBis || 0)) return;
+    tr.z = 'prov'; tr.pa = now; jagdStart(tr, now); UI.snd('ruf');
+  };
   Bots.trainerUpdate = function (dt, now, frei) {
     if (S.modus !== 'welt') return;
     for (const tr of Welt.trainer) {
@@ -260,7 +265,7 @@
       if (r === 1) await botTeamAnsehen(b);
       else if (r === 2) {
         if (!await UI.confirm('Du überfällst ' + esc(b.name) + ' ohne Vorwarnung. Du schlägst zuerst zu, es gibt keinen Einsatz. Gewinnst du, klaust du ' + (b.gold < 150 ? '70 % seines Goldes' : '100 Gold') + '.<br><small>Stufe ' + b.lv + ' · ' + staerkeText(b.team) + '</small>', 'Überfall bestätigen', 'Überfallen', 'Abbrechen')) continue;
-        b.ruheBis = 0; await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
+        b.ruheBis = 0; await UI.banner('ÜBERFALL!'); await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
       } else return;
     }
   };
