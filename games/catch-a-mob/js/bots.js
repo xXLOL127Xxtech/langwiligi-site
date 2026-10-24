@@ -243,10 +243,16 @@
   A.botMenue = async function (b) {
     if (S.busy) return;
     for (;;) {
-      const r = await UI.choose([{ label: 'Zum Duell herausfordern', sub: CAM.lebend() ? 'mit Einsatz' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() || Date.now() < b.ruheBis }, { label: 'Team ansehen' }, { label: 'Zurück' }],
+      const grund = !CAM.lebend() ? 'Dein Team ist erschöpft' : Welt.istSicher(S.x, S.y) ? 'In einer sicheren Zone nicht erlaubt' : Welt.istSicher(b.x, b.y) ? b.name + ' steht in einer sicheren Zone' : b.team.length < 1 ? 'Kein Team' : '';
+      const r = await UI.choose([{ label: 'Zum Duell herausfordern', sub: CAM.lebend() ? 'mit Einsatz' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() || Date.now() < b.ruheBis }, { label: 'Team ansehen' },
+        { label: 'Überfallen', sub: grund || 'Du schlägst zuerst zu · gewinnst du, klaust du ' + (b.gold < 150 ? '70 %' : '100 Gold'), disabled: !!grund }, { label: 'Zurück' }],
         { title: b.name + ' (Bot)', sub: 'Höchste Stufe ' + b.lv + ' · ' + staerkeText(b.team) + '\n' + b.gold + ' Gold' + (b.champ ? ' · Champion' : '') + (Date.now() < b.ruheBis ? '\nMöchte gerade nicht kämpfen.' : '') });
       if (r === 0) { await A.einsatzDuell(b); return; }
-      if (r === 1) await botTeamAnsehen(b); else return;
+      if (r === 1) await botTeamAnsehen(b);
+      else if (r === 2) {
+        if (!await UI.confirm('Du überfällst ' + esc(b.name) + ' ohne Vorwarnung. Du schlägst zuerst zu, es gibt keinen Einsatz. Gewinnst du, klaust du ' + (b.gold < 150 ? '70 % seines Goldes' : '100 Gold') + '.<br><small>Stufe ' + b.lv + ' · ' + staerkeText(b.team) + '</small>', 'Überfall bestätigen', 'Überfallen', 'Abbrechen')) continue;
+        b.ruheBis = 0; await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
+      } else return;
     }
   };
   async function botTeamAnsehen(b) {
@@ -318,7 +324,7 @@
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: mein };
     const gegner = { id: 'bot', name: b.name, side: 1, ctrl: 'ai', team: seine };
     const res = await K.starten({ kind: 'duel', actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, weather: CAM.wetterBei(Welt.biomeAt(S.x, S.y), Date.now()), biome: Welt.biomeAt(S.x, S.y), erster,
-      beutel: () => ({}), verbrauch() {}, intro: b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
+      beutel: () => ({}), verbrauch() {}, intro: offer.klau ? S.name + ' überfällt ' + b.name + '!' : b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
     const bt = res.b, lines = [];
     const gewonnen = bt.over && bt.winner === 0;
     if (bt.over && (offer.gold || offer.mobA || offer.mobB)) {
@@ -329,6 +335,7 @@
       if (gewonnen) {
         UI.snd('sieg'); lines.push('<b style="color:#5fd38a">Du hast gegen ' + esc(b.name) + ' gewonnen!</b>');
         if (offer.gold) { S.save.gold += offer.gold; b.gold = Math.max(0, b.gold - offer.gold); lines.push('Du bekommst ' + ge(offer.gold) + '.'); }
+        if (offer.klau) { const g = b.gold < 150 ? Math.floor(b.gold * 0.7) : 100; S.save.gold += g; b.gold = Math.max(0, b.gold - g); lines.push('Beute: Du klaust ' + ge(g) + '.'); }
         if (offer.mobB) {
           const i = b.team.indexOf(offer.mobB);
           if (i >= 0) { b.team.splice(i, 1); const m = offer.mobB; m.hp = m.mhp; m.status = null; m.wunden = []; const wo = A.mobDazu(m); S.save.dex[m.fam] = 2; lines.push('<b style="color:#c9a6ff">' + esc(CAM.name(m)) + ' (Lv ' + m.lv + ') gehört jetzt dir!</b>' + (wo === 'box' ? ' (im Zwinger)' : wo ? '' : ' (Zwinger voll, er ist weg)')); }
