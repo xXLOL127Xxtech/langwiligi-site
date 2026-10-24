@@ -2,11 +2,11 @@
 // Catch a Mob – wilde Mobs laufen in der Welt herum. Friedliche greift man nur an, wenn man will,
 // bösartige jagen dich. Manchmal springt auch einer aus dem hohen Gras.
 // Wer wo auftaucht, richtet sich nach dem Lebensraum (hab in daten.js): Rehe und Raupen auf Wiesen, Frösche am Wasser,
-// Eulen und Fledermäuse nachts bei Bäumen. Tiere mit herde kommen in Gruppen, die dem Anführer folgen. Insgesamt ist es eher ruhig.
+// Eulen und Fledermäuse nachts bei Bäumen. Tiere mit herde kommen in Gruppen, die dem Anführer folgen. Es wimmelt aber genug, dass man in jeder Wiese etwas findet.
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_GRUPPEN = 5, MAX_TIERE = 12, RAD_MIN = 10, RAD_MAX = 24, DESPAWN = 38, LEBEN = 300000;
+  const MAX_GRUPPEN = 14, MAX_TIERE = 36, RAD_MIN = 7, RAD_MAX = 26, DESPAWN = 44, LEBEN = 300000;
   const RAR_FAKTOR = [1, 0.6, 0.22, 0.1];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -78,8 +78,8 @@
     return w;
   }
   W.spawnen = function (now, nah) {
-    const r0 = nah ? 6 : RAD_MIN, r1 = nah ? 15 : RAD_MAX;
-    for (let versuch = 0; versuch < 12; versuch++) {
+    const r0 = nah ? 5 : RAD_MIN, r1 = nah ? 16 : RAD_MAX;
+    for (let versuch = 0; versuch < 40; versuch++) {
       const a = Math.random() * 6.283, r = r0 + Math.random() * (r1 - r0);
       const x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
       if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6) continue;
@@ -126,9 +126,9 @@
     if (W.fuell > 0 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) { W.fuell--; W.spawnen(now, true); }
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
-      W.spawnT = 4 + Math.random() * 5;
+      W.spawnT = 1 + Math.random() * 2;
       const gruppen = new Set(W.liste.map(w => w.herde)).size;
-      if (gruppen < MAX_GRUPPEN && W.liste.length < MAX_TIERE && Math.random() < 0.7 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
+      if (gruppen < MAX_GRUPPEN && W.liste.length < MAX_TIERE && Math.random() < 0.9 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
     }
     const fuehrer = {};
     for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;

@@ -19,9 +19,10 @@
       this.result = {};          // { fled, caught }
       this.defeated = [];        // besiegte Mobs der Seite 1 (für Erfahrung)
       this.noItems = o.kind === 'duel';
-      this.erster = o.erster == null ? null : o.erster;   // Seite, die den Kampf mit einem Überraschungsangriff beginnt: in Runde 1 trifft sie zuerst
+      this.erster = o.erster == null ? null : o.erster;   // Seite, die den Kampf eröffnet (überfällt, anspringt, herausfordert): Runde 0 gehört nur ihr, sie schlägt zu, bevor die andere Seite wählt
+      if (this.erster != null) this.turn = 0;
       this.actors = o.actors.map(a => ({
-        id: a.id, name: a.name, side: a.side, ctrl: a.ctrl, team: a.team, boss: !!a.boss, fleeFirst: !!a.fleeFirst,
+        id: a.id, name: a.name, side: a.side, ctrl: a.ctrl, team: a.team, fang: a.fang || 1, boss: !!a.boss, fleeFirst: !!a.fleeFirst,
         active: Math.max(0, a.team.findIndex(m => m.hp > 0)), out: false, chosen: null, plan: null, used: new Set(), enraged: false, gone: false,
       }));
       this.actors.forEach(a => a.used.add(a.active));
@@ -68,7 +69,7 @@
     pending() {
       if (this.over) return [];
       if (this.phase === 'replace') return this.needRep.filter(id => { const a = this.actor(id); return a.ctrl !== 'ai' && a.chosen == null; });
-      return this.actors.filter(a => !a.out && a.ctrl !== 'ai' && !a.chosen).map(a => a.id);
+      return this.actors.filter(a => !a.out && a.ctrl !== 'ai' && !a.chosen && (this.turn > 0 || a.side === this.erster)).map(a => a.id);
     }
     submit(id, act) { const a = this.actor(id); if (a && !a.out) a.chosen = act; }
     submitReplace(id, idx) { const a = this.actor(id); if (a) a.chosen = { t: 'switch', i: idx }; }
@@ -81,25 +82,25 @@
       if (this.phase === 'replace') { this.doReplace(ev); return ev; }
       const list = [];
       for (const a of this.actors) {
-        if (a.out) continue;
-        const act = a.ctrl === 'ai' ? a.plan : a.chosen;
+        if (a.out || (this.turn === 0 && a.side !== this.erster)) continue;
+        let act = a.ctrl === 'ai' ? a.plan : a.chosen;
+        if (this.turn === 0 && (!act || act.t !== 'move')) act = null;
         list.push({ a, act: act || { t: 'pass' }, r: this.rnd() });
       }
-      // Reihenfolge: Wer den Kampf mit einem Überraschungsangriff beginnt (erster), schlägt in Runde 1 zuerst zu.
-      // Sonst: Wechseln/Gegenstand/Fangen/Fliehen zuerst, dann immer zuerst die Spieler (Seite 0) und erst danach die Gegner.
+      // Runde 0 (Eröffnung): nur die Seite, die den Kampf beginnt, greift an. Danach läuft alles in normalen Runden.
+      // Reihenfolge: Wechseln/Gegenstand/Fangen/Fliehen zuerst, dann immer zuerst die Spieler (Seite 0) und erst danach die Gegner.
       // Nur im Duell, wo zwei Menschen gegeneinander kämpfen, entscheidet das Tempo (sonst wäre es unfair).
-      const vor = x => (this.turn === 1 && this.erster != null && x.a.side === this.erster && x.act.t === 'move') ? 0 : 1;
       const prio = x => (x.act.t === 'move' || x.act.t === 'pass') ? 0 : 1;
       const seite = x => this.kind === 'duel' ? 0 : x.a.side;
       const spd = x => { const m = this.cur(x.a); return m ? m.spd : 0; };
-      list.sort((p, q) => vor(p) - vor(q) || prio(q) - prio(p) || seite(p) - seite(q) || spd(q) - spd(p) || p.r - q.r);
+      list.sort((p, q) => prio(q) - prio(p) || seite(p) - seite(q) || spd(q) - spd(p) || p.r - q.r);
       for (const x of list) {
         if (this.over) break;
         if (x.a.out) continue;
         this.doAction(x.a, x.act, ev);
         this.checkFaints(ev);
       }
-      if (!this.over) this.endOfTurn(ev);
+      if (!this.over && this.turn > 0) this.endOfTurn(ev);
       for (const a of this.actors) a.chosen = null;
       if (!this.over) this.afterTurn(ev);
       return ev;
@@ -151,9 +152,8 @@
       if (!tm || !it || this.kind !== 'wild') return;
       ev.push({ k: 'msg', t: a.name + ' wirft ein ' + it.n + '!' });
       const f = CAM.FAMILIEN[tm.fam];
-      let rate = ((3 * tm.mhp - 2 * tm.hp) / (3 * tm.mhp)) * CAM.FANGRATE[f.rar] * it.fang * (tm.status ? (tm.status.t === 'schlaf' ? 1.6 : 1.25) : 1);
-      rate = Math.min(1, rate * 1.15);
-      const ok = it.fang >= 99 || this.rnd() < rate;
+      const rate = CAM.fangChance(a.fang || 1, tm, it);
+      const ok = this.rnd() < rate;
       let shakes = ok ? 3 : Math.floor(this.rnd() * 3);
       ev.push({ k: 'shake', n: shakes, ok });
       if (ok) {

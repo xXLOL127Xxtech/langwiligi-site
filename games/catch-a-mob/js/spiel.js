@@ -215,7 +215,7 @@
     const B = CAM.BIOME[S.biome], uhr = CAM.tageszeit(now), sais = CAM.SAISONS[CAM.saison(now)];
     const dorf = Welt.dorfBei(S.x, S.y);
     $('hudL').innerHTML = '<b>' + esc(dorf ? dorf.name : B.n) + '</b>' + (dorf ? ' <small>(sicher)</small>' : '') + '<br>' +
-      esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
+      esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Fangstufe ' + CAM.fangStufe(S.save.team, S.save.fangXp).toFixed(1) + ' · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
       (S.online && S.pt >= 0 ? '<div class="party">Party: ' + A.partyListe().map(p => '<span><i style="background:' + (CAM.FARBEN[p.col] || '#999') + '"></i>' + esc(p.name) + '</span>').join(' ') + (A.partyListe().length ? '' : 'nur du') + '</div>' : '');
     const prot = (S.prot[S.idx] || 0) - now;
     $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';
@@ -364,7 +364,7 @@
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
-    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 3; CAM.Wilde.fuell = 3;
+    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 2; CAM.Wilde.fuell = 9;
     CAM.Bots.erzeugen();
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
     S.save.team.concat(S.save.box).forEach(m => { delete m.faintDone; m.status = null; CAM.angleichen(m); });

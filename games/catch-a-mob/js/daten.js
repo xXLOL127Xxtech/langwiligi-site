@@ -418,6 +418,28 @@
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
   CAM.FANGRATE = [0.9, 0.55, 0.3, 0.06];
   CAM.PREIS_RAR = [1, 2.5, 6, 30];
+  // ---------- Fangen ----------
+  // Fang-Stufe = Durchschnitt der Stufen deines Teams + Erfahrung (je gewonnener Kampf +0.1, je Fang +0.15).
+  // Grundchance (einfache Kugel, voller LP): Mob eine Stufe unter 0.73 unter deiner Fang-Stufe = 33 %, viel tiefere Mobs bis 95 %, höhere werden schnell sehr schwer (Stufe 20 bei Fang-Stufe 5.7 ca. 1 %).
+  // Schaden hilft: die Chance wird mit dem Exponenten (1 - 0.65 * Schaden) hochgezogen. Gute Kugeln, Schlaf, Gift und Brand helfen auch.
+  CAM.fangStufe = function (team, xp) {
+    const t = team || [];
+    return (t.length ? t.reduce((a, m) => a + m.lv, 0) / t.length : 1) + (xp || 0);
+  };
+  // kugel = Gegenstand: Die starke Kugel (fang 1) gibt die Grundkurve, die einfache ist ab höheren Stufen deutlich schlechter (steil),
+  // die Meister-Kugel (zehn) versucht es zehnmal: p = 1 - (1 - p)^10.
+  CAM.fangChance = function (stufe, m, kugel, schaden) {
+    const f = CAM.FAMILIEN[m.fam];
+    const s = schaden !== undefined ? schaden : (m.hp <= 0 ? 1 : 1 - m.hp / m.mhp);
+    const d = m.lv - (stufe - 0.73), odds = 0.4925 * Math.exp(-(d < 0 ? 1.2 : 0.259 + (kugel.steil || 0)) * d) * (CAM.FANGRATE[f.rar] / 0.9) * kugel.fang;
+    let base = Math.max(0.0005, Math.min(0.95, odds / (1 + odds)));
+    let p = Math.pow(base, 1 - 0.65 * Math.max(0, Math.min(1, s)));
+    if (m.status) p *= m.status.t === 'schlaf' ? 1.5 : 1.2;
+    p = Math.max(0.0005, Math.min(0.999, p));
+    if (kugel.zehn) p = 1 - Math.pow(1 - p, 10);
+    return Math.min(0.999, p);
+  };
+  CAM.chanceText = p => (p >= 0.995 ? '100' : p >= 0.1 ? (p * 100).toFixed(0) : (p * 100).toFixed(1)) + ' %';
   const STUFEN_FAKTOR = { 1: [1.05], 3: [0.78, 0.97, 1.2] };
   CAM.EVO_LV = [16, 34];
 
@@ -588,9 +610,9 @@
 
   // ---------- Gegenstände ----------
   CAM.ITEMS = {
-    siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1.0, info: 'Fängt geschwächte Mobs' },
-    siegel2: { n: 'Starke Fangkugel', preis: 60, fang: 1.7, info: 'Fängt deutlich besser' },
-    siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 99, info: 'Fängt immer' },
+    siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1, steil: 0.255, info: 'Fängt geschwächte Mobs, bei hohen Stufen kaum' },
+    siegel2: { n: 'Starke Fangkugel', preis: 100, fang: 1, info: 'Fängt auch höhere Mobs' },
+    siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 1, zehn: true, info: 'Zehn Fangversuche in einem Wurf' },
     trank: { n: 'Heiltrank', preis: 30, heil: 40, info: 'Heilt 40 LP' },
     trank2: { n: 'Grosser Heiltrank', preis: 100, heil: 120, info: 'Heilt 120 LP' },
     ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
