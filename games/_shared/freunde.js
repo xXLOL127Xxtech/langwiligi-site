@@ -320,6 +320,11 @@
       status({ visible: settings.visible, onlyFriends: settings.onlyFriends });
     }
     vis.addEventListener('change', saveSet); only.addEventListener('change', saveSet);
+    // Klick irgendwo auf die Seite (ausserhalb von Panel, Knopf und Hinweisen) schliesst das Panel.
+    // Capture-Phase, damit es auch klappt, wenn das Spiel Klicks selbst abfängt.
+    document.addEventListener('pointerdown', function (e) {
+      if (S.open && !root.contains(e.target)) { S.autoOpened = false; setOpen(false); }
+    }, true);
     // Beim Wechsel in den Vollbildmodus muss das Panel mit, sonst bleibt es unsichtbar hinter dem Spiel
     document.addEventListener('fullscreenchange', function () {
       var fs = document.fullscreenElement;
