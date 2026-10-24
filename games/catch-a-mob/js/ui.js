@@ -90,12 +90,12 @@
   };
 
   // Einladungskarten (J = ja, N = nein)
-  UI.addCard = function (html, sekunden, onYes, onNo) {
+  UI.addCard = function (html, sekunden, onYes, onNo, onCounter) {
     const c = document.createElement('div'); c.className = 'card';
-    const obj = { el: c, done: false, yes() { fin(true); }, no() { fin(false); } };
+    const obj = { el: c, done: false, yes() { fin(true); }, no() { fin(false); }, counter: onCounter ? () => { if (obj.done) return; obj.done = true; clearInterval(iv); c.remove(); UI.cards = UI.cards.filter(x => x !== obj); onCounter(); } : null };
     function fin(v) { if (obj.done) return; obj.done = true; clearInterval(iv); c.remove(); UI.cards = UI.cards.filter(x => x !== obj); (v ? onYes : onNo) && (v ? onYes() : onNo()); }
     let left = sekunden;
-    const draw = () => { c.innerHTML = html + ' <span style="color:#a9a59b">(' + left + ' s)</span><br><kbd>J</kbd> Ja &nbsp; <kbd>N</kbd> Nein'; };
+    const draw = () => { c.innerHTML = html + ' <span style="color:#a9a59b">(' + left + ' s)</span><br><kbd>J</kbd> Ja &nbsp; <kbd>N</kbd> Nein' + (onCounter ? ' &nbsp; <kbd>G</kbd> Gegenangebot' : ''); };
     draw();
     const iv = setInterval(() => { left--; if (left <= 0) fin(false); else draw(); }, 1000);
     $('cards').appendChild(c); UI.cards.push(obj);

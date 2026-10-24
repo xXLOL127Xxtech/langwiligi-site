@@ -273,7 +273,7 @@
   }
   UI.worldKey = function (e, k) {
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
-    if (UI.cards.length && (k === 'j' || k === 'n')) { const c = UI.cards[0]; k === 'j' ? c.yes() : c.no(); return true; }
+    if (UI.cards.length && (k === 'j' || k === 'n' || (k === 'g' && UI.cards[0].counter))) { const c = UI.cards[0]; k === 'j' ? c.yes() : k === 'g' ? c.counter() : c.no(); return true; }
     if (S.modus !== 'welt') return false;
     if (k === 'escape') { menue(); return true; }
     if (k === 'e' || k === 'enter' || k === ' ') { aktion(); return true; }
