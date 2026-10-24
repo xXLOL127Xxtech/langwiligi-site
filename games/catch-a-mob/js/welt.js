@@ -3,13 +3,13 @@
 // Alle Spieler bauen aus demselben Seed dieselbe Karte, sie muss nicht übertragen werden.
 (function (G) {
   const CAM = G.CAM;
-  const W = 400, H = 400;
+  const W = 640, H = 640;          // grosse Welt: bis zum nächsten Dorf läuft man mehrere Minuten
   const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13 };
   const BLOCK = new Uint8Array(16); [T.WASSER, T.BAUM, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH].forEach(i => BLOCK[i] = 1);
-  const START = { x: 200, y: 200 };
-  const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Siegel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' } };
+  const START = { x: 320, y: 320 };
+  const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' } };
 
-  CAM.BIOME.forEach(b => { b.P = Object.assign({ obst: b.obst }, b.pal); });
+  CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
   const Welt = CAM.Welt = { W, H, T, START, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -97,13 +97,13 @@
     let id = 0;
     for (const p of B) {
       let n = 0, tries = 0;
-      while (n < 6 && tries++ < 400) {
+      while (n < 11 && tries++ < 700) {
         const x = 12 + Math.floor(rnd() * (W - 24)), y = 12 + Math.floor(rnd() * (H - 24));
         const i = y * W + x;
         if (biome[i] !== p.id || (tiles[i] !== T.BODEN && tiles[i] !== T.GRAS)) continue;
         if (Welt.istSicher(x, y, 6)) continue;
         if (Welt.trainer.some(t => Math.abs(t.x - x) < 12 && Math.abs(t.y - y) < 12)) continue;
-        const lv = Math.min(48, Welt.wildLevel(x, y) + 2);
+        const lv = Math.min(48, Welt.wildLevel(x, y) + 1);
         const r2 = rnd();
         Welt.trainer.push({
           id: id++, x, y, biome: p.id, lv, dir: Math.floor(rnd() * 4), anz: lv < 8 ? 1 + (r2 > 0.6 ? 1 : 0) : lv < 16 ? 2 : 3,
@@ -128,7 +128,8 @@
   Welt.wildLevel = function (x, y, r) {
     const d = Math.hypot(x - START.x, y - START.y);
     const n = r !== undefined ? r : CAM.hash2(Math.floor(x), Math.floor(y), 9);
-    return Math.max(2, Math.min(50, Math.round(3 + d / 6 + (n - 0.5) * 4)));
+    // Rund um den Startpunkt Stufe 5 (so stark wie dein Starter), pro 13 Felder Entfernung etwa eine Stufe mehr (nach 100 Feldern Stufe 13, nach 300 Feldern Stufe 28)
+    return Math.max(5, Math.min(50, Math.round(5 + d / 13 + (n - 0.5) * 2)));
   };
 
   // Was steht neben dem Feld? Gibt { x, y, meta, t } für Dinge zum Ansprechen zurück (Türen, Wegstein, Rune)
@@ -176,14 +177,17 @@
     switch (t) {
       case T.BODEN:
         boden();
+        for (let i = 0; i < 7; i++) { const hh = h2(tx * 7 + i, ty, 31); c.fillStyle = hh > 0.5 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.09)'; c.fillRect(sx + h2(tx, ty * 5 + i, 32) * 14 * u, sy + h2(tx + i, ty, 33) * 14 * u, 2 * u, 1 * u); }
         if (hb > 0.93) { c.fillStyle = p.deco; if (pm === 4) { c.globalAlpha = 0.5; c.fillStyle = p.w; c.fillRect(sx + 3 * u, sy + 8 * u, 8 * u, 3 * u); c.globalAlpha = 1; } else c.fillRect(sx + (h * 10 + 2) * u, sy + (hb * 20 - 17) * u + 8 * u, 2 * u, 2 * u); }
         else if (hb < 0.06) { c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(sx + 4 * u, sy + 10 * u, 5 * u, 2 * u); }
         break;
       case T.GRAS: {
         c.fillStyle = p.gr; c.fillRect(sx, sy, S + 1, S + 1);
+        c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(sx, sy + 12 * u, S + 1, 4 * u);
         const sw = Math.sin(tick / 520 + tx * 0.8 + ty * 0.3) * u * 0.9;
-        for (let i = 0; i < 5; i++) {
-          const bx = sx + (i * 3.2 + 1 + h * 2) * u, by = sy + (6 + ((i * 7 + tx) % 5) * 2) * u;
+        if (hb > 0.7) { c.fillStyle = p.deco; c.fillRect(sx + (h * 9 + 2) * u, sy + (hb * 8 + 3) * u, 1.5 * u, 1.5 * u); c.fillStyle = '#ffe680'; c.fillRect(sx + (h * 9 + 2.4) * u, sy + (hb * 8 + 3.4) * u, 0.7 * u, 0.7 * u); }
+        for (let i = 0; i < 8; i++) {
+          const bx = sx + (i * 2 + 0.5 + h * 1.5) * u, by = sy + (6 + ((i * 7 + tx) % 5) * 2) * u;
           c.fillStyle = i % 2 ? p.gr2 : p.gr;
           c.fillRect(bx + sw, by - 4 * u, 1.6 * u, 6 * u);
           c.fillStyle = p.gr2; c.fillRect(bx + sw * 1.4, by - 5 * u, 1.6 * u, 2 * u);
@@ -197,6 +201,7 @@
         break;
       case T.WASSER: {
         c.fillStyle = p.w; c.fillRect(sx, sy, S + 1, S + 1);
+        c.fillStyle = 'rgba(0,0,0,0.12)'; c.fillRect(sx, sy + 8 * u, S + 1, 8 * u);
         const o = (tick / 700 + tx * 0.6 + ty * 0.9);
         c.fillStyle = p.w2; c.globalAlpha = 0.35;
         c.fillRect(sx + (4 + Math.sin(o) * 3) * u, sy + (4 + h * 6) * u, 6 * u, 1.2 * u);
@@ -230,8 +235,11 @@
           c.fillStyle = p.tr2; c.globalAlpha = 0.6; c.fillRect(sx + 1 * u, sy + 1 * u, 3 * u, 2 * u); c.fillRect(sx + 11 * u, sy + 1 * u, 3 * u, 2 * u); c.globalAlpha = 1;
         } else {
           c.fillStyle = p.trunk; c.fillRect(sx + 7 * u, sy + 9 * u, 2 * u, 6 * u);
+          c.fillStyle = '#10180e'; c.beginPath(); c.arc(sx + 8 * u + sway, sy + 6 * u, 6.8 * u, 0, 6.3); c.fill();
           c.fillStyle = p.tr; c.beginPath(); c.arc(sx + 8 * u + sway, sy + 6 * u, 6 * u, 0, 6.3); c.fill();
+          c.fillStyle = p.tr; c.beginPath(); c.arc(sx + 4 * u + sway, sy + 8 * u, 3.4 * u, 0, 6.3); c.arc(sx + 12 * u + sway, sy + 8 * u, 3.4 * u, 0, 6.3); c.fill();
           c.fillStyle = p.tr2; c.beginPath(); c.arc(sx + 6 * u + sway, sy + 4.5 * u, 3.5 * u, 0, 6.3); c.fill();
+          c.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = 0; k < 4; k++) c.fillRect(sx + (4 + k * 2.3 + h) * u + sway, sy + (3 + (k % 2) * 3) * u, 1.4 * u, 1 * u);
           c.fillStyle = 'rgba(0,0,0,0.15)'; c.beginPath(); c.arc(sx + 10 * u + sway, sy + 8 * u, 3 * u, 0, 6.3); c.fill();
         }
         break;
@@ -306,6 +314,11 @@
       if (tx < 0 || ty < 0 || tx >= W || ty >= H) { c.fillStyle = '#10243a'; c.fillRect(sx, sy, S + 1, S + 1); continue; }
       const idx = ty * W + tx, t = Welt.tiles[idx], p = CAM.BIOME[Welt.biome[idx]].P;
       zeichneFeld(c, tx, ty, sx, sy, S, t, p, tick, (t === T.DACH || t === T.WAND || t === T.TUER) ? Welt.meta[idx] : Welt.biome[idx]);
+      // Ufer: dunkle Kante am Land, heller Schaum am Wasser
+      if (ty > 0 && (t === T.WASSER) !== (Welt.tiles[idx - W] === T.WASSER) && t !== T.LAVA && Welt.tiles[idx - W] !== T.LAVA) {
+        if (t === T.WASSER) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(sx, sy, S + 1, Math.max(2, S * 0.1)); }
+        else { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(sx, sy, S + 1, Math.max(2, S * 0.12)); }
+      }
       if (t === T.TUER) labels.push([sx, sy, Welt.meta[idx]]);
       else if (t === T.STEIN) labels.push([sx, sy, 4]);
       else if (t === T.RUNE) labels.push([sx, sy, 5]);

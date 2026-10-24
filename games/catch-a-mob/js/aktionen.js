@@ -16,8 +16,9 @@
   function mobNameFull(m) { return CAM.name(m) + (m.glanz ? ' ✦' : ''); }
   function mobZeile(m) { return esc(mobNameFull(m)) + ' <small style="color:#a9a59b">Lv ' + m.lv + '</small>'; }
   function lpText(m) { return m.hp <= 0 ? '<span style="color:#ff6b5e">besiegt</span>' : m.hp + '/' + m.mhp + ' LP'; }
-  function spriteImg(m, px) { const c = CAM.sprite(m); return '<img src="' + c.toDataURL() + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated">'; }
+  function spriteImg(m, px) { const c = CAM.spriteMit(m); return '<img src="' + c.toDataURL() + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated">'; }
   A.mobNameFull = mobNameFull;
+  A.h = { ge, tagEl, tagRar, elTags, mobZeile, lpText, spriteImg, sleep };
 
   A.eingabe = function (titel, sub, start, ph) {
     return new Promise(res => {
@@ -40,25 +41,80 @@
   };
   function verlierGold() { const v = Math.floor(S.save.gold * 0.05); S.save.gold -= v; return v; }
 
-  A.heileTeam = function () { S.save.team.forEach(m => { m.hp = m.mhp; m.status = null; delete m.faintDone; }); };
+  A.heileTeam = function () { S.save.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; }); };
 
   // ---------- Heilhaus ----------
+  // Jeder Mob wird einzeln behandelt. Preis und Dauer (1 Sekunde bis 3 Minuten) hängen von Stufe, Seltenheit und Schaden ab.
+  const dauerText = sek => sek >= 60 ? Math.floor(sek / 60) + ' Min ' + (sek % 60 ? (sek % 60) + ' s' : '') : sek + ' s';
   A.heilhaus = async function () {
+    let start = 0;
     for (;;) {
-      const r = await UI.choose([{ label: 'Alle Mobs heilen', sub: 'gratis' }, { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }], { title: 'Heilhaus', sub: 'Hier werden müde Mobs wieder fit.' });
-      if (r === 0) { A.heileTeam(); UI.snd('heil'); Save.speichern(); await UI.info('Dein Team ist wieder bei voller Kraft.', 'Heilhaus'); }
-      else if (r === 1) await A.zwinger();
+      const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
+      const verletzt = alle.filter(o => CAM.heilInfo(o.m)).length;
+      const r = await UI.choose([{ label: 'Mob heilen', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' }, { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
+        { title: 'Heilhaus', sub: 'Du hast ' + S.save.gold + ' Gold.\nDie Pflege kostet pro Mob und dauert je nach Stufe, Seltenheit und Schaden bis zu 3 Minuten.', start });
+      if (r === 0) await A.mobHeilen();
+      else if (r === 1) { start = 1; await A.zwinger(); }
       else return;
     }
   };
+  A.mobHeilen = async function () {
+    let start = 0;
+    for (;;) {
+      const alle = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
+      const items = alle.map(o => {
+        const h = CAM.heilInfo(o.m);
+        return { label: mobZeile(o.m) + tagRar(CAM.FAMILIEN[o.m.fam].rar) + ' <small>' + o.ort + '</small>', sub: h ? lpText(o.m) + ' · ' + ge(h.preis) + ' · ' + dauerText(h.sek) : 'gesund', disabled: !h || S.save.gold < h.preis };
+      });
+      if (!alle.length) { await UI.info('Du hast keine Mobs.', 'Heilhaus'); return; }
+      if (items.every(x => x.disabled)) {
+        const nur = alle.some(o => CAM.heilInfo(o.m));
+        await UI.info(nur ? 'Dir fehlt das Gold für die Pflege. Mit Heiltränken kannst du unterwegs selbst heilen.' : 'Alle deine Mobs sind gesund.', 'Heilhaus'); return;
+      }
+      const r = await UI.choose(items, { title: 'Welchen Mob heilen?', sub: 'Du hast ' + S.save.gold + ' Gold.', start, numbers: false, wide: true });
+      if (r < 0) return;
+      start = r;
+      const o = alle[r], h = CAM.heilInfo(o.m);
+      if (!h || S.save.gold < h.preis) continue;
+      await A.heilenAblauf(o.m, h);
+    }
+  };
+  // Wartebild mit Fortschrittsbalken. Bezahlt wird erst, wenn der Mob fertig ist. Esc bricht ab.
+  A.heilenAblauf = function (m, h) {
+    return new Promise(res => {
+      const host = UI.openPanel('Heilhaus', 'Das Pflegeteam kümmert sich um ' + mobNameFull(m) + ' …');
+      const t0 = Date.now(), ms = h.sek * 1000, anz = (m.wunden || []).length;
+      host.innerHTML = '<div class="row" style="align-items:center"><div id="hh-bild"></div><div style="flex:1"><p><b>' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>Kosten: ' + ge(h.preis) + '</p><div class="bar" style="height:14px"><i id="hh-bar" style="width:0%"></i></div><p id="hh-t" style="color:#a9a59b;font-size:13px"></p></div></div><div class="foot">Esc: Abbrechen (dann kostet es nichts)</div>';
+      let letzteAnz = -1, fertig = false;
+      const zeige = () => {
+        const p = Math.min(1, (Date.now() - t0) / ms);
+        $('hh-bar').style.width = Math.round(p * 100) + '%';
+        $('hh-t').textContent = 'Noch ' + dauerText(Math.max(1, Math.ceil(ms * (1 - p) / 1000))) + ' …';
+        const n = Math.ceil(anz * (1 - p));
+        if (n !== letzteAnz) { letzteAnz = n; const kopie = Object.assign({}, m, { wunden: (m.wunden || []).slice(0, n) }); $('hh-bild').innerHTML = spriteImg(kopie, 96); }
+        if (p >= 1) fin(true);
+      };
+      const key = e => { if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'q' || e.key === 'Q') fin(false); return true; };
+      const iv = setInterval(zeige, 100);
+      function fin(ok) {
+        if (fertig) return; fertig = true; clearInterval(iv); UI.popKeys(key);
+        if (ok && S.save.gold >= h.preis) {
+          S.save.gold -= h.preis; m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; UI.snd('heil'); Save.speichern();
+          UI.closePanel();
+          UI.info(esc(mobNameFull(m)) + ' ist wieder fit. Das kostet ' + ge(h.preis) + '.', 'Geheilt').then(res);
+        } else { UI.closePanel(); res(); }
+      }
+      UI.pushKeys(key); zeige();
+    });
+  };
 
-  // ---------- Siegel-Laden ----------
+  // ---------- Fangkugel-Laden ----------
   A.laden = async function () {
     let start = 0;
     for (;;) {
       const items = CAM.SHOP.map(k => ({ label: CAM.ITEMS[k].n, sub: ge(CAM.ITEMS[k].preis) + ' · hast ' + CAM.itemAnz(k) }));
       items.push({ label: 'Gehen' });
-      const r = await UI.choose(items, { title: 'Siegel-Laden', sub: 'Du hast ' + S.save.gold + ' Gold.\nEnter kauft ein Stück.', start });
+      const r = await UI.choose(items, { title: 'Fangkugel-Laden', sub: 'Du hast ' + S.save.gold + ' Gold.\nEnter kauft ein Stück.', start });
       if (r < 0 || r === CAM.SHOP.length) return;
       start = r;
       const k = CAM.SHOP[r], it = CAM.ITEMS[k];
@@ -121,7 +177,7 @@
   };
   // Neuen Mob ins Team oder in den Zwinger
   A.mobDazu = function (m) {
-    delete m.faintDone; m.status = null;
+    delete m.faintDone; m.status = null; CAM.wundenVerbinden(m);
     if (S.save.team.length < 6) { S.save.team.push(m); return 'team'; }
     if (S.save.box.length < 100) { S.save.box.push(m); return 'box'; }
     return null;
@@ -190,13 +246,14 @@
       const keys = Object.keys(S.save.items).filter(k => CAM.ITEMS[k]);
       if (!keys.length) { await UI.info('Dein Beutel ist leer.', 'Beutel'); return; }
       const items = keys.map(k => { const it = CAM.ITEMS[k]; const nutz = it.heil || it.beleb || it.heilStatus; return { label: it.n + ' × ' + S.save.items[k], sub: it.info, disabled: !nutz }; });
-      const r = await UI.choose(items, { title: 'Beutel', sub: 'Gold: ' + S.save.gold + '\nFangsiegel und Fundstücke brauchst du im Kampf und beim Händler.', numbers: false });
+      const r = await UI.choose(items, { title: 'Beutel', sub: 'Gold: ' + S.save.gold + '\nFangkugeln und Fundstücke brauchst du im Kampf und beim Händler.', numbers: false });
       if (r < 0) return;
       const k = keys[r], it = CAM.ITEMS[k];
       const i = await A.waehleMob(it.n + ' anwenden bei …', m => it.beleb ? m.hp <= 0 : it.heilStatus ? (m.hp > 0 && m.status) : (m.hp > 0 && m.hp < m.mhp));
       if (i < 0) continue;
       const m = S.save.team[i];
       if (it.heil) m.hp = Math.min(m.mhp, m.hp + it.heil); else if (it.beleb) { m.hp = Math.max(1, Math.floor(m.mhp * it.beleb)); delete m.faintDone; } else m.status = null;
+      CAM.wundenAnpassen(m);
       CAM.itemAdd(k, -1); UI.snd('heil'); Save.speichern();
     }
   };
@@ -205,14 +262,14 @@
       const dex = S.save.dex, F = CAM.FAMILIEN;
       const seen = Object.keys(dex).length, caught = Object.values(dex).filter(v => v >= 2).length;
       const items = F.map((f, i) => ({
-        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (dex[i] ? esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
+        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (f.spezial ? '<span style="color:#ffb36b">★</span> ' : '') + (dex[i] ? esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
         sub: dex[i] >= 2 ? '<span style="color:#5fd38a">gefangen</span>' : dex[i] ? 'gesehen' : '–',
       }));
       const r = await UI.choose(items, { title: 'Mob-Buch', sub: 'Gesehen ' + seen + ' / ' + F.length + ' · Gefangen ' + caught + ' / ' + F.length, numbers: false, wide: true });
       if (r < 0) return;
       if (!dex[r]) continue;
       const f = F[r];
-      const orte = CAM.BIOME.filter(b => b.spawn.some(s => s[0] === r)).map(b => b.n).join(', ') || 'nur durch Riesen-Raids';
+      const orte = CAM.BIOME.filter(b => b.spawn.some(s => s[0] === r)).map(b => b.n).join(', ') || f.spezial || 'nur durch Riesen-Raids';
       const stufen = f.n.map((n, i) => spriteImg({ fam: r, stufe: i + 1 }, 72)).join('');
       await UI.info('<div class="row">' + stufen + '</div><p>' + f.n.join(' › ') + '<br>' + tagEl(f.el) + (f.el2 ? tagEl(f.el2) : '') + tagRar(f.rar) + '</p><p>Lebt in: ' + esc(orte) + '</p>', 'Mob-Buch');
     }
@@ -332,6 +389,9 @@
     });
     let r = Math.random() * tot, fam = l[0][0];
     for (const [f, g] of l) { r -= g; if (r <= 0) { fam = f; break; } }
+    // Spezial-Mobs: nur unter besonderen Umständen
+    if (nacht && w === 'klar' && Math.random() < 0.012) fam = 24;
+    else if (w === 'blutmond' && Math.random() < 0.05) fam = 25;
     const lv = Welt.wildLevel(x, y, Math.random());
     return CAM.neuerMob(fam, lv, { glanz: Math.random() < 1 / 64 });
   };
@@ -347,7 +407,7 @@
     return team;
   }
   function vorbereiten(team) { team.forEach(m => { delete m.faintDone; m.status = null; }); }
-  function nachbereiten(team) { team.forEach(m => { delete m.faintDone; m.status = null; }); }
+  function nachbereiten(team) { team.forEach(m => { delete m.faintDone; m.status = null; CAM.wundenVerbinden(m); }); }
   function aktuellesWetter() { return CAM.wetterBei(Welt.biomeAt(S.x, S.y), Date.now()); }
   function beutel() { return S.save.items; }
   function kampfBasis(art, extra) {
@@ -366,10 +426,10 @@
       m.xp += teil;
       while (m.xp >= CAM.xpBedarf(m.lv) && m.lv < 50) {
         m.xp -= CAM.xpBedarf(m.lv);
-        const altS = m.stufe, altMhp = m.mhp, altN = CAM.name(m), altMoves = m.moves.slice();
+        const altS = m.stufe, altMhp = m.mhp, altAtk = m.atk, altDef = m.def, altSpd = m.spd, altN = CAM.name(m), altMoves = m.moves.slice();
         m.lv++; CAM.neuBerechnen(m);
         if (m.hp > 0) m.hp += m.mhp - altMhp;
-        lines.push('<b style="color:#ffd54a">' + esc(altN) + ' steigt auf Stufe ' + m.lv + '!</b>');
+        lines.push('<b style="color:#ffd54a">' + esc(altN) + ' steigt auf Stufe ' + m.lv + '!</b> <small style="color:#5fd38a">LP +' + (m.mhp - altMhp) + ' · Angriff +' + (m.atk - altAtk) + ' · Verteidigung +' + (m.def - altDef) + (m.spd > altSpd ? ' · Tempo +' + (m.spd - altSpd) : '') + '</small>');
         if (m.stufe > altS) lines.push('<b style="color:#c9a6ff">' + esc(altN) + ' entwickelt sich zu ' + esc(CAM.name(m)) + '!</b>');
         m.moves.filter(x => !altMoves.includes(x)).forEach(x => lines.push('Neue Attacke: ' + esc(CAM.MOVES[x].n)));
       }
@@ -397,7 +457,7 @@
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
     const intro = (opt.intro || ('Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!')) + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
-    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro }));
+    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro, erster: opt.erster }));
     const b = res.b; nachbereiten(S.save.team);
     const lines = [];
     if (b.result.caught) {
@@ -430,14 +490,15 @@
     if (r === 0) { await A.wildKampf(m, { entity: w, intro: 'Du forderst ' + mobNameFull(m) + ' (Lv ' + m.lv + ') heraus!' }); }
   };
 
-  A.trainerKampf = async function (tr) {
+  A.trainerKampf = async function (tr, opt) {
+    opt = opt || {};
     if (S.busy || !CAM.lebend()) return false;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     const team = trainerTeam(tr); team.forEach(m => dexSet(m.fam, 1));
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team };
     const gegner = { id: 't', name: tr.name, side: 1, ctrl: 'ai', team };
-    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: tr.name + ' fordert dich heraus!' }));
+    const res = await K.starten(kampfBasis('trainer', { actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: tr.name + ' fordert dich heraus!', erster: opt.erster }));
     const b = res.b; nachbereiten(S.save.team);
     const lines = [];
     if (b.winner === 0) {
@@ -476,6 +537,21 @@
     return '';
   };
 
+  A.einsatzOnline = async function (p) {
+    const eigen = S.save.team, mid = Math.max(1, Math.round((CAM.schnitt(eigen) + (p.lv || 1)) / 2));
+    const mo = await UI.choose([{ label: 'Fairer Kampf', sub: 'alle auf Stufe ' + mid }, { label: 'Echter Kampf', sub: 'Stufen wie sie sind (deine Ø ' + Math.round(CAM.schnitt(eigen)) + ', seine höchste ' + (p.lv || '?') + ')' }, { label: '← Zurück' }], { title: 'Duell mit ' + p.name, sub: 'Du siehst: höchste Stufe ' + (p.lv || '?') + '. ' + p.name + ' kann annehmen oder ablehnen.' });
+    if (mo < 0 || mo === 2) return null;
+    const o = { fair: mo === 0 ? mid : 0, gold: 0, mob: 0 };
+    const stufen = [25, 50, 100, 250, 500];
+    const ei = [{ label: 'Kein Einsatz' }].concat(stufen.map(g => ({ label: g + ' Gold', disabled: g > S.save.gold })));
+    ei.push({ label: 'Vorderstes Fabelwesen setzen', sub: 'Verlierer gibt seins ab', disabled: S.save.team.filter(m => m.hp > 0).length < 2 }); ei.push({ label: '← Zurück' });
+    const e = await UI.choose(ei, { title: 'Einsatz', sub: 'Du hast ' + S.save.gold + ' Gold. Bei einer Mob-Wette setzen beide ihr vorderstes Team-Mitglied.', numbers: false });
+    if (e < 0 || e === ei.length - 1) return null;
+    if (e >= 1 && e <= stufen.length) o.gold = stufen[e - 1];
+    if (e === ei.length - 2) { o.mob = 1; o.mA = CAM.name(S.save.team[0]) + ' Lv ' + S.save.team[0].lv; }
+    return o;
+  };
+
   // Menü bei einer anderen Person
   A.spielerMenue = async function (p) {
     if (S.busy) return;
@@ -490,9 +566,10 @@
     const sch = (S.prot[p.idx] || 0) > Date.now() ? ' 🛡' : '';
     const r = await UI.choose(items, { title: p.name + sch, sub: 'Höchste Stufe: ' + p.lv + ' · Duelle ' + (p.w || 0) + ' Siege / ' + (p.l || 0) + ' Niederlagen' });
     if (r === 0) {
+      const o = await A.einsatzOnline(p); if (!o) return;
       UI.toast('Duell-Anfrage an ' + p.name + ' gesendet …');
-      A.angebot = { idx: p.idx, art: 'chal', t: Date.now() };
-      Netz.senden({ t: 'chal', to: p.idx, from: S.idx });
+      A.angebot = { idx: p.idx, art: 'chal', t: Date.now(), o };
+      Netz.senden({ t: 'chal', to: p.idx, from: S.idx, o });
       setTimeout(() => { if (A.angebot && A.angebot.art === 'chal' && Date.now() - A.angebot.t >= 15000) { A.angebot = null; UI.toast(p.name + ' hat nicht geantwortet.'); } }, 15500);
     } else if (r === 1) {
       Netz.senden({ t: 'amb', a: S.idx, b: p.idx });
@@ -528,18 +605,23 @@
       case 'chal': {
         const p = S.peers.get(von); if (!p) return;
         if (S.busy || !CAM.lebend()) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
-        UI.addCard('<b>' + esc(p.name) + '</b> fordert dich zum Duell heraus!', 15, () => Netz.senden({ t: 'chalr', to: von, ok: true }), () => Netz.senden({ t: 'chalr', to: von, ok: false }));
+        const o = d.o || {};
+        if ((o.gold || 0) > S.save.gold) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
+        const txt = (o.fair ? 'Fairer Kampf (alle auf Stufe ' + (o.fair | 0) + ')' : 'Echter Kampf') + ' · ' + (o.gold ? 'Einsatz ' + (o.gold | 0) + ' Gold' : 'ohne Gold') + (o.mob ? ' · Wette: ' + esc(String(o.mA || 'Mob')) + ' gegen dein vorderstes Fabelwesen (' + esc(S.save.team[0] ? CAM.name(S.save.team[0]) + ' Lv ' + S.save.team[0].lv : '–') + ')' : '') + ' · ' + esc(p.name) + ' hat höchste Stufe ' + (p.lv | 0);
+        if (o.mob && S.save.team.filter(m => m.hp > 0).length < 2) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
+        UI.addCard('<b>' + esc(p.name) + '</b> fordert dich zum Duell heraus!<br><small>' + txt + '</small>', 20, () => Netz.senden({ t: 'chalr', to: von, ok: true }), () => Netz.senden({ t: 'chalr', to: von, ok: false }));
         UI.snd('ruf');
         break;
       }
       case 'chalr': {
         if (!A.angebot || A.angebot.art !== 'chal' || A.angebot.idx !== von) return;
-        A.angebot = null;
+        A.angebotO = A.angebot.o; A.angebot = null;
         if (!d.ok) { UI.toast((S.peers.get(von) ? S.peers.get(von).name : 'Die Person') + ' lehnt das Duell ab.'); return; }
-        const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter() };
+        const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter(), o: A.angebotO || null };
         Netz.senden(m); A.duellStart(m);
         break;
       }
+      case 'prize': { if (d.mob && CAM.FAMILIEN[d.mob.fam]) { const m = d.mob; CAM.neuBerechnen(m); m.hp = m.mhp; m.wunden = []; A.mobDazu(m); S.save.dex[m.fam] = 2; Save.speichern(); UI.toast('Du hast ' + CAM.name(m) + ' (Lv ' + m.lv + ') gewonnen!', 4000); } break; }
       case 'duelgo': if (d.a === von && d.b === S.idx) A.duellStart(d); break;
       case 'amb': if (Netz.gastgeber() === S.idx) A.hostUeberfall(d); break;
       case 'ambno': if (d.a === S.idx) UI.toast(d.grund || 'Der Überfall ist nicht möglich.'); break;
@@ -597,7 +679,8 @@
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     const andere = d.a === S.idx ? d.b : d.a, bid = 'd' + d.seed;
-    const mein = duellTeam();
+    const o = d.o || null, lvl = o ? (o.fair | 0) : 30, stake = o && o.mob ? S.save.team[0] : null;
+    const mein = CAM.duellKopien(S.save.team, lvl);
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: S.save.gold });
     UI.toast(d.amb ? 'Überfall!' : 'Duell beginnt …', 1500);
     const ok = await warteAuf(() => S.teams[bid] && S.teams[bid][andere], 10000);
@@ -608,7 +691,7 @@
     const teams = { [S.idx]: mein, [andere]: gegnerTeam.team };
     const actors = [lo, hi].map((i, side) => ({ id: 'p' + i, name: pn(i), side, ctrl: i === S.idx ? 'local' : 'remote', team: teams[i], fleeFirst: d.amb && i === d.b }));
     const res = await K.starten({
-      kind: 'duel', actors, localId: 'p' + S.idx, seed: d.seed, weather: d.w || 'klar', biome: Welt.biomeAt(S.x, S.y), bid, timer: 40, ueberfall: d.amb,
+      kind: 'duel', actors, erster: d.amb ? (d.a === lo ? 0 : 1) : null, localId: 'p' + S.idx, seed: d.seed, weather: d.w || 'klar', biome: Welt.biomeAt(S.x, S.y), bid, timer: 40, ueberfall: d.amb,
       senden: m => Netz.senden(m), beutel, verbrauch: () => {},
       intro: d.amb ? pn(d.a) + ' überfällt ' + pn(d.b) + '!' : 'Duell: ' + pn(lo) + ' gegen ' + pn(hi),
     });
@@ -619,7 +702,9 @@
     if (b.over) {
       const gewonnen = b.winner === meineSeite;
       const loserGold = gewonnen ? gegnerTeam.gold : S.save.gold;
-      const einsatz = Math.min(500, Math.floor(loserGold * 0.05));
+      const einsatz = o ? 0 : Math.min(500, Math.floor(loserGold * 0.05));
+      if (o && o.gold) { const g = o.gold | 0; if (gewonnen) { S.save.gold += g; lines.push('Einsatz: Du bekommst ' + ge(g) + '.'); } else { const z = Math.min(g, S.save.gold); S.save.gold -= z; lines.push('Einsatz: Du zahlst ' + ge(z) + '.'); } }
+      if (stake && !gewonnen) { const i = S.save.team.indexOf(stake); if (i >= 0 && S.save.team.length > 1) { S.save.team.splice(i, 1); Netz.senden({ t: 'prize', to: andere, mob: CAM.kopie(stake) }); lines.push('<b style="color:#ff6b5e">' + esc(CAM.name(stake)) + ' geht an ' + esc(pn(andere)) + '.</b>'); } }
       if (gewonnen) { S.save.gold += Math.floor(einsatz / 2); lines.push('<b style="color:#5fd38a">Du hast gewonnen!</b>' + (einsatz ? ' Beute: ' + ge(Math.floor(einsatz / 2)) : '')); UI.snd('sieg'); }
       else { S.save.gold = Math.max(0, S.save.gold - einsatz); lines.push('<b style="color:#ff6b5e">Du hast verloren.</b>' + (einsatz ? ' Du zahlst ' + ge(einsatz) + '.' : '')); UI.snd('niederlage'); }
       if (!d.amb) { if (gewonnen) S.save.w++; else S.save.l++; Netz.senden({ t: 'st', w: S.save.w, l: S.save.l }); }
@@ -694,8 +779,9 @@
       lines.push('<b style="color:#ffd54a">' + esc(bossDef.n) + ' ist besiegt!</b>');
       lines.push(...await xpVerteilen(b, la));
       const gold = 150 + lv * 25; S.save.gold += gold; lines.push('Beute: ' + ge(gold));
-      CAM.itemAdd('siegel2', 2); lines.push('2 × Starkes Siegel');
-      if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meistersiegel!</b>'); }
+      CAM.itemAdd('siegel2', 2); lines.push('2 × Starke Fangkugel');
+      if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
+      if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
       if (Math.random() < 0.25) {
         const z = CAM.neuerMob(bossDef.fam, Math.max(10, lv - 4)); const wo = A.mobDazu(z); dexSet(bossDef.fam, 2);
         lines.push('<b style="color:#c9a6ff">' + esc(bossDef.n) + ' lässt sich zähmen und schliesst sich dir an!</b> ' + (wo === 'box' ? '(im Zwinger)' : wo ? '' : '(Zwinger voll)'));

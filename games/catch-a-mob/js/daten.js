@@ -117,9 +117,162 @@
     { n: ['Aschekönig'], el: 'Feuer', el2: 'Schatten', base: [92, 92, 74, 60], rar: 3, kind: 'ghoul', opt: { horns: true, fire: true, big: true }, legend: true, pal: ['#4a1414', '#1e0606', '#ff7a2e', '#fff27a'] },
     { n: ['Totenlord'], el: 'Schatten', base: [94, 88, 78, 54], rar: 3, kind: 'ghoul', opt: { horns: true, big: true }, legend: true, pal: ['#6d6a58', '#26241c', '#9affb0', '#9affb0'] },
     { n: ['Prismagolem'], el: 'Licht', el2: 'Erde', base: [102, 84, 100, 30], rar: 3, kind: 'golem', opt: { big: true }, legend: true, pal: ['#5a4f78', '#241e3a', '#ffe680', '#ffffff'] },
+    // Spezial-Mobs: kommen in keinem Biom normal vor, nur auf besonderen Wegen (spezial = Erklärung im Mob-Buch)
+    { n: ['Sternschnuppe', 'Sternenfuchs', 'Himmelsfuchs'], el: 'Licht', base: [50, 64, 50, 84], rar: 2, kind: 'quad', opt: { ears: 'point', tail: 'fluff', mane: true }, pal: ['#c9d4ff', '#6a6fb8', '#fff3a8', '#7de4ff'], spezial: 'Taucht nur in klaren Nächten auf und rennt schnell davon.' },
+    { n: ['Blutschemen', 'Mondschlächter', 'Blutgraf'], el: 'Schatten', base: [58, 72, 50, 64], rar: 2, kind: 'ghoul', opt: { horns: true }, pal: ['#5a1020', '#26060c', '#ff3b5a', '#ffd0d8'], spezial: 'Zeigt sich nur bei Blutmond.' },
+    { n: ['Glutei', 'Ascheschlüpfer', 'Weltendrache'], el: 'Feuer', el2: 'Licht', base: [66, 74, 62, 58], rar: 2, kind: 'dragon', pal: ['#ffb36b', '#7a3a1a', '#ffe14d', '#fff3a8'], spezial: 'Schlüpft aus dem Drachenei, das manchmal als Beute von Riesen fällt (600 Schritte im Beutel tragen).' },
+    { n: ['Zwillingskopf', 'Chimäre', 'Urchimäre'], el: 'Normal', el2: 'Schatten', base: [72, 72, 66, 60], rar: 2, kind: 'quad', opt: { ears: 'round', tail: 'flame', mane: true }, pal: ['#c9a24a', '#6a4a1a', '#ff6a2e', '#fff3a8'], spezial: 'Gehört den Champion-Bots. Du bekommst sie nur, wenn du sie im Einsatz-Duell gewinnst.' },
   ];
   F.forEach((f, i) => { f.id = i; f.stufen = f.n.length; });
-  CAM.ANZ_FAMILIEN = 16;                // normale Familien; danach kommen die 8 Riesen
+
+  // ---------- Eigene Attacken jeder Familie ----------
+  // Jedes Fabelwesen hat vier (Riesen drei) eigene Attacken mit eigener Animation (anim: Art der Animation + Feinheiten, siehe kampfanim.js).
+  // [id, Name, Element, Stärke, Treffer, anim, Status, Chance]
+  const SIG = [
+    // 0 Glutfunke
+    [['funkenbiss', 'Funkenbiss', 'Feuer', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#ffd54a', '#ff6a2e'] }],
+     ['glutschweif', 'Glutschweif', 'Feuer', 52, 100, { t: 'lunge', deco: 'schweif', cols: ['#ff6a2e', '#ffd54a'] }, 'brand', 20],
+     ['glutsprung', 'Glutsprung', 'Feuer', 72, 95, { t: 'sprung', deco: 'feuer' }, 'brand', 20],
+     ['infernoheulen', 'Infernoheulen', 'Feuer', 100, 85, { t: 'nova', cols: ['#ffd54a', '#ff6a2e', '#c0301a'], ringe: 4 }, 'brand', 25]],
+    // 1 Moorblase
+    [['schlammspritzer', 'Schlammspritzer', 'Wasser', 40, 100, { t: 'salve', shape: 'klumpen', n: 5, cols: ['#5a7a4a', '#7a8a52'] }],
+     ['moorgriff', 'Moorgriff', 'Schatten', 52, 100, { t: 'saugen', cols: ['#7dd9c4', '#d6ff7a'] }],
+     ['sumpfsog', 'Sumpfsog', 'Wasser', 72, 95, { t: 'wirbel', cols: ['#2f6a6a', '#7dd9c4'], shape: 'blase' }],
+     ['leichenflut', 'Leichenflut', 'Wasser', 100, 85, { t: 'flut', cols: ['#2f5a4a', '#8affb0'], dunkel: true }, 'furcht', 15]],
+    // 2 Dornling
+    [['dornenspucke', 'Dornenspucke', 'Pflanze', 40, 100, { t: 'salve', shape: 'dorn', n: 6, cols: ['#e8e0b0', '#3f9a3f'] }],
+     ['rankengriff', 'Rankengriff', 'Pflanze', 55, 100, { t: 'ranken', cols: ['#3f9a3f', '#7de05a'] }, 'gift', 25],
+     ['geweihstoss', 'Geweihstoss', 'Pflanze', 74, 95, { t: 'lunge', deco: 'horn', cols: ['#e8e0b0', '#3f9a3f'] }],
+     ['waldwuergen', 'Waldwürgen', 'Pflanze', 98, 85, { t: 'ranken', gross: true, cols: ['#2f6a2f', '#9aff6a'] }, 'gift', 25]],
+    // 3 Steinzahn
+    [['pranke', 'Pranke', 'Erde', 40, 100, { t: 'lunge', deco: 'kralle', cols: ['#e8d8b0'] }],
+     ['felswurf', 'Felswurf', 'Erde', 55, 95, { t: 'ball', shape: 'fels', r: 15, cols: ['#8a7a62', '#b8a888'] }],
+     ['baerenstampf', 'Bärenstampf', 'Erde', 76, 95, { t: 'sprung', deco: 'stampf' }],
+     ['lawine', 'Lawine', 'Erde', 100, 85, { t: 'meteor', shape: 'fels', n: 8, cols: ['#8a7a62', '#c9a05a'] }, 'furcht', 15]],
+    // 4 Rabenkind
+    [['schnabelhieb', 'Schnabelhieb', 'Luft', 40, 100, { t: 'lunge', deco: 'schnabel', cols: ['#d8d0ff'] }],
+     ['federsalve', 'Federsalve', 'Luft', 55, 95, { t: 'salve', shape: 'feder', n: 6, cols: ['#2b2438', '#6c5aa6'] }],
+     ['sturzflug', 'Sturzflug', 'Luft', 76, 95, { t: 'sprung', deco: 'sturz' }],
+     ['rabensturm', 'Rabensturm', 'Schatten', 98, 85, { t: 'wirbel', shape: 'feder', cols: ['#15101f', '#8a5cf0'] }, 'furcht', 15]],
+    // 5 Lichtwisp
+    [['funkenflug', 'Funkenflug', 'Licht', 40, 100, { t: 'salve', shape: 'funke', n: 7, cols: ['#fff0a8', '#7de4ff'] }],
+     ['leuchtkugel', 'Leuchtkugel', 'Licht', 55, 100, { t: 'ball', shape: 'orb', r: 14, cols: ['#fff6b0', '#ffd54a'] }],
+     ['lichtsaeule', 'Lichtsäule', 'Licht', 80, 95, { t: 'saeule', cols: ['#fff6b0', '#ffffff', '#7de4ff'] }],
+     ['sternenregen', 'Sternenregen', 'Licht', 96, 90, { t: 'meteor', shape: 'stern', n: 9, cols: ['#fff6b0', '#7de4ff'] }]],
+    // 6 Knochenei
+    [['knochenbiss', 'Knochenbiss', 'Schatten', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#d9d3bd', '#8a3ffc'] }],
+     ['knochenwurf', 'Knochenwurf', 'Schatten', 55, 95, { t: 'salve', shape: 'knochen', n: 4, cols: ['#d9d3bd', '#8a3ffc'] }],
+     ['schattenatem', 'Schattenatem', 'Schatten', 80, 95, { t: 'atem', cols: ['#8a3ffc', '#c46bff', '#2a1048'] }],
+     ['totenschrei', 'Totenschrei', 'Luft', 100, 85, { t: 'puls', cols: ['#c46bff', '#ffffff'] }, 'furcht', 25]],
+    // 7 Moosgeist
+    [['sporenwolke', 'Sporenwolke', 'Pflanze', 36, 100, { t: 'wolke', cols: ['#a6d65a', '#fff27a'] }, 'gift', 30],
+     ['moosfaust', 'Moosfaust', 'Pflanze', 52, 100, { t: 'lunge', deco: 'faust', cols: ['#4a6a35', '#a6d65a'] }],
+     ['faeulnispeitsche', 'Fäulnispeitsche', 'Pflanze', 72, 95, { t: 'peitsche', cols: ['#4a6a35', '#a6d65a'] }, 'gift', 20],
+     ['verwesung', 'Verwesung', 'Schatten', 95, 90, { t: 'saugen', cols: ['#a6d65a', '#25381b'], stark: true }, 'gift', 25]],
+    // 8 Dornhase
+    [['hasentritt', 'Hasentritt', 'Pflanze', 40, 100, { t: 'lunge', deco: 'kopfnuss', cols: ['#f0d0d8'] }],
+     ['rosenblaetter', 'Rosenblätter', 'Pflanze', 52, 100, { t: 'salve', shape: 'blatt', n: 8, cols: ['#e0507a', '#f0d0d8'] }],
+     ['blutranke', 'Blutranke', 'Pflanze', 72, 95, { t: 'peitsche', cols: ['#a0203a', '#e0507a'], dornen: true }, 'gift', 20],
+     ['dornenwirbel', 'Dornenwirbel', 'Pflanze', 98, 90, { t: 'rolle', cols: ['#e0507a', '#3f9a3f'] }]],
+    // 9 Salzkrabbe
+    [['zangenhieb', 'Zangenhieb', 'Wasser', 40, 100, { t: 'lunge', deco: 'zange', cols: ['#f0c070'] }],
+     ['blasenschauer', 'Blasenschauer', 'Wasser', 52, 100, { t: 'salve', shape: 'blase', n: 8, cols: ['#bfe6ff', '#ffffff'] }],
+     ['gezeitenschlag', 'Gezeitenschlag', 'Wasser', 76, 95, { t: 'flut', cols: ['#3fa0ff', '#bfe6ff'] }],
+     ['riffbrecher', 'Riffbrecher', 'Erde', 100, 85, { t: 'spiesse', shape: 'koralle', cols: ['#f07a6a', '#ffd0a0'] }, 'furcht', 15]],
+    // 10 Sporling
+    [['sporenschuss', 'Sporenschuss', 'Pflanze', 40, 100, { t: 'salve', shape: 'spore', n: 6, cols: ['#f0e0c0', '#b0472b'] }, 'gift', 25],
+     ['hutschlag', 'Hutschlag', 'Pflanze', 54, 100, { t: 'sprung', deco: 'stampf' }],
+     ['pilzsaeule', 'Pilzsäule', 'Erde', 76, 95, { t: 'spiesse', shape: 'pilz', cols: ['#b0472b', '#f0e0c0'] }],
+     ['faeulnissturm', 'Fäulnissturm', 'Pflanze', 95, 90, { t: 'wolke', gross: true, cols: ['#8a9a3a', '#f0e0c0', '#4e1d12'] }, 'gift', 35]],
+    // 11 Frostpfote
+    [['eisbiss', 'Eisbiss', 'Wasser', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#ffffff', '#3ad4ff'] }],
+     ['frostatem', 'Frostatem', 'Wasser', 56, 100, { t: 'atem', cols: ['#ffffff', '#bfe6ff', '#3ad4ff'] }],
+     ['eissplitter', 'Eissplitter', 'Wasser', 76, 95, { t: 'salve', shape: 'eis', n: 7, cols: ['#ffffff', '#3ad4ff'] }],
+     ['blizzard', 'Blizzard', 'Luft', 100, 85, { t: 'wirbel', shape: 'schnee', cols: ['#ffffff', '#bfe6ff'] }, 'furcht', 15]],
+    // 12 Irrflamme
+    [['flammenfaust', 'Flammenfaust', 'Feuer', 40, 100, { t: 'lunge', deco: 'faust', cols: ['#ff8a2e', '#fff27a'] }],
+     ['feuerball', 'Feuerball', 'Feuer', 56, 100, { t: 'ball', shape: 'feuer', r: 16, cols: ['#ff8a2e', '#fff27a'] }, 'brand', 20],
+     ['hoellenfeuer', 'Höllenfeuer', 'Feuer', 82, 95, { t: 'saeule', cols: ['#ff3b1a', '#ff8a2e', '#fff27a'] }, 'brand', 20],
+     ['seelenbrand', 'Seelenbrand', 'Schatten', 100, 85, { t: 'seelen', cols: ['#ff8a2e', '#9affb0'] }, 'brand', 30]],
+    // 13 Lavawurm
+    [['lavaspucke', 'Lavaspucke', 'Feuer', 40, 100, { t: 'ball', shape: 'lava', r: 11, cols: ['#ff7a2e', '#ffe14d'] }],
+     ['schlangenbiss', 'Schlangenbiss', 'Feuer', 52, 100, { t: 'lunge', deco: 'biss', cols: ['#ff7a2e', '#ffe14d'] }, 'gift', 20],
+     ['magmaschwall', 'Magmaschwall', 'Feuer', 76, 95, { t: 'flut', cols: ['#ff7a2e', '#ffe14d'], lava: true }, 'brand', 20],
+     ['vulkanausbruch', 'Vulkanausbruch', 'Erde', 100, 85, { t: 'meteor', shape: 'lava', n: 7, cols: ['#ff7a2e', '#ffe14d', '#5a3a2e'] }, 'brand', 30]],
+    // 14 Kristallkern
+    [['kristallsplitter', 'Kristallsplitter', 'Erde', 40, 100, { t: 'salve', shape: 'kristall', n: 6, cols: ['#7de4ff', '#ffffff'] }],
+     ['felsfaust', 'Felsfaust', 'Erde', 56, 100, { t: 'lunge', deco: 'faust', cols: ['#8a84a0', '#7de4ff'] }],
+     ['prismastrahl', 'Prismastrahl', 'Licht', 82, 95, { t: 'strahl', dick: true, prisma: true }],
+     ['edelsturz', 'Edelsturz', 'Erde', 100, 85, { t: 'spiesse', shape: 'kristall', cols: ['#7de4ff', '#ffffff'], gross: true }, 'furcht', 15]],
+    // 15 Grabstaub
+    [['grabgriff', 'Grabgriff', 'Schatten', 40, 100, { t: 'schatten', cols: ['#4a4a40', '#9affb0'] }],
+     ['seelenhieb', 'Seelenhieb', 'Schatten', 56, 100, { t: 'hieb', x: true, cols: ['#9affb0', '#ffffff'] }],
+     ['totenklage', 'Totenklage', 'Schatten', 76, 95, { t: 'puls', cols: ['#9affb0', '#ffffff'] }, 'furcht', 20],
+     ['seelenernte', 'Seelenernte', 'Schatten', 96, 90, { t: 'saugen', cols: ['#9affb0', '#ffffff'], stark: true }]],
+    // 16 Dornenkönig
+    [['wurzelhieb', 'Wurzelhieb', 'Pflanze', 60, 100, { t: 'ranken', cols: ['#4a3a22', '#3f9a3f'] }],
+     ['dornensturm', 'Dornensturm', 'Pflanze', 85, 95, { t: 'salve', shape: 'dorn', n: 14, cols: ['#e8e0b0', '#2f8f3a'] }, 'gift', 25],
+     ['koenigsfluch', 'Königsfluch', 'Pflanze', 108, 90, { t: 'saeule', cols: ['#2f8f3a', '#9aff6a', '#ffffff'] }, 'gift', 30]],
+    // 17 Riffschlund
+    [['scherenschlag', 'Scherenschlag', 'Erde', 60, 100, { t: 'lunge', deco: 'zange', gross: true, cols: ['#8fe0ff'] }],
+     ['strudel', 'Strudel', 'Wasser', 85, 95, { t: 'wirbel', shape: 'blase', cols: ['#2f6f8f', '#8fe0ff'] }],
+     ['tsunami', 'Tsunami', 'Wasser', 108, 90, { t: 'flut', gross: true, cols: ['#2f6f8f', '#8fe0ff'] }]],
+    // 18 Rabenkaiser
+    [['kaiserschwinge', 'Kaiserschwinge', 'Luft', 60, 100, { t: 'hieb', gross: true, cols: ['#8a5cf0', '#ffffff'] }],
+     ['federsturm', 'Federsturm', 'Luft', 85, 95, { t: 'salve', shape: 'feder', n: 14, cols: ['#1d1830', '#8a5cf0'] }],
+     ['schattensturz', 'Schattensturz', 'Schatten', 108, 90, { t: 'sprung', deco: 'sturz', dunkel: true }, 'furcht', 20]],
+    // 19 Frostwyrm
+    [['eishauch', 'Eishauch', 'Wasser', 60, 100, { t: 'atem', cols: ['#ffffff', '#bfe6ff', '#3ad4ff'] }],
+     ['frostklaue', 'Frostklaue', 'Luft', 85, 95, { t: 'hieb', gross: true, cols: ['#bfe6ff', '#ffffff'] }],
+     ['eiszeit', 'Eiszeit', 'Wasser', 108, 90, { t: 'spiesse', shape: 'eis', gross: true, cols: ['#bfe6ff', '#ffffff'] }, 'furcht', 20]],
+    // 20 Moorkrake
+    [['fangarmhieb', 'Fangarmhieb', 'Wasser', 60, 100, { t: 'lunge', deco: 'umarmung', cols: ['#6cf0c8'] }],
+     ['tintenwolke', 'Tintenwolke', 'Wasser', 85, 95, { t: 'wolke', gross: true, cols: ['#0c2024', '#1f4a4a', '#6cf0c8'] }],
+     ['tiefsog', 'Tiefsog', 'Schatten', 108, 90, { t: 'wirbel', shape: 'blase', cols: ['#0c2024', '#6cf0c8'], gross: true }, 'furcht', 20]],
+    // 21 Aschekönig
+    [['aschefaust', 'Aschefaust', 'Schatten', 60, 100, { t: 'lunge', deco: 'faust', gross: true, cols: ['#ff7a2e', '#fff27a'] }],
+     ['glutstrahl', 'Glutstrahl', 'Feuer', 88, 95, { t: 'strahl', dick: true }, 'brand', 25],
+     ['ascheregen', 'Ascheregen', 'Feuer', 108, 90, { t: 'meteor', shape: 'feuer', n: 10, cols: ['#ff7a2e', '#fff27a', '#4a1414'] }, 'brand', 30]],
+    // 22 Totenlord
+    [['knochenhand', 'Knochenhand', 'Schatten', 60, 100, { t: 'schatten', gross: true, cols: ['#d9d3bd', '#9affb0'] }],
+     ['todeshauch', 'Todeshauch', 'Schatten', 85, 95, { t: 'atem', cols: ['#9affb0', '#26241c', '#ffffff'] }],
+     ['seelensturm', 'Seelensturm', 'Schatten', 108, 90, { t: 'seelen', cols: ['#9affb0', '#ffffff'], viele: true }, 'furcht', 25]],
+    // 23 Prismagolem
+    [['prismafaust', 'Prismafaust', 'Licht', 60, 100, { t: 'lunge', deco: 'faust', gross: true, cols: ['#ffe680', '#ffffff'] }],
+     ['lichtbrechung', 'Lichtbrechung', 'Licht', 88, 95, { t: 'strahl', dick: true, prisma: true }],
+     ['kristallsturm', 'Kristallsturm', 'Erde', 108, 90, { t: 'spiesse', shape: 'kristall', gross: true, cols: ['#ffe680', '#7de4ff'] }, 'furcht', 20]],
+    // 24 Sternschnuppe
+    [['sternenbiss', 'Sternenbiss', 'Licht', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#fff3a8', '#7de4ff'] }],
+     ['funkenregen', 'Funkenregen', 'Licht', 54, 100, { t: 'salve', shape: 'funke', n: 8, cols: ['#fff3a8', '#c9d4ff'] }],
+     ['kometenschweif', 'Kometenschweif', 'Licht', 78, 95, { t: 'meteor', shape: 'stern', n: 6, cols: ['#fff3a8', '#7de4ff'] }],
+     ['himmelssturz', 'Himmelssturz', 'Licht', 100, 90, { t: 'saeule', cols: ['#c9d4ff', '#ffffff', '#fff3a8'] }]],
+    // 25 Blutschemen
+    [['blutbiss', 'Blutbiss', 'Schatten', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#ff3b5a', '#5a1020'] }],
+     ['blutregen', 'Blutregen', 'Schatten', 56, 100, { t: 'salve', shape: 'klumpen', n: 7, cols: ['#a01a30', '#ff3b5a'] }],
+     ['mondsichel', 'Mondsichel', 'Schatten', 78, 95, { t: 'lunge', deco: 'schweif', cols: ['#ff3b5a', '#ffd0d8'] }, 'furcht', 20],
+     ['blutmondnova', 'Blutmond-Nova', 'Schatten', 100, 90, { t: 'nova', cols: ['#ff3b5a', '#a01a30', '#5a1020'], ringe: 4 }, 'furcht', 25]],
+    // 26 Glutei
+    [['glutschnabel', 'Glutschnabel', 'Feuer', 42, 100, { t: 'lunge', deco: 'schnabel', cols: ['#ffe14d', '#ff6a2e'] }],
+     ['schalensplitter', 'Schalensplitter', 'Feuer', 56, 100, { t: 'salve', shape: 'fels', n: 5, cols: ['#ffb36b', '#7a3a1a'] }],
+     ['drachenatem', 'Drachenatem', 'Feuer', 80, 95, { t: 'atem', cols: ['#fff3a8', '#ffb36b', '#ff6a2e'] }, 'brand', 20],
+     ['weltenbrand', 'Weltenbrand', 'Licht', 102, 90, { t: 'meteor', shape: 'feuer', n: 9, cols: ['#ff6a2e', '#fff3a8', '#ffe14d'] }, 'brand', 25]],
+    // 27 Zwillingskopf
+    [['doppelbiss', 'Doppelbiss', 'Normal', 42, 100, { t: 'lunge', deco: 'biss', cols: ['#fff3a8', '#c9a24a'] }],
+     ['loewenpranke', 'Löwenpranke', 'Normal', 58, 100, { t: 'lunge', deco: 'kralle', cols: ['#ffd54a', '#fff'] }],
+     ['chimaerenatem', 'Chimärenatem', 'Schatten', 82, 95, { t: 'atem', cols: ['#ff6a2e', '#8a3ffc', '#fff3a8'] }, 'brand', 20],
+     ['urgewalt', 'Urgewalt', 'Normal', 104, 90, { t: 'nova', cols: ['#ffd54a', '#ff6a2e', '#8a3ffc'], ringe: 4 }]],
+  ];
+  SIG.forEach((list, i) => {
+    const f = F[i];
+    f.sig = list.map(([id, n, el, pow, acc, anim, st, pr]) => {
+      const mv = M[id] = { n, el, pow, acc, anim, id };
+      if (st) { mv.st = st; mv.p = pr; }
+      return id;
+    });
+    f.sigLv = f.legend ? [1, 6, 12] : [1, 4, 12, 24];
+  });
+
+  CAM.ANZ_FAMILIEN = 16;                // normale Familien; danach kommen die 8 Riesen und 4 Spezial-Mobs (ab Nummer 24)
   CAM.RARITAET = ['Gewöhnlich', 'Selten', 'Episch', 'Legendär'];
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
   CAM.FANGRATE = [0.9, 0.55, 0.3, 0.06];
@@ -141,27 +294,40 @@
   };
   CAM.xpBedarf = lv => Math.floor(0.6 * lv * lv * lv) + 10;
 
+  // Bei jedem Stufenaufstieg steigen die LP um mindestens 1 und Angriff und Verteidigung ebenfalls (der Zusatz lv * 0.55 sorgt dafür).
   CAM.werte = function (fam, stufe, lv) {
     const f = F[fam], b = f.base;
     const k = STUFEN_FAKTOR[f.stufen][stufe - 1];
     const w = i => Math.floor((2 * b[i] * k * lv) / 100) + 5;
+    const w2 = i => Math.floor((2 * b[i] * k * lv) / 100 + lv * 0.55) + 5;
     return {
-      hp: Math.floor((2 * b[0] * k * lv) / 100) + lv + 12,
-      atk: w(1), def: w(2), spd: w(3),
+      hp: Math.floor((2 * b[0] * k * lv) / 100 + lv * 0.4) + lv + 12,
+      atk: w2(1), def: w2(2), spd: w(3),
     };
   };
 
-  // Welche Attacken ein Mob auf einer Stufe kennt (höchstens 4, die zuletzt gelernten)
+  // Welche Attacken ein Mob auf einer Stufe kennt (höchstens 4, die zuletzt gelernten).
+  // Jede Familie hat ihre eigenen Attacken (f.sig). Bei Mobs mit zwei Elementen gehört eine davon zum zweiten Element.
   CAM.attackenFuer = function (fam, lv) {
-    const f = F[fam], e1 = CAM.EL_MOVES[f.el], e2 = f.el2 ? CAM.EL_MOVES[f.el2] : null;
-    const l = [['rammen', 1], [e1[0], 1], [e1[1], 10]];
-    if (e2) l.push([e2[0], 14]);
-    l.push([e1[2], 22]);
-    if (e2) l.push([e2[1], 30]);
+    const f = F[fam];
+    const l = f.sig.map((id, i) => [id, f.sigLv[i]]);
     if (f.el === 'Licht' || f.el2 === 'Licht') l.push(['genesung', 18]);
     const got = [];
     for (const [id, min] of l.sort((a, b) => a[1] - b[1])) if (lv >= min && !got.includes(id)) got.push(id);
     return got.slice(-4);
+  };
+
+  // ---------- Heilhaus: Preis und Dauer pro Mob ----------
+  // Je höher Stufe und Seltenheit und je mehr Schaden, desto teurer und länger (1 Sekunde bis 3 Minuten).
+  const HEIL_RAR = [1, 1.7, 2.8, 5];
+  CAM.heilInfo = function (m) {
+    const f = F[m.fam];
+    const schaden = m.hp <= 0 ? 1 : Math.max(0, 1 - m.hp / m.mhp), stat = m.status ? 1 : 0;
+    if (schaden <= 0 && !stat) return null;
+    const preis = Math.max(2, Math.round((6 + m.lv * 2.2) * HEIL_RAR[f.rar] * (0.2 + 0.8 * schaden) * (m.hp <= 0 ? 1.25 : 1) + stat * 3));
+    const lvF = Math.min(1, 0.12 + (m.lv / 50) * 0.68 + f.rar * 0.06);
+    const sek = Math.max(1, Math.min(180, Math.round(1 + 179 * schaden * lvF)));
+    return { preis, sek, schaden };
   };
 
   CAM.neuerMob = function (fam, lv, opt) {
@@ -177,6 +343,12 @@
     m.mhp = w.hp; m.atk = w.atk; m.def = w.def; m.spd = w.spd;
     m.moves = CAM.attackenFuer(m.fam, m.lv);
     if (m.hp > m.mhp) m.hp = m.mhp;
+  };
+  // Alte Spielstände auf die aktuellen Werte und Attacken bringen (LP-Zuwachs wird gutgeschrieben)
+  CAM.angleichen = function (m) {
+    const alt = m.mhp || 0;
+    CAM.neuBerechnen(m);
+    if (m.hp > 0 && m.mhp > alt && alt) m.hp = Math.min(m.mhp, m.hp + m.mhp - alt);
   };
   CAM.kopie = m => JSON.parse(JSON.stringify(m));
   CAM.preis = function (m, saison) {
@@ -275,11 +447,12 @@
 
   // ---------- Gegenstände ----------
   CAM.ITEMS = {
-    siegel1: { n: 'Einfaches Siegel', preis: 20, fang: 1.0, info: 'Fängt geschwächte Mobs' },
-    siegel2: { n: 'Starkes Siegel', preis: 60, fang: 1.7, info: 'Fängt deutlich besser' },
-    siegel3: { n: 'Meistersiegel', preis: 1200, fang: 99, info: 'Fängt immer' },
-    trank: { n: 'Trank', preis: 30, heil: 40, info: 'Heilt 40 LP' },
-    trank2: { n: 'Grosser Trank', preis: 100, heil: 120, info: 'Heilt 120 LP' },
+    siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1.0, info: 'Fängt geschwächte Mobs' },
+    siegel2: { n: 'Starke Fangkugel', preis: 60, fang: 1.7, info: 'Fängt deutlich besser' },
+    siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 99, info: 'Fängt immer' },
+    trank: { n: 'Heiltrank', preis: 30, heil: 40, info: 'Heilt 40 LP' },
+    trank2: { n: 'Grosser Heiltrank', preis: 100, heil: 120, info: 'Heilt 120 LP' },
+    ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
     beleber: { n: 'Wiederbeleber', preis: 150, beleb: 0.5, info: 'Belebt einen Mob mit halben LP' },
     gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt Gift, Brand, Schlaf und Angst' },
     // Fundstücke (nur zum Verkaufen)

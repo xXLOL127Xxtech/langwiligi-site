@@ -35,11 +35,11 @@
     lichtblitz: { t: 'strahl' }, reinigung: { t: 'heilen' }, strahlenlanze: { t: 'strahl', dick: true },
     albtraum: { t: 'proj', n: 5, langsam: true }, seelenriss: { t: 'hieb', gross: true }, verderben: { t: 'welle' }, genesung: { t: 'heilen' },
   };
-  function animFuer(id) { return ANIM[id] || (id && id.startsWith('zorn_') ? { t: 'welle' } : { t: 'lunge', deco: 'schlag' }); }
+  function animFuer(id) { const mv = CAM.MOVES[id]; if (mv && mv.anim) return mv.anim; return ANIM[id] || (id && id.startsWith('zorn_') ? { t: 'welle' } : { t: 'lunge', deco: 'schlag' }); }
 
   // ---------- Starten ----------
   K.starten = async function (cfg) {
-    const b = new CAM.Battle({ kind: cfg.kind, seed: cfg.seed, weather: cfg.weather, actors: cfg.actors });
+    const b = new CAM.Battle({ kind: cfg.kind, seed: cfg.seed, weather: cfg.weather, actors: cfg.actors, erster: cfg.erster });
     BS = { b, cfg, local: cfg.localId, shown: {}, off: {}, lay: {}, fx: [], parts: [], floats: [], puffer: {}, weg: new Set(), abbruch: null, ball: null,
       wartet: false, ende: false, shake: 0, letzt: performance.now(), intro: performance.now(), erste: true, lastEl: 'Normal' };
     K.aktiv = BS;
@@ -172,7 +172,7 @@
           if (r === -2) return standard();
           if (r >= 0) return { t: 'switch', i: r };
         } else if (lab === 'Beutel') {
-          const verfuegbar = Object.keys(CAM.ITEMS).filter(k => !CAM.ITEMS[k].fund && !CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
+          const verfuegbar = Object.keys(CAM.ITEMS).filter(k => !CAM.ITEMS[k].fund && !CAM.ITEMS[k].nurBeute && !CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
           if (!verfuegbar.length) { UI.log('Du hast nichts Brauchbares im Beutel.'); await sleep(900); zeigeLog(); continue; }
           const ii = verfuegbar.map(k => ({ label: CAM.ITEMS[k].n, sub: '× ' + cfg.beutel()[k] + ' · ' + CAM.ITEMS[k].info }));
           ii.push({ label: '← Zurück' });
@@ -186,14 +186,14 @@
             if (t >= 0) return { t: 'item', item: verfuegbar[r], i: t };
           }
         } else if (lab === 'Fangen') {
-          const siegel = Object.keys(CAM.ITEMS).filter(k => CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
-          if (!siegel.length) { UI.log('Du hast keine Fangsiegel mehr!'); await sleep(900); zeigeLog(); continue; }
-          const ii = siegel.map(k => ({ label: CAM.ITEMS[k].n, sub: '× ' + cfg.beutel()[k] }));
+          const kugeln = Object.keys(CAM.ITEMS).filter(k => CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
+          if (!kugeln.length) { UI.log('Du hast keine Fangkugeln mehr!'); await sleep(900); zeigeLog(); continue; }
+          const ii = kugeln.map(k => ({ label: CAM.ITEMS[k].n, sub: '× ' + cfg.beutel()[k] }));
           ii.push({ label: '← Zurück' });
           const r = await UI.choose(ii, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
           if (r === -2) return standard();
-          if (r >= 0 && r < siegel.length) return { t: 'catch', item: siegel[r] };
+          if (r >= 0 && r < kugeln.length) return { t: 'catch', item: kugeln[r] };
         } else if (lab === 'Fliehen') return { t: 'flee' };
         zeigeLog();
       }
@@ -227,27 +227,106 @@
     }
   }
   function addFx(dur, draw) { const f = { t0: performance.now(), dur, draw }; BS.fx.push(f); return f; }
+  K.h = { ani, sleep, ease, easeIO, mitte, burst, addFx, BS: () => BS };
   function schwebe(id, text, farbe, gross) { const p = mitte(id); BS.floats.push({ x: p[0], y: p[1] - 60, text, t0: performance.now(), farbe, gross }); }
 
   // Der Angreifer holt aus und bewegt sich zum Ziel
-  async function lunge(aid, tid, deco, gross) {
+  async function lunge(aid, tid, deco, gross, cfg) {
     const A = mitte(aid), T = mitte(tid), o = BS.off[aid];
     const dx = T[0] - A[0], dy = T[1] - A[1], d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
     UI.snd('schwung');
     await ani(240, t => { o.x = -ux * 26 * ease(t); o.y = -uy * 14 * ease(t) + 4 * ease(t); o.sx = 1 + 0.08 * t; o.sy = 1 - 0.1 * t; });
     const ziel = Math.max(0, d - BS.lay[aid].sz * 0.45 - BS.lay[tid].sz * 0.2);
     await ani(150, t => { const e = easeIO(t); o.x = -ux * 26 * (1 - e) + ux * ziel * e; o.y = -uy * 14 * (1 - e) + uy * ziel * e; o.sx = 1.1 - 0.1 * t; o.sy = 0.9 + 0.1 * t; });
-    dekoration(deco, T, ux, uy, gross);
+    dekoration(deco, T, ux, uy, gross, (cfg && cfg.cols) || [CAM.EL_FARBE[BS.lastEl] || '#fff', '#fff']);
     ani(380, t => { const e = easeIO(t); o.x = ux * ziel * (1 - e); o.y = uy * ziel * (1 - e); o.sx = 1; o.sy = 1; });
   }
-  function dekoration(deco, T, ux, uy, gross) {
+  function dekoration(deco, T, ux, uy, gross, cols) {
+    const c0 = cols[0], c1 = cols[1] || '#ffffff', G = gross ? 1.5 : 1;
     if (deco === 'biss') {
       addFx(420, (c, p) => {
-        const s = BS.lay.s0 || 60, o = (1 - Math.min(1, p * 3)) * s * 0.5;
+        const s = (BS.lay.s0 || 60) * G, o = (1 - Math.min(1, p * 3)) * s * 0.5;
         c.save(); c.translate(T[0], T[1]); c.fillStyle = '#fff'; c.strokeStyle = '#1a0f24'; c.lineWidth = 2;
         for (const dir of [-1, 1]) {
           c.beginPath(); c.moveTo(-s * 0.5, dir * (s * 0.1 + o)); for (let i = 0; i < 6; i++) { c.lineTo(-s * 0.5 + i * s * 0.2 + s * 0.1, dir * (s * 0.1 + o) + dir * s * 0.18); c.lineTo(-s * 0.5 + (i + 1) * s * 0.2, dir * (s * 0.1 + o)); }
           c.fill(); c.stroke();
+        }
+        if (p > 0.3) { c.globalAlpha = 1 - p; c.strokeStyle = c0; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, s * 0.5 * p + 8, 0, 6.3); c.stroke(); }
+        c.restore();
+      });
+    } else if (deco === 'kralle') {
+      addFx(520, (c, p) => {
+        c.save(); c.translate(T[0], T[1]); c.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          const q = Math.max(0, Math.min(1, (p * 520 - i * 60) / 150)); if (q <= 0) continue;
+          const fade = Math.max(0, 1 - (p * 520 - i * 60 - 150) / 280), ox = (i - 1) * 24 * G, len = 70 * G * q;
+          c.globalAlpha = fade; c.strokeStyle = '#1a0f24'; c.lineWidth = 11 * G; c.beginPath(); c.moveTo(ox - len * 0.45, -len * 0.7); c.lineTo(ox + len * 0.45, len * 0.7); c.stroke();
+          c.strokeStyle = c0; c.lineWidth = 6 * G; c.stroke(); c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke();
+        }
+        c.restore();
+      });
+    } else if (deco === 'horn') {
+      addFx(480, (c, p) => {
+        const q = Math.min(1, p / 0.3), fade = p < 0.5 ? 1 : 1 - (p - 0.5) / 0.5, l = 90 * G * ease(q);
+        c.save(); c.translate(T[0] - ux * 70 * G, T[1] - uy * 70 * G); c.rotate(Math.atan2(uy, ux)); c.globalAlpha = fade;
+        c.fillStyle = c0; c.strokeStyle = '#1a0f24'; c.lineWidth = 3; c.beginPath(); c.moveTo(l, 0); c.lineTo(0, -18 * G); c.lineTo(0, 18 * G); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = c1; c.beginPath(); c.moveTo(l * 0.9, 0); c.lineTo(l * 0.1, -9 * G); c.lineTo(l * 0.1, 0); c.closePath(); c.fill();
+        if (q >= 1) { c.strokeStyle = '#fff'; c.lineWidth = 3; for (let i = 0; i < 6; i++) { const a = i * 1.047; c.beginPath(); c.moveTo(l + Math.cos(a) * 10, Math.sin(a) * 10); c.lineTo(l + Math.cos(a) * (22 + p * 30), Math.sin(a) * (22 + p * 30)); c.stroke(); } }
+        c.restore();
+      });
+    } else if (deco === 'stampf') {
+      BS.shake = Math.max(BS.shake, 14); UI.snd('beben');
+      addFx(600, (c, p) => { c.save(); c.translate(T[0], T[1] + 36); c.globalAlpha = 1 - p; c.strokeStyle = '#2a2018'; c.lineWidth = 6; c.beginPath(); c.ellipse(0, 0, p * 150 * G, p * 36 * G, 0, 0, 6.3); c.stroke(); c.strokeStyle = c0; c.lineWidth = 2.5; c.stroke(); c.restore(); });
+      for (let i = 0; i < 10; i++) BS.parts.push({ x: T[0] + (Math.random() - 0.5) * 100, y: T[1] + 36, vx: (Math.random() - 0.5) * 200, vy: -100 - Math.random() * 150, life: 0, max: 0.6, col: i % 2 ? '#8a7a62' : '#b8a888', size: 4 + Math.random() * 5, grav: 420 });
+    } else if (deco === 'schweif') {
+      addFx(520, (c, p) => {
+        const q = Math.min(1, p / 0.45), fade = p < 0.5 ? 1 : 1 - (p - 0.5) / 0.5;
+        c.save(); c.translate(T[0], T[1]); c.globalAlpha = fade; c.lineCap = 'round';
+        const a0 = -2.2 * (ux < 0 ? -1 : 1) + (ux < 0 ? Math.PI : 0), da = 3.4 * q * (ux < 0 ? -1 : 1);
+        for (const [w, col] of [[22 * G, c0], [11 * G, c1]]) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.arc(0, 0, 56 * G, a0, a0 + da, ux < 0); c.stroke(); }
+        c.restore();
+      });
+    } else if (deco === 'zange') {
+      addFx(560, (c, p) => {
+        const zu = p < 0.3 ? ease(p / 0.3) : 1, fade = p < 0.6 ? 1 : 1 - (p - 0.6) / 0.4, s = 54 * G;
+        c.save(); c.translate(T[0], T[1]); c.globalAlpha = fade; c.lineJoin = 'round';
+        for (const dir of [-1, 1]) {
+          const off = (1 - zu) * 60 + 4;
+          c.fillStyle = c0; c.strokeStyle = '#1a0f24'; c.lineWidth = 3; c.beginPath();
+          c.moveTo(dir * (s * 0.9 + off), -s * 0.5); c.quadraticCurveTo(dir * (s * 0.2 + off), -s * 0.7, dir * off, -s * 0.15); c.lineTo(dir * (off + 4), 0); c.quadraticCurveTo(dir * (s * 0.3 + off), -s * 0.35, dir * (s * 0.9 + off), -s * 0.2); c.closePath(); c.fill(); c.stroke();
+        }
+        if (p > 0.3) { c.strokeStyle = '#fff'; c.lineWidth = 3; for (let i = 0; i < 5; i++) { const a = i * 1.256 - 1.9; c.beginPath(); c.moveTo(Math.cos(a) * 16, Math.sin(a) * 16 - 8); c.lineTo(Math.cos(a) * 32, Math.sin(a) * 32 - 8); c.stroke(); } }
+        c.restore();
+      });
+    } else if (deco === 'schnabel') {
+      for (let i = 0; i < 3; i++) setTimeout(() => {
+        if (!BS) return; const ox = (i - 1) * 22 * G, oy = ((i * 37) % 3 - 1) * 14;
+        BS.parts.push(...Array.from({ length: 5 }, () => ({ x: T[0] + ox, y: T[1] + oy, vx: (Math.random() - 0.5) * 160, vy: (Math.random() - 0.5) * 160, life: 0, max: 0.3, col: c0, size: 3 + Math.random() * 3, grav: 0 })));
+        addFx(240, (c, p) => { c.save(); c.translate(T[0] + ox, T[1] + oy); c.globalAlpha = 1 - p; c.fillStyle = '#fff'; c.beginPath(); for (let k = 0; k < 8; k++) { const r = (k % 2 ? 4 : 13 + p * 8); c.lineTo(Math.cos(k * 0.785) * r, Math.sin(k * 0.785) * r); } c.fill(); c.restore(); });
+        UI.snd('tick');
+      }, i * 110);
+    } else if (deco === 'kopfnuss') {
+      BS.shake = Math.max(BS.shake, 8);
+      addFx(620, (c, p) => { c.save(); c.translate(T[0], T[1] - 50); c.globalAlpha = 1 - p * p; for (let i = 0; i < 4; i++) { const a = p * 9 + i * 1.57; c.fillStyle = i % 2 ? '#ffd54a' : c0; c.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 4 : 10; c.lineTo(Math.cos(a) * 36 + Math.cos(k * 0.628) * r, Math.sin(a) * 14 + Math.sin(k * 0.628) * r); } c.fill(); } c.restore(); });
+      dekoration('schlag', T, ux, uy, gross, cols);
+    } else if (deco === 'faust') {
+      BS.shake = Math.max(BS.shake, 12);
+      addFx(480, (c, p) => {
+        c.save(); c.translate(T[0], T[1]); c.globalAlpha = 1 - p;
+        c.fillStyle = c0; c.strokeStyle = '#1a0f24'; c.lineWidth = 4; c.beginPath(); c.arc(0, 0, (20 + p * 40) * G, 0, 6.3); c.fill(); c.stroke();
+        c.fillStyle = c1; c.beginPath(); c.arc(-6, -6, (10 + p * 18) * G, 0, 6.3); c.fill();
+        c.strokeStyle = '#fff'; c.lineWidth = 4; for (let i = 0; i < 10; i++) { const a = i * 0.628; c.beginPath(); c.moveTo(Math.cos(a) * (30 + p * 40) * G, Math.sin(a) * (30 + p * 40) * G); c.lineTo(Math.cos(a) * (48 + p * 60) * G, Math.sin(a) * (48 + p * 60) * G); c.stroke(); }
+        c.restore();
+      });
+    } else if (deco === 'umarmung') {
+      addFx(760, (c, p) => {
+        const zu = p < 0.4 ? ease(p / 0.4) : 1, fade = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+        c.save(); c.translate(T[0], T[1]); c.globalAlpha = fade; c.lineCap = 'round';
+        for (let k = 0; k < 4; k++) {
+          const a0 = k * 1.57 + 0.4; c.strokeStyle = '#120a1c'; c.lineWidth = 14; c.beginPath();
+          for (let i = 0; i <= 14; i++) { const q = i / 14 * zu, a = a0 + q * 5.2, r = (110 - 70 * zu) * (1 - q * 0.35) * G; const x = Math.cos(a) * r, y = Math.sin(a) * r * 0.75; if (i) c.lineTo(x, y); else c.moveTo(x, y); }
+          c.stroke(); c.strokeStyle = c0; c.lineWidth = 7; c.stroke();
+          c.fillStyle = c1; for (let i = 3; i <= 12; i += 3) { const q = i / 14 * zu, a = a0 + q * 5.2, r = (110 - 70 * zu) * (1 - q * 0.35) * G; c.beginPath(); c.arc(Math.cos(a) * r, Math.sin(a) * r * 0.75, 3, 0, 6.3); c.fill(); }
         }
         c.restore();
       });
@@ -302,22 +381,24 @@
     const T = ziele.length ? mitte(ziele[0]) : A;
     const o = BS.off[an.a];
     const dx = T[0] - A[0], dy = T[1] - A[1], d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    if (K.anim && K.anim[cfg.t]) { await K.anim[cfg.t]({ an, cfg, mv, el, col, A, T, o, ux, uy, d, ziele }); return; }
     switch (cfg.t) {
-      case 'lunge': await lunge(an.a, ziele[0] || an.a, cfg.deco, cfg.gross); if (el !== 'Normal') burst(T[0], T[1], col, 10, 160); break;
+      case 'lunge': await lunge(an.a, ziele[0] || an.a, cfg.deco, cfg.gross, cfg); if (el !== 'Normal') burst(T[0], T[1], col, 10, 160); break;
       case 'hieb': {
         UI.snd('schwung');
         await ani(220, t => { o.x = -ux * 16 * ease(t); o.sx = 1 + 0.06 * t; o.sy = 1 - 0.06 * t; });
-        const n = cfg.gross ? 4 : 3;
+        const n = cfg.x ? 2 : cfg.gross ? 4 : 3, hc = cfg.cols || [cfg.gross ? col : '#fff', '#fff'];
         for (const zid of ziele.length ? ziele : [an.a]) {
           const Z = mitte(zid);
           addFx(520, (c, p) => {
-            c.save(); c.translate(Z[0], Z[1]); c.strokeStyle = cfg.gross ? col : '#fff'; c.lineCap = 'round';
+            c.save(); c.translate(Z[0], Z[1]); c.lineCap = 'round';
             for (let i = 0; i < n; i++) {
               const q = Math.max(0, Math.min(1, (p * 520 - i * 70) / 180)); if (q <= 0) continue;
               const fade = Math.max(0, 1 - (p * 520 - i * 70 - 180) / 220);
-              c.globalAlpha = fade; c.lineWidth = (cfg.gross ? 9 : 6) * (1 - q * 0.4);
-              const ox = (i - (n - 1) / 2) * 22, len = 60 * q;
-              c.beginPath(); c.moveTo(ox - len * 0.5, -len * 0.7); c.lineTo(ox + len * 0.5, len * 0.7); c.stroke();
+              c.globalAlpha = fade; const len = 60 * q * (cfg.gross ? 1.3 : 1), ox = cfg.x ? 0 : (i - (n - 1) / 2) * 22, fl = cfg.x && i ? -1 : 1;
+              c.strokeStyle = '#1a0f24'; c.lineWidth = (cfg.gross ? 14 : 10) * (1 - q * 0.4); c.beginPath(); c.moveTo(ox - fl * len * 0.5, -len * 0.7); c.lineTo(ox + fl * len * 0.5, len * 0.7); c.stroke();
+              c.strokeStyle = hc[0]; c.lineWidth = (cfg.gross ? 9 : 6) * (1 - q * 0.4); c.stroke();
+              c.strokeStyle = hc[1]; c.lineWidth = 2; c.stroke();
             }
             c.restore();
           });
@@ -361,7 +442,10 @@
           addFx(600, (c, p) => {
             const l = Math.min(1, p / 0.3), a = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3, ex = sx + (Z[0] - sx) * l, ey = sy + (Z[1] - sy) * l;
             c.save(); c.globalAlpha = a; c.lineCap = 'round'; c.shadowColor = col; c.shadowBlur = 24;
-            c.strokeStyle = col; c.lineWidth = dick * (1 + Math.sin(p * 40) * 0.1); c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.stroke();
+            if (cfg.prisma) {   // Regenbogen: sieben Farbstrahlen, die sich im Ziel treffen
+              const bunt = ['#ff4a4a', '#ff9f43', '#ffe14d', '#5fd38a', '#4f8ff7', '#8a3ffc', '#ff7ad9'];
+              bunt.forEach((cl, k) => { const off = (k - 3) * 9 * (1 - l); c.strokeStyle = cl; c.lineWidth = dick * 0.45; c.beginPath(); c.moveTo(sx, sy + off); c.lineTo(ex, ey); c.stroke(); });
+            } else { c.strokeStyle = col; c.lineWidth = dick * (1 + Math.sin(p * 40) * 0.1); c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.stroke(); }
             c.strokeStyle = '#fff'; c.lineWidth = dick * 0.4; c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.stroke();
             c.restore();
           });
@@ -377,14 +461,15 @@
           const Z = mitte(zid);
           addFx(620, (c, p) => {
             const l = p < 0.45 ? ease(p / 0.45) : 1 - ease((p - 0.45) / 0.55), ex = sx + (Z[0] - sx) * l, ey = sy + (Z[1] - sy) * l;
-            c.save(); c.strokeStyle = el === 'Pflanze' ? '#3f9a3f' : col; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath();
+            c.save(); const pc = cfg.cols || [el === 'Pflanze' ? '#3f9a3f' : col, '#a6e8a0']; c.strokeStyle = pc[0]; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath();
             const seg = 18;
             for (let i = 0; i <= seg; i++) {
               const q = i / seg, x = sx + (ex - sx) * q, y = sy + (ey - sy) * q + Math.sin(q * 9 - p * 28) * 22 * (1 - q) * (p < 0.45 ? 1 : 0.5) - Math.sin(q * Math.PI) * 30 * (1 - l * 0.5);
               if (i) c.lineTo(x, y); else c.moveTo(x, y);
             }
             c.stroke();
-            c.strokeStyle = '#a6e8a0'; c.lineWidth = 2; c.stroke();
+            c.strokeStyle = pc[1]; c.lineWidth = 2; c.stroke();
+            if (cfg.dornen) { c.fillStyle = '#e8e0b0'; for (let i = 2; i < seg; i += 3) { const q = i / seg, x = sx + (ex - sx) * q, y = sy + (ey - sy) * q + Math.sin(q * 9 - p * 28) * 22 * (1 - q) * (p < 0.45 ? 1 : 0.5) - Math.sin(q * Math.PI) * 30 * (1 - l * 0.5); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3, y - 9); c.lineTo(x + 6, y); c.fill(); } }
             if (p > 0.38 && p < 0.55) { c.fillStyle = '#fff'; c.beginPath(); for (let k = 0; k < 8; k++) { const a = k * 0.785, r = k % 2 ? 6 : 18; c.lineTo(ex + Math.cos(a) * r, ey + Math.sin(a) * r); } c.fill(); }
             c.restore();
           });
@@ -462,10 +547,16 @@
   }
 
   // Treffer: Aufleuchten, Rückstoss, Funken, Zahl
-  function treffer(id, dmg) {
+  function treffer(id, dmg, hpNach) {
     const s = BS.shown[id]; if (!s) return;
     const P = mitte(id), col = CAM.EL_FARBE[BS.lastEl] || '#fff', l = BS.lay[id], m = BS.b.actor(id).team[s.i];
     s.flash = 200; s.shake = 380; s.hup = 320;
+    if (m) {   // Wunden: je nach Schaden und übrigen LP neue Verletzungen, schwere Treffer zerfetzen Verbände
+      const sev = dmg / m.mhp;
+      if (sev >= 0.2) CAM.verbandZerfetzen(m);
+      if (sev >= 0.05 || Math.random() < 0.5) CAM.wundeNeu(m, sev, BS.lastEl);
+      CAM.wundenMindestens(m, Math.random, hpNach != null ? hpNach / m.mhp : null);
+    }
     burst(P[0], P[1], col, 8 + Math.min(14, Math.floor(dmg / 3)), 180);
     BS.shake = Math.max(BS.shake, Math.min(14, 3 + dmg / 6));
     BS.floats.push({ x: P[0], y: P[1] - (l ? l.sz * 0.3 : 30), text: '-' + dmg, t0: performance.now(), farbe: '#ffb4a8', gross: dmg >= (m ? m.mhp * 0.25 : 30) });
@@ -499,13 +590,13 @@
         case 'hp':
           if (s && s.i === e.i) {
             s.ziel = e.hp;
-            if (e.dmg) { treffer(e.a, e.dmg); BS.lastFloat = e.a; if (e.dmg > (b.actor(e.a).team[e.i].mhp * 0.3)) await sleep(90); }
+            if (e.dmg) { treffer(e.a, e.dmg, e.hp); BS.lastFloat = e.a; if (e.dmg > (b.actor(e.a).team[e.i].mhp * 0.3)) await sleep(90); }
             if (e.t) UI.log(esc(e.t));
             await sleep(e.dmg ? 650 : 400);
           }
           break;
         case 'heal':
-          if (s) { if (s.i === e.i) { s.ziel = e.hp; schwebe(e.a, '+', '#7dffa0', true); burst(mitte(e.a)[0], mitte(e.a)[1], '#9affb0', 10, 100, -40); } UI.snd('heil'); }
+          if (s) { if (s.i === e.i) { const mo = b.actor(e.a).team[e.i]; if (mo) CAM.wundenAnpassen(mo, e.hp); s.ziel = e.hp; schwebe(e.a, '+', '#7dffa0', true); burst(mitte(e.a)[0], mitte(e.a)[1], '#9affb0', 10, 100, -40); } UI.snd('heil'); }
           await UI.say(e.t, 900); await sleep(250);
           break;
         case 'status': {
@@ -533,7 +624,7 @@
     }
   }
 
-  // Fangen: Siegel fliegt, saugt den Mob ein, wackelt und rastet ein oder zerspringt
+  // Fangen: Die Fangkugel fliegt, saugt den Mob ein, wackelt und rastet ein oder zerspringt
   async function fangAnimation(n, ok) {
     const b = BS.b, foe = b.actors.find(a => a.side === 1), fs = BS.shown[foe.id];
     const von = mitte(BS.local), ziel = mitte(foe.id);
@@ -593,24 +684,35 @@
     }
   }
 
-  const tintCv = document.createElement('canvas'); tintCv.width = 40; tintCv.height = 40;
+  const tintCv = document.createElement('canvas');
   function zeichneMobFx(c, m, l, flip, tick, s, o, ein) {
-    const img = CAM.sprite(m), sz = l.sz;
-    const breath = 1 + Math.sin(tick / 420 + m.fam) * 0.018;
-    c.save();
+    const img = CAM.spriteMit(m), sz = l.sz, iw = img.width, k = sz / iw;
+    const breath = 1 + Math.sin(tick / (m.hp > 0 && m.hp < m.mhp * 0.25 ? 260 : 420) + m.fam) * 0.018;
+    c.save(); c.imageSmoothingEnabled = false;
     c.translate(l.x + sz / 2 + o.x + ein, l.y + sz + o.y + (s.tot ? Math.min(1, (performance.now() - s.totT) / 650) * sz * 0.18 : 0));
     const sx = (o.sx || 1) * breath, sy = (o.sy || 1) / breath;
     c.scale(flip ? -sx : sx, sy);
-    c.translate(-sz / 2, -sz);
+    c.translate(0, -sz / 2); if (o.rot) c.rotate(o.rot); c.translate(-sz / 2, -sz / 2);
     let al = s.alpha;
     if (s.tot) al = Math.max(0, 1 - (performance.now() - s.totT) / 650);
     if (s.blink && Math.floor(s.blink / 80) % 2) al *= 0.35;
     c.globalAlpha = al;
     c.drawImage(img, 0, 0, sz, sz);
     if (s.flash > 0) {
-      const t = tintCv.getContext('2d'); t.clearRect(0, 0, 40, 40); t.imageSmoothingEnabled = false; t.drawImage(img, 0, 0, 40, 40);
-      t.globalCompositeOperation = 'source-atop'; t.fillStyle = 'rgba(255,255,255,' + Math.min(0.9, s.flash / 140) + ')'; t.fillRect(0, 0, 40, 40); t.globalCompositeOperation = 'source-over';
+      tintCv.width = iw; tintCv.height = iw;
+      const t = tintCv.getContext('2d'); t.imageSmoothingEnabled = false; t.drawImage(img, 0, 0, iw, iw);
+      t.globalCompositeOperation = 'source-atop'; t.fillStyle = 'rgba(255,255,255,' + Math.min(0.9, s.flash / 140) + ')'; t.fillRect(0, 0, iw, iw); t.globalCompositeOperation = 'source-over';
       c.drawImage(tintCv, 0, 0, sz, sz);
+    }
+    // frisches Blut tropft aus offenen Schnitt- und Rissstellen
+    if (m.wunden && !s.tot && m.hp < m.mhp * 0.75) {
+      for (const w of m.wunden) {
+        if (w.v === 1 || (w.t !== 'riss' && w.t !== 'schnitt')) continue;
+        const ph = ((tick / 1100) + w.x * 0.137 + w.y * 0.071) % 1;
+        c.globalAlpha = al * (1 - ph * 0.7); c.fillStyle = '#b01c24';
+        c.fillRect((w.x + 1) * k, (w.y + 3) * k + ph * 12 * k, 1.6 * k, (2 + ph * 3) * k);
+        c.fillStyle = '#e04a52'; c.fillRect((w.x + 1) * k, (w.y + 3) * k + ph * 12 * k, 0.7 * k, 1.2 * k);
+      }
     }
     c.restore();
   }
@@ -679,22 +781,26 @@
       if (mine) platte(c, w - Math.min(270, w * 0.34) - 14, area * 0.62, Math.min(270, w * 0.34), mobName(m), m, s, true, '#8a3ffc', true);
       else platte(c, l.x - 4, l.y + l.sz + 2, Math.max(l.sz + 8, 120), a.name + ': ' + mobName(m), m, s, false);
     }
-    // Fangsiegel
+    // Fangkugel
     if (BS.ball && BS.ball.vis) {
       const bl = BS.ball; c.save(); c.translate(bl.x, bl.y); c.rotate(bl.rot);
       if (bl.glow > 0) { c.fillStyle = 'rgba(255,240,170,' + (bl.glow * 0.5) + ')'; c.beginPath(); c.arc(0, 0, 30 + bl.glow * 8, 0, 6.3); c.fill(); }
-      // Siegel: Steinscheibe mit leuchtender Rune
-      c.fillStyle = '#2a1f3d'; c.beginPath(); c.arc(0, 0, 16, 0, 6.283); c.fill();
-      c.strokeStyle = '#c9a6ff'; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 14, 0, 6.283); c.stroke();
-      c.strokeStyle = '#e8d8ff'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, -9); c.lineTo(8, 6); c.lineTo(-8, 6); c.closePath(); c.stroke();
-      c.fillStyle = '#e8d8ff'; c.beginPath(); c.arc(0, 1, 2.4, 0, 6.283); c.fill();
+      // Fangkugel: dunkle Kugel mit violettem Äquatorband, Knopf und Glanzpunkt
+      const kg = c.createRadialGradient(-5, -6, 2, 0, 0, 18); kg.addColorStop(0, '#6a4aa0'); kg.addColorStop(0.55, '#2a1f3d'); kg.addColorStop(1, '#120a1e');
+      c.fillStyle = kg; c.beginPath(); c.arc(0, 0, 17, 0, 6.283); c.fill();
+      c.strokeStyle = '#0a0612'; c.lineWidth = 2; c.stroke();
+      c.save(); c.beginPath(); c.arc(0, 0, 16, 0, 6.283); c.clip();
+      c.fillStyle = '#8a3ffc'; c.fillRect(-18, -3, 36, 6); c.fillStyle = '#c9a6ff'; c.fillRect(-18, -3, 36, 1.5); c.restore();
+      c.fillStyle = '#e8d8ff'; c.beginPath(); c.arc(0, 0, 5, 0, 6.283); c.fill(); c.strokeStyle = '#0a0612'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = '#8a3ffc'; c.beginPath(); c.arc(0, 0, 2.2, 0, 6.283); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.75)'; c.beginPath(); c.ellipse(-7, -9, 4, 2.2, -0.6, 0, 6.283); c.fill();
       c.restore();
     }
     // Effekte
     BS.fx = BS.fx.filter(f => now - f.t0 < f.dur);
     for (const f of BS.fx) f.draw(c, (now - f.t0) / f.dur);
     // Geschosse (pro Bild neu)
-    if (BS.proj) { for (const p of BS.proj) zeichneGeschoss(c, p.el, p.x, p.y, p.p, p.i, p.vx, p.vy); BS.proj = BS.proj.filter(p => now < p.ende - 8); BS.proj = []; }
+    if (BS.proj) { for (const p of BS.proj) { if (p.fn) { c.save(); p.fn(c); c.restore(); } else zeichneGeschoss(c, p.el, p.x, p.y, p.p, p.i, p.vx, p.vy); } BS.proj = BS.proj.filter(p => now < p.ende - 8); BS.proj = []; }
     // Partikel
     for (const p of BS.parts) {
       p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.grav * dt;
