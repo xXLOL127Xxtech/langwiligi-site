@@ -27,7 +27,18 @@
       }));
       this.actors.forEach(a => a.used.add(a.active));
       this.needRep = [];
+      this.lastSide = null;        // Seite, die zuletzt wirklich gehandelt hat: Es wird strikt abwechselnd gehandelt, nie zweimal dieselbe Seite hintereinander
+      this.fortsetzen = false;     // Ersatz mitten in der Runde (nach einem Vorspiel des Gegners): danach wählt der Spieler seine Aktion
+      this.rundeErste = this.erster != null ? this.erster : this.bestimmeErste();
       this.planAll();
+    }
+
+    // Wer beginnt, wenn noch niemand gehandelt hat? Im Duell der Schnellere, sonst die Spieler (Seite 0).
+    bestimmeErste() {
+      if (this.kind !== 'duel') return 0;
+      let best = 0, bs = -1, br = 0;
+      for (const a of this.actors) { const m = a.team[a.active], v = m ? m.spd : 0, r = this.rnd(); if (v > bs || (v === bs && r > br)) { bs = v; br = r; best = a.side; } }
+      return best;
     }
 
     actor(id) { return this.actors.find(a => a.id === id); }
@@ -69,36 +80,70 @@
     pending() {
       if (this.over) return [];
       if (this.phase === 'replace') return this.needRep.filter(id => { const a = this.actor(id); return a.ctrl !== 'ai' && a.chosen == null; });
-      return this.actors.filter(a => !a.out && a.ctrl !== 'ai' && !a.chosen && (this.turn > 0 || a.side === this.erster)).map(a => a.id);
+      return this.actors.filter(a => !a.out && a.ctrl !== 'ai' && !a.chosen && !a.acted && (this.turn > 0 || a.side === this.erster)).map(a => a.id);
     }
     submit(id, act) { const a = this.actor(id); if (a && !a.out) a.chosen = act; }
     submitReplace(id, idx) { const a = this.actor(id); if (a) a.chosen = { t: 'switch', i: idx }; }
     ready() { return !this.over && this.pending().length === 0; }
 
     // ----- Runde auswerten -----
+    // Strikt abwechselnd: Die Seite, die zuletzt gehandelt hat, ist in der nächsten Runde als Zweite dran (siehe startTurn).
+    // Innerhalb einer Seite gehen Wechseln, Gegenstand, Fangen und Fliehen vor Angriffen, dann entscheidet das Tempo.
+    // Runde 0 (Eröffnung): nur die Seite, die den Kampf beginnt, greift an.
+    sortiere(list) {
+      const fs = this.rundeErste;
+      const prio = x => (x.act.t === 'move' || x.act.t === 'pass') ? 0 : 1;
+      const spd = x => { const m = this.cur(x.a); return m ? m.spd : 0; };
+      list.sort((p, q) => ((p.a.side === fs ? 0 : 1) - (q.a.side === fs ? 0 : 1)) || prio(q) - prio(p) || spd(q) - spd(p) || p.r - q.r);
+    }
+    // Eine Aktion ausführen; zählt nur dann als «gehandelt», wenn der Zug auch wirklich stattfindet (ein besiegter Mob kann nicht angreifen)
+    handle(a, act, ev) {
+      const me = this.cur(a);
+      const echt = act.t !== 'pass' && !(act.t === 'move' && (!me || me.hp <= 0));
+      this.doAction(a, act, ev);
+      a.acted = true;
+      if (echt) this.lastSide = a.side;
+      this.checkFaints(ev);
+    }
+    // Vorspiel: Beginnt in dieser Runde ein Gegner (nur Computer), handelt er sofort, noch bevor du deine Aktion wählst
+    vorspiel() {
+      const ev = [];
+      if (this.over || this.phase !== 'action' || this.turn === 0) return ev;
+      const seite = this.actors.filter(a => !a.out && a.side === this.rundeErste);
+      if (!seite.length || seite.some(a => a.ctrl !== 'ai')) return ev;
+      const list = seite.filter(a => !a.acted).map(a => ({ a, act: a.plan || { t: 'pass' }, r: this.rnd() }));
+      if (!list.length) return ev;
+      this.sortiere(list);
+      for (const x of list) { if (this.over) break; if (x.a.out) continue; this.handle(x.a, x.act, ev); }
+      if (this.over) return ev;
+      // Wurde einer von uns besiegt? Dann zuerst Ersatz wählen, danach geht die Runde mit deiner Aktion weiter
+      this.needRep = [];
+      for (const a of this.actors) {
+        if (a.out) continue;
+        const m = this.cur(a);
+        if (m && m.hp > 0) continue;
+        if (!this.living(a)) { a.out = true; continue; }
+        if (a.ctrl === 'ai') this.doSwitch(a, a.team.findIndex(x => x.hp > 0), ev); else this.needRep.push(a.id);
+      }
+      if (this.needRep.length) { this.phase = 'replace'; this.fortsetzen = true; }
+      return ev;
+    }
     resolve() {
       const ev = [];
       if (this.over) return ev;
       if (this.phase === 'replace') { this.doReplace(ev); return ev; }
       const list = [];
       for (const a of this.actors) {
-        if (a.out || (this.turn === 0 && a.side !== this.erster)) continue;
+        if (a.out || a.acted || (this.turn === 0 && a.side !== this.erster)) continue;
         let act = a.ctrl === 'ai' ? a.plan : a.chosen;
         if (this.turn === 0 && (!act || act.t !== 'move')) act = null;
         list.push({ a, act: act || { t: 'pass' }, r: this.rnd() });
       }
-      // Runde 0 (Eröffnung): nur die Seite, die den Kampf beginnt, greift an. Danach läuft alles in normalen Runden.
-      // Reihenfolge: Wechseln/Gegenstand/Fangen/Fliehen zuerst, dann immer zuerst die Spieler (Seite 0) und erst danach die Gegner.
-      // Nur im Duell, wo zwei Menschen gegeneinander kämpfen, entscheidet das Tempo (sonst wäre es unfair).
-      const prio = x => (x.act.t === 'move' || x.act.t === 'pass') ? 0 : 1;
-      const seite = x => this.kind === 'duel' ? 0 : x.a.side;
-      const spd = x => { const m = this.cur(x.a); return m ? m.spd : 0; };
-      list.sort((p, q) => prio(q) - prio(p) || seite(p) - seite(q) || spd(q) - spd(p) || p.r - q.r);
+      this.sortiere(list);
       for (const x of list) {
         if (this.over) break;
         if (x.a.out) continue;
-        this.doAction(x.a, x.act, ev);
-        this.checkFaints(ev);
+        this.handle(x.a, x.act, ev);
       }
       if (!this.over && this.turn > 0) this.endOfTurn(ev);
       for (const a of this.actors) a.chosen = null;
@@ -308,12 +353,15 @@
         a.chosen = null;
       }
       this.needRep = []; this.phase = 'action';
+      if (this.fortsetzen) { this.fortsetzen = false; this.checkFaints(ev); return; }   // Ersatz mitten in der Runde: Der Spieler wählt jetzt seine Aktion
       this.startTurn();
     }
 
     startTurn() {
       this.phase = 'action';
       this.turn++;
+      for (const a of this.actors) a.acted = false;
+      this.rundeErste = this.lastSide == null ? this.bestimmeErste() : 1 - this.lastSide;
       this.planAll();
     }
 
