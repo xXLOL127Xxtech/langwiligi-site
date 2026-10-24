@@ -195,6 +195,7 @@
     const zus = (offer.gold ? offer.gold + ' Gold' : '') + (offer.mobA ? (offer.gold ? ' und ' : '') + CAM.name(offer.mobA) + ' gegen ' + CAM.name(offer.mobB) : '') || 'kein Einsatz';
     await UI.info('<b>' + esc(b.name) + ':</b> «' + esc(antw.text) + '»<br><small>Einsatz: ' + esc(zus) + ' · ' + (offer.modus === 'fair' ? 'Fairer Kampf auf Stufe ' + mid : 'Echter Kampf') + '</small>', antw.ok ? 'Angenommen' : 'Abgelehnt');
     if (!antw.ok) { if (Math.random() < 0.3) b.ruheBis = Date.now() + 60000; return; }
+    if (!await UI.confirm(esc(b.name) + ' ist einverstanden.<br><small>' + esc(zus) + ' · ' + (offer.modus === 'fair' ? 'Fairer Kampf auf Stufe ' + mid : 'Echter Kampf') + '</small><br>Kampf jetzt bestätigen?', 'Kampf bestätigen')) return;
     await A.botDuell(b, offer, lvl);
   };
 
@@ -227,6 +228,10 @@
       beutel: () => ({}), verbrauch() {}, intro: b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
     const bt = res.b, lines = [];
     const gewonnen = bt.over && bt.winner === 0;
+    if (bt.over && (offer.gold || offer.mobA || offer.mobB)) {
+      const was = [offer.gold ? ge(offer.gold) : '', gewonnen ? (offer.mobB ? esc(CAM.name(offer.mobB)) : '') : (offer.mobA ? esc(CAM.name(offer.mobA)) : '')].filter(Boolean).join(' und ');
+      await UI.info((gewonnen ? '<b style="color:#5fd38a">Du hast gewonnen!</b><br>Dein Preis: ' : '<b style="color:#ff6b5e">' + esc(b.name) + ' hat gewonnen.</b><br>Dein Einsatz geht an ' + esc(b.name) + ': ') + was + '<br><small>Mit OK bestätigst du den Preis.</small>', gewonnen ? 'Preis bestätigen' : 'Einsatz bestätigen');
+    }
     if (bt.over) {
       if (gewonnen) {
         UI.snd('sieg'); lines.push('<b style="color:#5fd38a">Du hast gegen ' + esc(b.name) + ' gewonnen!</b>');

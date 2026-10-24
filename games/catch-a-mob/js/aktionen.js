@@ -612,11 +612,17 @@
         if (!A.angebot || A.angebot.art !== 'chal' || A.angebot.idx !== von) return;
         A.angebotO = A.angebot.o; A.angebot = null;
         if (!d.ok) { UI.toast((S.peers.get(von) ? S.peers.get(von).name : 'Die Person') + ' lehnt das Duell ab.'); return; }
-        const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter(), o: A.angebotO || null };
-        Netz.senden(m); A.duellStart(m);
+        const ao = A.angebotO || {}, pname = S.peers.get(von) ? S.peers.get(von).name : 'Die Person';
+        const zus = (ao.fair ? 'Fairer Kampf auf Stufe ' + (ao.fair | 0) : 'Echter Kampf') + ' · ' + (ao.gold ? 'Einsatz ' + (ao.gold | 0) + ' Gold' : 'kein Gold') + (ao.mob ? ' · Wette: ' + esc(String(ao.mA || 'Mob')) + ' gegen sein vorderstes Fabelwesen' : '');
+        UI.confirm(esc(pname) + ' hat angenommen.<br><small>' + zus + '</small><br>Kampf jetzt bestätigen?', 'Kampf bestätigen').then(ja => {
+          if (!ja || S.busy || !CAM.lebend()) { Netz.senden({ t: 'duelno', to: von }); return; }
+          const m = { t: 'duelgo', a: S.idx, b: von, seed: (Math.random() * 2 ** 31) | 0, amb: false, w: aktuellesWetter(), o: A.angebotO || null };
+          Netz.senden(m); A.duellStart(m);
+        });
         break;
       }
       case 'prize': { if (d.mob && CAM.FAMILIEN[d.mob.fam]) { const m = d.mob; CAM.neuBerechnen(m); m.hp = m.mhp; m.wunden = []; A.mobDazu(m); S.save.dex[m.fam] = 2; Save.speichern(); UI.toast('Du hast ' + CAM.name(m) + ' (Lv ' + m.lv + ') gewonnen!', 4000); } break; }
+      case 'duelno': UI.toast((S.peers.get(von) ? S.peers.get(von).name : 'Die Person') + ' hat den Kampf doch nicht bestätigt.'); break;
       case 'duelgo': if (d.a === von && d.b === S.idx) A.duellStart(d); break;
       case 'amb': if (Netz.gastgeber() === S.idx) A.hostUeberfall(d); break;
       case 'ambno': if (d.a === S.idx) UI.toast(d.grund || 'Der Überfall ist nicht möglich.'); break;
@@ -670,13 +676,14 @@
   async function warteAuf(fn, ms) { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) return false; await sleep(80); } return true; }
 
   // ---------- Duell (3 gegen 3, Stufe 30) ----------
+  const gewonnen0 = (b, seite) => b.over && b.winner === seite;
   A.duellStart = async function (d) {
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     const andere = d.a === S.idx ? d.b : d.a, bid = 'd' + d.seed;
     const o = d.o || null, lvl = o ? (o.fair | 0) : 30, stake = o && o.mob ? S.save.team[0] : null;
-    const mein = CAM.duellKopien(S.save.team, lvl);
-    Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: S.save.gold });
+    const mein = CAM.duellKopien(S.save.team, lvl), goldStart = S.save.gold;
+    Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: goldStart });
     UI.toast(d.amb ? 'Überfall!' : 'Duell beginnt …', 1500);
     const ok = await warteAuf(() => S.teams[bid] && S.teams[bid][andere], 10000);
     if (!ok) { S.busy = false; UI.toast('Das Duell konnte nicht starten.'); delete S.teams[bid]; return; }
@@ -694,18 +701,26 @@
     delete S.teams[bid];
     const meineSeite = S.idx === lo ? 0 : 1;
     const lines = [];
+    const anwenden = [];
     if (b.over) {
       const gewonnen = b.winner === meineSeite;
-      const loserGold = gewonnen ? gegnerTeam.gold : S.save.gold;
-      const einsatz = o ? 0 : Math.min(500, Math.floor(loserGold * 0.05));
-      if (o && o.gold) { const g = o.gold | 0; if (gewonnen) { S.save.gold += g; lines.push('Einsatz: Du bekommst ' + ge(g) + '.'); } else { const z = Math.min(g, S.save.gold); S.save.gold -= z; lines.push('Einsatz: Du zahlst ' + ge(z) + '.'); } }
-      if (stake && !gewonnen) { const i = S.save.team.indexOf(stake); if (i >= 0 && S.save.team.length > 1) { S.save.team.splice(i, 1); Netz.senden({ t: 'prize', to: andere, mob: CAM.kopie(stake) }); lines.push('<b style="color:#ff6b5e">' + esc(CAM.name(stake)) + ' geht an ' + esc(pn(andere)) + '.</b>'); } }
-      if (gewonnen) { S.save.gold += Math.floor(einsatz / 2); lines.push('<b style="color:#5fd38a">Du hast gewonnen!</b>' + (einsatz ? ' Beute: ' + ge(Math.floor(einsatz / 2)) : '')); UI.snd('sieg'); }
-      else { S.save.gold = Math.max(0, S.save.gold - einsatz); lines.push('<b style="color:#ff6b5e">Du hast verloren.</b>' + (einsatz ? ' Du zahlst ' + ge(einsatz) + '.' : '')); UI.snd('niederlage'); }
+      // Überfall: Wer überfällt und gewinnt, klaut 100 Gold (hat das Opfer unter 150 Gold, klaut er 70 %). Sonst gibt es keine Beute.
+      const klau = g => g < 150 ? Math.floor(g * 0.7) : 100;
+      if (o && o.gold) { const g = o.gold | 0; if (gewonnen) { lines.push('Einsatz: Du bekommst ' + ge(g) + '.'); anwenden.push(() => { S.save.gold += g; }); } else { const z = Math.min(g, S.save.gold); lines.push('Einsatz: Du zahlst ' + ge(z) + '.'); anwenden.push(() => { S.save.gold -= z; }); } }
+      if (stake && !gewonnen) { const i = S.save.team.indexOf(stake); if (i >= 0 && S.save.team.length > 1) { lines.push('<b style="color:#ff6b5e">' + esc(CAM.name(stake)) + ' geht an ' + esc(pn(andere)) + '.</b>'); anwenden.push(() => { const k = S.save.team.indexOf(stake); if (k >= 0 && S.save.team.length > 1) { S.save.team.splice(k, 1); Netz.senden({ t: 'prize', to: andere, mob: CAM.kopie(stake) }); } }); } }
+      if (stake && gewonnen) lines.push('Als Preis bekommst du das Fabelwesen von ' + esc(pn(andere)) + '.');
+      if (gewonnen) { lines.push('<b style="color:#5fd38a">Du hast gewonnen!</b>'); UI.snd('sieg'); }
+      else { lines.push('<b style="color:#ff6b5e">Du hast verloren.</b>'); UI.snd('niederlage'); }
+      if (d.amb) {
+        const angreifer = d.a === S.idx;
+        if (angreifer && gewonnen) { const g = klau(gegnerTeam.gold); if (g > 0) { lines.push('Beute: Du klaust ' + ge(g) + '.'); anwenden.push(() => { S.save.gold += g; }); } }
+        else if (!angreifer && !gewonnen) { const g = klau(goldStart); if (g > 0) { lines.push('Du wirst bestohlen: ' + ge(g) + ' sind weg.'); anwenden.push(() => { S.save.gold = Math.max(0, S.save.gold - g); }); } }
+      }
       if (!d.amb) { if (gewonnen) S.save.w++; else S.save.l++; Netz.senden({ t: 'st', w: S.save.w, l: S.save.l }); }
       else lines.push('<small>Überfälle zählen nicht für die Rangliste.</small>');
       if (d.amb && d.b === S.idx) lines.push('<small>Du bist jetzt 30 Minuten vor Überfällen geschützt.</small>');
     }
+    if (anwenden.length) { lines.push('<br><small>Mit OK bestätigst du den Preis.</small>'); await UI.info(lines.join('<br>'), gewonnen0(b, meineSeite) ? 'Preis bestätigen' : 'Einsatz bestätigen'); anwenden.forEach(f => f()); lines.length = 0; }
     Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
     if (lines.length) await UI.info(lines.join('<br>'), 'Duell vorbei');
   };
