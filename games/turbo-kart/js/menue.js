@@ -115,7 +115,7 @@ const App = {
     this.zeige('sTitel', false);
     if (location.hash && HUB) {
       const code = HUB.cleanCode(location.hash);
-      if (code) { this.zeige('sOnline'); $('oCode').value = code; $('oName').focus(); }
+      if (code) { this.zeige('sOnline'); Netz.onlineZeigen(); $('oCode').value = code; }
     }
     let last = performance.now();
     const frame = t => {
