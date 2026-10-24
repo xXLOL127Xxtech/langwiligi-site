@@ -180,14 +180,17 @@
   function wilderMob(w, x, y, now, tick, ohneName) {
     const m = w.mob, f = CAM.FAMILIEN[m.fam], boese = CAM.Wilde.boese(m);
     const gr = TS * (f.legend ? 3.2 : [2.0, 2.4, 2.8][m.stufe - 1]);
-    const hop = w.geht ? Math.abs(Math.sin(tick / 120 + w.id)) * TS * 0.14 : (w.huepf > 0 ? Math.sin((1 - w.huepf / 0.35) * Math.PI) * TS * 0.5 : 0);
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36, gr * 0.08, 0, 0, 6.3); ctx.fill();
+    // Laufbild: 4 Schritte, die zur Geschwindigkeit passen (ohne eigene Zählung, z. B. beim Sprung aus dem Gras, nach der Uhr)
+    const ph = w.geht ? Math.floor(w.lauf !== undefined ? w.lauf : tick / 90) % 4 : -1;
+    const schwebt = !!f.fliegt, schweb = schwebt ? TS * 0.34 + Math.sin(tick / 300 + w.id * 1.7) * TS * 0.07 : 0;
+    const hop = (w.geht && !schwebt ? Math.abs(Math.sin((w.lauf || 0) * Math.PI / 2)) * TS * 0.04 : 0) + (w.huepf > 0 ? Math.sin((1 - w.huepf / 0.35) * Math.PI) * TS * 0.5 : 0) + schweb;
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36 * (1 - schweb / TS * 0.4), gr * 0.08, 0, 0, 6.3); ctx.fill();
     if (boese) { ctx.fillStyle = 'rgba(255,50,40,' + (0.14 + 0.08 * Math.sin(tick / 200)) + ')'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.55, gr * 0.16, 0, 0, 6.3); ctx.fill(); }
     ctx.save(); ctx.imageSmoothingEnabled = false;
-    const flip = w.dir === 3 || w.dir === 0 ? 0 : 1; // Bilder schauen nach rechts
-    ctx.translate(x, y - hop); ctx.scale(w.dir === 3 ? -1 : 1, 1);
-    if (w.geht) { const ph = Math.sin(tick / 85 + w.id * 2); ctx.rotate(ph * 0.07); ctx.scale(1 + ph * 0.035, 1 - ph * 0.035); }   // Laufschritt: wippen und stauchen
-    ctx.drawImage(CAM.spriteMit(m), -gr / 2, -gr * 0.94, gr, gr);
+    ctx.translate(x, y - hop); ctx.scale(w.dir === 3 ? -1 : 1, 1);   // Bilder schauen nach rechts
+    const atmen = ph < 0 ? 1 + Math.sin(tick / 520 + w.id) * 0.012 : 1;   // im Stehen atmet er leicht
+    ctx.scale(1, atmen);
+    ctx.drawImage(CAM.spriteMit(m, ph), -gr / 2, -gr * 0.94, gr, gr);
     ctx.restore();
     const d = Math.hypot(w.x - S.x, w.y - S.y);
     if (!ohneName && d < 8) {
@@ -357,7 +360,7 @@
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
-    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = [];
+    S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 3; CAM.Wilde.fuell = 3;
     CAM.Bots.erzeugen();
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
     S.save.team.concat(S.save.box).forEach(m => { delete m.faintDone; m.status = null; CAM.angleichen(m); });
