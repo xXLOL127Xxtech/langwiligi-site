@@ -431,7 +431,7 @@
   CAM.fangChance = function (stufe, m, kugel, schaden) {
     const f = CAM.FAMILIEN[m.fam];
     const s = schaden !== undefined ? schaden : (m.hp <= 0 ? 1 : 1 - m.hp / m.mhp);
-    const d = m.lv - (stufe - 0.73), odds = 0.4925 * Math.exp(-(d < 0 ? 1.2 : 0.259 + (kugel.steil || 0)) * d) * (CAM.FANGRATE[f.rar] / 0.9) * kugel.fang;
+    const d = m.lv - (stufe - 0.73), odds = 0.4925 * Math.exp(-(d < 0 ? 1.2 : 0.259 + (kugel.steil || 0)) * d) * (CAM.FANGRATE[f.rar] / 0.9) * kugel.fang * (1 + (kugel.bonus || 0) * Math.exp(-0.4 * Math.max(0, d)));
     let base = Math.max(0.0005, Math.min(0.95, odds / (1 + odds)));
     let p = Math.pow(base, 1 - 0.65 * Math.max(0, Math.min(1, s)));
     if (m.status) p *= m.status.t === 'schlaf' ? 1.5 : 1.2;
@@ -611,7 +611,7 @@
   // ---------- Gegenstände ----------
   CAM.ITEMS = {
     siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1, steil: 0.255, info: 'Fängt geschwächte Mobs, bei hohen Stufen kaum' },
-    siegel2: { n: 'Starke Fangkugel', preis: 100, fang: 1, info: 'Fängt auch höhere Mobs' },
+    siegel2: { n: 'Starke Fangkugel', preis: 100, fang: 1, bonus: 0.8, info: 'Fängt auch höhere Mobs' },
     siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 1, zehn: true, info: 'Zehn Fangversuche in einem Wurf' },
     trank: { n: 'Heiltrank', preis: 30, heil: 40, info: 'Heilt 40 LP' },
     trank2: { n: 'Grosser Heiltrank', preis: 100, heil: 120, info: 'Heilt 120 LP' },
