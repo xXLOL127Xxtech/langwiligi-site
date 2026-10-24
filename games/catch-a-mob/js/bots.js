@@ -79,6 +79,45 @@
     if (gehbar(b.x, b.y + dy)) { b.y += dy; ok = true; }
     return ok;
   }
+
+  // ---------- Wegfindung (A* auf dem Feldraster) ----------
+  // Nur wer auf dich zuläuft, sucht sich einen Weg um Hindernisse (Wasser, Bäume, Felsen, Mauern). Es jagt immer höchstens ein NPC gleichzeitig.
+  const feldFrei = (x, y, trainer) => !Welt.blockiert(x + 0.5, y + 0.5) && !(trainer && Welt.istSicher(x + 0.5, y + 0.5, 1));
+  function sucheWeg(sx, sy, tx, ty, trainer) {
+    sx = Math.floor(sx); sy = Math.floor(sy); tx = Math.floor(tx); ty = Math.floor(ty);
+    const key = (x, y) => x * 4096 + y, h = (x, y) => Math.abs(x - tx) + Math.abs(y - ty);
+    const start = { x: sx, y: sy, g: 0, f: h(sx, sy), p: null }, offen = [start], zu = new Map([[key(sx, sy), start]]), lim = SUCHE + 16;
+    let best = start, n = 0;
+    while (offen.length && n++ < 3000) {
+      let bi = 0; for (let i = 1; i < offen.length; i++) if (offen[i].f < offen[bi].f) bi = i;
+      const c = offen.splice(bi, 1)[0];
+      if (h(c.x, c.y) < h(best.x, best.y)) best = c;
+      if (c.x === tx && c.y === ty) { best = c; break; }
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const x = c.x + dx, y = c.y + dy, k = key(x, y);
+        if (Math.abs(x - sx) > lim || Math.abs(y - sy) > lim || x < 1 || y < 1 || x >= Welt.W - 1 || y >= Welt.H - 1) continue;
+        if (!(x === tx && y === ty) && !feldFrei(x, y, trainer)) continue;
+        const g = c.g + 1, alt = zu.get(k);
+        if (alt && alt.g <= g) continue;
+        const nd = { x, y, g, f: g + h(x, y), p: c };
+        zu.set(k, nd); offen.push(nd);
+      }
+    }
+    const weg = []; for (let c = best; c && c.p; c = c.p) weg.unshift([c.x + 0.5, c.y + 0.5]);
+    return weg;
+  }
+  // Richtung zum nächsten Wegpunkt (neu berechnet alle 0.7 s oder wenn sich das Ziel bewegt hat)
+  function lenke(n, x, y, tx, ty, now, trainer) {
+    if (!n.pfad || now - n.pfadT > 700 || Math.hypot(n.pfadZ[0] - tx, n.pfadZ[1] - ty) > 2) { n.pfad = sucheWeg(x, y, tx, ty, trainer); n.pfadT = now; n.pfadZ = [tx, ty]; }
+    while (n.pfad.length && Math.hypot(n.pfad[0][0] - x, n.pfad[0][1] - y) < 0.3) n.pfad.shift();
+    const wp = n.pfad.length ? n.pfad[0] : [tx, ty], dd = Math.hypot(wp[0] - x, wp[1] - y) || 1;
+    return [(wp[0] - x) / dd, (wp[1] - y) / dd];
+  }
+  // Nur ein Jäger auf einmal, danach eine Pause
+  const jagdFrei = now => now > (Bots.jagdPause || 0) && !(Bots.jaeger && Bots.jaeger.z === 'prov');
+  function jagdStart(n, now) { Bots.jaeger = n; n.pfad = null; }
+  function jagdEnde(now, pause) { Bots.jaeger = null; Bots.jagdPause = now + (pause || 25000) + Math.random() * 15000; }
+
   Bots.update = function (dt, now, frei) {
     if (S.modus !== 'welt') return;
     for (const b of Bots.liste) {
@@ -89,12 +128,12 @@
       const ziel = frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && !Welt.dorfBei(b.x, b.y) && now > b.provBis && now > b.ruheBis;
       if (b.z === 'prov') {
         // läuft auf dich zu und fordert dich heraus
-        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > SUCHE + 12) { b.z = 'ruhe'; b.t = 2; }
+        if (!frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > SUCHE + 12) { b.z = 'ruhe'; b.t = 2; jagdEnde(now, 5000); }
         else if (now - b.alarm < 600) { /* kurz erschrecken */ }
-        else if (d > 1.5) { vx = (S.x - b.x) / d; vy = (S.y - b.y) / d; tempo = 3.9; }
-        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; A.botProvokation(b); continue; }
-      } else if (ziel && d < SUCHE && d > 3 && Math.random() < dt * 0.3 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
-        b.z = 'prov'; b.alarm = now; UI.snd('ruf');
+        else if (d > 1.5) { [vx, vy] = lenke(b, b.x, b.y, S.x, S.y, now, false); tempo = 3.9; }
+        else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; jagdEnde(now); A.botProvokation(b); continue; }
+      } else if (ziel && jagdFrei(now) && d < SUCHE && d > 3 && Math.random() < dt * 0.3 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
+        b.z = 'prov'; b.alarm = now; jagdStart(b, now); UI.snd('ruf');
       } else {
         b.t -= dt;
         if (b.z === 'ruhe' && b.t <= 0) {
@@ -122,7 +161,7 @@
         if (!ok && b.z === 'geht') { b.z = 'ruhe'; b.t = 0.6; }
         if (b.z === 'prov') {
           // hängt er an einer Wand fest, probiert er seitlich vorbeizukommen und gibt nach 2.5 s auf
-          if (!ok) { b.stuck = (b.stuck || 0) + dt; if (!schritt(b, -vy * tempo * dt, vx * tempo * dt)) schritt(b, vy * tempo * dt, -vx * tempo * dt); if (b.stuck > 2.5) { b.z = 'ruhe'; b.t = 2; b.stuck = 0; b.provBis = now + 20000; } }
+          if (!ok) { b.stuck = (b.stuck || 0) + dt; if (!schritt(b, -vy * tempo * dt, vx * tempo * dt)) schritt(b, vy * tempo * dt, -vx * tempo * dt); if (b.stuck > 2.5) { b.z = 'ruhe'; b.t = 2; b.stuck = 0; b.provBis = now + 20000; jagdEnde(now, 5000); } }
           else b.stuck = Math.max(0, (b.stuck || 0) - dt);
         }
         if (Math.abs(vx) > Math.abs(vy)) b.dir = vx > 0 ? 1 : 3; else b.dir = vy > 0 ? 2 : 0;
@@ -141,12 +180,12 @@
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
       let vx = 0, vy = 0, tempo = 0;
       const wild = tr.id % 5 < 2;
-      if (wild && !aus && frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && now > tr.provBis && d < 11 && tr.z !== 'prov') { tr.z = 'prov'; tr.pa = now; UI.snd('ruf'); }
+      if (wild && !aus && frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && now > tr.provBis && d < 11 && tr.z !== 'prov' && jagdFrei(now)) { tr.z = 'prov'; tr.pa = now; jagdStart(tr, now); UI.snd('ruf'); }
       if (tr.z === 'prov') {
-        if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; }
+        if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; jagdEnde(now, 5000); }
         else if (now - tr.pa < 600) { /* kurz erschrecken */ }
-        else if (d > 1.4) { vx = (S.x - tr.px) / d; vy = (S.y - tr.py) / d; tempo = 3.4; }
-        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; A.trainerKampf(tr, { erster: 1 }); continue; }
+        else if (d > 1.4) { [vx, vy] = lenke(tr, tr.px, tr.py, S.x, S.y, now, true); tempo = 3.4; }
+        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; jagdEnde(now); A.trainerKampf(tr, { erster: 1 }); continue; }
       } else {
         tr.t -= dt;
         if (tr.z === 'ruhe' && tr.t <= 0) {
@@ -164,7 +203,7 @@
         tr.geht = ok;
         if (!ok && tr.z === 'geht') { tr.z = 'ruhe'; tr.t = 0.6; }
         if (tr.z === 'prov') {
-          if (!ok) { tr.stuck = (tr.stuck || 0) + dt; if (!trSchritt(tr, -vy * tempo * dt, vx * tempo * dt)) trSchritt(tr, vy * tempo * dt, -vx * tempo * dt); if (tr.stuck > 2.5) { tr.z = 'ruhe'; tr.t = 2; tr.stuck = 0; tr.provBis = now + 20000; } }
+          if (!ok) { tr.stuck = (tr.stuck || 0) + dt; if (!trSchritt(tr, -vy * tempo * dt, vx * tempo * dt)) trSchritt(tr, vy * tempo * dt, -vx * tempo * dt); if (tr.stuck > 2.5) { tr.z = 'ruhe'; tr.t = 2; tr.stuck = 0; tr.provBis = now + 20000; jagdEnde(now, 5000); } }
           else tr.stuck = Math.max(0, (tr.stuck || 0) - dt);
         }
         if (Math.abs(vx) > Math.abs(vy)) tr.dir = vx > 0 ? 1 : 3; else tr.dir = vy > 0 ? 2 : 0;
