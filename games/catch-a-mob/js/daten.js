@@ -425,6 +425,124 @@
 
   const FX2 = { blasenreigen: ['blind', 20], blubberbiss: ['laehmung', 15] };
   for (const k in FX2) if (M[k] && !M[k].st) { M[k].st = FX2[k][0]; M[k].p = FX2[k][1]; }
+
+  // ---------- Techniken: weitere Attacken ab höheren Stufen (nach Element), dazu Stufen-Boni, Rückstoss, Schutz, Wetter ... ----------
+  // Eigenschaften: self (wirkt auf sich selbst), stg (Stufen: z 'self'/'foe', w 'atk'/'def'/'acc', n, p), boost (Status-Chancen aller eigenen Attacken steigen),
+  // wetter, schutz, selbst (kostet Anteil der max. LP), rueck (Rückstoss), saug (heilt Anteil des Schadens), multi (Anzahl Treffer), einmal (nur einmal pro Kampf),
+  // erschoepft (danach ein Zug Pause), krit (zusätzliche Chance auf Kritisch), schlaf (schläft danach n Züge).
+  const TECH = [
+    // id, Name, Element, Stärke, Genauigkeit, Stufe, Eigenschaften
+    ['sammeln', 'Sammeln', 'Normal', 0, 100, 10, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }] }],
+    ['panzern', 'Panzern', 'Normal', 0, 100, 12, { self: 1, stg: [{ z: 'self', w: 'def', n: 1 }] }],
+    ['schutzschild', 'Schutzschild', 'Normal', 0, 100, 16, { self: 1, schutz: 1 }],
+    ['wuchtschlag', 'Wuchtschlag', 'Normal', 100, 90, 22, { rueck: 0.25 }],
+    ['kampfrausch', 'Kampfrausch', 'Normal', 0, 100, 30, { self: 1, selbst: 0.25, stg: [{ z: 'self', w: 'atk', n: 2 }] }],
+    ['tiefschlaf', 'Tiefschlaf', 'Normal', 0, 100, 36, { self: 1, heal: 1, schlaf: 2 }],
+    ['finalstoss', 'Finalstoss', 'Normal', 130, 85, 42, { erschoepft: 1 }],
+    ['gluthauch', 'Gluthauch', 'Feuer', 35, 100, 8, { st: 'brand', p: 40 }],
+    ['sonnentanz', 'Sonnentanz', 'Feuer', 0, 100, 18, { self: 1, wetter: 'hitze' }],
+    ['brennstoff', 'Brennstoff', 'Feuer', 20, 100, 24, { boost: { st: 'brand', add: 40, n: 4 } }],
+    ['feuersturm', 'Feuersturm', 'Feuer', 110, 85, 38, { rueck: 0.2, st: 'brand', p: 30 }],
+    ['blasensalve', 'Blasensalve', 'Wasser', 22, 100, 8, { multi: [2, 4] }],
+    ['regentanz', 'Regentanz', 'Wasser', 0, 100, 18, { self: 1, wetter: 'regen' }],
+    ['nebelwand', 'Nebelwand', 'Wasser', 0, 100, 22, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['sturzflut', 'Sturzflut', 'Wasser', 95, 90, 36, { st: 'furcht', p: 20 }],
+    ['blattsauger', 'Blattsauger', 'Pflanze', 40, 100, 8, { saug: 0.5 }],
+    ['giftsporen', 'Giftsporen', 'Pflanze', 0, 85, 14, { st: 'gift', p: 100 }],
+    ['schlafspore', 'Schlafspore', 'Pflanze', 0, 75, 20, { st: 'schlaf', p: 100 }],
+    ['giftnebel', 'Giftnebel', 'Pflanze', 20, 100, 26, { st: 'gift', p: 30, boost: { st: 'gift', add: 40, n: 4 } }],
+    ['wachstum', 'Wachstum', 'Pflanze', 0, 100, 32, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'def', n: 1 }] }],
+    ['sandwolke', 'Sandwolke', 'Erde', 0, 100, 10, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['erdkraft', 'Erdkraft', 'Erde', 70, 95, 20, { stg: [{ z: 'foe', w: 'def', n: -1, p: 30 }] }],
+    ['versteinern', 'Versteinern', 'Erde', 0, 100, 28, { self: 1, stg: [{ z: 'self', w: 'def', n: 2 }] }],
+    ['felslawine', 'Felslawine', 'Erde', 105, 85, 40, { st: 'betaeubt', p: 25 }],
+    ['windstoss', 'Windstoss', 'Luft', 30, 100, 8, { krit: 0.25 }],
+    ['rueckenwind', 'Rückenwind', 'Luft', 0, 100, 16, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'acc', n: 1 }] }],
+    ['sturmwarnung', 'Sturmwarnung', 'Luft', 0, 100, 24, { self: 1, wetter: 'wind' }],
+    ['schockstoss', 'Schockstoss', 'Luft', 40, 100, 26, { einmal: 1, st: 'laehmung', p: 100 }],
+    ['sturzflug', 'Sturzflug', 'Luft', 90, 95, 30, { rueck: 0.2 }],
+    ['blendlicht', 'Blendlicht', 'Licht', 20, 100, 10, { st: 'blind', p: 70 }],
+    ['lichtschild', 'Lichtschild', 'Licht', 0, 100, 20, { self: 1, schutz: 1 }],
+    ['sonnenstrahl', 'Sonnenstrahl', 'Licht', 110, 90, 34, { erschoepft: 1 }],
+    ['schwaechen', 'Schwächen', 'Schatten', 0, 100, 12, { stg: [{ z: 'foe', w: 'atk', n: -1 }, { z: 'foe', w: 'def', n: -1 }] }],
+    ['schreckgriff', 'Schreckgriff', 'Schatten', 25, 100, 18, { st: 'betaeubt', p: 40 }],
+    ['seelenraub', 'Seelenraub', 'Schatten', 55, 100, 28, { saug: 0.5 }],
+    ['fluchsiegel', 'Fluchsiegel', 'Schatten', 0, 85, 44, { einmal: 1, st: 'laehmung', p: 100 }],
+  ];
+  CAM.TECH = [];
+  TECH.forEach(([id, n, el, pow, acc, lv, o]) => {
+    const mv = M[id] = Object.assign({ n, el, pow, acc, id }, o);
+    if (mv.self) mv.anim = { t: mv.heal ? 'heilen' : 'segen', cols: [CAM.EL_FARBE[el], '#ffffff'] };
+    else if (!pow) mv.anim = { t: 'strahl', cols: [CAM.EL_FARBE[el], '#ffffff'] };
+    CAM.TECH.push({ id, el, lv });
+  });
+
+  CAM.MOVE_SLOTS = lv => lv >= 40 ? 6 : lv >= 20 ? 5 : 4;
+  // Alle Attacken, die ein Mob bis jetzt gelernt hat: eigene Attacken der Familie und Techniken seiner Elemente
+  CAM.gelernt = function (m) {
+    const f = F[m.fam], els = CAM.elemente(m);
+    const l = f.sig.map((id, i) => [id, f.sigLv[i]]);
+    if (f.el === 'Licht' || f.el2 === 'Licht') l.push(['genesung', 18]);
+    CAM.TECH.forEach(t => { if (t.el === 'Normal' || els.includes(t.el)) l.push([t.id, t.lv]); });
+    const got = [];
+    for (const [id, min] of l.sort((a, b) => a[1] - b[1])) if (m.lv >= min && !got.includes(id)) got.push(id);
+    return got;
+  };
+  // Ausgerüstet: Wahl des Spielers (m.wahl), sonst die letzten 4 eigenen Attacken und in den zusätzlichen Plätzen die neuesten Techniken
+  CAM.attackenFuer = function (fam, lv, m) {
+    const f = F[fam];
+    const mm = m || { fam, lv, stufe: CAM.stufeFuer(fam, lv) };
+    const alle = CAM.gelernt(mm), slots = CAM.MOVE_SLOTS(lv);
+    if (m && m.wahl) { const w = m.wahl.filter(id => alle.includes(id)).slice(0, slots); if (w.length) return w; }
+    const eigen = [], tech = [];
+    const sigIds = f.sig.concat(['genesung']);
+    alle.forEach(id => (sigIds.includes(id) ? eigen : tech).push(id));
+    const basis = eigen.slice(-4);
+    // Zusatzplätze: zuerst Techniken des eigenen Elements (die neuesten), dann die einfachen Normal-Techniken
+    const rang = id => { const t = CAM.TECH.find(x => x.id === id); return (t.el === 'Normal' ? 1000 : 0) - t.lv; };
+    return basis.concat(tech.slice().sort((a, b) => rang(a) - rang(b)).slice(0, Math.max(0, slots - basis.length)));
+  };
+  // Beschreibung einer Attacke (kurz)
+  const STG_N = { atk: 'Angriff', def: 'Verteidigung', acc: 'Genauigkeit' };
+  CAM.moveText = function (mv) {
+    const t = [];
+    if (mv.pow) t.push('Stärke ' + mv.pow); else if (mv.heal) t.push('Heilt ' + Math.round(mv.heal * 100) + ' %');
+    if (mv.multi) t.push(mv.multi[0] + '–' + mv.multi[1] + ' Treffer');
+    if (mv.st) t.push(mv.p + ' % ' + CAM.STATUS_NAME[mv.st]);
+    (mv.stg || []).forEach(g => t.push((g.z === 'self' ? 'selbst ' : 'Gegner ') + STG_N[g.w] + (g.n > 0 ? ' +' : ' ') + g.n + (g.p ? ' (' + g.p + ' %)' : '')));
+    if (mv.boost) t.push('Status-Chancen +' + mv.boost.add + ' % (' + mv.boost.n + ' Züge)');
+    if (mv.wetter) t.push('Wetter: ' + CAM.WETTER[mv.wetter]);
+    if (mv.schutz) t.push('schützt vor dem nächsten Treffer');
+    if (mv.saug) t.push('heilt ' + Math.round(mv.saug * 100) + ' % des Schadens');
+    if (mv.rueck) t.push('Rückstoss ' + Math.round(mv.rueck * 100) + ' %');
+    if (mv.selbst) t.push('kostet ' + Math.round(mv.selbst * 100) + ' % LP');
+    if (mv.krit) t.push('oft kritisch');
+    if (mv.einmal) t.push('nur einmal pro Kampf');
+    if (mv.erschoepft) t.push('danach 1 Zug Pause');
+    if (mv.schlaf) t.push('schläft danach');
+    return t.join(' · ');
+  };
+
+  // ---------- Teamgeist: Elemente, die zusammenpassen, geben dem ganzen Team Vorteile ----------
+  const SYN = [
+    { n: 'Waldbrand', a: 'Feuer', b: 'Pflanze', text: 'Brand-Chance +15 %', fx: { brand: 15 } },
+    { n: 'Gedeihen', a: 'Wasser', b: 'Pflanze', text: 'heilt 5 % LP pro Runde', fx: { heal: 0.05 } },
+    { n: 'Schlamm', a: 'Wasser', b: 'Erde', text: 'Gegner treffen 10 % schlechter', fx: { ausw: 10 } },
+    { n: 'Himmelsglanz', a: 'Luft', b: 'Licht', text: 'eigene Treffer +10 %', fx: { accSelf: 10 } },
+    { n: 'Nachtflug', a: 'Luft', b: 'Schatten', text: 'Gegner treffen 8 % schlechter', fx: { ausw: 8 } },
+    { n: 'Glutpanzer', a: 'Feuer', b: 'Erde', text: 'erlittener Schaden −10 %', fx: { def: 10 } },
+    { n: 'Dämmerung', a: 'Licht', b: 'Schatten', text: 'Kritisch +10 %', fx: { krit: 10 } },
+    { n: 'Aufwind', a: 'Feuer', b: 'Luft', text: 'Schaden +6 %', fx: { dmg: 6 } },
+  ];
+  CAM.synergien = function (team) {
+    const els = new Set(); (team || []).forEach(m => CAM.elemente(m).forEach(e => els.add(e)));
+    const liste = SYN.filter(x => els.has(x.a) && els.has(x.b));
+    if (els.size >= 4) liste.push({ n: 'Vielfalt', text: 'Schaden +5 %', fx: { dmg: 5 } });
+    const fx = {};
+    liste.forEach(x => { for (const k in x.fx) fx[k] = (fx[k] || 0) + x.fx[k]; });
+    return { liste, fx };
+  };
+
   CAM.ANZ_FAMILIEN = 16;                // normale Familien am Anfang; danach 8 Riesen, 4 Spezial-Mobs (24 bis 27) und 20 weitere Fabelwesen (28 bis 47)
   CAM.RARITAET = ['Gewöhnlich', 'Selten', 'Episch', 'Legendär'];
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
@@ -481,17 +599,6 @@
     };
   };
 
-  // Welche Attacken ein Mob auf einer Stufe kennt (höchstens 4, die zuletzt gelernten).
-  // Jede Familie hat ihre eigenen Attacken (f.sig). Bei Mobs mit zwei Elementen gehört eine davon zum zweiten Element.
-  CAM.attackenFuer = function (fam, lv) {
-    const f = F[fam];
-    const l = f.sig.map((id, i) => [id, f.sigLv[i]]);
-    if (f.el === 'Licht' || f.el2 === 'Licht') l.push(['genesung', 18]);
-    const got = [];
-    for (const [id, min] of l.sort((a, b) => a[1] - b[1])) if (lv >= min && !got.includes(id)) got.push(id);
-    return got.slice(-4);
-  };
-
   // ---------- Heilhaus: Preis und Dauer pro Mob ----------
   // Dauer nach Stufe und Schaden: Stufe 5 = 1 Sekunde, Stufe 100 = 3 Minuten (bei vollem Schaden, linear dazwischen).
   const HEIL_RAR = [1, 1.7, 2.8, 5];
@@ -517,7 +624,7 @@
     const w = CAM.werte(m.fam, m.stufe, m.lv);
     m.mhp = w.hp; m.atk = w.atk; m.def = w.def; m.spd = w.spd;
     if (m.bon) { m.mhp = Math.round(m.mhp * (1 + (m.bon.hp || 0) / 100)); m.atk = Math.round(m.atk * (1 + (m.bon.atk || 0) / 100)); m.def = Math.round(m.def * (1 + (m.bon.def || 0) / 100)); m.spd = Math.round(m.spd * (1 + (m.bon.spd || 0) / 100)); }
-    m.moves = CAM.attackenFuer(m.fam, m.lv);
+    m.moves = CAM.attackenFuer(m.fam, m.lv, m);
     if (m.hp > m.mhp) m.hp = m.mhp;
   };
   // Alte Spielstände auf die aktuellen Werte und Attacken bringen (LP-Zuwachs wird gutgeschrieben)
