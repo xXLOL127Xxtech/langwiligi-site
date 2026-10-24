@@ -81,9 +81,9 @@
     const oo = Object.assign({}, o), notes = [];
     if (oo.goldThem > b.gold) { oo.goldThem = b.gold; notes.push('So viel Gold habe ich gar nicht, ' + b.gold + ' kann ich setzen.'); }
     if (oo.mobThem && b.team.length < 2) { oo.mobThem = null; notes.push('Mein letztes Fabelwesen setze ich nicht.'); }
-    const e = ev(oo), t = -0.05 - 0.2 * b.ego;
-    const klein = oo.goldMe <= 50 && oo.goldThem <= 50 && !oo.mobMe && !oo.mobThem;
-    if (klein && !notes.length && oo.goldMe + oo.goldThem > 0 && Math.random() < 0.96) return { ok: true, text: e.pB < 0.4 ? 'Für so wenig Gold? Klar, versuchen wir es.' : 'Gerne, die paar Münzen sind es mir wert.' };
+    // Spendabel, aber nur ein bisschen: Je nach Charakter nehmen Bots ein Angebot an, das für sie 10 bis 20 % schlechter ist als ausgeglichen (bei kleinen Einsätzen bis 50 Gold etwas mehr)
+    const gross = Math.max(0, Math.min(1, (b.ego + 0.1) / 0.6)), klein = oo.goldMe <= 50 && oo.goldThem <= 50 && !oo.mobMe && !oo.mobThem;
+    const e = ev(oo), t = -0.10 - 0.10 * gross - (klein ? 0.04 : 0);
     if (!e.tot) return e.pB < 0.2 && Math.random() < 0.4 ? { ok: false, text: 'Das ist mir zu riskant, auch ohne Einsatz.' } : { ok: true, text: 'Okay, nur für die Ehre.' };
     if (e.f >= t) return notes.length ? { counter: oo, text: notes.join(' ') + ' Dann so?' } : { ok: true, text: e.pB < 0.4 ? 'Ich bin überzeugt, dass ich das schaffe. Los!' : e.pB > 0.62 ? 'Gerne, das sieht gut für mich aus.' : 'Okay, versuchen wir es.' };
     if (e.f < -1.0) return { ok: false, text: 'Das ist ein Witz, oder? So ein Angebot nehme ich nicht an.' };
