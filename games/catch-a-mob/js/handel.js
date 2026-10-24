@@ -21,7 +21,8 @@
   //        frontText (online: Name des vordersten Mobs der Gegenseite), wertFront, maxThem, text, annahme (Gegenangebot liegt vor), senden (Beschriftung) }
   A.handelFenster = function (cfg) {
     return new Promise(res => {
-      const o = Object.assign({}, cfg.offer);
+      const o = Object.assign({}, cfg.offer), orig = Object.assign({}, cfg.offer);
+      const gleich = () => o.modus === orig.modus && o.goldMe === orig.goldMe && o.goldThem === orig.goldThem && o.mobMe === orig.mobMe && o.mobThem === orig.mobThem;
       const host = UI.openPanel('Handel mit ' + cfg.partner.name, '', true);
       const maxMe = S.save.gold, maxThem = cfg.maxThem === undefined ? 2000 : cfg.maxThem;
       let fertig = false;
@@ -44,9 +45,9 @@
           (cfg.ihre ? '<select data-m="them" style="width:100%">' + mobOpt(cfg.ihre, o.mobThem, 'kein Fabelwesen') + '</select>'
             : '<select data-m="them" style="width:100%"><option value="0">kein Fabelwesen</option><option value="1"' + (o.mobThem === 'front' ? ' selected' : '') + '>' + esc(cfg.frontText || 'sein vorderstes Fabelwesen') + '</option></select>') + '</div></div>' +
           '<div class="row"><b>Kampf:</b><select data-modus style="flex:1"><option value="fair"' + (o.modus === 'fair' ? ' selected' : '') + '>Fairer Kampf (alle auf Stufe ' + cfg.mid + ')</option><option value="echt"' + (o.modus === 'echt' ? ' selected' : '') + '>Echter Kampf (Stufen wie sie sind)</option></select></div>' +
-          '<div class="row" style="margin-top:12px">' + (cfg.annahme ? '<button class="btn" data-act="annehmen">Angebot annehmen</button>' : '') +
-          '<button class="btn' + (cfg.annahme ? ' alt' : '') + '" data-act="senden">' + (cfg.senden || 'Duell anfragen') + '</button><button class="btn alt" data-act="abbruch">Abbrechen</button></div>' +
-          '<div class="foot">Mit den Knöpfen änderst du das Gold, mit den Listen wählst du Fabelwesen. Tab wechselt, Enter drückt, Esc bricht ab.</div>';
+          '<div class="row" style="margin-top:12px">' + (cfg.annahme && gleich() ? '<button class="btn" data-act="annehmen">Angebot annehmen</button>' : '') +
+          '<button class="btn' + (cfg.annahme && gleich() ? ' alt' : '') + '" data-act="senden">' + (cfg.senden || 'Duell anfragen') + '</button><button class="btn alt" data-act="abbruch">Abbrechen</button></div>' +
+          (cfg.annahme && !gleich() ? '<div class="foot" style="color:#ffd54a">Du hast das Gegenangebot geändert. Es muss erst wieder angefragt und angenommen werden.</div>' : '') + '<div class="foot">Mit den Knöpfen änderst du das Gold, mit den Listen wählst du Fabelwesen. Tab wechselt, Enter drückt, Esc bricht ab.</div>';
         host.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
           const [id, d] = b.dataset.g.split(':');
           if (id === 'me') o.goldMe = Math.max(0, Math.min(maxMe, o.goldMe + +d)); else o.goldThem = Math.max(0, Math.min(maxThem, o.goldThem + +d));
@@ -120,6 +121,7 @@
       if (r.aktion === 'abbruch') return;
       offer = r.offer; delete offer.vomBot;
       let ok = r.aktion === 'annehmen';
+      if (ok && Bots.verhandeln(b, offer, pMe).ok !== true) ok = false, r.aktion = 'senden';   // nur wenn der Bot wirklich zusagen würde
       if (!ok) {
         const v = Bots.verhandeln(b, offer, pMe);
         if (v.counter) { offer = v.counter; text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»<br><small>Gegenangebot, unten steht jetzt sein Vorschlag.</small>'; annahme = true; UI.snd('ruf'); continue; }

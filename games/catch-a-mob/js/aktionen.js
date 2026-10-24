@@ -419,7 +419,8 @@
   function trainerTeam(tr) {
     const rnd = CAM.mulberry32(tr.seed), B = CAM.BIOME[tr.biome];
     const team = [];
-    for (let i = 0; i < tr.anz; i++) {
+    const anz = Math.max(tr.anz, Math.min(CAM.TEAM_MAX, S.save.team.length));   // gleich viele Mobs wie du, mindestens seine eigenen
+    for (let i = 0; i < anz; i++) {
       let tot = 0; B.spawn.forEach(s => tot += s[1]);
       let r = rnd() * tot, fam = B.spawn[0][0];
       for (const [f, g] of B.spawn) { r -= g; if (r <= 0) { fam = f; break; } }

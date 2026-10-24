@@ -40,7 +40,7 @@
   function gehbar(x, y) { return !(Welt.blockiert(x - 0.3, y - 0.2) || Welt.blockiert(x + 0.3, y - 0.2) || Welt.blockiert(x - 0.3, y + 0.25) || Welt.blockiert(x + 0.3, y + 0.25)); }
   function teamFuer(rnd, hx, hy, champ) {
     const bi = Welt.biomeAt(hx, hy), B = CAM.BIOME[bi], lv = Welt.wildLevel(hx, hy, rnd());
-    const n = 2 + (lv > 12 ? 1 : 0) + (lv > 25 ? 1 : 0), team = [];
+    const n = CAM.TEAM_MAX, team = [];   // so viele Mobs wie du (Team-Maximum)
     if (champ) team.push(CAM.neuerMob(27, Math.min(50, lv + 4)));
     while (team.length < n) {
       let tot = 0; B.spawn.forEach(s => tot += s[1]);
@@ -69,6 +69,7 @@
     const gespeichert = S.save && S.save.bots;
     if (gespeichert && gespeichert.length) {
       Bots.liste = gespeichert.map(b => laufzeit({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, x: b.hx, y: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
+      Bots.liste.forEach(b => { while (b.team.length < CAM.TEAM_MAX) { const m = CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2)); b.team.push(m); } });   // alte Spielstände: auf 3 Mobs auffüllen
       return;
     }
     const rnd = CAM.mulberry32(Welt.seed * 31 + 7);
@@ -76,7 +77,7 @@
   };
   Bots.speichern = () => Bots.liste.map(b => ({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
   Bots.naechster = function (x, y, rad) { let best = null, bd = rad; for (const b of Bots.liste) { const d = Math.hypot(b.x - x, b.y - y); if (d < bd) { bd = d; best = b; } } return best; };
-  const auffuellen = b => { while (b.team.length < 2) b.team.push(CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2))); b.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); };
+  const auffuellen = b => { while (b.team.length < CAM.TEAM_MAX) b.team.push(CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2))); b.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; }); b.lv = Math.max.apply(null, b.team.map(m => m.lv)); };
 
   // ---------- Bewegung ----------
   function schritt(b, dx, dy) {
