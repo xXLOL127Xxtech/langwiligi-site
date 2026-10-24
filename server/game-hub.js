@@ -13,6 +13,7 @@ const BOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_TTL = 6 * 3600 * 1000;
 // Schutz vor Überlastung. Eine Schulklasse hinter einer IP soll noch gehen, ein einzelner Angreifer nicht den Server füllen.
+const MAX_SEATS = 20;                   // Plätze pro Raum (Spiele fragen 2–20 an)
 const MAX_ROOMS = 3000, MAX_ROOMS_PER_IP = 40;
 const MAX_CONN_PER_IP = 80;             // offene WebSockets pro IP
 const MSG_RATE = 150, MSG_BURST = 600;  // Nachrichten pro Sekunde und Spitze (Spiele schicken ~20–60 pro Sekunde)
@@ -492,11 +493,30 @@ function onMessage(ws, raw) {
       let mine = 0;
       for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
-      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(16, Math.max(2, m.max | 0 || 2)),
+      const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
       room.players[0] = { ws, name: cleanName(m.name) };
       rooms.set(room.code, room); ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
+      roomChanged(room);
+      break;
+    }
+    // Offene Welt: alle, die "mitspielen" wählen, landen im selben öffentlichen Raum. Ist er voll, öffnet sich der nächste.
+    case 'quick': {
+      leave(ws);
+      const game = cleanGame(m.game);
+      let room = null;
+      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && (!room || freeSeats(r) < freeSeats(room))) room = r;
+      if (!room) {
+        if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
+        room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
+        rooms.set(room.code, room);
+      }
+      let idx = -1;
+      for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
+      room.players[idx] = { ws, name: cleanName(m.name) }; ws.room = room;
+      send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
+      others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
       break;
     }
@@ -988,7 +1008,7 @@ wss.on('connection', (ws, req) => {
 setInterval(() => {
   wss.clients.forEach(ws => { if (!ws.alive) return ws.terminate(); ws.alive = false; ws.ping(); });
   const now = Date.now();
-  for (const [code, room] of rooms) if (now - room.created > ROOM_TTL) {
+  for (const [code, room] of rooms) if (!room.pub && now - room.created > ROOM_TTL) {
     room.players.forEach(p => p && p.ws.close()); rooms.delete(code);
   }
 }, 25000);

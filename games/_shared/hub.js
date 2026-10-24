@@ -97,6 +97,8 @@
       game, code: null, you: -1, players: [], max: 0,
       on(ev, f) { (handlers[ev] = handlers[ev] || []).push(f); return api; },
       create(name, max = 2) { return open({ t: 'create', game, name, max }); },
+      // Offene Welt: alle landen im selben öffentlichen Raum (bei Bedarf wird ein neuer geöffnet)
+      quick(name, max = 2) { return open({ t: 'quick', game, name, max }); },
       join(code, name) { return open({ t: 'join', game, code: cleanCode(code), name }); },
       send(d) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'relay', d })); },
       roundStart() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'round-start' })); },

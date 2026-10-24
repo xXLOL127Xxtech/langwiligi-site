@@ -101,10 +101,13 @@ Der Server ist ein reiner **Nachrichten-Verteiler**: Er leitet Nachrichten zwisc
 ```js
 const room = GameHub.connect(GAME_ID);
 
-// Raum erstellen (2–8 Plätze) -> 4-stelliger Code, z.B. "K7QD"
+// Raum erstellen (2–20 Plätze) -> 4-stelliger Code, z.B. "K7QD"
 const info = await room.create(GameHub.getName(), 2);   // info.code, info.you (= 0)
 // oder beitreten
-await room.join('K7QD', GameHub.getName());              // room.you = eigener Platz (0..7)
+await room.join('K7QD', GameHub.getName());              // room.you = eigener Platz (0..19)
+// oder offene Welt: alle, die "mitspielen" wählen, landen im selben öffentlichen Raum (bis 20).
+// Ist er voll, öffnet sich automatisch der nächste. Für Spiele, in denen alle Online-Spieler zusammen spielen.
+await room.quick(GameHub.getName(), 20);                // room.code = Code der Welt, room.you = eigener Platz
 
 room.on('peer-join', m => { /* m.idx, m.name, m.players */ });
 room.on('peer-left', m => { /* m.idx – Gegner weg, Spiel pausieren/beenden */ });
@@ -117,7 +120,9 @@ room.close();
 
 - **Einladungslink**: `GameHub.SEITE + '/<spiel-id>/#' + code` (ergibt z.B. `https://langwiligi.site/<spiel-id>/#K7QD`). Die Adresse nie fest eintippen. Beim Laden prüft das Spiel `location.hash`, setzt den Code mit `GameHub.cleanCode(location.hash)` ins Beitreten-Feld und fragt nach dem Namen. Biete einen Knopf „Link kopieren“ an.
 - Mögliche Fehler beim Beitreten: `not-found`, `full`, `wrong-game`, `timeout`. Zeig sie mit `GameHub.errorText(e)` an.
-- Räume werden gelöscht, sobald alle draussen sind, spätestens nach 6 Stunden.
+- Räume werden gelöscht, sobald alle draussen sind, spätestens nach 6 Stunden. Offene Welten (`room.quick`) laufen weiter, solange jemand drin ist.
+- **Plätze:** 2 bis höchstens **20** pro Raum. Bei vielen Spielern die Nachrichten sparsam halten (Positionen höchstens ca. 5 Mal pro Sekunde, nur bei Bewegung), denn jede Nachricht geht an alle anderen im Raum.
+- **Zusammen spielen:** Wenn es in einem Spiel um eine gemeinsame Welt geht (statt einzelner Duelle), nimm `room.quick`, damit alle in derselben Lobby landen. Ein Code zum Beitreten ist trotzdem nötig, damit Einladungslinks funktionieren: Der Einladungslink der Welt führt in genau diesen Raum.
 
 **Online-Rangliste für Duelle (Siege/Spiele):**
 ```js
