@@ -152,8 +152,8 @@
       if (!tm || !it || this.kind !== 'wild') return;
       ev.push({ k: 'msg', t: a.name + ' wirft ein ' + it.n + '!' });
       const f = CAM.FAMILIEN[tm.fam];
-      const rate = CAM.fangChance(a.fang || 1, tm, it.fang);
-      const ok = it.fang >= 99 || this.rnd() < rate;
+      const rate = CAM.fangChance(a.fang || 1, tm, it);
+      const ok = this.rnd() < rate;
       let shakes = ok ? 3 : Math.floor(this.rnd() * 3);
       ev.push({ k: 'shake', n: shakes, ok });
       if (ok) {
