@@ -24,7 +24,9 @@ Das Spiel ist gebaut (`games/catch-a-mob/`) und enthält bereits:
 - 16 Mob-Familien (48 Mobs) plus 8 Riesen, Kampfsystem mit Elementen, Wetter, Statuseffekten, Fangen, Erfahrung und Entwicklung
 - Trainer-Bots, Riesen-Raids mit der Party, Freundesduell, Überfall mit 30 Minuten Schutz für den Überfallenen, Party mit Standortpfeilen und Karte
 
-Noch offen: Weltboss für alle, Duell-Rangliste auf dem Server (heute nur pro Welt), Raum mit 20 statt 8 Spielern (braucht die Serveränderung, siehe Abschnitt 3.2).
+Online landen alle automatisch in derselben offenen Welt (bis 20 Spieler, danach öffnet sich die nächste). Dafür gibt es neu `room.quick()` im GameHub und den Server (Plätze bis 20).
+
+Noch offen: Weltboss für alle und Duell-Rangliste auf dem Server (heute nur pro Welt).
 
 ## 1. Die Idee
 

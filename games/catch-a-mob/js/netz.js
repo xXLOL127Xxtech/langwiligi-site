@@ -25,6 +25,13 @@
     N.idx = room.you; N.online = true; N.max = info.max || room.max || 8;
     return info;
   };
+  // Offene Welt: alle Online-Spieler landen automatisch im selben Raum (bis 20), danach öffnet sich der nächste
+  N.mitspielen = async function (name) {
+    const room = verbinden();
+    const info = await room.quick(name, MAX_SPIELER);
+    N.idx = room.you; N.online = true; N.max = info.max || room.max || 8;
+    return info;
+  };
   N.beitreten = async function (code, name) {
     const room = verbinden();
     const info = await room.join(code, name);

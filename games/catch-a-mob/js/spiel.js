@@ -255,14 +255,13 @@
       const gh = Netz.verfuegbar();
       const items = [];
       if (hashCode && gh) items.push({ label: 'Welt ' + hashCode + ' beitreten', sub: 'Einladung' });
-      items.push({ label: 'Online – neue Welt erstellen', sub: gh ? '' : 'nur auf der Webseite', disabled: !gh });
-      items.push({ label: 'Online – mit Code beitreten', sub: gh ? '' : 'nur auf der Webseite', disabled: !gh });
+      items.push({ label: 'Online – mit allen zusammen spielen', sub: gh ? 'eine gemeinsame Welt, bis 20 Spieler' : 'nur auf der Webseite', disabled: !gh });
       items.push({ label: 'Bots – allein spielen', sub: S.save.start ? S.save.team.length + ' Mobs · ' + S.save.gold + ' Gold' : 'neues Spiel' });
       items.push({ label: 'Spielstand-Code' });
       items.push({ label: 'Anleitung' });
       const labels = items.map(i => i.label);
       const fHtml = '<div class="fld">Dein Name<input type="text" id="nm" maxlength="16" value="' + esc(name) + '" placeholder="Name eingeben"></div><div class="fld">Farbe</div><div class="farben">' + CAM.FARBEN.map((c, i) => '<button data-c="' + i + '" style="background:' + c + '" class="' + (i === col ? 'on' : '') + '"></button>').join('') + '</div>';
-      const p = UI.choose(items, { into: $('start-body'), nocancel: true, before: fHtml, numbers: false, start: hashCode && gh ? 0 : (gh ? 0 : 1) });
+      const p = UI.choose(items, { into: $('start-body'), nocancel: true, before: fHtml, numbers: false, start: gh ? 0 : 1 });
       const inp = $('nm');
       inp.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'Escape') { inp.blur(); e.preventDefault(); } e.stopPropagation(); });
       inp.addEventListener('input', () => { name = inp.value; });
@@ -276,8 +275,7 @@
       S.name = name; S.save.name = name; S.save.col = col; if (G.GameHub) G.GameHub.setName(name);
       try {
         if (lab === 'Bots – allein spielen') { S.online = false; }
-        else if (lab.startsWith('Online – neue')) { wartePanel('Welt wird erstellt …'); await Netz.erstellen(name); UI.closePanel(); S.online = true; }
-        else if (lab.startsWith('Online – mit Code')) { const c = await A.eingabe('Welt beitreten', 'Gib den Code deiner Freunde ein (4 Zeichen).', hashCode, 'z. B. K7QD'); if (!c) continue; wartePanel('Verbinde …'); await Netz.beitreten(c, name); UI.closePanel(); S.online = true; }
+        else if (lab.startsWith('Online – mit allen')) { wartePanel('Verbinde mit der Welt …'); await Netz.mitspielen(name); UI.closePanel(); S.online = true; }
         else if (lab.startsWith('Welt ')) { wartePanel('Verbinde …'); await Netz.beitreten(hashCode, name); UI.closePanel(); S.online = true; }
       } catch (e) {
         UI.closePanel(); await UI.info(esc(G.GameHub ? G.GameHub.errorText(e) : String(e)), 'Das hat nicht geklappt'); continue;
