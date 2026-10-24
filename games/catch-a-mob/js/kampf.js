@@ -218,15 +218,15 @@
         if (this.rnd() * 100 >= mv.acc * accMul) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }
         const eff = CAM.effekt(mv.el, CAM.elemente(tm));
         const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
-        const crit = this.rnd() < 1 / 16 ? 1.5 : 1;
+        const crit = this.rnd() < 1 / 8 ? 1.5 : 1;
         const rand = 0.85 + this.rnd() * 0.15;
         const atk = me.atk * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (a.enraged ? 1.25 : 1);
         let dmg = Math.floor(((2 * me.lv / 5 + 2) * mv.pow * atk / tm.def) / 50 + 2);
         dmg = Math.max(1, Math.floor(dmg * stab * eff * crit * rand * this.wFx(mv.el) * (mv.aoe ? 0.8 : 1)));
         tm.hp = Math.max(0, tm.hp - dmg);
         ev.push({ k: 'hp', a: t.id, i: t.active, hp: tm.hp, dmg, hit: true });
-        if (crit > 1) ev.push({ k: 'msg', t: 'Ein kritischer Treffer!' });
-        if (eff > 1) ev.push({ k: 'msg', t: 'Das ist sehr effektiv!' });
+        if (crit > 1) ev.push({ k: 'msg', t: 'Kritisch! Ein Volltreffer!' });
+        if (eff > 1) ev.push({ k: 'msg', t: 'Sehr effektiv!' });
         else if (eff < 1) ev.push({ k: 'msg', t: 'Das ist nicht sehr effektiv ...' });
         if (tm.hp > 0 && mv.st && !tm.status && this.rnd() * 100 < mv.p) {
           tm.status = { t: mv.st, n: mv.st === 'schlaf' ? 1 + Math.floor(this.rnd() * 3) : 3 };
