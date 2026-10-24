@@ -149,9 +149,9 @@
     try {
       for (;;) {
         BS.sub = false;
-        const items = [{ label: 'Attacke' }, { label: 'Wechseln', disabled: a.team.filter((m, i) => m.hp > 0 && i !== a.active).length === 0 }, { label: 'Beutel', disabled: b.noItems }];
-        const fangen = b.kind === 'wild';
-        const fliehen = b.kind === 'wild' || (a.fleeFirst && b.turn === 1);
+        const items = b.turn === 0 ? [{ label: 'Attacke' }] : [{ label: 'Attacke' }, { label: 'Wechseln', disabled: a.team.filter((m, i) => m.hp > 0 && i !== a.active).length === 0 }, { label: 'Beutel', disabled: b.noItems }];
+        const fangen = b.kind === 'wild' && b.turn > 0;
+        const fliehen = b.turn > 0 && b.kind === 'wild' || (a.fleeFirst && b.turn === 1);
         if (fangen) items.push({ label: 'Fangen' });
         if (fliehen) items.push({ label: 'Fliehen' });
         const labels = items.map(x => x.label);
@@ -822,7 +822,7 @@
     c.fillStyle = 'rgba(10,8,18,.72)'; roundRect(c, w / 2 - 150, 10, 300, 30, 9); c.fill();
     c.fillStyle = '#e8e0ff'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle';
     const titel = { wild: 'Wilder Kampf', trainer: 'Trainer-Kampf', duel: cfg.ueberfall ? 'Überfall!' : 'Duell', raid: 'Riesen-Raid' }[b.kind];
-    c.fillText(titel + ' · Runde ' + b.turn, w / 2, 26);
+    c.fillText(titel + (b.turn > 0 ? ' · Runde ' + b.turn : ' · Eröffnung'), w / 2, 26);
     c.textBaseline = 'alphabetic';
   };
 })(window);

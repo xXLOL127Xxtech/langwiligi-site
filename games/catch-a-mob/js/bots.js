@@ -213,17 +213,17 @@
         { title: b.name + ' fordert dich heraus!', before: '<p>«Lust auf einen Kampf?»<br><small>' + (fair ? 'Fairer Kampf: alle Mobs auf Stufe ' + mid : 'Echter Kampf mit den echten Stufen') + ' · ' + (gold ? 'Einsatz ' + gold + ' Gold' : 'kein Einsatz') + '<br>Er: ' + staerkeText(b.team) + ' (Höchste Stufe ' + b.lv + ')</small></p>', numbers: false, start: 1, nocancel: true });
       if (r !== 0) { b.ruheBis = Date.now() + 240000; UI.toast(b.name + ' zieht enttäuscht ab.'); return; }
       S.busy = false;
-      await A.botDuell(b, offer, lvl);
+      await A.botDuell(b, offer, lvl, 1);
     } finally { S.busy = false; }
   };
 
   // Kampf Spieler gegen Bot und Auszahlung des Einsatzes
-  A.botDuell = async function (b, offer, lvl) {
+  A.botDuell = async function (b, offer, lvl, erster) {
     S.busy = true; CAM.Netz.senden({ t: 'p', ...A.praesenz() });
     const mein = CAM.duellKopien(S.save.team, lvl), seine = CAM.duellKopien(b.team, lvl);
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: mein };
     const gegner = { id: 'bot', name: b.name, side: 1, ctrl: 'ai', team: seine };
-    const res = await K.starten({ kind: 'duel', actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, weather: CAM.wetterBei(Welt.biomeAt(S.x, S.y), Date.now()), biome: Welt.biomeAt(S.x, S.y),
+    const res = await K.starten({ kind: 'duel', actors: [lokal, gegner], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, weather: CAM.wetterBei(Welt.biomeAt(S.x, S.y), Date.now()), biome: Welt.biomeAt(S.x, S.y), erster,
       beutel: () => ({}), verbrauch() {}, intro: b.name + ' kämpft gegen ' + S.name + (offer.modus === 'fair' ? ' (fair, Stufe ' + lvl + ')' : '') + '!' });
     const bt = res.b, lines = [];
     const gewonnen = bt.over && bt.winner === 0;
