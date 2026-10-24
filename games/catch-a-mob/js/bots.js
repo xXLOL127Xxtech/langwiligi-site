@@ -28,7 +28,10 @@
       if (b.winner === 0) w++; else if (b.winner == null) w += 0.5;
     }
     // geglättet (Laplace) und nie ganz 0 oder 100: Auch ein klarer Favorit kann durch Treffer, Kritische und Fehlgriffe verlieren
-    return Math.max(5, Math.min(95, Math.round((w + 1) / (n + 2) * 100)));
+    // Rohwert s (0 bis 1) aus den Probekämpfen, dann abgeflacht: Gleich starke Teams ergeben etwa 50 %, ein klarer Favorit höchstens 80 % und ein klarer Aussenseiter nie unter 10 %,
+    // denn ein Kampf hat Glück (Treffer, Kritische, Fehlgriffe) und wer die besseren Elemente hat, hat es leichter. Gute Mobs beim Gegner drücken deine Chance spürbar.
+    const sr = (w + 1) / (n + 2);
+    return Math.round(10 + 70 * Math.pow(sr, 0.8));
   };
   const wert = m => CAM.preis(m) * (CAM.FAMILIEN[m.fam].spezial ? 4 : 1);
   CAM.mobWert = wert;
@@ -276,7 +279,7 @@
     try {
       UI.snd('ruf');
       const eigen = S.save.team, fair = Math.random() < 0.7, mid = CAM.lvlMitte(eigen, b.team), lvl = fair ? mid : 0;
-      const p = 100 - CAM.siegChance(b.team, eigen, lvl);
+      const p = CAM.siegChance(eigen, b.team, lvl);
       const gMax = Math.min(S.save.gold, b.gold);
       const gold = Math.random() < 0.4 || gMax < 20 ? 0 : Math.max(10, Math.round(gMax * [0.05, 0.1, 0.2][Math.floor(Math.random() * 3)] / 5) * 5);
       const offer = { modus: fair ? 'fair' : 'echt', gold, mobA: null, mobB: null };

@@ -7,11 +7,13 @@
   const wert = m => (m && m !== 'front') ? CAM.mobWert(m) : 0;
   const rund5 = x => Math.max(0, Math.ceil(x / 5) * 5);
 
-  // Fairness: erwarteter Gewinn für mich im Verhältnis zum gesamten Einsatz (-1 bis 1)
+  // Fairness (-1 bis 1): erwarteter Gewinn im Verhältnis zum ganzen Einsatz, dazu ein Abzug, wenn man deutlich mehr riskiert, als man gewinnen kann
+  // (800 Gold riskieren für 140 Gold ist auch bei 80 % Siegchance nicht fair).
+  const bewerte = (p, gain, lose) => { const tot = gain + lose; return tot ? (p * gain - (1 - p) * lose) / tot - 0.5 * Math.max(0, (lose - gain) / tot) : 0; };
   A.fairness = function (o, p, wertFront) {
     const wt = o.mobThem === 'front' ? (wertFront || 120) : wert(o.mobThem);
     const gain = o.goldThem + wt, lose = o.goldMe + wert(o.mobMe), tot = gain + lose;
-    return { f: tot ? (p * gain - (1 - p) * lose) / tot : 0, tot, gain, lose };
+    return { f: bewerte(p, gain, lose), tot, gain, lose };
   };
 
   // ---------- Fenster ----------
@@ -74,7 +76,7 @@
   // Rückgabe: { ok: true, text } | { ok: false, text } | { counter: Angebot, text }
   Bots.verhandeln = function (b, o, pMe) {
     const wB = m => (m ? CAM.mobWert(m) : 0);
-    const ev = oo => { const pB = 1 - pMe(oo.modus), gain = oo.goldMe + wB(oo.mobMe), lose = oo.goldThem + wB(oo.mobThem), tot = gain + lose; return { pB, gain, lose, tot, f: tot ? (pB * gain - (1 - pB) * lose) / tot : 0 }; };
+    const ev = oo => { const pB = 1 - pMe(oo.modus), gain = oo.goldMe + wB(oo.mobMe), lose = oo.goldThem + wB(oo.mobThem), tot = gain + lose; return { pB, gain, lose, tot, f: bewerte(pB, gain, lose) }; };
     const oo = Object.assign({}, o), notes = [];
     if (oo.goldThem > b.gold) { oo.goldThem = b.gold; notes.push('So viel Gold habe ich gar nicht, ' + b.gold + ' kann ich setzen.'); }
     if (oo.mobThem && b.team.length < 2) { oo.mobThem = null; notes.push('Mein letztes Fabelwesen setze ich nicht.'); }
@@ -83,28 +85,31 @@
     if (klein && !notes.length && oo.goldMe + oo.goldThem > 0 && Math.random() < 0.96) return { ok: true, text: e.pB < 0.4 ? 'Für so wenig Gold? Klar, versuchen wir es.' : 'Gerne, die paar Münzen sind es mir wert.' };
     if (!e.tot) return e.pB < 0.2 && Math.random() < 0.4 ? { ok: false, text: 'Das ist mir zu riskant, auch ohne Einsatz.' } : { ok: true, text: 'Okay, nur für die Ehre.' };
     if (e.f >= t) return notes.length ? { counter: oo, text: notes.join(' ') + ' Dann so?' } : { ok: true, text: e.pB < 0.4 ? 'Ich bin überzeugt, dass ich das schaffe. Los!' : e.pB > 0.62 ? 'Gerne, das sieht gut für mich aus.' : 'Okay, versuchen wir es.' };
-    if (e.f < -0.75) return { ok: false, text: 'Das ist ein Witz, oder? So ein Angebot nehme ich nicht an.' };
+    if (e.f < -1.0) return { ok: false, text: 'Das ist ein Witz, oder? So ein Angebot nehme ich nicht an.' };
     // Gegenangebot: 1. fairer Kampf, 2. du legst Gold drauf, 3. ich setze weniger
     if (oo.modus === 'echt') {
       const c = Object.assign({}, oo, { modus: 'fair' });
       if (ev(c).f >= t) return { counter: c, text: 'Echte Stufen sind mir zu unsicher. Lass uns fair kämpfen, dann bin ich dabei.' };
     }
-    const pB = e.pB, nenner = pB - t;
-    if (nenner > 0.05) {
-      const x = rund5(((1 - pB) * e.lose - pB * e.gain + t * e.tot) / nenner);
-      if (x > 0 && oo.goldMe + x <= S.save.gold && x <= Math.max(50, e.tot * 1.5)) return { counter: Object.assign({}, oo, { goldMe: oo.goldMe + x }), text: 'So ist es mir zu einseitig. Leg ' + x + ' Gold drauf, dann bin ich dabei.' };
+    // 2. Du legst Gold drauf (kleinster Betrag in 5er-Schritten, bei dem der Bot zusagen würde)
+    for (let x = 5; x <= Math.min(S.save.gold - oo.goldMe, Math.max(100, e.tot * 1.5)); x += 5) {
+      const c = Object.assign({}, oo, { goldMe: oo.goldMe + x });
+      if (ev(c).f >= t) return { counter: c, text: 'So ist es mir zu einseitig. Leg ' + x + ' Gold drauf, dann bin ich dabei.' };
     }
+    // 3. Er setzt weniger: erst ohne Fabelwesen, dann weniger Gold
     const c = Object.assign({}, oo);
     if (c.mobThem) { c.mobThem = null; if (ev(c).f >= t) return { counter: c, text: 'Mein Fabelwesen gebe ich nicht her. Wie wäre es nur mit dem Gold?' }; }
-    const gain = c.goldMe + wB(c.mobMe), L = Math.floor((e.pB * gain - t * gain) / ((1 - e.pB) + t));
-    if (L >= 0 && L < c.goldThem) { c.goldThem = Math.floor(L / 5) * 5; return { counter: c, text: c.goldThem > 0 ? 'Mehr als ' + c.goldThem + ' Gold setze ich dagegen nicht.' : 'Ohne eigenen Einsatz von dir setze ich nichts dagegen.' }; }
+    for (let g = Math.floor(c.goldThem / 5) * 5 - 5; g >= 0; g -= 5) {
+      const c2 = Object.assign({}, c, { goldThem: g });
+      if (ev(c2).f >= t) return { counter: c2, text: g > 0 ? 'Mehr als ' + g + ' Gold setze ich dagegen nicht.' : 'Ohne eigenen Einsatz von dir setze ich nichts dagegen.' };
+    }
     return { ok: false, text: e.pB < 0.35 ? 'Das ist mir zu riskant.' : 'Dieser Einsatz steht für mich in keinem guten Verhältnis.' };
   };
 
   // ---------- Handel mit einem Bot ----------
   A.botHandel = async function (b, start, text0) {
     const eigen = S.save.team, mid = CAM.lvlMitte(eigen, b.team);
-    const pF = 100 - CAM.siegChance(b.team, eigen, mid), pE = 100 - CAM.siegChance(b.team, eigen, 0);
+    const pF = CAM.siegChance(eigen, b.team, mid), pE = CAM.siegChance(eigen, b.team, 0);
     const pMe = modus => (modus === 'fair' ? pF : pE) / 100;
     const meine = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
     meine.forEach(x => { x.ok = !(x.ort === 'Team' && S.save.team.filter(y => y !== x.m && y.hp > 0).length === 0); });
