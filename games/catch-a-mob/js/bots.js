@@ -18,14 +18,17 @@
   };
   // Siegchance der Seite A in Prozent (viele Probekämpfe der Kampfregeln, Computer gegen Computer)
   CAM.siegChance = function (teamA, teamB, lvl, n) {
-    n = n || 20; let w = 0;
+    n = n || 240; let w = 0;
     for (let i = 0; i < n; i++) {
+      // Tagesform: Jeder Mob ist pro Probekampf bis zu 12 % stärker oder schwächer (Taktik, Reihenfolge, Glück), sonst gewinnt immer der Höhere
+      const rnd = CAM.mulberry32(77 + i * 131), form = t => { t.forEach(m => { const f = () => 0.88 + rnd() * 0.24; m.atk = Math.round(m.atk * f()); m.def = Math.round(m.def * f()); m.spd = Math.round(m.spd * f()); m.mhp = Math.round(m.mhp * f()); m.hp = m.mhp; }); return t; };
       const b = new CAM.Battle({ kind: 'duel', seed: 1000 + i * 7919, actors: [
-        { id: 'a', name: 'a', side: 0, ctrl: 'ai', team: CAM.duellKopien(teamA, lvl) }, { id: 'b', name: 'b', side: 1, ctrl: 'ai', team: CAM.duellKopien(teamB, lvl) }] });
+        { id: 'a', name: 'a', side: 0, ctrl: 'ai', team: form(CAM.duellKopien(teamA, lvl)) }, { id: 'b', name: 'b', side: 1, ctrl: 'ai', team: form(CAM.duellKopien(teamB, lvl)) }] });
       let g = 0; while (!b.over && g++ < 70) b.resolve();
       if (b.winner === 0) w++; else if (b.winner == null) w += 0.5;
     }
-    return Math.round(w / n * 100);
+    // geglättet (Laplace) und nie ganz 0 oder 100: Auch ein klarer Favorit kann durch Treffer, Kritische und Fehlgriffe verlieren
+    return Math.max(5, Math.min(95, Math.round((w + 1) / (n + 2) * 100)));
   };
   const wert = m => CAM.preis(m) * (CAM.FAMILIEN[m.fam].spezial ? 4 : 1);
   CAM.mobWert = wert;
@@ -224,6 +227,8 @@
     const gain = offer.gold + (offer.mobA ? wert(offer.mobA) : 0), lose = offer.gold + (offer.mobB ? wert(offer.mobB) : 0);
     if (offer.gold > b.gold) return { ok: false, text: 'So viel Gold habe ich gar nicht.' };
     if (offer.mobB && b.team.length < 2) return { ok: false, text: 'Das ist mein letztes Fabelwesen, das setze ich nicht.' };
+    // Kleiner Einsatz (höchstens 50 Gold, kein Mob): fast immer ja, solange er das Gold hat
+    if (offer.gold > 0 && offer.gold <= 50 && !offer.mobA && !offer.mobB && Math.random() < 0.96) return { ok: true, text: p < 40 ? 'Für so wenig Gold? Klar, versuchen wir es.' : 'Gerne, die paar Münzen sind es mir wert.' };
     let score = (p / 100 - 0.5) * 2 + b.ego + (Math.random() - 0.5) * 0.3;
     if (gain + lose > 0) score += (gain - lose) / (gain + lose) * 0.5 - (lose > b.gold * 0.5 ? 0.25 : 0);
     if (offer.mobB && CAM.FAMILIEN[offer.mobB.fam].spezial) score -= 0.35;
