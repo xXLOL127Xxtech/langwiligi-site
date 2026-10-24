@@ -154,7 +154,7 @@
       const f = CAM.FAMILIEN[tm.fam];
       const rate = CAM.fangChance(a.fang || 1, tm, it);
       const ok = this.rnd() < rate;
-      let shakes = ok ? 3 : Math.floor(this.rnd() * 3);
+      let shakes = ok ? 3 : 1 + Math.floor(this.rnd() * 3);
       ev.push({ k: 'shake', n: shakes, ok });
       if (ok) {
         ev.push({ k: 'msg', t: CAM.name(tm) + ' wurde gefangen!' });

@@ -641,12 +641,17 @@
     const y0 = ball.y;
     await ani(420, t => { const f = Math.abs(Math.cos(t * Math.PI * 1.5)) * (1 - t); ball.y = y0 + (boden - y0) * Math.min(1, t * 1.6) - f * 28; });
     ball.y = boden; ball.glow = 0;
+    // Die Kugel wackelt langsam und wird spannender: erst Stille, dann Wackeln mit leuchtender Kugel
     for (let i = 0; i < n; i++) {
-      await sleep(350); UI.snd('tick');
-      await ani(480, t => { ball.rot = Math.sin(t * Math.PI * 2) * 0.55; });
-      ball.rot = 0;
+      await ani(650 + i * 150, t => { ball.glow = 0.15 * (0.5 + 0.5 * Math.sin(t * Math.PI * (4 + i * 2))); });
+      UI.snd('tick');
+      await ani(820, t => { ball.rot = Math.sin(t * Math.PI * 2) * (0.55 + i * 0.12) * (1 - 0.25 * t); ball.glow = 0.25 * Math.sin(t * Math.PI); });
+      ball.rot = 0; ball.glow = 0;
     }
-    await sleep(300);
+    // Der Moment der Wahrheit: die Kugel schimmert, dann klickt sie oder zerspringt
+    await ani(900, t => { ball.glow = 0.3 + 0.5 * Math.abs(Math.sin(t * Math.PI * 3)); ball.sc = 1 + 0.06 * Math.sin(t * Math.PI * 6); });
+    ball.sc = 1; ball.glow = 0;
+    await sleep(500);
     if (ok) {
       UI.snd('fang');
       burst(ball.x, ball.y, '#ffe680', 22, 200, 40); burst(ball.x, ball.y, '#c9a6ff', 18, 160, 0);
