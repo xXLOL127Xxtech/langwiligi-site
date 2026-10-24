@@ -222,7 +222,7 @@
     const prot = (S.prot[S.idx] || 0) - now;
     $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';
     const z = S.ziel; let h = '';
-    if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
+    if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : z.z.meta === 6 ? 'Arena' : z.z.meta === 9 ? 'Wegweiser lesen' : z.z.meta === 10 ? 'Rangliste ansehen' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
@@ -264,7 +264,7 @@
     try {
       if (z.typ === 'bau') {
         const m = z.z.meta;
-        if (m === 1) await A.heilhaus(); else if (m === 2) await A.laden(); else if (m === 3) await A.haendler(); else if (m === 4) await A.wegstein(); else if (m === 5) await A.runeMenue(z.z);
+        if (m === 1) await A.heilhaus(); else if (m === 2) await A.laden(); else if (m === 3) await A.haendler(); else if (m === 4) await A.wegstein(); else if (m === 5) await A.runeMenue(z.z); else if (m === 6) await A.arena(z.z); else if (m === 9) await A.wegweiser(z.z); else if (m === 10) await A.rangliste();
       } else if (z.typ === 'trainer') { menueOffen = false; await A.trainerKampf(z.tr); }
       else if (z.typ === 'mob') await A.wildMenue(z.w);
       else if (z.typ === 'spieler') await A.spielerMenue(z.p);
@@ -284,15 +284,15 @@
 
   // ---------- Titelbild ----------
   async function anleitung() {
-    await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten (mit Shift schneller).<br><b>Ansprechen:</b> E oder Enter bei Türen, Trainern und Mitspielern.<br><b>Menü:</b> Esc · <b>Karte:</b> M · <b>Gesten:</b> 1–4 (online).<br>Menüs bedienst du mit Pfeiltasten und Enter oder per Klick mit dem Touchpad.</p>' +
-      '<p><b>Bots:</b> Bot-Spieler laufen herum. Sprich sie mit E an: Du siehst ihre Stufe und deine Siegchance, wählst «Fairer Kampf» (alle Mobs auf die mittlere Stufe) oder «Echter Kampf» und setzt Gold oder ein Fabelwesen. Der Bot nimmt an oder lehnt ab. Manche fordern dich auch selbst heraus.</p><p><b>Ziel:</b> Fang Mobs im hohen Gras, trainiere sie und besiege die Riesen an den roten Runen. Wetter, Tageszeit und Jahreszeit verändern Kämpfe und Preise.</p>' +
-      '<p><b>Online:</b> Alle in derselben Welt. Lade Freunde über den Knopf «Freunde» ein, bildet eine Party (E bei einer Person) und besiegt zusammen die Riesen. Duelle gibt es mit Einverständnis oder als Überfall: Wer überfallen wurde, ist 30 Minuten geschützt. In Dörfern und unter Stufe 10 ist man sicher.</p>', 'Anleitung');
+    await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
+      '<p><b>Ziel:</b> Fang Mobs im hohen Gras, gewinne die 8 Abzeichen in den Arenen und besiege die Riesen. Mit Veredlern verbesserst du deine Mobs. Dein Team hat 3 Plätze.</p>' +
+      '<p><b>Duelle:</b> Mit Bots und Mitspielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
   }
 
   async function starterWahl() {
     const fam = CAM.STARTER;
     const bilder = fam.map(f => '<div style="text-align:center">' + '<img src="' + CAM.spriteFam(f, 1).toDataURL() + '" width="96" height="96" style="image-rendering:pixelated"><br>' + esc(CAM.FAMILIEN[f].n[0]) + '</div>').join('');
-    const r = await UI.choose(fam.map(f => ({ label: CAM.FAMILIEN[f].n[0], sub: CAM.FAMILIEN[f].el })), { title: 'Wähle deinen ersten Mob', sub: 'Er begleitet dich ab jetzt. Weitere fängst du in der Wildnis.', before: '<div class="row" style="justify-content:space-around">' + bilder + '</div>', nocancel: true });
+    const r = await UI.choose(fam.map(f => ({ label: CAM.FAMILIEN[f].n[0], sub: CAM.FAMILIEN[f].el })), { title: 'Wähle deinen ersten Mob',  before: '<div class="row" style="justify-content:space-around">' + bilder + '</div>', nocancel: true });
     const m = CAM.neuerMob(fam[r], 5); S.save.team.push(m); S.save.dex[fam[r]] = 2; S.save.start = true;
   }
 

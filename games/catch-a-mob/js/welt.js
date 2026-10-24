@@ -4,13 +4,13 @@
 (function (G) {
   const CAM = G.CAM;
   const W = 640, H = 640;          // grosse Welt: bis zum nächsten Dorf läuft man mehrere Minuten
-  const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13 };
-  const BLOCK = new Uint8Array(16); [T.WASSER, T.BAUM, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH].forEach(i => BLOCK[i] = 1);
+  const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13, SCHILD: 14 };
+  const BLOCK = new Uint8Array(16); [T.WASSER, T.BAUM, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH, T.SCHILD].forEach(i => BLOCK[i] = 1);
   const START = { x: 320, y: 320 };
-  const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' } };
+  const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' }, 6: { n: 'Arena', wand: '#ddd0f4', dach: '#6a2fc4' } };
 
   CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
-  const Welt = CAM.Welt = { W, H, T, START, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], seed: 1 };
+  const Welt = CAM.Welt = { W, H, T, START, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], arena: [], schilder: new Map(), seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function vn(x, y, sc, seed) {
@@ -48,10 +48,10 @@
       tiles[idx] = t;
     }
     Welt.tiles = tiles; Welt.biome = biome; Welt.meta = meta;
-    Welt.dorf = []; Welt.trainer = []; Welt.boss = []; Welt.sicher = [];
+    Welt.dorf = []; Welt.trainer = []; Welt.boss = []; Welt.sicher = []; Welt.arena = []; Welt.schilder = new Map();
 
     const set = (x, y, t, m) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x; tiles[i] = t; if (m !== undefined) meta[i] = m; };
-    const fest = t => t === T.WAND || t === T.TUER || t === T.DACH || t === T.STEIN || t === T.RUNE;
+    const fest = t => t === T.WAND || t === T.TUER || t === T.DACH || t === T.STEIN || t === T.RUNE || t === T.SCHILD;
     const strasse = (x1, y1, x2, y2) => {   // L-förmiger Weg, 2 Felder breit, mit leichter Welle
       let x = x1, y = y1, n = 0;
       const put = (px, py) => { for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) { const i = (py + b) * W + px + a; if (px + a >= 0 && py + b >= 0 && px + a < W && py + b < H && !fest(tiles[i])) { tiles[i] = T.WEG; } } };
@@ -72,6 +72,7 @@
       };
       haus(cx - 6, 1); haus(cx - 1, 2); haus(cx + 4, 3);
       set(cx, cy + 1, T.STEIN, 4);
+      set(cx - 4, cy + 1, T.SCHILD, 10);   // Ranglistentafel
       // Gras und Blumen am Rand für etwas Leben bleiben aus dem Rechteck heraus
     }
     // Wege zum Startdorf
@@ -115,6 +116,49 @@
         n++;
       }
     }
+    // Arenen: acht Stück auf festen Stufen, grob nach Stufe weiter weg vom Start, sonst zufällig verteilt
+    const ra = CAM.mulberry32(seed * 11 + 29), baseA = ra() * 6.283;
+    CAM.ARENEN.forEach((def, i) => {
+      for (let tries = 0; tries < 3000; tries++) {
+        const ang = baseA + i * 2.4 + (ra() - 0.5) * (tries > 1000 ? 6.3 : 0.9), dist = 55 + i * 33 + (ra() - 0.5) * (tries > 1500 ? 90 : 24);
+        const cx = Math.round(START.x + Math.cos(ang) * dist), cy = Math.round(START.y + Math.sin(ang) * dist);
+        if (cx < 16 || cy < 16 || cx > W - 17 || cy > H - 17) continue;
+        if (Welt.dorf.some(d => Math.hypot(d.x - cx, d.y - cy) < 28) || Welt.boss.some(b => Math.hypot(b.x - cx, b.y - cy) < 22) || Welt.arena.some(a => Math.hypot(a.cx - cx, a.cy - cy) < 45)) continue;
+        let nass = 0; for (let y = -4; y <= 5; y++) for (let x = -5; x <= 5; x++) { const t = tiles[(cy + y) * W + cx + x]; if (t === T.WASSER || t === T.LAVA) nass++; }
+        if (nass > 18) continue;
+        for (let y = -4; y <= 5; y++) for (let x = -5; x <= 5; x++) set(cx + x, cy + y, (y >= 1 && Math.abs(x) <= 1) ? T.WEG : T.BODEN, 0);
+        for (let j = 0; j < 3; j++) for (let k = -2; k <= 2; k++) set(cx + k, cy - 3 + j, j === 0 ? T.DACH : (j === 2 && k === 0) ? T.TUER : T.WAND, 6);
+        Welt.sicher.push({ x1: cx - 7, y1: cy - 6, x2: cx + 7, y2: cy + 7 });
+        Welt.arena.push({ idx: i, x: cx, y: cy - 1, cx, cy, lv: def.lv, el: def.el, leitung: CAM.TRAINER_VORNAMEN[Math.floor(ra() * CAM.TRAINER_VORNAMEN.length)], seed: Math.floor(ra() * 1e9) });
+        break;
+      }
+    });
+    // Wegweiser: entlang der Wege zwischen den Dörfern, zeigen zum nächsten Dorf
+    const rs = CAM.mulberry32(seed * 17 + 41), frei = (x, y) => { const t = tiles[y * W + x]; return (t === T.BODEN || t === T.GRAS || t === T.WEG) && !Welt.istSicher(x, y, 1); };
+    const platz = (x0, y0) => {
+      for (let r = 0; r < 6; r++) for (let k = 0; k < 14; k++) {
+        const x = Math.round(x0 + (rs() - 0.5) * 2 * r), y = Math.round(y0 + (rs() - 0.5) * 2 * r);
+        if (x < 4 || y < 4 || x > W - 5 || y > H - 5) continue;
+        if (frei(x, y) && frei(x + 1, y) && frei(x - 1, y) && frei(x, y + 1) && frei(x, y - 1)) return [x, y];
+      }
+      return null;
+    };
+    const schilder = [];
+    for (const d of Welt.dorf) {
+      const ziele = Welt.dorf.filter(o => o !== d).sort((a, b) => Math.hypot(a.x - d.x, a.y - d.y) - Math.hypot(b.x - d.x, b.y - d.y)).slice(0, 2);
+      if (d !== sd) ziele.push(sd);
+      for (const z of new Set(ziele)) {
+        const len = Math.hypot(z.x - d.x, z.y - d.y), ux = (z.x - d.x) / len, uy = (z.y - d.y) / len;
+        for (let dist = 14; dist < len - 14; dist += 46) {
+          const pos = platz(d.x + ux * dist, d.y + uy * dist);
+          if (pos && !schilder.some(q => Math.hypot(q[0] - pos[0], q[1] - pos[1]) < 18)) schilder.push(pos);
+        }
+      }
+    }
+    for (const [x, y] of schilder) {
+      const nah = Welt.dorf.slice().sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+      set(x, y, T.SCHILD, 9); Welt.schilder.set(y * W + x, Math.atan2(nah.y - y, nah.x - x));
+    }
     Welt.karteBauen();
   };
 
@@ -141,7 +185,7 @@
     cand.push([fx + 1, fy + 1], [fx - 1, fy + 1], [fx + 1, fy - 1], [fx - 1, fy - 1]);
     for (const [x, y] of cand) {
       const t = Welt.get(x, y);
-      if (t === T.TUER || t === T.STEIN || t === T.RUNE) return { x, y, t, meta: Welt.meta[y * W + x] };
+      if (t === T.TUER || t === T.STEIN || t === T.RUNE || t === T.SCHILD) return { x, y, t, meta: Welt.meta[y * W + x] };
     }
     return null;
   };
@@ -292,6 +336,22 @@
         c.fillStyle = '#7de4ff'; c.globalAlpha = g; c.fillRect(sx + 7 * u, sy + 4 * u, 2 * u, 8 * u); c.fillRect(sx + 5 * u, sy + 7 * u, 6 * u, 2 * u); c.globalAlpha = 1;
         break;
       }
+      case T.SCHILD: {
+        const id = ty * W + tx, rangliste = pm === 10;
+        c.fillStyle = rangliste ? p.path : bodenFarbe(p, h); c.fillRect(sx, sy, S + 1, S + 1);
+        c.fillStyle = 'rgba(0,0,0,0.15)'; c.fillRect(sx + 3 * u, sy + 14 * u, 10 * u, 2 * u);
+        c.fillStyle = '#6a4424'; c.fillRect(sx + 7 * u, sy + 6 * u, 2 * u, 9 * u);
+        if (rangliste) {
+          c.fillStyle = '#3a2a5a'; c.fillRect(sx + 1.5 * u, sy + 1 * u, 13 * u, 8 * u); c.strokeStyle = '#ffd54a'; c.lineWidth = Math.max(1, u * 0.9); c.strokeRect(sx + 1.5 * u, sy + 1 * u, 13 * u, 8 * u);
+          c.font = Math.round(6 * u) + 'px system-ui,"Segoe UI Emoji",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff'; c.fillText('🏆', sx + 8 * u, sy + 5.3 * u);
+        } else {
+          c.fillStyle = '#c89a5a'; c.fillRect(sx + 1.5 * u, sy + 2 * u, 13 * u, 6 * u); c.strokeStyle = '#6a4424'; c.lineWidth = Math.max(1, u * 0.8); c.strokeRect(sx + 1.5 * u, sy + 2 * u, 13 * u, 6 * u);
+          const a = Welt.schilder.get(id) || 0;
+          c.save(); c.translate(sx + 8 * u, sy + 5 * u); c.rotate(a); c.fillStyle = '#3a2418';
+          c.beginPath(); c.moveTo(4.5 * u, 0); c.lineTo(0.5 * u, -2.2 * u); c.lineTo(0.5 * u, 2.2 * u); c.fill(); c.fillRect(-4 * u, -0.7 * u, 5 * u, 1.4 * u); c.restore();
+        }
+        break;
+      }
       case T.RUNE: {
         c.fillStyle = bodenFarbe(p, h); c.fillRect(sx, sy, S + 1, S + 1);
         const g = 0.5 + Math.sin(tick / 300) * 0.4;
@@ -313,7 +373,7 @@
       const tx = x0 + i, ty = y0 + j, sx = Math.round(offx + i * S), sy = Math.round(offy + j * S);
       if (tx < 0 || ty < 0 || tx >= W || ty >= H) { c.fillStyle = '#10243a'; c.fillRect(sx, sy, S + 1, S + 1); continue; }
       const idx = ty * W + tx, t = Welt.tiles[idx], p = CAM.BIOME[Welt.biome[idx]].P;
-      zeichneFeld(c, tx, ty, sx, sy, S, t, p, tick, (t === T.DACH || t === T.WAND || t === T.TUER) ? Welt.meta[idx] : Welt.biome[idx]);
+      zeichneFeld(c, tx, ty, sx, sy, S, t, p, tick, (t === T.DACH || t === T.WAND || t === T.TUER || t === T.SCHILD) ? Welt.meta[idx] : Welt.biome[idx]);
       // Ufer: dunkle Kante am Land, heller Schaum am Wasser
       if (ty > 0 && (t === T.WASSER) !== (Welt.tiles[idx - W] === T.WASSER) && t !== T.LAVA && Welt.tiles[idx - W] !== T.LAVA) {
         if (t === T.WASSER) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(sx, sy, S + 1, Math.max(2, S * 0.1)); }
@@ -322,11 +382,12 @@
       if (t === T.TUER) labels.push([sx, sy, Welt.meta[idx]]);
       else if (t === T.STEIN) labels.push([sx, sy, 4]);
       else if (t === T.RUNE) labels.push([sx, sy, 5]);
+      else if (t === T.SCHILD && Welt.meta[idx] === 10) labels.push([sx, sy, 10]);
     }
     c.font = '700 ' + Math.round(S * 0.34) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     for (const [sx, sy, m] of labels) {
-      const txt = m === 4 ? 'Wegstein' : m === 5 ? 'Riesen-Gegner' : GEBAEUDE[m].n;
-      const y = m === 4 || m === 5 ? sy - S * 0.35 : sy - S * 2.6;
+      const txt = m === 4 ? 'Wegstein' : m === 5 ? 'Riesen-Gegner' : m === 10 ? 'Rangliste' : GEBAEUDE[m].n;
+      const y = m === 4 || m === 5 || m === 10 ? sy - S * 0.35 : sy - S * 2.6;
       c.fillStyle = 'rgba(8,6,16,.7)'; const w = c.measureText(txt).width + 10;
       c.fillRect(sx + S / 2 - w / 2, y - S * 0.25, w, S * 0.5);
       c.fillStyle = m === 5 ? '#ff9a8e' : '#f2efe8'; c.fillText(txt, sx + S / 2, y + 1);

@@ -47,7 +47,7 @@
           '<div class="row"><b>Kampf:</b><select data-modus style="flex:1"><option value="fair"' + (o.modus === 'fair' ? ' selected' : '') + '>Fairer Kampf (alle auf Stufe ' + cfg.mid + ')</option><option value="echt"' + (o.modus === 'echt' ? ' selected' : '') + '>Echter Kampf (Stufen wie sie sind)</option></select></div>' +
           '<div class="row" style="margin-top:12px">' + (cfg.annahme && gleich() ? '<button class="btn" data-act="annehmen">Angebot annehmen</button>' : '') +
           '<button class="btn' + (cfg.annahme && gleich() ? ' alt' : '') + '" data-act="senden">' + (cfg.senden || 'Duell anfragen') + '</button><button class="btn alt" data-act="abbruch">Abbrechen</button></div>' +
-          (cfg.annahme && !gleich() ? '<div class="foot" style="color:#ffd54a">Du hast das Gegenangebot geändert. Es muss erst wieder angefragt und angenommen werden.</div>' : '') + '<div class="foot">Mit den Knöpfen änderst du das Gold, mit den Listen wählst du Fabelwesen. Tab wechselt, Enter drückt, Esc bricht ab.</div>';
+          (cfg.annahme && !gleich() ? '<div class="foot" style="color:#ffd54a">Geändert: erst wieder anfragen.</div>' : '') + '<div class="foot">Esc bricht ab.</div>';
         host.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
           const [id, d] = b.dataset.g.split(':');
           if (id === 'me') o.goldMe = Math.max(0, Math.min(maxMe, o.goldMe + +d)); else o.goldThem = Math.max(0, Math.min(maxThem, o.goldThem + +d));
@@ -81,9 +81,9 @@
     const oo = Object.assign({}, o), notes = [];
     if (oo.goldThem > b.gold) { oo.goldThem = b.gold; notes.push('So viel Gold habe ich gar nicht, ' + b.gold + ' kann ich setzen.'); }
     if (oo.mobThem && b.team.length < 2) { oo.mobThem = null; notes.push('Mein letztes Fabelwesen setze ich nicht.'); }
-    const e = ev(oo), t = -0.05 - 0.2 * b.ego;
-    const klein = oo.goldMe <= 50 && oo.goldThem <= 50 && !oo.mobMe && !oo.mobThem;
-    if (klein && !notes.length && oo.goldMe + oo.goldThem > 0 && Math.random() < 0.96) return { ok: true, text: e.pB < 0.4 ? 'Für so wenig Gold? Klar, versuchen wir es.' : 'Gerne, die paar Münzen sind es mir wert.' };
+    // Spendabel, aber nur ein bisschen: Je nach Charakter nehmen Bots ein Angebot an, das für sie 10 bis 20 % schlechter ist als ausgeglichen (bei kleinen Einsätzen bis 50 Gold etwas mehr)
+    const gross = Math.max(0, Math.min(1, (b.ego + 0.1) / 0.6)), klein = oo.goldMe <= 50 && oo.goldThem <= 50 && !oo.mobMe && !oo.mobThem;
+    const e = ev(oo), t = -0.10 - 0.10 * gross - (klein ? 0.04 : 0);
     if (!e.tot) return e.pB < 0.2 && Math.random() < 0.4 ? { ok: false, text: 'Das ist mir zu riskant, auch ohne Einsatz.' } : { ok: true, text: 'Okay, nur für die Ehre.' };
     if (e.f >= t) return notes.length ? { counter: oo, text: notes.join(' ') + ' Dann so?' } : { ok: true, text: e.pB < 0.4 ? 'Ich bin überzeugt, dass ich das schaffe. Los!' : e.pB > 0.62 ? 'Gerne, das sieht gut für mich aus.' : 'Okay, versuchen wir es.' };
     if (e.f < -1.0) return { ok: false, text: 'Das ist ein Witz, oder? So ein Angebot nehme ich nicht an.' };
@@ -124,7 +124,7 @@
       if (ok && Bots.verhandeln(b, offer, pMe).ok !== true) ok = false, r.aktion = 'senden';   // nur wenn der Bot wirklich zusagen würde
       if (!ok) {
         const v = Bots.verhandeln(b, offer, pMe);
-        if (v.counter) { offer = v.counter; text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»<br><small>Gegenangebot, unten steht jetzt sein Vorschlag.</small>'; annahme = true; UI.snd('ruf'); continue; }
+        if (v.counter) { offer = v.counter; text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»'; annahme = true; UI.snd('ruf'); continue; }
         if (!v.ok) { text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '» <small>(abgelehnt)</small>'; annahme = false; if (Math.random() < 0.15) b.ruheBis = Date.now() + 45000; continue; }
         await UI.info('<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»', 'Angenommen');
         ok = true;

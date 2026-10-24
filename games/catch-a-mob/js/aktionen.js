@@ -66,7 +66,7 @@
         { label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
         { label: 'Mobs abholen', sub: pf.length ? fertig + ' fertig · ' + (pf.length - fertig) + ' in Pflege' : 'niemand in Pflege', disabled: !pf.length },
         { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
-        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nGib Mobs ab und zieh weiter: Sie werden gepflegt (Stufe 5: 1 Sekunde, Stufe 100: 3 Minuten). Abholen kannst du sie hier gratis oder in einem anderen Dorf gegen eine Transportgebühr.', start });
+        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start });
       if (r === 0) { start = 0; A.alleHeilen(hier, plan); }
       else if (r === 1) { start = 1; await A.mobHeilen(hier); }
       else if (r === 2) { start = 2; await A.mobAbholen(hier); }
@@ -110,7 +110,7 @@
         const nur = alle.some(o => CAM.heilInfo(o.m));
         await UI.info(nur ? 'Dir fehlt das Gold für die Pflege. Mit Heiltränken kannst du unterwegs selbst heilen.' : 'Alle deine Mobs sind gesund.', 'Heilhaus'); return;
       }
-      const r = await UI.choose(items, { title: 'Welchen Mob abgeben?', sub: 'Du hast ' + S.save.gold + ' Gold. Bezahlt wird jetzt.', start, numbers: false, wide: true });
+      const r = await UI.choose(items, { title: 'Welchen Mob abgeben?', sub: 'Du hast ' + S.save.gold + ' Gold.', start, numbers: false, wide: true });
       if (r < 0) return;
       start = r;
       const o = alle[r], h = CAM.heilInfo(o.m);
@@ -135,7 +135,7 @@
         const sub = rest > 0 ? 'noch ' + dauerText(rest) + ' · Heilhaus ' + ort : e.dorf === hier ? 'fertig · gratis abholen' : 'fertig in ' + ort + ' · Transport ' + ge(fee);
         return { label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar), sub, disabled: rest > 0 || S.save.gold < fee };
       });
-      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. In einem anderen Dorf kostet der Transport extra.', start, numbers: false, wide: true });
+      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. Anderes Dorf: mit Transportgebühr.', start, numbers: false, wide: true });
       if (r < 0) return;
       start = r;
       const e = pf[r], fee = transportGebuehr(e, hier);
@@ -241,9 +241,9 @@
   A.mobDetails = async function (m) {
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
-    const moves = m.moves.map(id => CAM.MOVES[id]).map(mv => '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '–') + '</td></tr>').join('');
+    const moves = m.moves.map(id => CAM.moveFuer(m, id)).map(mv => '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '–') + (mv.st ? ' · ' + CAM.fxText(mv) : '') + '</td></tr>').join('');
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
-      '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' +
+      '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
       '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>';
     await UI.info(html, 'Mob-Details');
@@ -257,17 +257,18 @@
       if (r < 0) return;
       start = r;
       const m = t[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
-      else if (w === 1) { t.splice(r, 1); t.unshift(m); start = 0; }
-      else if (w === 2) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
+      else if (w === 1) await A.veredeln(m);
+      else if (w === 2) { t.splice(r, 1); t.unshift(m); start = 0; }
+      else if (w === 3) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
   A.zwinger = async function () {
     let start = 0;
     for (;;) {
       const b = S.save.box;
-      if (!b.length) { await UI.info('Der Zwinger ist leer. Gefangene Mobs landen hier, wenn dein Team voll ist (3 Plätze).', 'Zwinger'); return; }
+      if (!b.length) { await UI.info('Der Zwinger ist leer.', 'Zwinger'); return; }
       const items = b.map(m => ({ label: mobZeile(m) + tagRar(CAM.FAMILIEN[m.fam].rar), sub: lpText(m) }));
       const r = await UI.choose(items, { title: 'Zwinger', sub: b.length + ' von 100 Plätzen belegt', start, wide: true, numbers: false });
       if (r < 0) return;
@@ -285,10 +286,11 @@
     for (;;) {
       const keys = Object.keys(S.save.items).filter(k => CAM.ITEMS[k]);
       if (!keys.length) { await UI.info('Dein Beutel ist leer.', 'Beutel'); return; }
-      const items = keys.map(k => { const it = CAM.ITEMS[k]; const nutz = it.heil || it.beleb || it.heilStatus; return { label: it.n + ' × ' + S.save.items[k], sub: it.info, disabled: !nutz }; });
-      const r = await UI.choose(items, { title: 'Beutel', sub: 'Gold: ' + S.save.gold + '\nFangkugeln und Fundstücke brauchst du im Kampf und beim Händler.', numbers: false });
+      const items = keys.map(k => { const it = CAM.ITEMS[k]; const nutz = it.heil || it.beleb || it.heilStatus || it.upg; return { label: it.n + ' × ' + S.save.items[k], sub: it.info, disabled: !nutz }; });
+      const r = await UI.choose(items, { title: 'Beutel', sub: 'Gold: ' + S.save.gold, numbers: false });
       if (r < 0) return;
       const k = keys[r], it = CAM.ITEMS[k];
+      if (it.upg) { await A.veredeln(); continue; }
       const i = await A.waehleMob(it.n + ' anwenden bei …', m => it.beleb ? m.hp <= 0 : it.heilStatus ? (m.hp > 0 && m.status) : (m.hp > 0 && m.hp < m.mhp));
       if (i < 0) continue;
       const m = S.save.team[i];
@@ -316,7 +318,7 @@
   };
   A.karte = function () {
     return new Promise(res => {
-      const host = UI.openPanel('Weltkarte', S.online ? 'Gelb = Party, Weiss = du, Grau = Mitspieler' : 'Weiss = du', true);
+      const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Weiss = du', true);
       host.innerHTML = '<canvas id="kc" width="560" height="560" style="position:static;width:min(560px,60vh);height:min(560px,60vh);border-radius:8px;image-rendering:pixelated;display:block;margin:auto"></canvas><div class="foot">Schliessen mit M, Esc oder Enter</div>';
       const c = $('kc').getContext('2d');
       const sc = 560 / Welt.W;
@@ -331,6 +333,7 @@
           if (kn) { c.fillStyle = '#000'; c.fillText(d.name, d.x * sc + 1, d.y * sc - 8); c.fillStyle = '#fff'; c.fillText(d.name, d.x * sc, d.y * sc - 9); }
         }
         c.fillStyle = '#ff6a5e'; for (const b of Welt.boss) c.fillRect(b.x * sc - 3, b.y * sc - 3, 6, 6);
+        for (const a of Welt.arena) { c.fillStyle = (S.save.abz || []).includes(a.idx) ? '#5fd38a' : '#ff9f1c'; c.fillRect(a.cx * sc - 4, a.cy * sc - 4, 8, 8); c.strokeStyle = '#000'; c.strokeRect(a.cx * sc - 4, a.cy * sc - 4, 8, 8); }
         for (const p of S.peers.values()) { c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#9a96a8'; c.beginPath(); c.arc(p.x * sc, p.y * sc, 4, 0, 6.3); c.fill(); if (S.pt >= 0 && p.pt === S.pt) { c.fillStyle = '#fff'; c.fillText(p.name, p.x * sc, p.y * sc - 7); } }
         c.fillStyle = '#fff'; c.beginPath(); c.arc(S.x * sc, S.y * sc, 5, 0, 6.3); c.fill(); c.strokeStyle = '#000'; c.stroke();
         requestAnimationFrame(draw);
@@ -507,7 +510,7 @@
   A.wildMenue = async function (w) {
     const m = w.mob, f = CAM.FAMILIEN[m.fam], boese = CAM.Wilde.boese(m);
     S.save.dex[m.fam] = Math.max(S.save.dex[m.fam] || 0, 1);
-    const lust = boese ? '<b style="color:#ff6b5e">Bösartig:</b> Er greift Spieler an.' : 'Friedlich: Er greift nur an, wenn du es willst.';
+    const lust = boese ? '<b style="color:#ff6b5e">Bösartig</b>' : 'Friedlich';
     const r = await UI.choose([{ label: 'Angreifen', sub: CAM.lebend() ? '' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() }, { label: 'In Ruhe lassen' }],
       { title: mobNameFull(m), sub: 'Stufe ' + m.lv + ' · ' + CAM.RARITAET[f.rar], before: '<div class="row">' + spriteImg(m, 96) + '<div>' + elTags(m) + '<p>' + lust + '</p></div></div>', numbers: false });
     if (r === 0) { await A.wildKampf(m, { entity: w, intro: 'Du forderst ' + mobNameFull(m) + ' (Lv ' + m.lv + ') heraus!' }); }
@@ -537,7 +540,7 @@
 
   // ---------- Online: Hilfen ----------
   A.praesenz = function () {
-    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv() };
+    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv(), ab: CAM.abzMaske(S.save.abz) };
   };
   A.hallo = function (an, antwort) {
     const m = { t: 'hi', n: S.name, c: S.save.col, w: S.save.w, l: S.save.l, re: !!antwort, ...A.praesenz() };
@@ -616,7 +619,7 @@
     switch (d.t) {
       case 'hi': {
         const p = S.peers.get(von) || { idx: von, x: d.x, y: d.y, tx: d.x, ty: d.y };
-        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, gest: '', gestT: 0 });
+        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, ab: d.ab | 0, gest: '', gestT: 0 });
         if (p.x === undefined) { p.x = d.x; p.y = d.y; }
         S.peers.set(von, p);
         if (!d.re) A.hallo(von, true);
@@ -624,7 +627,7 @@
       }
       case 'p': {
         const p = S.peers.get(von); if (!p) { A.hallo(von, true); return; }
-        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.zeit = Date.now();
+        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.ab = d.ab | 0; p.zeit = Date.now();
         break;
       }
       case 'gest': { const p = S.peers.get(von); if (p) { p.gest = CAM.GESTEN[d.g] ? CAM.GESTEN[d.g][0] : ''; p.gestT = Date.now(); } break; }
@@ -642,7 +645,7 @@
           ' · ' + esc(p.name) + ' setzt: ' + (mein.goldThem ? mein.goldThem + ' Gold' : 'kein Gold') + (o.mm ? ' + ' + esc(String(o.mA || 'ein Fabelwesen')) : '') +
           '<br>Fairness: ' + (Math.abs(fa.f) < 0.12 ? 'ausgeglichen' : fa.f > 0 ? 'zu deinem Vorteil' : 'zu deinem Nachteil') + ' · ' + esc(p.name) + ' hat höchste Stufe ' + (p.lv | 0);
         const card = UI.addCard('<b>' + esc(p.name) + '</b> fordert dich zum Duell heraus!<br><small>' + txt + '</small>', 30, () => Netz.senden({ t: 'chalr', to: von, ok: true }), () => Netz.senden({ t: 'chalr', to: von, ok: false }), async () => {
-          const w = await A.einsatzOnline(p, mein, '<b>' + esc(p.name) + '</b> hat dir diesen Vorschlag gemacht. Ändere, was du willst, und sende ein Gegenangebot.');
+          const w = await A.einsatzOnline(p, mein, '<b>' + esc(p.name) + '</b> macht dir diesen Vorschlag.');
           if (!w) { Netz.senden({ t: 'chalr', to: von, ok: false }); return; }
           A.chalSenden(von, w);
         });
@@ -773,7 +776,7 @@
     const boss = CAM.BOSS[bs.idx], f = CAM.FAMILIEN[boss.fam];
     const rest = (S.save.bossT[bs.idx] || 0) + BOSS_PAUSE_MS - Date.now();
     const party = A.partyListe().filter(p => !p.bs && Math.hypot(p.x - S.x, p.y - S.y) < 30);
-    const sub = 'Stufe ' + bs.lv + ' · ' + f.el + (f.el2 ? '/' + f.el2 : '') + '\nEmpfohlen: 3–4 Spieler. Wetter und Elemente entscheiden.' + (rest > 0 ? '\nDer Riese erholt sich noch ' + Math.ceil(rest / 60000) + ' Min.' : '');
+    const sub = 'Stufe ' + bs.lv + ' · ' + f.el + (f.el2 ? '/' + f.el2 : '') + '' + (rest > 0 ? '\nDer Riese erholt sich noch ' + Math.ceil(rest / 60000) + ' Min.' : '');
     const items = [{ label: 'Raid starten', sub: party.length ? 'mit ' + party.length + ' aus der Party' : 'allein (schwer!)', disabled: rest > 0 || !CAM.lebend() }, { label: 'Abbrechen' }];
     const r = await UI.choose(items, { title: '⚠ ' + boss.n, sub, before: '<div class="row">' + spriteImg({ fam: boss.fam, stufe: 1 }, 96) + '</div>' });
     if (r !== 0) return;
@@ -832,6 +835,7 @@
       lines.push(...await xpVerteilen(b, la));
       const gold = 150 + lv * 25; S.save.gold += gold; lines.push('Beute: ' + ge(gold));
       CAM.itemAdd('siegel2', 2); lines.push('2 × Starke Fangkugel');
+      { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
       if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
       if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
       if (Math.random() < 0.25) {
@@ -843,4 +847,5 @@
     if (b.over && b.winner === 1) { await verloren('Der Riese war zu stark.'); return; }
     if (lines.length) await UI.info(lines.join('<br>'), 'Raid geschafft!');
   };
+  A.intern = { vorbereiten, nachbereiten, kampfBasis, xpVerteilen, verloren, dexSet };
 })(window);

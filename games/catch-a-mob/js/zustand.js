@@ -16,7 +16,7 @@
   const Save = CAM.Save = {
     neu() {
       const d = CAM.Welt.dorf[0];
-      return { v: 1, gold: 300, items: { siegel1: 5, trank: 3 }, team: [], box: [], dex: {}, besucht: [0], x: d.x, y: d.y + 3, w: 0, l: 0, bossT: {}, verkauft: [], pflege: [], col: 0, name: '', start: false, ton: true, quali: 1, welt: 2 };
+      return { v: 1, gold: 300, items: { siegel1: 5, trank: 3 }, team: [], box: [], dex: {}, besucht: [0], x: d.x, y: d.y + 3, w: 0, l: 0, bossT: {}, verkauft: [], pflege: [], abz: [], col: 0, name: '', start: false, ton: true, quali: 1, welt: 2 };
     },
     laden() { try { const j = G.localStorage.getItem(KEY); return j ? JSON.parse(j) : null; } catch (e) { return null; } },
     speichern() { try { if (S.save) { S.save.x = S.x; S.save.y = S.y; if (CAM.Bots && CAM.Bots.liste.length && !S.online) S.save.bots = CAM.Bots.speichern(); G.localStorage.setItem(KEY, JSON.stringify(S.save)); } } catch (e) {} },
@@ -30,6 +30,7 @@
         o.gold = Math.max(0, Math.min(9999999, o.gold | 0));
         o.pflege = (Array.isArray(o.pflege) ? o.pflege : []).filter(e => e && e.m && CAM.FAMILIEN[e.m.fam] && typeof e.ende === 'number').slice(0, 106);
         o.pflege.forEach(e => { e.m.lv = Math.max(1, Math.min(50, e.m.lv | 0)); CAM.neuBerechnen(e.m); e.dorf = Math.max(0, Math.min(CAM.Welt.dorf.length - 1, e.dorf | 0)); e.preis = e.preis | 0; });
+        o.abz = (Array.isArray(o.abz) ? o.abz : []).filter(i => Number.isInteger(i) && i >= 0 && i < 8);
         o.items = o.items && typeof o.items === 'object' ? o.items : {};
         return o;
       } catch (e) { return null; }
