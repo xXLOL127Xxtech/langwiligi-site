@@ -516,6 +516,7 @@
     m.stufe = CAM.stufeFuer(m.fam, m.lv);
     const w = CAM.werte(m.fam, m.stufe, m.lv);
     m.mhp = w.hp; m.atk = w.atk; m.def = w.def; m.spd = w.spd;
+    if (m.bon) { m.mhp = Math.round(m.mhp * (1 + (m.bon.hp || 0) / 100)); m.atk = Math.round(m.atk * (1 + (m.bon.atk || 0) / 100)); m.def = Math.round(m.def * (1 + (m.bon.def || 0) / 100)); m.spd = Math.round(m.spd * (1 + (m.bon.spd || 0) / 100)); }
     m.moves = CAM.attackenFuer(m.fam, m.lv);
     if (m.hp > m.mhp) m.hp = m.mhp;
   };
@@ -622,14 +623,24 @@
 
   // ---------- Gegenstände ----------
   CAM.ITEMS = {
-    siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1, steil: 0.255, info: 'Fängt geschwächte Mobs, bei hohen Stufen kaum' },
-    siegel2: { n: 'Starke Fangkugel', preis: 100, fang: 1, bonus: 0.8, info: 'Fängt auch höhere Mobs' },
-    siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 1, zehn: true, info: 'Zehn Fangversuche in einem Wurf' },
+    siegel1: { n: 'Einfache Fangkugel', preis: 20, fang: 1, steil: 0.255, info: 'Für schwache Mobs' },
+    siegel2: { n: 'Starke Fangkugel', preis: 100, fang: 1, bonus: 0.8, info: 'Für stärkere Mobs' },
+    siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 1, zehn: true, info: 'Zehn Versuche' },
     trank: { n: 'Heiltrank', preis: 45, heil: 40, info: 'Heilt 40 LP' },
     trank2: { n: 'Grosser Heiltrank', preis: 150, heil: 120, info: 'Heilt 120 LP' },
+    // Veredler: nur durch Arenen und Riesen, nicht käuflich. +5 % pro Stein (höchstens +25 % pro Wert), Effekte 25 % (höchstens 60 %)
+    v_hp:  { n: 'Lebenskristall', preis: 0, upg: 'hp', info: '+5 % LP', nurBeute: true },
+    v_atk: { n: 'Kraftstein', preis: 0, upg: 'atk', info: '+5 % Angriff', nurBeute: true },
+    v_def: { n: 'Schildstein', preis: 0, upg: 'def', info: '+5 % Verteidigung', nurBeute: true },
+    v_spd: { n: 'Sturmfeder', preis: 0, upg: 'spd', info: '+5 % Tempo', nurBeute: true },
+    v_gift: { n: 'Giftdorn', preis: 0, upg: 'fx', st: 'gift', info: 'Eine Attacke vergiftet mit 25 %', nurBeute: true },
+    v_brand: { n: 'Glutsplitter', preis: 0, upg: 'fx', st: 'brand', info: 'Eine Attacke verbrennt mit 25 %', nurBeute: true },
+    v_laehmung: { n: 'Blitzkern', preis: 0, upg: 'fx', st: 'laehmung', info: 'Eine Attacke lähmt mit 25 %', nurBeute: true },
+    v_betaeubt: { n: 'Schlagrune', preis: 0, upg: 'fx', st: 'betaeubt', info: 'Eine Attacke betäubt mit 25 %', nurBeute: true },
+    v_blind: { n: 'Blendstaub', preis: 0, upg: 'fx', st: 'blind', info: 'Eine Attacke blendet mit 25 %', nurBeute: true },
     ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
     beleber: { n: 'Wiederbeleber', preis: 150, beleb: 0.5, info: 'Belebt einen Mob mit halben LP' },
-    gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt alle Statuseffekte (Gift, Brand, Schlaf, Angst, Betäubung …)' },
+    gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt Statuseffekte' },
     // Fundstücke (nur zum Verkaufen)
     knochen: { n: 'Knochensplitter', preis: 12, fund: true, info: 'Verkaufsware' },
     kristall: { n: 'Mondkristall', preis: 45, fund: true, info: 'Verkaufsware' },
@@ -639,6 +650,20 @@
     eis: { n: 'Eissplitter', preis: 25, fund: true, info: 'Verkaufsware' },
     muschel: { n: 'Perlmuschel', preis: 20, fund: true, info: 'Verkaufsware' },
   };
+  CAM.UPG = Object.keys(CAM.ITEMS).filter(k => CAM.ITEMS[k].upg);
+  // Eine Attacke mit den Verbesserungen dieses Mobs (Effekt-Chancen aus Veredlern)
+  CAM.moveFuer = (m, id) => (m && m.fx && m.fx[id]) ? Object.assign({}, CAM.MOVES[id], m.fx[id]) : CAM.MOVES[id];
+
+  // ---------- Arenen und Abzeichen ----------
+  // Acht Arenen auf festen Stufen, verteilt in der Welt. Wer den Arenaleiter besiegt, bekommt das Abzeichen und Veredler.
+  CAM.ARENEN = [
+    { el: 'Pflanze', lv: 8, abz: 'Blatt-Abzeichen', sym: '🍃' }, { el: 'Wasser', lv: 14, abz: 'Tropfen-Abzeichen', sym: '💧' },
+    { el: 'Feuer', lv: 20, abz: 'Flammen-Abzeichen', sym: '🔥' }, { el: 'Erde', lv: 26, abz: 'Fels-Abzeichen', sym: '⛰' },
+    { el: 'Luft', lv: 32, abz: 'Wind-Abzeichen', sym: '🌪' }, { el: 'Licht', lv: 38, abz: 'Licht-Abzeichen', sym: '✨' },
+    { el: 'Schatten', lv: 44, abz: 'Schatten-Abzeichen', sym: '🌑' }, { el: 'Normal', lv: 50, abz: 'Kronen-Abzeichen', sym: '👑' },
+  ];
+  CAM.abzMaske = abz => (abz || []).reduce((s, i) => s | (1 << i), 0);
+
   CAM.SHOP = ['siegel1', 'siegel2', 'siegel3', 'trank', 'trank2', 'beleber', 'gegengift'];
   CAM.FUNDE = { 0: ['beere', 'feder'], 1: ['muschel', 'feder'], 2: ['beere', 'feder'], 3: ['eis', 'kristall'], 4: ['beere', 'knochen'], 5: ['glut', 'knochen'], 6: ['knochen', 'feder'], 7: ['kristall', 'eis'] };
 

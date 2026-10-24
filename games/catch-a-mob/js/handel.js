@@ -47,7 +47,7 @@
           '<div class="row"><b>Kampf:</b><select data-modus style="flex:1"><option value="fair"' + (o.modus === 'fair' ? ' selected' : '') + '>Fairer Kampf (alle auf Stufe ' + cfg.mid + ')</option><option value="echt"' + (o.modus === 'echt' ? ' selected' : '') + '>Echter Kampf (Stufen wie sie sind)</option></select></div>' +
           '<div class="row" style="margin-top:12px">' + (cfg.annahme && gleich() ? '<button class="btn" data-act="annehmen">Angebot annehmen</button>' : '') +
           '<button class="btn' + (cfg.annahme && gleich() ? ' alt' : '') + '" data-act="senden">' + (cfg.senden || 'Duell anfragen') + '</button><button class="btn alt" data-act="abbruch">Abbrechen</button></div>' +
-          (cfg.annahme && !gleich() ? '<div class="foot" style="color:#ffd54a">Du hast das Gegenangebot geändert. Es muss erst wieder angefragt und angenommen werden.</div>' : '') + '<div class="foot">Mit den Knöpfen änderst du das Gold, mit den Listen wählst du Fabelwesen. Tab wechselt, Enter drückt, Esc bricht ab.</div>';
+          (cfg.annahme && !gleich() ? '<div class="foot" style="color:#ffd54a">Geändert: erst wieder anfragen.</div>' : '') + '<div class="foot">Esc bricht ab.</div>';
         host.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
           const [id, d] = b.dataset.g.split(':');
           if (id === 'me') o.goldMe = Math.max(0, Math.min(maxMe, o.goldMe + +d)); else o.goldThem = Math.max(0, Math.min(maxThem, o.goldThem + +d));
@@ -124,7 +124,7 @@
       if (ok && Bots.verhandeln(b, offer, pMe).ok !== true) ok = false, r.aktion = 'senden';   // nur wenn der Bot wirklich zusagen würde
       if (!ok) {
         const v = Bots.verhandeln(b, offer, pMe);
-        if (v.counter) { offer = v.counter; text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»<br><small>Gegenangebot, unten steht jetzt sein Vorschlag.</small>'; annahme = true; UI.snd('ruf'); continue; }
+        if (v.counter) { offer = v.counter; text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»'; annahme = true; UI.snd('ruf'); continue; }
         if (!v.ok) { text = '<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '» <small>(abgelehnt)</small>'; annahme = false; if (Math.random() < 0.15) b.ruheBis = Date.now() + 45000; continue; }
         await UI.info('<b>' + esc(b.name) + ':</b> «' + esc(v.text) + '»', 'Angenommen');
         ok = true;

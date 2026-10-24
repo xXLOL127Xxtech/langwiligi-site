@@ -224,7 +224,7 @@
     wFx(el) { const w = CAM.WETTER_FX[this.weather]; return (w && w[el]) || 1; }
 
     doMove(a, act, ev) {
-      const me = this.cur(a); const mv = MOVES[me.moves[act.i]];
+      const me = this.cur(a); const mv = CAM.moveFuer(me, me.moves[act.i]);
       if (!mv) return;
       // Status vor dem Zug
       const blind = !!(me.status && me.status.t === 'blind'), schwach = !!(me.status && me.status.t === 'schwaeche');

@@ -164,7 +164,7 @@
         const lab = labels[w];
         BS.sub = true;
         if (lab === 'Attacke') {
-          const mi = me.moves.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) + (mv.st ? ' · <span style="color:' + CAM.STATUS_COL[mv.st] + '">' + CAM.fxText(mv) + '</span>' : '') }; });
+          const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (mv.pow ? 'Stärke ' + mv.pow : mv.heal ? 'Heilt' : '') + effText(mv, tm) + (mv.st ? ' · <span style="color:' + CAM.STATUS_COL[mv.st] + '">' + CAM.fxText(mv) + '</span>' : '') }; });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
