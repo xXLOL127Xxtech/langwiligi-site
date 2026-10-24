@@ -271,7 +271,7 @@
       const f = F[r];
       const orte = CAM.BIOME.filter(b => b.spawn.some(s => s[0] === r)).map(b => b.n).join(', ') || f.spezial || 'nur durch Riesen-Raids';
       const stufen = f.n.map((n, i) => spriteImg({ fam: r, stufe: i + 1 }, 72)).join('');
-      await UI.info('<div class="row">' + stufen + '</div><p>' + f.n.join(' › ') + '<br>' + tagEl(f.el) + (f.el2 ? tagEl(f.el2) : '') + tagRar(f.rar) + '</p><p>Lebt in: ' + esc(orte) + '</p>', 'Mob-Buch');
+      await UI.info('<div class="row">' + stufen + '</div><p>' + f.n.join(' › ') + '<br>' + tagEl(f.el) + (f.el2 ? tagEl(f.el2) : '') + tagRar(f.rar) + '</p><p>Lebt in: ' + esc(orte) + (CAM.habText(f) ? '<br><small>Dort ' + esc(CAM.habText(f)) + '.</small>' : '') + '</p>', 'Mob-Buch');
     }
   };
   A.karte = function () {
@@ -375,26 +375,7 @@
   A.zumTitel = function () { A.beenden && A.beenden(); };
 
   // ---------- Wilde Mobs, Trainer, Riesen ----------
-  A.wildMob = function (x, y, now) {
-    const bi = Welt.biomeAt(x, y), B = CAM.BIOME[bi];
-    const sais = CAM.saison(now), nacht = CAM.tageslicht(now) < 0.35, w = CAM.wetterBei(bi, now);
-    let tot = 0;
-    const l = B.spawn.map(([fam, g0]) => {
-      const f = CAM.FAMILIEN[fam]; let g = g0;
-      if (f.el === CAM.SAISON_BONUS[sais]) g *= 1.5;
-      if (nacht && (f.el === 'Schatten' || f.el === 'Licht' || f.el2 === 'Schatten')) g *= 1.8;
-      if (w === 'gewitter' && f.el === 'Luft') g *= 1.8;
-      if (w === 'regen' && f.el === 'Wasser') g *= 1.5;
-      tot += g; return [fam, g];
-    });
-    let r = Math.random() * tot, fam = l[0][0];
-    for (const [f, g] of l) { r -= g; if (r <= 0) { fam = f; break; } }
-    // Spezial-Mobs: nur unter besonderen Umständen
-    if (nacht && w === 'klar' && Math.random() < 0.012) fam = 24;
-    else if (w === 'blutmond' && Math.random() < 0.05) fam = 25;
-    const lv = Welt.wildLevel(x, y, Math.random());
-    return CAM.neuerMob(fam, lv, { glanz: Math.random() < 1 / 64 });
-  };
+  A.wildMob = (x, y, now) => CAM.Wilde.wildMob(x, y, now);   // Auswahl nach Lebensraum: siehe wilde.js
   function trainerTeam(tr) {
     const rnd = CAM.mulberry32(tr.seed), B = CAM.BIOME[tr.biome];
     const team = [];

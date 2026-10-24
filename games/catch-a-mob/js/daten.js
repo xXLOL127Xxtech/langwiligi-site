@@ -122,8 +122,48 @@
     { n: ['Blutschemen', 'Mondschlächter', 'Blutgraf'], el: 'Schatten', base: [58, 72, 50, 64], rar: 2, kind: 'ghoul', opt: { horns: true }, pal: ['#5a1020', '#26060c', '#ff3b5a', '#ffd0d8'], spezial: 'Zeigt sich nur bei Blutmond.' },
     { n: ['Glutei', 'Ascheschlüpfer', 'Weltendrache'], el: 'Feuer', el2: 'Licht', base: [66, 74, 62, 58], rar: 2, kind: 'dragon', pal: ['#ffb36b', '#7a3a1a', '#ffe14d', '#fff3a8'], spezial: 'Schlüpft aus dem Drachenei, das manchmal als Beute von Riesen fällt (600 Schritte im Beutel tragen).' },
     { n: ['Zwillingskopf', 'Chimäre', 'Urchimäre'], el: 'Normal', el2: 'Schatten', base: [72, 72, 66, 60], rar: 2, kind: 'quad', opt: { ears: 'round', tail: 'flame', mane: true }, pal: ['#c9a24a', '#6a4a1a', '#ff6a2e', '#fff3a8'], spezial: 'Gehört den Champion-Bots. Du bekommst sie nur, wenn du sie im Einsatz-Duell gewinnst.' },
+    // ---------- 20 weitere Fabelwesen (Nummer 28 bis 47): Tiere der Wiese, des Wassers, der Nacht und der Berge ----------
+    // hab = Lebensraum fürs Spawnen (siehe wilde.js), fliegt = schwebt über dem Boden
+    { n: ['Rehkitz', 'Wiesenreh', 'Blütenhirsch'], el: 'Pflanze', el2: 'Licht', base: [56, 52, 52, 68], rar: 0, kind: 'quad', opt: { slim: true, antler: true, spots: true, tail: 'short', hoof: true, herb: true }, pal: ['#c4864c', '#7a4a28', '#e6d6a8', '#1a1210'], hab: { tile: 'gras', herde: [3, 5], scheu: true, zeit: 'tag' } },
+    { n: ['Raupling', 'Blattraupe', 'Seidenwurm'], el: 'Pflanze', el2: 'Luft', base: [58, 40, 50, 34], rar: 0, kind: 'raupe', pal: ['#8fd05a', '#3f7a2e', '#f0e46a', '#1a2a14'], hab: { tile: 'gras', herde: [2, 4], scheu: false } },
+    { n: ['Flatterling', 'Blütenfalter', 'Prismafalter'], el: 'Luft', el2: 'Licht', base: [44, 52, 40, 82], rar: 0, kind: 'falter', fliegt: true, pal: ['#ff9ad0', '#8a3a7a', '#fff0a8', '#3a1a40'], hab: { tile: 'gras', herde: [2, 3], scheu: true, zeit: 'tag', streng: true } },
+    { n: ['Brummel', 'Honighummel', 'Stachelkönigin'], bos: true, el: 'Normal', el2: 'Pflanze', base: [50, 60, 46, 66], rar: 0, kind: 'hummel', fliegt: true, pal: ['#f2c230', '#5a3a10', '#7a3a1a', '#1a1210'], hab: { tile: 'gras', herde: [2, 3], zeit: 'tag', streng: true } },
+    { n: ['Tümpelchen', 'Schilfkröte', 'Riffpanzer'], el: 'Wasser', el2: 'Erde', base: [64, 48, 72, 26], rar: 0, kind: 'schildkroete', pal: ['#4a8a5a', '#244a30', '#e0c88a', '#f0e070'], hab: { nah: 'wasser', scheu: false } },
+    { n: ['Quakling', 'Moorfrosch', 'Giftkönig'], el: 'Wasser', el2: 'Pflanze', base: [56, 58, 48, 62], rar: 0, kind: 'frosch', pal: ['#4aa860', '#1e5a30', '#e8e070', '#f0e84a'], hab: { nah: 'wasser', herde: [2, 3] } },
+    { n: ['Kriechling', 'Schneckenritter', 'Spiralkoloss'], el: 'Normal', el2: 'Erde', base: [66, 44, 66, 16], rar: 0, kind: 'schnecke', pal: ['#c9b07a', '#6a5638', '#e0708a', '#1a1210'], hab: { wetter: ['regen', 'nebel', 'dunst'], scheu: false } },
+    { n: ['Leuchtling', 'Leuchtqualle', 'Polarlichtqualle'], el: 'Wasser', el2: 'Licht', base: [52, 58, 44, 58], rar: 1, kind: 'qualle', fliegt: true, opt: { glow: true }, pal: ['#7fd4f0', '#2a5a9a', '#d8a0ff', '#fff8c0'], hab: { nah: 'wasser', herde: [1, 2], scheu: false } },
+    { n: ['Sandstachel', 'Wüstenskorpion', 'Dünentyrann'], bos: true, el: 'Erde', el2: 'Feuer', base: [58, 68, 60, 48], rar: 0, kind: 'skorpion', pal: ['#c9a24a', '#6a4a1a', '#e0603a', '#ffe14d'], hab: { tile: 'boden', zeit: 'tag' } },
+    { n: ['Webling', 'Giftspinne', 'Schattenweberin'], bos: true, el: 'Schatten', el2: 'Pflanze', base: [50, 66, 46, 62], rar: 1, kind: 'spinne', pal: ['#3a2a4a', '#150e20', '#a060e0', '#ff4a6a'], hab: { nah: 'baum', zeit: 'nacht' } },
+    { n: ['Flattermaus', 'Nachtfledermaus', 'Mondschwinge'], bos: true, el: 'Schatten', el2: 'Luft', base: [46, 60, 40, 80], rar: 1, kind: 'fledermaus', fliegt: true, pal: ['#5a4a70', '#2a2038', '#c9a0ff', '#ffe14d'], hab: { nah: ['baum', 'grab'], zeit: 'nacht', streng: true, herde: [2, 4] } },
+    { n: ['Käuzchen', 'Waldkauz', 'Mondeule'], el: 'Luft', el2: 'Licht', base: [56, 56, 50, 66], rar: 1, kind: 'eule', pal: ['#9a7a5a', '#4e3a28', '#ffe0a0', '#ffcc2a'], hab: { nah: 'baum', zeit: 'nacht', scheu: true } },
+    { n: ['Setzling', 'Baumwächter', 'Urwaldriese'], el: 'Pflanze', el2: 'Erde', base: [74, 62, 72, 22], rar: 2, kind: 'baum', pal: ['#7a5a3a', '#3e2a1a', '#4fae4a', '#ffd54a'], hab: { nah: 'baum', min: 7, scheu: false } },
+    { n: ['Nebelflocke', 'Gewitterwolke', 'Sturmtitan'], bos: true, el: 'Luft', el2: 'Wasser', base: [52, 66, 44, 70], rar: 1, kind: 'wolke', fliegt: true, opt: { glow: true }, pal: ['#7a86a8', '#3a4260', '#ffe14d', '#fff6b0'], hab: { wetter: ['gewitter', 'regen', 'wind'], streng: true } },
+    { n: ['Zicklein', 'Eisbock', 'Gipfelfürst'], el: 'Erde', el2: 'Wasser', base: [64, 64, 64, 50], rar: 0, kind: 'quad', opt: { horn: 'ibex', hoof: true, herb: true, ears: 'round', tail: 'short' }, pal: ['#d8e2ea', '#6a7a8a', '#b09a70', '#2a2a38'], hab: { nah: 'fels', herde: [2, 3], scheu: true } },
+    { n: ['Funkenmolch', 'Lavasalamander', 'Magmakaiman'], el: 'Feuer', base: [52, 64, 50, 58], rar: 0, kind: 'echse', opt: { flame: true, glow: true }, pal: ['#a8321e', '#4a140c', '#ff8a2e', '#fff27a'], hab: { nah: ['lava', 'fels'] } },
+    { n: ['Glutküken', 'Aschephönix', 'Sonnenphönix'], el: 'Feuer', el2: 'Licht', base: [54, 70, 48, 74], rar: 2, kind: 'bird', opt: { phoenix: true, glow: true }, pal: ['#d8481e', '#7a1a0e', '#ffb02e', '#fff27a'], hab: { tile: 'boden', zeit: 'tag', scheu: true } },
+    { n: ['Käferchen', 'Hirschkäfer', 'Zangenkönig'], el: 'Erde', base: [60, 64, 72, 34], rar: 0, kind: 'kaefer', pal: ['#5a3a2a', '#24160e', '#c98a42', '#ffe14d'], hab: { nah: 'baum', zeit: 'tag' } },
+    { n: ['Sternenfohlen', 'Einhorn', 'Regenbogenross'], el: 'Licht', el2: 'Luft', base: [62, 60, 58, 76], rar: 2, kind: 'quad', opt: { slim: true, horn: 'uni', mane: true, tail: 'flow', hoof: true, herb: true, ears: 'point' }, pal: ['#f4eefc', '#a89ac8', '#ff9ad8', '#7a4ad0'], hab: { tile: 'gras', zeit: 'tag', wetter: ['klar'], scheu: true } },
+    { n: ['Molchling', 'Axolotl', 'Seedrache'], el: 'Wasser', base: [62, 52, 56, 46], rar: 1, kind: 'echse', opt: { kiemen: true }, pal: ['#f2a6c0', '#a8607a', '#ff6a9a', '#2a1a2a'], hab: { nah: 'wasser', scheu: false } },
   ];
   F.forEach((f, i) => { f.id = i; f.stufen = f.n.length; });
+  // Lebensräume der ersten 16 Familien (die neuen tragen hab direkt in der Zeile)
+  // tile: gras | boden, nah: Wasser, Bäume, Felsen, Lava, Gräber oder Kristalle in der Nähe, zeit: bevorzugt tag | nacht (streng = nur dann),
+  // herde: [von, bis] Tiere, wetter: bevorzugtes Wetter, scheu: weicht aus
+  const HAB = [
+    { tile: 'boden' }, { nah: 'wasser' }, { nah: 'baum' }, { tile: 'boden', nah: 'fels', scheu: false }, { nah: 'baum' }, { zeit: 'nacht' }, { nah: 'grab', zeit: 'nacht' }, { nah: ['wasser', 'baum'] },
+    { tile: 'gras', herde: [2, 4], scheu: true }, { nah: 'wasser', tile: 'boden', herde: [1, 3] }, { nah: 'baum', herde: [2, 3], scheu: false }, { herde: [2, 3] }, { tile: 'boden' }, { nah: 'lava' }, { nah: 'kristall' }, { nah: 'grab', zeit: 'nacht' },
+  ];
+  F.forEach((f, i) => { if (!f.hab) f.hab = HAB[i] || {}; });
+  CAM.habText = function (f) {
+    const h = f.hab || {}, t = [];
+    if (h.herde) t.push('Gruppen');
+    if (h.tile === 'gras') t.push('auf Wiesen'); else if (h.tile === 'boden') t.push('auf offenem Boden');
+    const nah = [].concat(h.nah || []).map(n => ({ wasser: 'am Wasser', baum: 'zwischen Bäumen', fels: 'bei Felsen', lava: 'bei Lava', grab: 'bei Gräbern', kristall: 'bei Kristallen' }[n]));
+    if (nah.length) t.push(nah.join(' oder '));
+    if (h.zeit === 'nacht') t.push(h.streng ? 'nur nachts' : 'meist nachts'); else if (h.zeit === 'tag') t.push(h.streng ? 'nur tagsüber' : 'meist tagsüber');
+    if (h.wetter) t.push('bei ' + h.wetter.map(w => (CAM.WETTER[w] || w)).join('/'));
+    return t.join(', ');
+  };
 
   // ---------- Eigene Attacken jeder Familie ----------
   // Jedes Fabelwesen hat vier (Riesen drei) eigene Attacken mit eigener Animation (anim: Art der Animation + Feinheiten, siehe kampfanim.js).
@@ -261,18 +301,119 @@
      ['loewenpranke', 'Löwenpranke', 'Normal', 58, 100, { t: 'lunge', deco: 'kralle', cols: ['#ffd54a', '#fff'] }],
      ['chimaerenatem', 'Chimärenatem', 'Schatten', 82, 95, { t: 'atem', cols: ['#ff6a2e', '#8a3ffc', '#fff3a8'] }, 'brand', 20],
      ['urgewalt', 'Urgewalt', 'Normal', 104, 90, { t: 'nova', cols: ['#ffd54a', '#ff6a2e', '#8a3ffc'], ringe: 4 }]],
+    // 28 Wiesenreh
+    [['hufstoss', 'Hufstoss', 'Normal', 40, 100, { t: 'sprung', deco: 'stampf' }],
+     ['wiesenruhe', 'Wiesenruhe', 'Pflanze', 0, 100, { t: 'segen', cols: ['#8fd36a', '#fff0a8'] }, null, 0, 0.35],
+     ['bluetenreigen', 'Blütenreigen', 'Pflanze', 62, 95, { t: 'salve', shape: 'blatt', n: 10, cols: ['#ff9ad0', '#fff0f4'] }, 'schlaf', 25],
+     ['hirschsturm', 'Hirschsturm', 'Normal', 98, 90, { t: 'lunge', deco: 'horn', gross: true, cols: ['#e6d6a8', '#8fd36a'] }, 'furcht', 15]],
+    // 29 Blattraupe
+    [['blattnagen', 'Blattnagen', 'Pflanze', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#8fd05a', '#f0e46a'] }],
+     ['seidenfaden', 'Seidenfaden', 'Pflanze', 52, 100, { t: 'netz', cols: ['#ffffff', '#d8f0c0'] }, 'schlaf', 25],
+     ['raupenrolle', 'Raupenrolle', 'Normal', 72, 95, { t: 'rolle', cols: ['#8fd05a', '#f0e46a'] }],
+     ['seidensturm', 'Seidensturm', 'Luft', 96, 90, { t: 'tornado', cols: ['#ffffff', '#f0e46a', '#8fd05a'] }]],
+    // 30 Blütenfalter
+    [['fluegelschlag', 'Flügelschlag', 'Luft', 40, 100, { t: 'hieb', cols: ['#ff9ad0', '#ffffff'] }],
+     ['schuppenstaub', 'Schuppenstaub', 'Luft', 54, 100, { t: 'wolke', cols: ['#ff9ad0', '#fff0a8'] }, 'schlaf', 30],
+     ['prismaflug', 'Prismaflug', 'Licht', 78, 95, { t: 'regenbogen' }],
+     ['sturmflattern', 'Sturmflattern', 'Luft', 98, 90, { t: 'tornado', cols: ['#ff9ad0', '#fff0a8', '#ffffff'], gross: true }, 'furcht', 15]],
+    // 31 Honighummel
+    [['brummstoss', 'Brummstoss', 'Normal', 40, 100, { t: 'lunge', deco: 'kopfnuss', cols: ['#f2c230'] }],
+     ['giftstachel', 'Giftstachel', 'Pflanze', 54, 100, { t: 'stich', cols: ['#f2c230', '#a0e040'] }, 'gift', 30],
+     ['pollenschauer', 'Pollenschauer', 'Pflanze', 70, 95, { t: 'wurf', shape: 'pollen', n: 10, cols: ['#f2c230', '#fff6a0'] }],
+     ['schwarmangriff', 'Schwarmangriff', 'Normal', 98, 90, { t: 'wirbel', shape: 'funke', cols: ['#f2c230', '#2a2218'] }, 'furcht', 15]],
+    // 32 Schilfkröte
+    [['panzerstoss', 'Panzerstoss', 'Normal', 40, 100, { t: 'lunge', deco: 'faust', cols: ['#4a8a5a', '#e0c88a'] }],
+     ['wasserkanone', 'Wasserkanone', 'Wasser', 56, 100, { t: 'ball', shape: 'blase', r: 15, cols: ['#3fa0ff', '#bfe6ff'] }],
+     ['panzerrolle', 'Panzerrolle', 'Erde', 74, 95, { t: 'rolle', cols: ['#4a8a5a', '#e0c88a'] }],
+     ['gezeitenwelle', 'Gezeitenwelle', 'Wasser', 98, 90, { t: 'flut', cols: ['#3fa0ff', '#bfe6ff'] }, 'furcht', 15]],
+    // 33 Moorfrosch
+    [['zungenschlag', 'Zungenschlag', 'Wasser', 40, 100, { t: 'zunge', cols: ['#ff7a9a', '#ffd0dc'] }],
+     ['schleimspritzer', 'Schleimspritzer', 'Pflanze', 54, 100, { t: 'salve', shape: 'klumpen', n: 5, cols: ['#7ad060', '#e8e070'] }, 'gift', 30],
+     ['quakschall', 'Quakschall', 'Wasser', 72, 95, { t: 'schall', cols: ['#7dd9c4', '#e8e070'] }],
+     ['giftflut', 'Giftflut', 'Pflanze', 98, 85, { t: 'flut', cols: ['#4aa860', '#e8e070'] }, 'gift', 35]],
+    // 34 Schneckenritter
+    [['schleimspur', 'Schleimspur', 'Normal', 40, 100, { t: 'wurf', shape: 'schleim', n: 4, cols: ['#d8c88a', '#e0708a'] }],
+     ['fuehlerhieb', 'Fühlerhieb', 'Normal', 52, 100, { t: 'peitsche', cols: ['#c9b07a', '#e0708a'] }],
+     ['gehaeuserammen', 'Gehäuserammen', 'Erde', 76, 95, { t: 'rolle', cols: ['#e0708a', '#c9b07a'] }],
+     ['spiralsturz', 'Spiralsturz', 'Erde', 100, 85, { t: 'wirbel', shape: 'fels', cols: ['#e0708a', '#c9b07a'] }, 'furcht', 20]],
+    // 35 Leuchtqualle
+    [['nesselfaden', 'Nesselfaden', 'Wasser', 40, 100, { t: 'ranken', cols: ['#7fd4f0', '#d8a0ff'] }, 'gift', 20],
+     ['lichtpuls', 'Lichtpuls', 'Licht', 56, 100, { t: 'puls', cols: ['#d8a0ff', '#ffffff'] }],
+     ['heilleuchten', 'Heilleuchten', 'Licht', 0, 100, { t: 'segen', cols: ['#d8a0ff', '#fff8c0'] }, null, 0, 0.4],
+     ['polarlicht', 'Polarlicht', 'Licht', 98, 90, { t: 'saeule', cols: ['#7fd4f0', '#d8a0ff', '#ffffff'] }]],
+    // 36 Wüstenskorpion
+    [['scherenzwick', 'Scherenzwick', 'Erde', 40, 100, { t: 'lunge', deco: 'zange', cols: ['#c9a24a'] }],
+     ['sandwirbel', 'Sandwirbel', 'Erde', 54, 95, { t: 'sand', cols: ['#d9c27c', '#a8884a'] }],
+     ['skorpiongift', 'Skorpiongift', 'Erde', 74, 95, { t: 'stich', cols: ['#e0603a', '#ffe14d'], gross: true }, 'gift', 30],
+     ['duenenglut', 'Dünenglut', 'Feuer', 98, 85, { t: 'flut', cols: ['#ff8a2e', '#ffe14d'], lava: true }, 'brand', 25]],
+    // 37 Giftspinne
+    [['spinnenbiss', 'Spinnenbiss', 'Schatten', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#a060e0', '#ff4a6a'] }, 'gift', 20],
+     ['netzwurf', 'Netzwurf', 'Schatten', 54, 100, { t: 'netz', cols: ['#ffffff', '#c9b8ff'] }, 'schlaf', 20],
+     ['giftspritzer', 'Giftspritzer', 'Pflanze', 74, 95, { t: 'wurf', shape: 'tropfen', n: 6, cols: ['#7ad060', '#d6ff7a'] }, 'gift', 40],
+     ['todesnetz', 'Todesnetz', 'Schatten', 98, 85, { t: 'netz', gross: true, cols: ['#d0c0ff', '#ff4a6a'] }, 'furcht', 20]],
+    // 38 Nachtfledermaus
+    [['flatterbiss', 'Flatterbiss', 'Schatten', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#c9a0ff', '#5a4a70'] }],
+     ['ultraschall', 'Ultraschall', 'Luft', 56, 100, { t: 'schall', cols: ['#c9a0ff', '#ffffff'] }, 'furcht', 20],
+     ['blutsauger', 'Blutsauger', 'Schatten', 74, 95, { t: 'saugen', cols: ['#c9a0ff', '#a01a30'] }],
+     ['nachtschwarm', 'Nachtschwarm', 'Schatten', 98, 85, { t: 'wirbel', shape: 'feder', cols: ['#2a2038', '#c9a0ff'] }, 'schlaf', 25]],
+    // 39 Waldkauz
+    [['krallenschwung', 'Krallenschwung', 'Luft', 40, 100, { t: 'lunge', deco: 'kralle', cols: ['#ffe0a0'] }],
+     ['federnadeln', 'Federnadeln', 'Luft', 56, 100, { t: 'wurf', shape: 'nadel', n: 7, cols: ['#9a7a5a', '#ffe0a0'] }],
+     ['weisenruf', 'Weisenruf', 'Licht', 74, 95, { t: 'schall', cols: ['#ffe0a0', '#ffffff'] }, 'schlaf', 30],
+     ['mondjagd', 'Mondjagd', 'Licht', 98, 90, { t: 'sprung', deco: 'sturz', cols: ['#ffe0a0', '#ffffff'] }]],
+    // 40 Baumwächter
+    [['astschlag', 'Astschlag', 'Pflanze', 40, 100, { t: 'lunge', deco: 'faust', cols: ['#7a5a3a', '#4fae4a'] }],
+     ['rindenpanzer', 'Rindenpanzer', 'Pflanze', 0, 100, { t: 'segen', cols: ['#4fae4a', '#ffd54a'] }, null, 0, 0.4],
+     ['wurzelfessel', 'Wurzelfessel', 'Erde', 70, 95, { t: 'ranken', cols: ['#7a5a3a', '#4fae4a'] }, 'furcht', 20],
+     ['urwaldzorn', 'Urwaldzorn', 'Pflanze', 100, 85, { t: 'meteor', shape: 'blatt', n: 10, cols: ['#4fae4a', '#ffd54a'] }, 'gift', 20]],
+    // 41 Gewitterwolke
+    [['windstoss', 'Windstoss', 'Luft', 40, 100, { t: 'tornado', cols: ['#dfe6f5', '#9fb0d0'] }],
+     ['regenguss', 'Regenguss', 'Wasser', 54, 100, { t: 'wurf', shape: 'tropfen', n: 12, von: 'oben', cols: ['#7ab0ff', '#d0e8ff'] }],
+     ['blitzschlag', 'Blitzschlag', 'Luft', 78, 95, { t: 'blitz', n: 1, cols: ['#ffe14d', '#ffffff'] }],
+     ['sturmgewitter', 'Sturmgewitter', 'Luft', 100, 85, { t: 'blitz', n: 5, cols: ['#ffe14d', '#ffffff'] }, 'furcht', 15]],
+    // 42 Eisbock
+    [['hornstoss', 'Hornstoss', 'Erde', 40, 100, { t: 'lunge', deco: 'horn', cols: ['#b09a70', '#d8e2ea'] }],
+     ['felssprung', 'Felssprung', 'Erde', 56, 95, { t: 'sprung', deco: 'stampf' }],
+     ['frostwurf', 'Frostwurf', 'Wasser', 74, 95, { t: 'salve', shape: 'eis', n: 6, cols: ['#ffffff', '#3ad4ff'] }],
+     ['gipfelsturm', 'Gipfelsturm', 'Erde', 100, 85, { t: 'meteor', shape: 'fels', n: 8, cols: ['#d8e2ea', '#8a7a62'] }, 'furcht', 15]],
+    // 43 Lavasalamander
+    [['funkenspucke', 'Funkenspucke', 'Feuer', 40, 100, { t: 'ball', shape: 'feuer', r: 12, cols: ['#ff8a2e', '#fff27a'] }],
+     ['flammenpeitsche', 'Flammenpeitsche', 'Feuer', 54, 100, { t: 'peitsche', cols: ['#ff8a2e', '#fff27a'] }, 'brand', 20],
+     ['magmabiss', 'Magmabiss', 'Feuer', 76, 95, { t: 'lunge', deco: 'biss', cols: ['#ff8a2e', '#fff27a'] }, 'brand', 25],
+     ['glutwirbel', 'Glutwirbel', 'Feuer', 98, 85, { t: 'wirbel', shape: 'feuer', cols: ['#ff8a2e', '#fff27a'] }, 'brand', 30]],
+    // 44 Aschephönix
+    [['funkenschwinge', 'Funkenschwinge', 'Feuer', 42, 100, { t: 'hieb', cols: ['#ffb02e', '#fff27a'] }],
+     ['feuerfedern', 'Feuerfedern', 'Feuer', 56, 100, { t: 'salve', shape: 'feder', n: 7, cols: ['#d8481e', '#ffb02e'] }, 'brand', 25],
+     ['wiedergeburt', 'Wiedergeburt', 'Feuer', 0, 100, { t: 'segen', cols: ['#ffb02e', '#fff27a'] }, null, 0, 0.5],
+     ['phoenixsturz', 'Phönixsturz', 'Feuer', 102, 90, { t: 'sprung', deco: 'feuer' }, 'brand', 30]],
+    // 45 Hirschkäfer
+    [['zangengriff', 'Zangengriff', 'Erde', 40, 100, { t: 'lunge', deco: 'zange', cols: ['#c98a42'] }],
+     ['kaeferflug', 'Käferflug', 'Luft', 56, 95, { t: 'sprung', deco: 'sturz', cols: ['#c98a42', '#ffffff'] }],
+     ['erdschleuder', 'Erdschleuder', 'Erde', 74, 95, { t: 'ball', shape: 'fels', r: 14, cols: ['#5a3a2a', '#c98a42'] }],
+     ['zangensturm', 'Zangensturm', 'Erde', 98, 85, { t: 'hieb', gross: true, cols: ['#c98a42', '#ffffff'] }, 'furcht', 15]],
+    // 46 Einhorn
+    [['lichtstoss', 'Lichtstoss', 'Licht', 42, 100, { t: 'lunge', deco: 'horn', cols: ['#ffffff', '#7a4ad0'] }],
+     ['heilglanz', 'Heilglanz', 'Licht', 0, 100, { t: 'segen', cols: ['#fff0f8', '#ff9ad8'] }, null, 0, 0.45],
+     ['regenbogenstrahl', 'Regenbogenstrahl', 'Licht', 80, 95, { t: 'regenbogen' }],
+     ['sternenjagd', 'Sternenjagd', 'Licht', 100, 90, { t: 'meteor', shape: 'stern', n: 9, cols: ['#fff0f8', '#ff9ad8'] }, 'schlaf', 20]],
+    // 47 Axolotl
+    [['blubberbiss', 'Blubberbiss', 'Wasser', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#ff6a9a', '#ffd0dc'] }],
+     ['blasenreigen', 'Blasenreigen', 'Wasser', 54, 100, { t: 'salve', shape: 'blase', n: 8, cols: ['#ffd0dc', '#ffffff'] }],
+     ['regeneration', 'Regeneration', 'Wasser', 0, 100, { t: 'segen', cols: ['#ff9ab8', '#ffffff'] }, null, 0, 0.45],
+     ['seedrachenwoge', 'Seedrachenwoge', 'Wasser', 100, 85, { t: 'flut', gross: true, cols: ['#ff6a9a', '#bfe6ff'] }, 'furcht', 15]],
   ];
   SIG.forEach((list, i) => {
     const f = F[i];
-    f.sig = list.map(([id, n, el, pow, acc, anim, st, pr]) => {
+    f.sig = list.map(([id, n, el, pow, acc, anim, st, pr, heal]) => {
       const mv = M[id] = { n, el, pow, acc, anim, id };
       if (st) { mv.st = st; mv.p = pr; }
+      if (heal) mv.heal = heal;
       return id;
     });
     f.sigLv = f.legend ? [1, 6, 12] : [1, 4, 12, 24];
   });
 
-  CAM.ANZ_FAMILIEN = 16;                // normale Familien; danach kommen die 8 Riesen und 4 Spezial-Mobs (ab Nummer 24)
+  CAM.ANZ_FAMILIEN = 16;                // normale Familien am Anfang; danach 8 Riesen, 4 Spezial-Mobs (24 bis 27) und 20 weitere Fabelwesen (28 bis 47)
   CAM.RARITAET = ['Gewöhnlich', 'Selten', 'Episch', 'Legendär'];
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
   CAM.FANGRATE = [0.9, 0.55, 0.3, 0.06];
@@ -397,42 +538,42 @@
       wetter: { klar: 5, regen: 2, nebel: 1, wind: 1 },
       pal: { g1: '#5a8c4a', g2: '#64975a', gr: '#3d7a3a', gr2: '#7fd06a', tr: '#2f6f3a', tr2: '#4e9b4e', trunk: '#4a3322', w: '#2f6a9a', w2: '#5aa0d0', path: '#a89870', deco: '#f7a8c8' },
       dorf: 'Blütenhain', boss: 0,
-      spawn: [[8, 30], [7, 20], [0, 15], [2, 14], [1, 10], [5, 10]] },
+      spawn: [[28, 30], [29, 30], [30, 24], [31, 14], [8, 26], [33, 10], [34, 14], [45, 8], [47, 8], [7, 8], [2, 8], [0, 8], [1, 6], [5, 8], [40, 3], [46, 2]] },
     { id: 1, n: 'Sonnenküste', cx: 315, cy: 305, lake: 0.30, tree: 0.80, grass: 0.52, obst: 'palme',
       wetter: { klar: 5, hitze: 3, gewitter: 2, regen: 1 },
       pal: { g1: '#d9c27c', g2: '#cdb36a', gr: '#8fa850', gr2: '#c5d97a', tr: '#3f8a3a', tr2: '#68b84a', trunk: '#7a5a30', w: '#2a8ab5', w2: '#70d0e8', path: '#b89a5a', deco: '#ffffff' },
       dorf: 'Sonnenhafen', boss: 1,
-      spawn: [[9, 35], [1, 20], [4, 20], [0, 10], [3, 15]] },
+      spawn: [[9, 35], [32, 24], [35, 22], [36, 24], [30, 8], [31, 8], [41, 10], [1, 14], [4, 18], [0, 8], [3, 10]] },
     { id: 2, n: 'Herbstwald', cx: 85, cy: 215, lake: 0.08, tree: 0.58, grass: 0.46, obst: 'baum',
       wetter: { wind: 4, nebel: 3, regen: 3, klar: 2 },
       pal: { g1: '#7a5a34', g2: '#85643a', gr: '#a0521e', gr2: '#e08a2e', tr: '#c24e1a', tr2: '#e0a02e', trunk: '#4a2e1a', w: '#3a5a6a', w2: '#6a8a9a', path: '#9a8458', deco: '#e0a02e' },
       dorf: 'Laubfall', boss: 2,
-      spawn: [[10, 30], [4, 25], [2, 15], [7, 15], [3, 15]] },
+      spawn: [[10, 30], [28, 14], [39, 18], [37, 14], [45, 16], [34, 12], [38, 8], [29, 10], [4, 20], [2, 12], [7, 10], [3, 10], [40, 6]] },
     { id: 3, n: 'Frostgipfel', cx: 205, cy: 70, lake: 0.12, tree: 0.66, grass: 0.50, obst: 'tanne',
       wetter: { schnee: 4, klar: 3, nebel: 2 },
       pal: { g1: '#dfe9f2', g2: '#cfdce8', gr: '#b8cfe2', gr2: '#f4fbff', tr: '#2f5f4a', tr2: '#e8f4ff', trunk: '#3a2a22', w: '#5a7fa8', w2: '#a8d0f0', path: '#9aa8b8', deco: '#ffffff' },
       dorf: 'Frostwacht', boss: 3,
-      spawn: [[11, 35], [3, 25], [4, 20], [5, 20]] },
+      spawn: [[11, 35], [42, 32], [39, 10], [41, 8], [3, 18], [4, 14], [5, 16]] },
     { id: 4, n: 'Nebelmoor', cx: 90, cy: 90, lake: 0.26, tree: 0.62, grass: 0.46, obst: 'totbaum',
       wetter: { nebel: 5, dunst: 3, regen: 2 },
       pal: { g1: '#4a5a3e', g2: '#3f4e35', gr: '#2e4a3a', gr2: '#6a9a6a', tr: '#2a3a2a', tr2: '#4e6a4e', trunk: '#2a2218', w: '#2a4a4a', w2: '#4a7a6a', path: '#6a6248', deco: '#9affb0' },
       dorf: 'Moorbruch', boss: 4,
-      spawn: [[1, 30], [7, 25], [5, 15], [15, 15], [10, 15]] },
+      spawn: [[1, 26], [33, 28], [47, 16], [32, 12], [34, 14], [37, 16], [38, 12], [7, 20], [5, 12], [15, 12], [10, 12]] },
     { id: 5, n: 'Aschegipfel', cx: 325, cy: 85, lake: 0.0, tree: 0.0, grass: 0.50, obst: 'fels', lava: 0.80,
       wetter: { asche: 5, hitze: 3, klar: 1 },
       pal: { g1: '#4a403c', g2: '#3e3532', gr: '#2e2624', gr2: '#8a4a2a', tr: '#3a3230', tr2: '#5a4e48', trunk: '#222', w: '#d84a1a', w2: '#ffb42e', path: '#6a5a50', deco: '#ff7a2e' },
       dorf: 'Aschenburg', boss: 5,
-      spawn: [[12, 25], [13, 30], [0, 25], [6, 20]] },
+      spawn: [[12, 22], [13, 26], [43, 30], [36, 12], [44, 6], [0, 20], [6, 16]] },
     { id: 6, n: 'Knochenfriedhof', cx: 200, cy: 335, lake: 0.06, tree: 0.70, grass: 0.46, obst: 'grab',
       wetter: { blutmond: 4, gewitter: 3, nebel: 3, klar: 1 },
       pal: { g1: '#4a4658', g2: '#3e3a4c', gr: '#38334a', gr2: '#8a7ab0', tr: '#2a2438', tr2: '#4a4260', trunk: '#1c1626', w: '#26264a', w2: '#4a4a8a', path: '#6a647a', deco: '#d9d3bd' },
       dorf: 'Gräberstein', boss: 6,
-      spawn: [[15, 35], [6, 25], [4, 20], [12, 10], [1, 10]] },
+      spawn: [[15, 32], [38, 28], [37, 20], [39, 10], [6, 22], [4, 16], [12, 8], [1, 8]] },
     { id: 7, n: 'Kristallschlucht', cx: 330, cy: 195, lake: 0.06, tree: 0.62, grass: 0.48, obst: 'kristall',
       wetter: { klar: 4, nebel: 2, gewitter: 2 },
       pal: { g1: '#5a5470', g2: '#4e4864', gr: '#4a4a7a', gr2: '#8a9aff', tr: '#4a4470', tr2: '#7de4ff', trunk: '#2a2540', w: '#2a3a7a', w2: '#6a8aff', path: '#8a84a0', deco: '#7de4ff' },
       dorf: 'Kristallfurt', boss: 7,
-      spawn: [[14, 35], [3, 30], [5, 20], [11, 15]] },
+      spawn: [[14, 32], [45, 16], [38, 12], [42, 10], [3, 26], [5, 16], [11, 12], [46, 3]] },
   ];
   CAM.BOSS = [
     { fam: 16, n: 'Dornenkönig', lv: 13, dist: 28 },

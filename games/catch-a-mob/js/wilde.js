@@ -1,10 +1,13 @@
 'use strict';
 // Catch a Mob – wilde Mobs laufen in der Welt herum. Friedliche greift man nur an, wenn man will,
 // bösartige jagen dich. Manchmal springt auch einer aus dem hohen Gras.
+// Wer wo auftaucht, richtet sich nach dem Lebensraum (hab in daten.js): Rehe und Raupen auf Wiesen, Frösche am Wasser,
+// Eulen und Fledermäuse nachts bei Bäumen. Tiere mit herde kommen in Gruppen, die dem Anführer folgen. Insgesamt ist es eher ruhig.
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
-  const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, spawnT: 0 };
-  const MAX = 15, RAD_MIN = 9, RAD_MAX = 22, DESPAWN = 36, LEBEN = 240000;
+  const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
+  const MAX_GRUPPEN = 5, MAX_TIERE = 12, RAD_MIN = 10, RAD_MAX = 24, DESPAWN = 38, LEBEN = 300000;
+  const RAR_FAKTOR = [1, 0.6, 0.22, 0.1];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
     if (Welt.blockiert(x - 0.3, y - 0.2) || Welt.blockiert(x + 0.3, y - 0.2) || Welt.blockiert(x - 0.3, y + 0.25) || Welt.blockiert(x + 0.3, y + 0.25)) return false;
@@ -13,20 +16,96 @@
   }
   W.boese = m => !!CAM.FAMILIEN[m.fam].bos;
 
-  W.spawnen = function (now) {
-    const bi = Welt.biomeAt(S.x, S.y);
-    for (let versuch = 0; versuch < 8; versuch++) {
-      const a = Math.random() * 6.283, r = RAD_MIN + Math.random() * (RAD_MAX - RAD_MIN);
+  // Was gibt es rund um einen Punkt? (Wasser, Bäume, Felsen … im Umkreis von 3 Feldern)
+  function ort(x, y) {
+    const c = { wasser: 0, baum: 0, fels: 0, lava: 0, grab: 0, kristall: 0 }, x0 = Math.floor(x), y0 = Math.floor(y);
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      const t = Welt.get(x0 + dx, y0 + dy);
+      if (t === T.WASSER) c.wasser++; else if (t === T.BAUM) c.baum++; else if (t === T.FELS) c.fels++; else if (t === T.LAVA) c.lava++;
+      else if (t === T.GRAB) { c.grab++; c.baum++; } else if (t === T.KRISTALL) { c.kristall++; c.fels++; }
+    }
+    return { tile: Welt.get(x0, y0) === T.GRAS ? 'gras' : 'boden', c };
+  }
+  // Wie gut passt der Ort, die Tageszeit und das Wetter zu diesem Mob? 0 = gar nicht
+  function passt(f, o, nacht, wetter) {
+    const h = f.hab || {};
+    let m = RAR_FAKTOR[f.rar] || 1;
+    if (h.tile && h.tile !== o.tile) return 0;
+    if (h.nah) {
+      const l = [].concat(h.nah);
+      if (!l.some(n => o.c[n] >= (h.min || (n === 'baum' ? 2 : 1)))) return 0;
+    }
+    if (h.zeit === 'nacht') m *= nacht ? 3 : (h.streng ? 0 : 0.2);
+    else if (h.zeit === 'tag') m *= nacht ? (h.streng ? 0 : 0.25) : 1.5;
+    if (h.wetter) m *= h.wetter.includes(wetter) ? 4 : (h.streng ? 0 : 0.15);
+    return m;
+  }
+  // Welche Familie lebt hier? null, wenn am Ort niemand passt (dann taucht auch nichts auf)
+  W.waehle = function (x, y, now, opt) {
+    const bi = Welt.biomeAt(x, y), B = CAM.BIOME[bi], o = ort(x, y);
+    if (opt && opt.tile) o.tile = opt.tile;
+    const sais = CAM.saison(now), nacht = CAM.tageslicht(now) < 0.35, w = CAM.wetterBei(bi, now);
+    let tot = 0;
+    const l = B.spawn.map(([fam, g0]) => {
+      const f = CAM.FAMILIEN[fam]; let g = g0 * passt(f, o, nacht, w);
+      if (f.el === CAM.SAISON_BONUS[sais]) g *= 1.5;
+      if (nacht && !(f.hab && f.hab.zeit) && (f.el === 'Schatten' || f.el === 'Licht' || f.el2 === 'Schatten')) g *= 1.8;
+      if (w === 'gewitter' && f.el === 'Luft') g *= 1.8;
+      if (w === 'regen' && f.el === 'Wasser') g *= 1.5;
+      tot += g; return [fam, g];
+    });
+    if (tot <= 0) return null;
+    let r = Math.random() * tot, fam = l[0][0];
+    for (const [f, g] of l) { r -= g; if (r <= 0) { fam = f; break; } }
+    // Spezial-Mobs: nur unter besonderen Umständen
+    if (nacht && w === 'klar' && Math.random() < 0.012) fam = 24;
+    else if (w === 'blutmond' && Math.random() < 0.05) fam = 25;
+    return fam;
+  };
+  // Ein wilder Mob passend zum Ort (Stufe richtet sich nach der Entfernung zum Start)
+  W.wildMob = function (x, y, now, fam, lv) {
+    if (fam == null) {
+      fam = W.waehle(x, y, now);
+      if (fam == null) { const sp = CAM.BIOME[Welt.biomeAt(x, y)].spawn; fam = sp[Math.floor(Math.random() * sp.length)][0]; }
+    }
+    return CAM.neuerMob(fam, lv || Welt.wildLevel(x, y, Math.random()), { glanz: Math.random() < 1 / 64 });
+  };
+
+  function neu(mob, x, y, now, herde, fuehrer) {
+    const f = CAM.FAMILIEN[mob.fam], sc = f.hab && f.hab.scheu;
+    const w = { id: W.nextId++, mob, x, y, dir: Math.floor(Math.random() * 4), z: 'ruhe', t: 1 + Math.random() * 3, tx: x, ty: y, geboren: now, ruheBis: 0, scheu: sc === undefined ? Math.random() < 0.45 || !!f.spezial : (!!sc || !!f.spezial), geht: false, huepf: 0, herde, fuehrer, lauf: Math.random() * 4 };
+    W.liste.push(w);
+    return w;
+  }
+  W.spawnen = function (now, nah) {
+    const r0 = nah ? 6 : RAD_MIN, r1 = nah ? 15 : RAD_MAX;
+    for (let versuch = 0; versuch < 12; versuch++) {
+      const a = Math.random() * 6.283, r = r0 + Math.random() * (r1 - r0);
       const x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
       if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6) continue;
       const t = Welt.get(x, y);
       if ((t !== T.BODEN && t !== T.GRAS) || !gehbar(x, y)) continue;
-      const mob = CAM.A.wildMob(x, y, now);
+      const fam = W.waehle(x, y, now);
+      if (fam == null) continue;
+      const f = CAM.FAMILIEN[fam], h = f.hab || {};
       // bösartige Mobs gibt es nachts öfter
-      if (W.boese(mob) && CAM.tageslicht(now) > 0.6 && Math.random() < 0.4) continue;
-      W.liste.push({ id: W.nextId++, mob, x, y, dir: Math.floor(Math.random() * 4), z: 'ruhe', t: 1 + Math.random() * 3, tx: x, ty: y, geboren: now, ruheBis: 0, scheu: Math.random() < 0.45 || !!CAM.FAMILIEN[mob.fam].spezial, geht: false, huepf: 0 });
-      return;
+      if (f.bos && CAM.tageslicht(now) > 0.6 && Math.random() < 0.4) continue;
+      const lv = Welt.wildLevel(x, y, Math.random());
+      const n = h.herde ? h.herde[0] + Math.floor(Math.random() * (h.herde[1] - h.herde[0] + 1)) : 1;
+      const id = W.nextHerde++;
+      neu(W.wildMob(x, y, now, fam, lv), x, y, now, id, true);
+      for (let i = 1; i < n; i++) {
+        for (let k = 0; k < 6; k++) {
+          const b = Math.random() * 6.283, d = 0.9 + Math.random() * 1.8, hx = x + Math.cos(b) * d, hy = y + Math.sin(b) * d;
+          const ht = Welt.get(hx, hy);
+          if ((ht !== T.BODEN && ht !== T.GRAS) || !gehbar(hx, hy)) continue;
+          neu(W.wildMob(hx, hy, now, fam, Math.max(2, lv + Math.floor(Math.random() * 3) - 1)), hx, hy, now, id, false);
+          break;
+        }
+      }
+      return true;
     }
+    return false;
   };
   W.entfernen = w => { W.liste = W.liste.filter(x => x !== w); };
   W.naechster = function (x, y, rad) {
@@ -43,12 +122,17 @@
   }
 
   W.update = function (dt, now, frei) {
-    // Neue nachspawnen
+    // Neue nachspawnen: selten, und nur wenige Gruppen gleichzeitig
+    if (W.fuell > 0 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) { W.fuell--; W.spawnen(now, true); }
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
-      W.spawnT = 0.8;
-      if (W.liste.length < MAX && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
+      W.spawnT = 4 + Math.random() * 5;
+      const gruppen = new Set(W.liste.map(w => w.herde)).size;
+      if (gruppen < MAX_GRUPPEN && W.liste.length < MAX_TIERE && Math.random() < 0.7 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
     }
+    const fuehrer = {};
+    for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;
+    for (const w of W.liste) if (!fuehrer[w.herde]) { w.fuehrer = true; fuehrer[w.herde] = w; }   // Anführer weg: der nächste übernimmt
     const sicher = Welt.istSicher(S.x, S.y);
     for (const w of W.liste.slice()) {
       const d = Math.hypot(w.x - S.x, w.y - S.y);
@@ -64,6 +148,7 @@
         if (now - w.alarm > 450) { vx = ux; vy = uy; tempo = 3.4; }
         if (d < 0.95 && now - w.alarm > 450) {
           w.z = 'ruhe'; w.t = 2;
+          for (const o of W.liste) if (o.herde === w.herde && o !== w) { o.ruheBis = now + 15000; o.z = 'ruhe'; }   // der Rest der Gruppe wartet den Kampf ab
           CAM.A.wildKampf(w.mob, { intro: 'Ein bösartiger ' + CAM.name(w.mob) + ' (Lv ' + w.mob.lv + ') greift dich an!', entity: w, erster: 1 });
           continue;
         }
@@ -73,20 +158,26 @@
         w.z = 'flieht'; vx = (w.x - S.x) / (d || 1); vy = (w.y - S.y) / (d || 1); tempo = 2.6;
       } else {
         w.t -= dt;
+        const fu = fuehrer[w.herde], folgt = fu && fu !== w;
         if (w.z === 'flieht') w.z = 'ruhe';
-        if (w.z === 'ruhe' && w.t <= 0) {
-          const a = Math.random() * 6.283, r = 1.5 + Math.random() * 4;
-          w.tx = w.x + Math.cos(a) * r; w.ty = w.y + Math.sin(a) * r; w.z = 'geht'; w.t = 2 + Math.random() * 3;
+        if (folgt && w.z !== 'geht' && Math.hypot(fu.x - w.x, fu.y - w.y) > 4.5) {
+          // zu weit vom Anführer weg: aufholen
+          w.tx = fu.x + (Math.random() - 0.5) * 2; w.ty = fu.y + (Math.random() - 0.5) * 2; w.z = 'geht'; w.t = 4; w.eilt = true;
+        } else if (w.z === 'ruhe' && w.t <= 0) {
+          const a = Math.random() * 6.283, r = folgt ? 0.8 + Math.random() * 2.2 : 1.5 + Math.random() * 4;
+          const bx = folgt ? fu.x : w.x, by = folgt ? fu.y : w.y;
+          w.tx = bx + Math.cos(a) * r; w.ty = by + Math.sin(a) * r; w.z = 'geht'; w.t = 2 + Math.random() * 3; w.eilt = false;
         } else if (w.z === 'geht') {
           const dd = Math.hypot(w.tx - w.x, w.ty - w.y);
-          if (dd < 0.2 || w.t <= 0) { w.z = 'ruhe'; w.t = 1.5 + Math.random() * 4; }
-          else { vx = (w.tx - w.x) / dd; vy = (w.ty - w.y) / dd; tempo = 1.1; }
+          if (dd < 0.2 || w.t <= 0) { w.z = 'ruhe'; w.t = folgt ? 1 + Math.random() * 3 : 2 + Math.random() * 5; w.eilt = false; }
+          else { vx = (w.tx - w.x) / dd; vy = (w.ty - w.y) / dd; tempo = w.eilt ? 1.9 : 1.1; }
         }
       }
       w.geht = false;
       if (tempo) {
         const ok = schritt(w, vx * tempo * dt, vy * tempo * dt);
         w.geht = ok;
+        if (ok) w.lauf = (w.lauf + Math.min(11, tempo * 4.6) * dt) % 4;   // Laufbild folgt der Geschwindigkeit
         if (!ok && w.z === 'geht') { w.z = 'ruhe'; w.t = 0.5; }
         if (Math.abs(vx) > Math.abs(vy)) w.dir = vx > 0 ? 1 : 3; else w.dir = vy > 0 ? 2 : 0;
       }
@@ -99,7 +190,8 @@
     const grass = [];
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && Welt.get(S.x + dx, S.y + dy) === T.GRAS) grass.push([Math.floor(S.x) + dx + 0.5, Math.floor(S.y) + dy + 0.5]);
     const start = grass.length ? grass[Math.floor(Math.random() * grass.length)] : [S.x + 1, S.y];
-    const mob = CAM.A.wildMob(S.x, S.y, now);
+    const fam = W.waehle(S.x, S.y, now, { tile: 'gras' });
+    const mob = W.wildMob(S.x, S.y, now, fam);
     S.sp = { mob, x0: start[0], y0: start[1], t0: performance.now(), dauer: 900 };
     S.busy = true; CAM.UI.snd('ruf');
     setTimeout(() => {

@@ -6,7 +6,8 @@
   const R = N / 40;
   const cache = {};
 
-  function draw(fam, stufe, glanz) {
+  function draw(fam, stufe, glanz, ph) {
+    ph = ph == null ? -1 : ph;   // -1 = Standbild, 0..3 = Laufschritt
     const f = CAM.FAMILIEN[fam];
     const cv = document.createElement('canvas'); cv.width = N; cv.height = N;
     const c = cv.getContext('2d');
@@ -40,28 +41,50 @@
     const eye = (x, y, r) => { px(x, y, P.e); if (r) px(x + 1, y, P.e); augen.push([Math.round(x * R), Math.round(y * R), r ? 2 : 1]); };
     const o = f.opt || {};
     const base = 38;           // Standlinie
+    // Laufschritt: Bein i (0 und 3 gehen im Takt, 1 und 2 gegengleich) -> [Versatz nach vorn, Hubhöhe]
+    const gait = (i, amp) => {
+      if (ph < 0) return [0, 0];
+      const a = (ph / 4 + (i === 1 || i === 2 ? 0.5 : 0)) * 6.2832;
+      return [Math.sin(a) * amp * s, Math.max(0, Math.cos(a)) * amp * 0.75 * s];
+    };
+    const wave = (k, sp) => ph < 0 ? 0 : Math.sin(ph * 1.5708 * (sp || 1) + k);
 
     switch (f.kind) {
-      case 'quad': {     // Vierbeiner (Wolf, Bär, Hase)
-        const bx = 18, by = base - 11 * s - 2;
-        ell(bx, by, 11 * s, 6.5 * s, P.b);
-        ell(bx - 2, by + 2, 8 * s, 3.5 * s, P.d);
-        const hx = bx + 11 * s, hy = by - 4 * s;
-        ell(hx, hy, 5.5 * s, 5 * s, P.b);
-        ell(hx + 4 * s, hy + 1.5 * s, 3 * s, 2.2 * s, P.d);   // Schnauze
+      case 'quad': {     // Vierbeiner (Wolf, Bär, Hase, Reh, Einhorn, Steinbock)
+        const slim = !!o.slim, bx = 18, by = base - (slim ? 17 : 11) * s - 2;
+        ell(bx, by, 11 * s, (slim ? 5.2 : 6.5) * s, P.b);
+        ell(bx - 2, by + 2, 8 * s, (slim ? 2.6 : 3.5) * s, P.d);
+        const hx = bx + 11 * s, hy = by - (slim ? 7 : 4) * s, hk = slim ? 0.85 : 1;
+        if (slim) { ell(bx + 9 * s, by - 3.5 * s, 3.4 * s, 5.5 * s, P.b); }
+        if (o.mane) ell(hx - 4 * s, hy + 2 * s + wave(0.5) * 0.6, 4 * s, 5 * s + (slim ? 3 * s : 0), P.a);
+        ell(hx, hy, 5.5 * s * hk, 5 * s * hk, P.b);
+        ell(hx + 4 * s * hk, hy + 1.5 * s, 3 * s * hk, 2.2 * s * hk, P.d);   // Schnauze
         if (o.ears === 'long') { ell(hx - 1, hy - 8 * s, 1.6 * s, 6 * s, P.b); ell(hx + 2, hy - 8 * s, 1.6 * s, 6 * s, P.a); }
         else if (o.ears === 'round') { ell(hx - 2, hy - 5 * s, 2 * s, 2 * s, P.b); ell(hx + 3, hy - 5 * s, 2 * s, 2 * s, P.b); }
         else { tri(hx - 4 * s, hy - 3 * s, hx - 2 * s, hy - 9 * s, hx, hy - 4 * s, P.b); tri(hx + 1, hy - 4 * s, hx + 3 * s, hy - 9 * s, hx + 5 * s, hy - 3 * s, P.b); }
-        for (const lx of [bx - 8 * s, bx - 3 * s, bx + 4 * s, bx + 9 * s]) {
-          rect(lx, by + 4 * s, 3 * s + 1, base - (by + 4 * s), P.d);
-          ell(lx + 1.5 * s + 0.5, base - 1, 2.6 * s + 0.6, 1.4, P.b);                       // Pfote
-          for (let k = 0; k < 3; k++) px(lx + 0.6 * s + k * 0.9 * s, base, '#efe8d8');       // Krallen
-        }
+        [bx - 8 * s, bx - 3 * s, bx + 4 * s, bx + 9 * s].forEach((lx0, i) => {
+          const [gx, gl] = gait(i, slim ? 3.2 : 2.4), lx = lx0 + gx, w = slim ? 2 * s + 0.6 : 3 * s + 1;
+          rect(lx, by + 4 * s, w, base - gl - (by + 4 * s), P.d);
+          if (o.hoof) { rect(lx - 0.3, base - gl - 2, w + 0.6, 2, '#2a2230'); }
+          else {
+            ell(lx + 1.5 * s + 0.5, base - 1 - gl, 2.6 * s + 0.6, 1.4, P.b);                       // Pfote
+            for (let k = 0; k < 3; k++) px(lx + 0.6 * s + k * 0.9 * s, base - gl, '#efe8d8');       // Krallen
+          }
+        });
         if (o.tail === 'flame') { ell(bx - 12 * s, by - 3 * s, 3 * s, 5 * s, P.a); ell(bx - 12 * s, by - 5 * s, 1.6 * s, 3.5 * s, P.e); }
-        else if (o.tail === 'fluff') ell(bx - 12 * s, by - 1, 4 * s, 3.5 * s, P.a);
-        if (o.mane) ell(hx - 4 * s, hy + 2 * s, 4 * s, 5 * s, P.a);
-        if (stufe >= 2 || f.legend) { for (let i = 0; i < 4; i++) tri(bx - 8 * s + i * 5 * s, by - 6 * s, bx - 6 * s + i * 5 * s, by - 10 * s, bx - 4 * s + i * 5 * s, by - 6 * s, P.a); }
-        px(hx + 6.4 * s, hy + 0.4 * s, '#1a1018'); px(hx + 5 * s, hy + 3.2 * s, '#fff'); px(hx + 6 * s, hy + 3.2 * s, '#fff');   // Nase und Fangzähne
+        else if (o.tail === 'fluff') ell(bx - 12 * s + wave(1, 2) * 0.8, by - 1, 4 * s, 3.5 * s, P.a);
+        else if (o.tail === 'short') ell(bx - 11 * s, by - 3 * s, 1.8 * s, 2.4 * s, '#fff2d8');
+        else if (o.tail === 'flow') { for (let i = 0; i < 6; i++) ell(bx - 11 * s - i * 1.3 * s, by - 1 + i * 1.2 * s + wave(i * 0.7, 2) * 1.2, (2.6 - i * 0.2) * s, 2 * s, i % 2 ? P.a : P.b); }
+        if (o.spots) { const rr = CAM.mulberry32(fam * 7 + 3); for (let i = 0; i < 9; i++) { const sx = bx - 8 * s + rr() * 16 * s, sy = by - 4 * s + rr() * 4 * s; ell(sx, sy, 0.9 * s + 0.2, 0.9 * s + 0.2, '#fff2d8'); } }
+        if (o.antler) {
+          const h2 = stufe >= 3 ? 11 : stufe >= 2 ? 8 : 3;
+          for (const dx of [-1, 2.5]) { let x = hx + dx, y = hy - 4.5 * s; for (let i = 0; i < h2; i++) { px(x, y, P.a); px(x + 0.6, y, P.a); x += 0.35; y -= 1; if (i % 3 === 2 && i < h2 - 1) for (let j = 1; j < 4; j++) px(x + j * 0.9, y - j * 0.6, P.a); } }
+        }
+        if (o.horn === 'uni') { const n = Math.round(12 * s) + 4; for (let i = 0; i < n; i++) { const hxx = hx + 2.5 * s + i * 0.5, hyy = hy - 4 * s - i * 0.95; px(hxx, hyy, i % 3 === 0 ? P.e : '#ffffff'); px(hxx + 0.6, hyy, i % 3 === 0 ? '#ffffff' : P.e); } }
+        if (o.horn === 'ibex') { for (let i = 0; i < 16; i++) { const t = i / 15, hxx = hx - 1 - i * 0.85 * s, hyy = hy - 4 * s - Math.sin(t * 2.6) * 8 * s; rect(hxx, hyy, 2, 2, i % 3 === 0 ? P.d : P.a); } }
+        if (stufe >= 2 && !o.antler && !o.horn || f.legend) { for (let i = 0; i < 4; i++) tri(bx - 8 * s + i * 5 * s, by - 6 * s, bx - 6 * s + i * 5 * s, by - 10 * s, bx - 4 * s + i * 5 * s, by - 6 * s, P.a); }
+        px(hx + 6.4 * s * hk, hy + 0.4 * s, '#1a1018');
+        if (!o.herb) { px(hx + 5 * s, hy + 3.2 * s, '#fff'); px(hx + 6 * s, hy + 3.2 * s, '#fff'); }   // Fangzähne (nicht bei Pflanzenfressern)
         eye(hx + 2, hy - 1, true);
         break;
       }
@@ -69,7 +92,7 @@
         const cy = base - 12 * s - 1;
         ell(20, cy, 11 * s, 12 * s, P.b);
         ell(20, cy + 4 * s, 9 * s, 7 * s, P.d);
-        for (let i = -3; i <= 3; i++) rect(20 + i * 3.3 * s, cy + 9 * s, 3 * s, (2 + ((i * i) % 3)) * s + 1, P.b);
+        for (let i = -3; i <= 3; i++) rect(20 + i * 3.3 * s, cy + 9 * s, 3 * s, (2 + ((i * i) % 3)) * s + 1 + wave(i, 1) * 1.6, P.b);
         ell(20, cy - 2 * s, 8 * s, 8 * s, P.b);
         rect(20 - 10 * s, cy, 3 * s, 6 * s, P.d); rect(20 + 8 * s, cy, 3 * s, 6 * s, P.d);   // Arme
         eye(20 - 4 * s, cy - 3 * s, true); eye(20 + 3 * s, cy - 3 * s, true);
@@ -84,10 +107,15 @@
         ell(20, by + 2, 6 * s, 4 * s, P.d);
         ell(27 * (0.9 + 0.1 * s), by - 8 * s, 4.5 * s, 4.2 * s, P.b);                   // Kopf
         tri(31 * (0.9 + 0.1 * s), by - 9 * s, 38, by - 7 * s, 31 * (0.9 + 0.1 * s), by - 5 * s, P.a);    // Schnabel
-        ell(12, by - 3 * s, 9 * s, 4 * s, P.d);                                            // Flügel
-        for (let i = 0; i < 4; i++) tri(3 + i * 3, by - 3 * s, 4 + i * 3, by + 6 * s, 7 + i * 3, by - 1, P.d);
+        const fl = ph < 0 ? 0 : [-4, 0, 4, 0][ph];                                         // Flügelschlag
+        if (o.phoenix) {   // Feuerschweif und Federkrone
+          for (let i = 0; i < 4; i++) tri(10 - i * 2, by + 2 + i * 2 + wave(i) * 1.2, 2 - i * 0.6, by + 8 * s + i * 4 + wave(i + 1) * 1.5, 12 - i * 1.5, by + 7 + i * 2, i % 2 ? P.a : P.e);
+          for (let i = 0; i < 3; i++) tri(24 * (0.9 + 0.1 * s) + i * 2.5, by - 12 * s, 26 * (0.9 + 0.1 * s) + i * 2.5 - 4 + wave(i) * 1.2, by - 20 * s - i * 2, 28 * (0.9 + 0.1 * s) + i * 2.5, by - 12 * s, i % 2 ? P.e : P.a);
+        }
+        ell(12, by - 3 * s + fl * 0.4, 9 * s, 4 * s, P.d);                                 // Flügel
+        for (let i = 0; i < 4; i++) tri(3 + i * 3, by - 3 * s + fl, 4 + i * 3, by + 6 * s + fl * 1.5, 7 + i * 3, by - 1 + fl * 0.5, P.d);
         if (stufe >= 2 || f.legend) { ell(10, by - 9 * s, 5 * s, 3 * s, P.b); for (let i = 0; i < 3; i++) tri(3 + i * 3, by - 9 * s, 4 + i * 3, by - 3 * s, 7 + i * 3, by - 7 * s, P.d); }
-        for (const lx of [17, 22]) { rect(lx, by + 6 * s, 2, base - (by + 6 * s), P.a); for (let k = -1; k <= 1; k++) px(lx + 0.5 + k * 1.5, base, P.a); px(lx + 4, base, P.a); }   // Krallenfüsse
+        [17, 22].forEach((lx0, i) => { const [gx, gl] = gait(i, 2.2), lx = lx0 + gx; rect(lx, by + 6 * s, 2, base - gl - (by + 6 * s), P.a); for (let k = -1; k <= 1; k++) px(lx + 0.5 + k * 1.5, base - gl, P.a); px(lx + 4, base - gl, P.a); });   // Krallenfüsse
         tri(12, by + 2, 4, by + 10 * s, 14, by + 6, P.d);                                   // Schwanz
         eye(28 * (0.9 + 0.1 * s), by - 9 * s, false);
         break;
@@ -103,13 +131,13 @@
           for (let i = 0; i < 9 * s + 3; i++) { px(x, y, P.a); px(x + dir, y, P.d); x += dir * 0.8; y -= 1; if (i % 3 === 2) { for (let j = 1; j < 4 * s + 1; j++) px(x + dir * j, y - j * 0.7, P.a); } }
         }
         rect(20 - 5 * s, hy + 11 * s, 10 * s, base - (hy + 11 * s), P.d);   // Hals / Ranken
-        for (let i = 0; i < 4; i++) { rect(20 - 7 * s + i * 4 * s, hy + 12 * s, 2, base - (hy + 12 * s), P.a); }
+        for (let i = 0; i < 4; i++) { rect(20 - 7 * s + i * 4 * s + wave(i * 1.3) * 1.4, hy + 12 * s, 2, base - (hy + 12 * s), P.a); }
         if (f.opt && f.opt.big) for (let i = 0; i < 6; i++) ell(6 + i * 6, base - 4, 3, 3, P.a);
         break;
       }
       case 'wisp': {     // Flamme / Laterne
         const cy = base - 14 * s - 4;
-        tri(20 - 8 * s, cy + 2, 20, cy - 16 * s, 20 + 8 * s, cy + 2, P.a);
+        tri(20 - 8 * s, cy + 2, 20 + wave(0, 2) * 2, cy - 16 * s - Math.abs(wave(1)) * 3, 20 + 8 * s, cy + 2, P.a);
         ell(20, cy + 4 * s, 9 * s, 10 * s, P.b);
         ell(20, cy + 6 * s, 6 * s, 6 * s, P.a);
         eye(20 - 4 * s, cy + 2 * s, true); eye(20 + 2 * s, cy + 2 * s, true);
@@ -120,9 +148,9 @@
       case 'dragon': {
         const by = base - 11 * s - 3;
         // Schwanz (nach links, leicht nach oben gebogen)
-        for (let i = 0; i < 14; i++) ell(12 - i * 0.95 * s - 1, by + 3 - Math.sin(i / 3) * 2 * s - i * 0.25, Math.max(0.8, (3.4 - i * 0.2) * s), Math.max(0.8, (3 - i * 0.18) * s), i % 3 === 2 ? P.d : P.b);
+        for (let i = 0; i < 14; i++) ell(12 - i * 0.95 * s - 1, by + 3 - Math.sin(i / 3) * 2 * s - i * 0.25 + wave(i * 0.5) * i * 0.12, Math.max(0.8, (3.4 - i * 0.2) * s), Math.max(0.8, (3 - i * 0.18) * s), i % 3 === 2 ? P.d : P.b);
         // Beine
-        for (const lx of [11, 24]) rect(lx * (0.85 + 0.15 * s), by + 4 * s, 3.2 * s + 1, base - (by + 4 * s), P.d);
+        [11, 24].forEach((lx0, i) => { const [gx, gl] = gait(i, 2.4); rect(lx0 * (0.85 + 0.15 * s) + gx, by + 4 * s, 3.2 * s + 1, base - gl - (by + 4 * s), P.d); px(lx0 * (0.85 + 0.15 * s) + gx + 3 * s, base - gl, '#efe8d8'); });
         ell(19, by, 9.5 * s, 5.8 * s, P.b);
         ell(19, by + 3 * s, 7.5 * s, 2.8 * s, P.a);                                          // Bauch
         // Hals und Kopf
@@ -135,8 +163,9 @@
         for (let i = 0; i < 6; i++) tri(11 + i * 3.1 * s, by - 5 * s, 12.5 + i * 3.1 * s, by - 9 * s - (i % 2) * 2, 14 + i * 3.1 * s, by - 5 * s, P.a);
         // Flügel mit Knochenstreben
         if (stufe >= 2 || f.legend) {
-          tri(12, by - 4 * s, 3, by - 20 * s, 24, by - 6 * s, P.d);
-          tri(12, by - 4 * s, 8, by - 12 * s, 21, by - 6 * s, P.a);
+          const wf = ph < 0 ? 0 : [-3, 0, 3, 0][ph];
+          tri(12, by - 4 * s, 3, by - 20 * s + wf, 24, by - 6 * s, P.d);
+          tri(12, by - 4 * s, 8, by - 12 * s + wf * 0.6, 21, by - 6 * s, P.a);
           for (let i = 0; i < 3; i++) { rect(12 + i * 3, by - 5 * s - i * 5, 1, 6, P.b); }
         }
         eye(hx + 1.5 * s, hy - 1, true);
@@ -147,9 +176,9 @@
         ell(20, by, 12 * s, 6.5 * s, P.b);
         ell(20, by + 2, 10 * s, 3 * s, P.d);
         for (const dir of [-1, 1]) {
-          ell(20 + dir * 14 * s, by - 6 * s, 5 * s, 5 * s, P.a);
+          ell(20 + dir * 14 * s, by - 6 * s + wave(dir) * 1.4, 5 * s, 5 * s, P.a);
           rect(20 + dir * 14 * s - 1, by - 12 * s, 2, 4, P.d);
-          for (let i = 0; i < 3; i++) rect(20 + dir * (6 + i * 3) * s, by + 5 * s, 1, base - (by + 5 * s), P.d);
+          for (let i = 0; i < 3; i++) { const [gx, gl] = gait(i + (dir > 0 ? 1 : 0), 1.8); rect(20 + dir * (6 + i * 3) * s + gx * dir, by + 5 * s, 1, base - gl - (by + 5 * s), P.d); }
           rect(20 + dir * 4 * s, by - 9 * s, 1, 4 * s, P.d); px(20 + dir * 4 * s, by - 10 * s, P.e);
         }
         if (stufe >= 2) for (let i = 0; i < 5; i++) tri(20 - 8 * s + i * 4 * s, by - 5 * s, 20 - 6 * s + i * 4 * s, by - 10 * s, 20 - 4 * s + i * 4 * s, by - 5 * s, P.a);
@@ -162,7 +191,8 @@
         ell(20, sy - 6 * s, 13 * s, 8 * s, P.b);
         for (let i = 0; i < 5; i++) ell(20 - 8 * s + i * 4 * s, sy - 8 * s + (i % 2) * 3 * s, 1.6 * s + 0.3, 1.6 * s + 0.3, P.a);
         eye(20 - 3 * s, sy - 1, true); eye(20 + 2 * s, sy - 1, true);
-        rect(20 - 3 * s, sy + 8 * s - 1, 6 * s, 2, P.d);
+        if (ph < 0) rect(20 - 3 * s, sy + 8 * s - 1, 6 * s, 2, P.d);
+        else { const g1 = gait(0, 2.4), g2 = gait(1, 2.4); rect(20 - 4 * s + g1[0], sy + 8 * s - 1 - g1[1], 3 * s, 2, P.d); rect(20 + 1 * s + g2[0], sy + 8 * s - 1 - g2[1], 3 * s, 2, P.d); }
         if (stufe >= 2) { rect(20 + 4 * s, sy - 2 * s, 2, 12 * s, P.d); tri(20 + 3 * s, sy - 2 * s, 20 + 5 * s, sy - 10 * s, 20 + 7 * s, sy - 2 * s, P.a); }
         if (stufe >= 3) { rect(20 - 9 * s, sy - 3 * s, 2, 10 * s, P.d); ell(20 - 8 * s, sy - 4 * s, 3 * s, 3 * s, P.b); }
         break;
@@ -170,7 +200,7 @@
       case 'serpent': {
         const n = Math.round(14 * s) + 8;
         for (let i = n; i >= 0; i--) {
-          const t = i / n, x = 6 + t * 26, y = base - 8 - Math.sin(t * 7) * 6 * s - t * 6;
+          const t = i / n, x = 6 + t * 26, y = base - 8 - Math.sin(t * 7 - (ph < 0 ? 0 : ph * 1.57)) * 6 * s - t * 6;
           ell(x, y, (2.5 + 3 * (1 - t) + 1.5 * (i === 0 ? 1 : 0)) * s + 1, (2.5 + 3 * (1 - t)) * s + 1, i % 3 === 0 ? P.d : P.b);
           if (i % 2 === 0) px(x, y - 2 * s, P.a);
         }
@@ -182,7 +212,8 @@
       }
       case 'golem': {
         const w = 18 * s;
-        rect(20 - w / 2, base - 10 * s, w, 10 * s, P.b);                     // Beine/Sockel
+        if (ph < 0) rect(20 - w / 2, base - 10 * s, w, 10 * s, P.b);                     // Beine/Sockel
+        else { const g0 = gait(0, 2.2), g1 = gait(1, 2.2); rect(20 - w / 2 + g0[0], base - 10 * s, w / 2 - 0.5, 10 * s - g0[1], P.b); rect(20 + 0.5 + g1[0], base - 10 * s, w / 2 - 0.5, 10 * s - g1[1], P.b); }
         rect(20 - w / 2 - 3 * s, base - 22 * s, w + 6 * s, 13 * s, P.b);     // Rumpf
         rect(20 - 6 * s, base - 31 * s, 12 * s, 9 * s, P.b);                 // Kopf
         rect(20 - w / 2 - 7 * s, base - 21 * s, 5 * s, 14 * s, P.d); rect(20 + w / 2 + 2 * s, base - 21 * s, 5 * s, 14 * s, P.d);
@@ -195,14 +226,290 @@
         const hy = base - 27 * s - 1;
         rect(20 - 6 * s, hy + 10 * s, 12 * s, 14 * s, P.b);          // Rumpf
         ell(20, hy + 10 * s, 7 * s, 3 * s, P.d);
-        rect(20 - 5 * s, hy + 22 * s, 4 * s, base - (hy + 22 * s), P.d); rect(20 + 1 * s, hy + 22 * s, 4 * s, base - (hy + 22 * s), P.d);
-        rect(20 - 10 * s, hy + 11 * s, 4 * s, 14 * s, P.d); rect(20 + 6 * s, hy + 11 * s, 4 * s, 14 * s, P.d);
+        { const g0 = gait(0, 2.6), g1 = gait(1, 2.6);
+          rect(20 - 5 * s + g0[0], hy + 22 * s, 4 * s, base - g0[1] - (hy + 22 * s), P.d); rect(20 + 1 * s + g1[0], hy + 22 * s, 4 * s, base - g1[1] - (hy + 22 * s), P.d);
+          rect(20 - 10 * s - g1[0] * 0.6, hy + 11 * s, 4 * s, 14 * s, P.d); rect(20 + 6 * s - g0[0] * 0.6, hy + 11 * s, 4 * s, 14 * s, P.d); }
         ell(20, hy + 5 * s, 6 * s, 6 * s, P.b);                       // Kopf
         eye(20 - 3 * s, hy + 4 * s, true); eye(20 + 2 * s, hy + 4 * s, true);
         if (o.horns) { tri(20 - 6 * s, hy + 2 * s, 20 - 8 * s, hy - 8 * s, 20 - 2 * s, hy + 1 * s, P.a); tri(20 + 2 * s, hy + 1 * s, 20 + 8 * s, hy - 8 * s, 20 + 6 * s, hy + 2 * s, P.a); }
         if (o.fire) { for (let i = 0; i < 5; i++) tri(20 - 8 * s + i * 4 * s, hy + 14 * s, 20 - 6 * s + i * 4 * s, hy + 6 * s - (i % 2) * 4, 20 - 4 * s + i * 4 * s, hy + 14 * s, P.a); }
         else if (stufe >= 2) { rect(20 - 7 * s, hy + 14 * s, 14 * s, 2, P.a); rect(20 - 1, hy + 10 * s, 2, 12 * s, P.a); }
         if (stufe >= 3 || f.legend) { tri(20 - 9 * s, hy + 12 * s, 20 - 16 * s, hy + 26 * s, 20 - 5 * s, hy + 24 * s, P.d); tri(20 + 9 * s, hy + 12 * s, 20 + 16 * s, hy + 26 * s, 20 + 5 * s, hy + 24 * s, P.d); }
+        break;
+      }
+      case 'raupe': {    // Raupe: Rücken wellt sich beim Laufen, Beinchen unten
+        const n = 3 + stufe, rr = 2.8 * s + 1.2, sp = rr * 1.4, x0 = 20 - ((n - 1) * sp) / 2;
+        for (let i = 0; i < n; i++) {
+          const lift = ph < 0 ? Math.sin(i * 0.8) * 0.8 : Math.max(0, Math.sin(i * 1.1 - ph * 1.5708)) * 3.4 * s;
+          const x = x0 + i * sp, cy = base - rr - 1 - lift, kopf = i === n - 1;
+          rect(x - 0.5, cy + rr * 0.6, 1.2, base - (cy + rr * 0.6) - (lift > 1.5 ? 0 : 0), P.d);
+          ell(x, cy, rr + (kopf ? 0.9 : 0), rr + (kopf ? 0.7 : 0), kopf ? P.b : (i % 2 ? P.b : P.a));
+          ell(x, cy + rr * 0.4, rr * 0.8, rr * 0.45, P.d);
+          if (!kopf && stufe >= 2) { px(x, cy - rr, P.e); px(x + 1, cy - rr + 1, P.e); }
+          if (!kopf && stufe >= 3 && i % 2) tri(x - 1.2, cy - rr + 1, x, cy - rr - 2 * s - 1, x + 1.2, cy - rr + 1, P.a);
+          if (kopf) {
+            eye(x + 1, cy - 1.2, true);
+            px(x + rr + 0.2, cy + 1.6, '#1a1018');
+            for (const d of [-1, 1]) { rect(x + d * 1.4, cy - rr - 3, 1, 3, P.d); px(x + d * 1.4 + (d > 0 ? 1 : -1), cy - rr - 4, P.a); }
+          }
+        }
+        if (stufe >= 3) { const xm = x0 + 2.5 * sp, yy = base - rr * 2 - 1; tri(xm - 2, yy, xm - 6 * s, yy - 9 * s, xm + 1, yy - 1, P.a); tri(xm + 1, yy, xm + 5 * s, yy - 8 * s - wave(0) * 1.2, xm + 4, yy - 1, P.e); }
+        break;
+      }
+      case 'falter': {   // Schmetterling: Flügel klappen beim Laufen
+        const sp = ph < 0 ? 1 : [1, 0.55, 0.2, 0.55][ph], by = base - 16 * s - 5 + (ph < 0 ? 0 : (ph % 2 ? 1.5 : -1.5));
+        for (const d of [-1, 1]) {
+          const wx = 20 + d * (3 + 6.5 * sp) * s;
+          ell(wx, by - 5 * s, (5.5 * sp + 1) * s, 7 * s, P.b);           // Vorderflügel
+          ell(wx, by - 5 * s, (3.4 * sp + 0.5) * s, 4.4 * s, P.a);
+          ell(wx - d * 0.5, by + 4 * s, (4 * sp + 0.8) * s, 5 * s, P.d); // Hinterflügel
+          ell(wx - d * 0.5, by + 4.5 * s, (2.2 * sp + 0.4) * s, 2.6 * s, P.a);
+          if (sp > 0.4) { ell(wx + d * 0.5, by - 6 * s, 1.3 * s, 1.3 * s, P.e); }
+          if (stufe >= 3) tri(wx + d * 2 * sp * s, by + 8 * s, wx + d * 3 * sp * s, by + 15 * s, wx - d * 1 * s, by + 8 * s, P.d);   // Schwalbenschwanz
+        }
+        ell(20, by + 1, 2.1 * s + 0.4, 7.5 * s, P.d);                    // Körper
+        ell(20, by - 6 * s, 2.7 * s, 2.7 * s, P.b);                      // Kopf
+        eye(20 - 1.4, by - 6.5 * s, false); px(20 + 1.5, by - 6.5 * s, P.e);
+        for (const d of [-1, 1]) { px(20 + d * 2, by - 9 * s, P.a); px(20 + d * 3.2, by - 11 * s - wave(d) * 0.8, P.a); px(20 + d * 4, by - 12 * s - wave(d), P.e); }
+        break;
+      }
+      case 'hummel': {   // Hummel mit Streifen und schwirrenden Flügeln
+        const by = base - 14 * s - 4 + (ph < 0 ? 0 : (ph % 2 ? 1.2 : -1.2)), wl = ph < 0 ? 0 : [-4, 0, 3, 0][ph];
+        ell(16, by - 7 * s - 1 + wl * 0.5, 7 * s, 3.2 * s, 'rgba(230,240,255,0.9)'); ell(21, by - 8 * s - 1 - wl * 0.4, 6 * s, 2.6 * s, 'rgba(210,225,250,0.9)');
+        ell(17, by, 9 * s, 6 * s, P.b);
+        for (let i = 0; i < 3; i++) rect(11 * s + 3 + i * 4 * s - 3, by - 5 * s, 2 * s + 0.6, 10 * s, P.d);
+        tri(17 - 8 * s, by - 1, 17 - 8 * s - 5, by + 1, 17 - 8 * s, by + 3, P.a);   // Stachel
+        ell(27 * (0.9 + 0.1 * s), by - 1, 4.4 * s, 4.2 * s, P.b);
+        ell(26 * (0.9 + 0.1 * s) + 2, by + 1.5, 2.6 * s, 2 * s, P.a);
+        eye(27 * (0.9 + 0.1 * s) + 1, by - 2.5 * s, true);
+        for (const d of [0, 1]) { px(27 * (0.9 + 0.1 * s) + d * 3, by - 5.5 * s, P.d); px(27 * (0.9 + 0.1 * s) + d * 3 + 1, by - 6.5 * s, P.a); }
+        for (let i = 0; i < 3; i++) { const [gx, gl] = gait(i, 1.3); rect(12 + i * 4 * s + gx, by + 5 * s, 1, 4 * s - gl, P.d); }
+        if (stufe >= 3) { for (let i = 0; i < 4; i++) tri(10 + i * 3 * s, by - 5 * s, 11.5 + i * 3 * s, by - 9 * s, 13 + i * 3 * s, by - 5 * s, P.e); }
+        break;
+      }
+      case 'schildkroete': {
+        const by = base - 8 * s - 4;
+        const [g0, g1, g2, g3] = [0, 1, 2, 3].map(i => gait(i, 1.6));
+        rect(11 * s + g0[0], by + 3 * s, 4 * s + 1, base - g0[1] - (by + 3 * s), P.d); rect(25 * s + g3[0], by + 3 * s, 4 * s + 1, base - g3[1] - (by + 3 * s), P.d);   // hinten / vorn
+        ell(20, by, 13 * s, 8.5 * s, P.b);                                // Panzer
+        ell(20, by + 6 * s, 12 * s, 3 * s, P.a);                          // Bauchplatte
+        for (let i = -2; i <= 2; i++) { ell(20 + i * 5 * s, by - 2 * s - (Math.abs(i) === 2 ? -2 * s : 0), 2.6 * s, 2.3 * s, P.d); ell(20 + i * 5 * s, by - 3 * s - (Math.abs(i) === 2 ? -2 * s : 0), 1.8 * s, 1.5 * s, i % 2 ? P.b : P.a); }
+        rect(14 * s + g1[0], by + 3 * s, 4 * s + 1, base - g1[1] - (by + 3 * s), P.d); rect(30 * s + g2[0] - 4 * s, by + 3 * s, 4 * s + 1, base - g2[1] - (by + 3 * s), P.d);
+        const hx = 20 + 13 * s + 1 + wave(0, 1) * 0.8;                    // Kopf auf langem Hals
+        rect(20 + 9 * s, by - 2 * s, 5 * s, 4 * s, P.d); ell(hx + 1, by - 1 * s, 4 * s, 3.6 * s, P.d); ell(hx + 3 * s, by, 2.6 * s, 2 * s, P.d);
+        eye(hx + 1, by - 2 * s, true);
+        tri(2 + 20 - 14 * s, by + 2 * s, 20 - 17 * s, by + 4 * s + wave(1) * 1, 20 - 13 * s, by + 5 * s, P.d);   // Schwanz
+        if (stufe >= 2) for (let i = 0; i < 4; i++) tri(20 - 9 * s + i * 5 * s, by - 7 * s, 20 - 7.5 * s + i * 5 * s, by - 12 * s, 20 - 6 * s + i * 5 * s, by - 7 * s, P.a);
+        if (stufe >= 3) for (let i = 0; i < 3; i++) { tri(20 - 6 * s + i * 6 * s, by - 9 * s, 20 - 4.5 * s + i * 6 * s, by - 17 * s, 20 - 3 * s + i * 6 * s, by - 9 * s, P.e); }
+        break;
+      }
+      case 'frosch': {   // Frosch: hüpft statt zu laufen
+        const ex = ph < 0 ? 0 : [0, 0.5, 1, 0.5][ph], lift = ex * 3.5, by = base - 9 * s - 2 - lift;
+        const bk = 20 - 5 * s - ex * 4 * s;
+        ell(20, by, 11 * s, 7 * s, P.b);                                // Körper
+        ell(20, by + 3 * s, 9 * s, 3.4 * s, P.a);                       // heller Bauch
+        // Hinterbeine: zusammengelegt oder gestreckt
+        ell(bk + 3, by + 3 * s, 5 * s, 3.4 * s, P.b);
+        rect(bk - 3 * s - ex * 5 * s, base - 2 - lift * 0.2 * (1 - ex), 7 * s + ex * 6 * s, 2, P.d); ell(bk - 3 * s - ex * 5 * s + 1, base - 1.2, 3 * s + 1, 1.3, P.b);
+        rect(20 + 9 * s, by + 3 * s, 3 * s, base - (by + 3 * s) - lift * 0.1, P.d); ell(20 + 10.5 * s + 1, base - 1, 3 * s, 1.3, P.b);   // Vorderbein
+        const hx = 20 + 7 * s;                                          // Kopf
+        ell(hx, by - 3 * s, 6 * s, 4.6 * s, P.b);
+        rect(hx - 2, by - 1 * s + 1, 9 * s, 1, P.d);                    // Maul
+        ell(hx - 1 * s, by - 8 * s, 2.7 * s, 2.7 * s, P.b); ell(hx + 4 * s, by - 8 * s, 2.7 * s, 2.7 * s, P.b);   // Glubschaugen
+        eye(hx - 1.6 * s, by - 8.5 * s, true); eye(hx + 3.4 * s, by - 8.5 * s, true);
+        ell(hx + 2 * s, by + 0.5 * s, 3 * s, 2 * s + wave(0, 2) * 0.5, P.a);   // Kehlsack
+        if (stufe >= 2) for (let i = 0; i < 5; i++) ell(20 - 8 * s + i * 4 * s, by - 5 * s + (i % 2) * 2 * s, 1.2 * s + 0.3, 1.2 * s + 0.3, P.e);
+        if (stufe >= 3) { for (let i = 0; i < 5; i++) tri(hx - 5 * s + i * 2.6 * s, by - 10 * s, hx - 4 * s + i * 2.6 * s, by - 16 * s - (i % 2) * 3, hx - 3 * s + i * 2.6 * s, by - 10 * s, P.a); }
+        break;
+      }
+      case 'schnecke': {
+        const st = ph < 0 ? 0 : [0, 1.2, 2.4, 1.2][ph] * s, by = base - 3;
+        for (let i = 0; i <= 12; i++) { const t = i / 12; ell(7 + t * (14 * s + 8) + st * t, by - (1 - t) * 1 - Math.sin(t * 3.1) * 1.2 * s, (4.2 - 2.4 * t) * s + 1, (3.3 - 1.4 * t) * s + 0.8, i % 2 ? P.d : P.b); }   // Fuss
+        const hx = 7 + 14 * s + 8 + st;
+        ell(hx - 2, by - 7 * s, 3.2 * s, 6 * s, P.b);                    // Hals
+        ell(hx, by - 12 * s, 3.6 * s, 3.2 * s, P.b);                     // Kopf
+        for (const d of [-1, 1]) { rect(hx + d * 2.4, by - 20 * s + 3, 1, 8 * s, P.d); ell(hx + d * 2.4 + 0.5, by - 20 * s + 3, 1.5 * s, 1.5 * s, P.a); px(hx + d * 2.4 + 0.5, by - 20 * s + 3, P.e); }
+        eye(hx - 0.5, by - 12 * s, true);
+        px(hx + 3 * s, by - 11 * s, '#1a1018');
+        const sx = 15 - st * 0.2, sy = by - 11 * s - 2;                  // Schneckenhaus mit Spirale
+        ell(sx, sy, 10 * s, 10 * s, P.a); ell(sx, sy, 8.2 * s, 8.2 * s, P.b);
+        for (let a = 0; a < 15; a += 0.22) { const rr = 1 + a * 0.42 * s; px(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr, P.d); if (a > 4) px(sx + Math.cos(a) * rr + 1, sy + Math.sin(a) * rr, P.e); }
+        if (stufe >= 2) for (let i = 0; i < 3; i++) tri(sx - 6 * s + i * 6 * s, sy - 7 * s, sx - 5 * s + i * 6 * s, sy - 12 * s, sx - 3 * s + i * 6 * s, sy - 7 * s, P.a);
+        if (stufe >= 3) { rect(sx - 1, sy - 14 * s, 2, 6 * s, P.d); ell(sx, sy - 15 * s, 3, 3, P.e); }
+        break;
+      }
+      case 'qualle': {   // schwebende Leuchtqualle
+        const pu = ph < 0 ? 0 : wave(0, 1) * 0.12, cy = base - 22 * s - 3, rx = 11 * s * (1 + pu), ry = 9 * s * (1 - pu);
+        for (let i = 0; i < 6; i++) {            // Fangarme
+          const x = 20 - 8 * s + i * 3.2 * s, len = (9 + (i % 3) * 5) * s + (stufe >= 3 ? 6 : 0);
+          for (let k = 0; k < len; k++) px(x + Math.sin(k * 0.5 + i + (ph < 0 ? 0 : ph * 1.57)) * 1.4, cy + 4 * s + k, k % 4 === 0 ? P.a : P.d);
+        }
+        for (const d of [-1, 1]) for (let k = 0; k < 7 * s + 3; k++) rect(20 + d * 3 * s + Math.sin(k * 0.6 + d + (ph < 0 ? 0 : ph * 1.2)) * 2, cy + 5 * s + k, 2, 1, P.b);   // Mundarme
+        ell(20, cy, rx, ry, P.b);                                         // Schirm
+        rect(20 - rx, cy, rx * 2, 3 * s, P.b);
+        ell(20, cy + 1, rx * 0.75, ry * 0.6, P.a);                       // Leuchtkern
+        for (let i = 0; i < 5; i++) ell(20 - rx + 1 + i * (rx * 2 - 2) / 4, cy + 3 * s + 1, 1.8 * s, 1.6 * s, P.d);   // Rand
+        eye(20 - 4 * s, cy - 1 * s, true); eye(20 + 2 * s, cy - 1 * s, true);
+        if (stufe >= 2) for (let i = 0; i < 5; i++) px(20 - 6 * s + i * 3 * s, cy - ry + 1, P.e);
+        if (stufe >= 3) { tri(20 - 4 * s, cy - ry + 2, 20, cy - ry - 8 * s, 20 + 4 * s, cy - ry + 2, P.a); }
+        break;
+      }
+      case 'skorpion': {
+        const by = base - 6 * s - 2;
+        for (let i = 0; i < 4; i++) {            // 8 Beine (4 sichtbar je Seite)
+          const [gx, gl] = gait(i, 2.2), lx = 14 + i * 3.4 * s;
+          for (let k = 0; k < 6; k++) px(lx + k * 0.3 * (i < 2 ? -1 : 1) + gx * (k / 6), by + 3 * s + k * (base - by - 3 * s) / 6 - (k > 4 ? gl : 0), P.d);
+          rect(lx + gx * 1 - (i < 2 ? 2 : -1), base - 1 - gl, 3, 1, P.d);
+        }
+        for (let i = 0; i < 5; i++) ell(18 - i * 1.2 * s + 2, by + (i % 2) * 0.5, (7 - i * 0.6) * s, (4.4 - i * 0.2) * s, i % 2 ? P.d : P.b);   // Rumpf in Segmenten
+        ell(24 * (0.9 + 0.1 * s), by - 1, 5 * s, 4.2 * s, P.b);                    // Kopf
+        eye(25 * (0.9 + 0.1 * s), by - 2 * s, true);
+        const cl = wave(0, 2) * 1.2;
+        for (const [dy, dd] of [[-4, 0], [3, 1]]) {   // Scheren
+          const cx = 28 * (0.9 + 0.1 * s), cyy = by + dy * s;
+          rect(cx - 3, cyy + 0.5, 4 * s, 1.6, P.d);
+          ell(cx + 4 * s, cyy + cl * (dd ? -1 : 1), 3.4 * s, 2.5 * s, P.a); tri(cx + 6 * s, cyy - 1.6 * s, cx + 9 * s, cyy + 0.5 + cl, cx + 6 * s, cyy + 0.8, P.d);
+        }
+        let tx = 11, ty = by - 2;                 // Schwanz mit Stachel (bogenförmig nach vorn)
+        for (let i = 0; i < 11 + stufe * 2; i++) { const a = i * 0.28 + wave(i * 0.3) * 0.08; ell(tx, ty, Math.max(1.1, (2.6 - i * 0.1) * s), Math.max(1.1, (2.6 - i * 0.1) * s), i % 2 ? P.b : P.d); tx = 9 + Math.sin(a + 0.4) * (9 * s) * 0.55 + i * 0.1; ty = by - 2 - i * 1.5 * s - (i > 6 ? -(i - 6) * 0.6 : 0); tx += (i > 5 ? (i - 5) * 0.9 : 0); }
+        tri(tx, ty - 1, tx + 5, ty + 3, tx + 1, ty + 3, P.a); tri(tx + 3, ty + 2, tx + 4, ty + 6, tx + 1, ty + 3, P.e);
+        if (stufe >= 2) for (let i = 0; i < 4; i++) tri(14 + i * 3 * s, by - 4 * s, 15.5 + i * 3 * s, by - 7 * s, 17 + i * 3 * s, by - 4 * s, P.a);
+        break;
+      }
+      case 'spinne': {
+        const by = base - 12 * s - 4;
+        for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) {   // 8 Beine: hoch zum Knie, dann schräg nach unten
+          const [gx, gl] = gait(i + (sx > 0 ? 1 : 0), 2), ax = 20 + sx * 1.5, ay = by + 1 + (i - 1.5) * 0.8 * s;
+          const kx = 20 + sx * (4 + i * 1.6) * s, ky = by - (7 + (i === 1 || i === 2 ? 3 : 0)) * s;
+          const fx = kx + sx * (2 + i * 1.4) * s + gx, fy = base - gl;
+          for (let k = 0; k <= 8; k++) { const q = k / 8; rect(ax + (kx - ax) * q, ay + (ky - ay) * q - Math.sin(q * 3.1) * 1.5 * s, 1.4, 1.4, k % 3 === 1 ? P.b : P.d); }
+          for (let k = 0; k <= 12; k++) { const q = k / 12; rect(kx + (fx - kx) * q, ky + (fy - ky) * q, 1.4, 1.4, k % 3 === 1 ? P.b : P.d); }
+        }
+        ell(15, by + 2 * s, 8.5 * s, 7.5 * s, P.b);                       // Hinterleib
+        ell(15, by + 3 * s, 6 * s, 4.5 * s, P.d);
+        if (stufe >= 2) { tri(12, by - 1 * s, 15, by + 4 * s, 18, by - 1 * s, P.a); rect(14, by + 4 * s - 1, 2, 2, P.e); }
+        ell(25 * (0.9 + 0.1 * s), by, 5.5 * s, 4.6 * s, P.b);             // Vorderleib
+        for (const [ex, ey] of [[0, 0], [2, -1.5], [3.5, 0.5]]) { px(25 * (0.9 + 0.1 * s) + ex * s, by - 1 * s + ey, P.e); px(25 * (0.9 + 0.1 * s) + ex * s + 1, by - 1 * s + ey, P.e); }
+        augen.push([Math.round((25 * (0.9 + 0.1 * s) + 1) * R), Math.round((by - 1 * s) * R), 2]);
+        tri(27 * (0.9 + 0.1 * s), by + 2 * s, 28.5 * (0.9 + 0.1 * s), by + 8 * s + wave(0, 2) * 1, 30 * (0.9 + 0.1 * s), by + 3 * s, P.a);   // Kieferklauen
+        if (stufe >= 3) for (let i = 0; i < 3; i++) tri(9 + i * 4, by - 5 * s, 10.5 + i * 4, by - 9 * s, 12 + i * 4, by - 5 * s, P.a);
+        break;
+      }
+      case 'fledermaus': {
+        const by = base - 20 * s - 2 + (ph < 0 ? 0 : (ph % 2 ? 1.5 : -1.5)), fl = ph < 0 ? 0.3 : [-1, 0, 1, 0][ph];   // Flügelstellung -1 oben, 1 unten
+        for (const d of [-1, 1]) {   // Flügel mit Fingerknochen
+          const tipY = by - 3 * s + fl * 8 * s, tipX = 20 + d * 17 * s;
+          const midY = by - 5 * s + fl * 5 * s;
+          tri(20 + d * 3 * s, by - 1, tipX, tipY, 20 + d * 5 * s, by + 8 * s, P.d);
+          tri(20 + d * 3 * s, by - 3 * s, 20 + d * 12 * s, midY - 8 * s, tipX, tipY, P.b);
+          tri(20 + d * 5 * s, by + 8 * s, 20 + d * 11 * s, by + 5 * s + fl * 4 * s, tipX, tipY, P.d);
+          for (let k = 0; k <= 8; k++) px(20 + d * (3 * s + (tipX - 20 - d * 3 * s) * d * k / 8 * d), by - 1 + (tipY - by + 1) * k / 8, P.a);
+        }
+        ell(20, by + 2, 4.4 * s, 6 * s, P.b);                               // Körper
+        ell(20, by + 4 * s, 3 * s, 3.4 * s, P.d);
+        ell(20, by - 6 * s, 4.2 * s, 3.8 * s, P.b);                         // Kopf
+        tri(20 - 4 * s, by - 7 * s, 20 - 5 * s, by - 14 * s, 20 - 1.4 * s, by - 8 * s, P.b); tri(20 + 1.4 * s, by - 8 * s, 20 + 5 * s, by - 14 * s, 20 + 4 * s, by - 7 * s, P.b);   // Ohren
+        tri(20 - 3.4 * s, by - 8 * s, 20 - 4.2 * s, by - 12 * s, 20 - 1.8 * s, by - 8.4 * s, P.a); tri(20 + 1.8 * s, by - 8.4 * s, 20 + 4.2 * s, by - 12 * s, 20 + 3.4 * s, by - 8 * s, P.a);
+        eye(20 - 3 * s, by - 6.5 * s, false); eye(20 + 1.6 * s, by - 6.5 * s, false);
+        px(20 - 1.4 * s, by - 3.2 * s, '#fff'); px(20 + 1.4 * s, by - 3.2 * s, '#fff');   // Fangzähne
+        for (const d of [-1, 1]) { const [gx, gl] = gait(d > 0 ? 1 : 0, 1.4); rect(20 + d * 2 * s + gx, by + 7 * s, 1.4, 4 * s - gl, P.d); }
+        if (stufe >= 3) for (let i = 0; i < 3; i++) tri(20 - 3 * s + i * 3 * s, by - 9 * s, 20 - 2 * s + i * 3 * s, by - 13 * s, 20 - 1 * s + i * 3 * s, by - 9 * s, P.e);
+        break;
+      }
+      case 'eule': {
+        const wd = ph < 0 ? 0 : wave(0, 2) * 0.9, by = base - 13 * s - 3;
+        { const g0 = gait(0, 1.8), g1 = gait(1, 1.8);                       // Füsse watscheln
+          for (const [gg, ox] of [[g0, -3], [g1, 3]]) { rect(20 + ox * s + gg[0], by + 9 * s, 2, base - gg[1] - (by + 9 * s), P.a); for (let k = -1; k <= 1; k++) px(20 + ox * s + gg[0] + 0.5 + k * 1.5, base - gg[1], P.a); } }
+        ell(20 + wd, by + 1, 8.5 * s, 10.5 * s, P.b);                       // Körper
+        ell(20 + wd, by + 3 * s, 5.8 * s, 7 * s, P.d);                      // Brust
+        for (let i = 0; i < 4; i++) for (let j = -1; j <= 1; j++) px(20 + wd + j * 2.4 * s, by + 1 * s + i * 2.2 * s + (j & 1), P.b);   // Brustgefieder
+        for (const d of [-1, 1]) { ell(20 + wd + d * 8.5 * s, by + 1 * s, 2.6 * s, 7.5 * s, P.d); tri(20 + wd + d * 7 * s, by + 6 * s, 20 + wd + d * 10 * s, by + 12 * s, 20 + wd + d * 8 * s, by + 5 * s, P.d); }   // Flügel
+        const hy = by - 9 * s - 1 + (ph < 0 ? 0 : (ph % 2 ? 0.6 : 0));
+        ell(20 + wd, hy, 7.6 * s, 6 * s, P.b);                              // Kopf
+        for (const d of [-1, 1]) tri(20 + wd + d * 4 * s, hy - 4 * s, 20 + wd + d * 6.4 * s, hy - 11 * s - (stufe >= 2 ? 3 : 0), 20 + wd + d * 1.4 * s, hy - 5 * s, P.d);   // Federohren
+        for (const d of [-1, 1]) { ell(20 + wd + d * 3.2 * s, hy + 0.2, 3.1 * s, 3.1 * s, P.a); ell(20 + wd + d * 3.2 * s, hy + 0.2, 2 * s, 2 * s, P.e); }   // Gesichtsscheibe
+        eye(20 + wd - 3.8 * s, hy - 0.3, true); eye(20 + wd + 2.6 * s, hy - 0.3, true);
+        tri(20 + wd - 1.2, hy + 1.5 * s, 20 + wd + 1.2, hy + 1.5 * s, 20 + wd, hy + 5 * s, '#e0b050');   // Schnabel
+        if (stufe >= 3) { for (let i = 0; i < 5; i++) tri(20 + wd - 6 * s + i * 3 * s, hy - 6 * s, 20 + wd - 5 * s + i * 3 * s, hy - 11 * s - (i % 2) * 3, 20 + wd - 4 * s + i * 3 * s, hy - 6 * s, P.e); }
+        break;
+      }
+      case 'baum': {    // wandelnder Baumwächter
+        const hy = base - 25 * s - 2, g0 = gait(0, 2.4), g1 = gait(1, 2.4);
+        for (const [gg, ox] of [[g0, -5], [g1, 2]]) {   // Wurzelbeine
+          rect(20 + ox * s + gg[0], hy + 22 * s, 4.2 * s, base - gg[1] - (hy + 22 * s), P.d);
+          for (let k = -1; k <= 1; k++) rect(20 + ox * s + gg[0] + k * 2 * s - 1, base - 1 - gg[1], 2, 1.4, P.d);
+        }
+        rect(20 - 7 * s, hy + 8 * s, 14 * s, 15 * s, P.b);                  // Stamm
+        for (let i = 0; i < 4; i++) rect(20 - 6 * s + i * 3.5 * s, hy + 9 * s, 1.2, 13 * s, P.d);   // Rindenfurchen
+        rect(20 - 8 * s, hy + 18 * s, 16 * s, 5 * s, P.d);
+        for (const d of [-1, 1]) {                                          // Astarme
+          const sw = (d > 0 ? g0 : g1)[0] * -0.7;
+          rect(20 + d * 7 * s + (d > 0 ? 0 : -3 * s) + sw, hy + 11 * s, 3 * s, 12 * s, P.d);
+          tri(20 + d * 9 * s + sw, hy + 22 * s, 20 + d * 12 * s + sw, hy + 28 * s, 20 + d * 8 * s + sw, hy + 24 * s, P.b);
+          if (stufe >= 2) { tri(20 + d * 9 * s + sw, hy + 15 * s, 20 + d * 15 * s + sw, hy + 12 * s, 20 + d * 9 * s + sw, hy + 12 * s, P.b); ell(20 + d * 14 * s + sw, hy + 12 * s, 2.6 * s, 2.2 * s, P.a); }
+        }
+        eye(20 - 3.4 * s, hy + 13 * s, true); eye(20 + 2 * s, hy + 13 * s, true);   // Gesicht im Stamm
+        rect(20 - 2 * s, hy + 17 * s, 4 * s, 1.4, P.d);
+        // Krone
+        const kr = [[0, -3, 10], [-7, 0, 7.6], [7, 0, 7.6], [-3.5, -7, 7.4], [3.5, -7, 7.4], [0, -10, 6]];
+        kr.forEach(([kx, ky, r], i) => ell(20 + kx * s * 0.9 + wave(i) * 0.5, hy + 5 * s + ky * s * 0.8, r * s * 0.66, r * s * 0.56, i % 2 ? P.a : (i === 0 ? P.b : P.e)));
+        if (stufe >= 2) for (let i = 0; i < 5; i++) ell(20 - 10 * s + i * 5 * s, hy + 6 * s + (i % 2) * 4 * s, 1.5 * s, 1.5 * s, '#ff6a5a');   // Früchte
+        if (stufe >= 3) { for (let i = 0; i < 4; i++) ell(20 - 7 * s + i * 4.6 * s, hy - 2 * s - (i % 2) * 3, 1.6 * s, 1.6 * s, '#ff9ad0'); }
+        break;
+      }
+      case 'wolke': {   // Gewitterwolke mit Gesicht und Blitz
+        const cy = base - 21 * s - 4 + (ph < 0 ? 0 : wave(0) * 1.2);
+        const bl = ph < 0 || ph % 2 === 1;                                  // Blitz flackert
+        if (bl) { const bx = 20 + (ph === 3 ? 4 : -1) * s; tri(bx - 3 * s, cy + 6 * s, bx + 3 * s, cy + 6 * s, bx - 1 * s, cy + 15 * s, P.a); tri(bx - 3 * s, cy + 12 * s, bx + 4 * s, cy + 12 * s, bx - 2 * s, cy + 22 * s + 3, P.e); }
+        const bl2 = [[0, 0, 9], [-8, 2, 7], [8, 2, 7], [-4, -5, 7.4], [4, -5, 7.4], [-12, 4, 5], [12, 4, 5]];
+        bl2.forEach(([x, y, r], i) => ell(20 + x * s + wave(i, 1) * 0.6, cy + y * s * 0.8, r * s * 0.92, r * s * 0.78, i < 3 ? P.d : P.b));
+        ell(20, cy + 2 * s, 11 * s, 4.4 * s, P.d);
+        for (let i = 0; i < 3; i++) ell(20 - 5 * s + i * 5 * s, cy - 6 * s, 3.4 * s, 2.6 * s, P.b);
+        eye(20 - 4 * s, cy - 1 * s, true); eye(20 + 2.4 * s, cy - 1 * s, true);
+        rect(20 - 2 * s, cy + 3.4 * s, 4 * s, 1.4, P.a);
+        if (stufe >= 2) { for (let i = 0; i < 3; i++) { rect(20 - 7 * s + i * 7 * s, cy + 8 * s, 1, 4, P.e); } }
+        if (stufe >= 3) { for (const d of [-1, 1]) { tri(20 + d * 13 * s, cy + 3 * s, 20 + d * 19 * s, cy + 12 * s, 20 + d * 10 * s, cy + 8 * s, P.a); tri(20 + d * 16 * s, cy + 9 * s, 20 + d * 21 * s, cy + 16 * s + 2, 20 + d * 14 * s, cy + 14 * s, P.e); } }
+        break;
+      }
+      case 'echse': {   // Salamander / Axolotl: langer Körper, Beine abgespreizt, Schwanz peitscht
+        const by = base - 6 * s - 2, o2 = o;
+        { let tx = 14, ty = by + 1;                                          // Schwanz
+          for (let i = 0; i < 10; i++) { ell(tx, ty, Math.max(1, (3.6 - i * 0.3) * s), Math.max(1, (3 - i * 0.26) * s), i % 3 === 2 ? P.d : P.b); tx -= 1.3 * s; ty += Math.sin(i * 0.6 + (ph < 0 ? 0 : ph * 1.57)) * 1.0 + (i > 7 ? -0.35 : 0.0); }
+          if (o2.flame) { ell(tx, ty - 2 * s, 3 * s, 4.4 * s + wave(0, 2), P.a); ell(tx, ty - 2.6 * s, 1.6 * s, 2.6 * s, P.e); } }
+        ell(21, by, 9.5 * s, 4.8 * s, P.b);
+        ell(21, by + 2 * s, 7.5 * s, 2.4 * s, P.d);
+        [11, 16, 24, 28].forEach((lx0, i) => {   // Beine: Oberarm seitlich, Fuss mit Zehen
+          const [gx, gl] = gait(i, 2.4), lx = lx0 * (0.85 + 0.15 * s) + gx;
+          rect(lx, by + 2 * s, 3 * s + 1, base - gl - (by + 2 * s), P.d); ell(lx + 1.5 * s + 1, base - 1 - gl, 2.8 * s + 0.4, 1.3, P.b);
+          for (let k = 0; k < 3; k++) px(lx + k * 1.2 * s, base - gl, o2.flame ? P.a : '#efe8d8');
+        });
+        const hx = 28 * (0.9 + 0.1 * s);
+        ell(hx, by - 1 * s, 5 * s, 4 * s, P.b); ell(hx + 3 * s, by + 0.5 * s, 3 * s, 2.2 * s, P.d);
+        eye(hx + 0.5, by - 2.4 * s, true);
+        px(hx + 6 * s, by - 0.5 * s, '#1a1018');
+        if (o2.kiemen) { for (const k of [0, 1, 2]) for (const d of [-1, 1]) { tri(hx - 3 * s, by - 2 * s, hx - 8 * s - k * 1.5, by - (4 + k * 3) * s + wave(k + d) * 1.6, hx - 1 * s, by - 4 * s - k, k % 2 ? P.a : '#ffc0d4'); } }
+        if (o2.flame || stufe >= 2) for (let i = 0; i < 5; i++) tri(11 + i * 3.6 * s, by - 4 * s, 12.5 + i * 3.6 * s, by - (7 + (i % 2) * 2) * s, 14 + i * 3.6 * s, by - 4 * s, P.a);
+        if (stufe >= 3) { tri(hx - 2, by - 4 * s, hx - 3, by - 11 * s, hx + 1, by - 5 * s, P.e); tri(hx + 1, by - 5 * s, hx + 3, by - 10 * s, hx + 4, by - 4 * s, P.e); }
+        break;
+      }
+      case 'kaefer': {   // Hirschkäfer: Panzer, grosse Zangen, sechs Beine
+        const by = base - 8 * s - 3;
+        for (let i = 0; i < 3; i++) for (const d of [0, 1]) {
+          const [gx, gl] = gait(i * 2 + d, 2.0), lx = 12 + i * 5.2 * s + d * 2;
+          for (let k = 0; k < 7; k++) px(lx + (k / 7) * (i === 0 ? -3 : i === 2 ? 3 : 0) + gx * (k / 7), by + 3 * s + k * (base - by - 3 * s) / 7 - (k > 5 ? gl : 0), d ? P.d : P.b);
+          rect(lx + gx + (i === 0 ? -3 : i === 2 ? 3 : 0), base - 1 - gl, 3, 1, P.d);
+        }
+        ell(14, by, 10.5 * s, 7.2 * s, P.b);                                  // Flügeldecken
+        rect(15 - 0.5, by - 7 * s, 1, 14 * s, P.d);                         // Naht
+        ell(15, by + 3 * s, 9 * s, 3.4 * s, P.d);
+        ell(11, by - 3 * s, 3.6 * s, 3 * s, P.a); ell(19.5, by - 3 * s, 3.6 * s, 3 * s, P.a);   // Glanzflecken
+        ell(22 * (0.9 + 0.1 * s), by - 0.5, 4.6 * s, 4.4 * s, P.d);            // Halsschild
+        ell(26 * (0.9 + 0.1 * s), by + 0.5, 3.4 * s, 3.1 * s, P.b);          // Kopf
+        eye(26 * (0.9 + 0.1 * s) + 0.5, by - 1.5 * s, true);
+        const zg = wave(0, 2) * 1.3;                                         // Zangen
+        for (const d of [-1, 1]) { for (let k = 0; k < 8 * s + 3; k++) { const t = k / (8 * s + 3); rect(28 * (0.9 + 0.1 * s) + k * 0.7, by + 0.5 + d * (1.4 + Math.sin(t * 2.4) * (3.6 + zg) * s), 2, 2, k % 3 === 0 ? P.a : P.d); } }
+        if (stufe >= 2) for (let i = 0; i < 3; i++) tri(10 + i * 5 * s, by - 6 * s, 11.5 + i * 5 * s, by - 10 * s, 13 + i * 5 * s, by - 6 * s, P.e);
+        if (stufe >= 3) { tri(20 * (0.9 + 0.1 * s), by - 6 * s, 22 * (0.9 + 0.1 * s), by - 15 * s, 25 * (0.9 + 0.1 * s), by - 6 * s, P.a); }
         break;
       }
     }
@@ -214,7 +521,7 @@
   const rgb = h => { const n = parseInt(h.slice(1, 7), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   const mixRGB = (c, k) => { const t = k < 0 ? 0 : 255, a = Math.abs(k); return [Math.round(c[0] + (t - c[0]) * a), Math.round(c[1] + (t - c[1]) * a), Math.round(c[2] + (t - c[2]) * a)]; };
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-  const MATERIAL = { quad: 'fell', blob: 'schleim', bird: 'feder', skull: 'knochen', wisp: 'schleim', dragon: 'schuppen', crab: 'schuppen', mushroom: 'pilz', serpent: 'schuppen', golem: 'stein', ghoul: 'stoff' };
+  const MATERIAL = { quad: 'fell', blob: 'schleim', bird: 'feder', skull: 'knochen', wisp: 'schleim', dragon: 'schuppen', crab: 'schuppen', mushroom: 'pilz', serpent: 'schuppen', golem: 'stein', ghoul: 'stoff', raupe: 'pilz', falter: 'feder', hummel: 'fell', schildkroete: 'schuppen', frosch: 'schleim', schnecke: 'schleim', qualle: 'schleim', skorpion: 'schuppen', spinne: 'fell', fledermaus: 'fell', eule: 'feder', baum: 'rinde', wolke: 'schleim', echse: 'schuppen', kaefer: 'schuppen' };
 
   function boxBlur(src, r) {   // Kastenfilter (zweimal waagrecht und senkrecht)
     const out = new Float32Array(N * N), tmp = new Float32Array(N * N), k = 2 * r + 1;
@@ -261,6 +568,7 @@
       else if (mat === 'stoff') sh += (x % 5 === 0 ? -0.12 : 0) + (hh > 0.85 ? 0.1 : 0);
       else if (mat === 'pilz') sh += (hh > 0.8 ? 0.14 : hh < 0.1 ? -0.14 : 0);
       else if (mat === 'schleim') sh += (hh > 0.9 ? 0.1 : 0);
+      else if (mat === 'rinde') sh += (x % 4 === 0 ? -0.2 : 0) + ((x + (y >> 3)) % 7 === 0 ? 0.14 : 0) + (hh > 0.9 ? -0.15 : 0);
       const v = sh + (BAYER[(y & 3) * 4 + (x & 3)] / 16 - 0.5) * 0.22;
       const band = v > 0.62 ? 0 : v > 0.22 ? 1 : v > -0.22 ? 2 : v > -0.55 ? 3 : 4;
       let col = ramp(r, g, b)[band];
@@ -301,7 +609,7 @@
     }
     c.putImageData(new ImageData(res, N, N), 0, 0);
     // weicher Schein bei Flammen, Irrlichtern und Lava
-    if (f.kind === 'wisp' || (f.opt && f.opt.fire) || f.kind === 'serpent') {
+    if (f.kind === 'wisp' || (f.opt && (f.opt.fire || f.opt.glow)) || f.kind === 'serpent') {
       c.save(); c.globalCompositeOperation = 'destination-over';
       const gr = c.createRadialGradient(N / 2, (y0 + y1) / 2, 4, N / 2, (y0 + y1) / 2, 34);
       gr.addColorStop(0, P.a + '55'); gr.addColorStop(1, P.a + '00');
@@ -318,13 +626,12 @@
   }
 
   // Liefert das Bild eines Mobs (Zeichnung wird zwischengespeichert)
-  CAM.sprite = function (m) {
-    const key = m.fam + '-' + m.stufe + (m.glanz ? 's' : '');
-    return cache[key] || (cache[key] = draw(m.fam, m.stufe, m.glanz));
-  };
-  CAM.spriteFam = function (fam, stufe, glanz) {
-    const key = fam + '-' + stufe + (glanz ? 's' : '');
-    return cache[key] || (cache[key] = draw(fam, stufe, glanz));
+  // ph: -1 oder weggelassen = Standbild, 0..3 = Bild des Laufschritts (wird erst beim ersten Bedarf gezeichnet)
+  CAM.sprite = function (m, ph) { return CAM.spriteFam(m.fam, m.stufe, m.glanz, ph); };
+  CAM.spriteFam = function (fam, stufe, glanz, ph) {
+    ph = ph == null ? -1 : ph;
+    const key = fam + '-' + stufe + (glanz ? 's' : '') + (ph >= 0 ? 'w' + ph : '');
+    return cache[key] || (cache[key] = draw(fam, stufe, glanz, ph));
   };
   CAM.zeichneMob = function (ctx, m, x, y, size, flip, t) {
     const img = CAM.sprite(m);
@@ -433,10 +740,11 @@
 
   const mitCache = {};
   // Sprite mit sichtbaren Wunden und Verbänden (gleiche Grösse wie CAM.sprite)
-  CAM.spriteMit = function (m) {
-    const base = CAM.sprite(m);
+  CAM.spriteMit = function (m, ph) {
+    ph = ph == null ? -1 : ph;
+    const base = CAM.sprite(m, ph);
     if (!m.wunden || !m.wunden.length) return base;
-    const sig = m.fam + '-' + m.stufe + (m.glanz ? 's' : '') + ':' + m.wunden.map(w => w.x + ',' + w.y + w.t[0] + w.r + w.v).join(';');
+    const sig = m.fam + '-' + m.stufe + (m.glanz ? 's' : '') + (ph >= 0 ? 'w' + ph : '') + ':' + m.wunden.map(w => w.x + ',' + w.y + w.t[0] + w.r + w.v).join(';');
     if (mitCache[sig]) return mitCache[sig];
     const cv = document.createElement('canvas'); cv.width = N; cv.height = N;
     const c = cv.getContext('2d'); c.drawImage(base, 0, 0);
