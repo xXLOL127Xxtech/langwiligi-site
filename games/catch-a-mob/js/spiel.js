@@ -367,6 +367,7 @@
     S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 2; CAM.Wilde.fuell = 9;
     CAM.Bots.erzeugen();
     UI.muted = S.save.ton === false; S.qualitaet = S.save.quali === 0 ? 0 : 1;
+    while (S.save.team.length > CAM.TEAM_MAX) S.save.box.push(S.save.team.pop());   // alte Spielstände: Überzählige kommen in den Zwinger
     S.save.team.concat(S.save.box).forEach(m => { delete m.faintDone; m.status = null; CAM.angleichen(m); });
     $('start').classList.add('hidden'); UI.closePanel();
     if (S.online) {

@@ -12,6 +12,7 @@
     wetter: 'klar', biome: 0, hinweis: '', ziel: null, gest: null,
     qualitaet: 1, angebot: null,
   };
+  CAM.TEAM_MAX = 3;      // so viele Mobs im Team: nur diese kämpfen
   const Save = CAM.Save = {
     neu() {
       const d = CAM.Welt.dorf[0];
@@ -24,7 +25,7 @@
       try {
         const o = JSON.parse(decodeURIComponent(escape(atob(String(code).trim()))));
         if (!o || o.v !== 1 || !Array.isArray(o.team) || !Array.isArray(o.box) || typeof o.gold !== 'number') return null;
-        o.team = o.team.filter(m => m && CAM.FAMILIEN[m.fam]).slice(0, 6); o.box = o.box.filter(m => m && CAM.FAMILIEN[m.fam]).slice(0, 100);
+        const alle = o.team.concat(o.box).filter(m => m && CAM.FAMILIEN[m.fam]); o.team = alle.slice(0, CAM.TEAM_MAX); o.box = alle.slice(CAM.TEAM_MAX, CAM.TEAM_MAX + 100);
         o.team.concat(o.box).forEach(m => { m.lv = Math.max(1, Math.min(50, m.lv | 0)); CAM.neuBerechnen(m); m.hp = Math.max(0, Math.min(m.mhp, m.hp | 0)); m.status = null; });
         o.gold = Math.max(0, Math.min(9999999, o.gold | 0));
         o.pflege = (Array.isArray(o.pflege) ? o.pflege : []).filter(e => e && e.m && CAM.FAMILIEN[e.m.fam] && typeof e.ende === 'number').slice(0, 106);

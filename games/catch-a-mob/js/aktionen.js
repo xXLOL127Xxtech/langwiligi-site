@@ -191,7 +191,7 @@
   // Neuen Mob ins Team oder in den Zwinger
   A.mobDazu = function (m) {
     delete m.faintDone; m.status = null; CAM.wundenVerbinden(m);
-    if (S.save.team.length < 6) { S.save.team.push(m); return 'team'; }
+    if (S.save.team.length < CAM.TEAM_MAX) { S.save.team.push(m); return 'team'; }
     if (S.save.box.length < 100) { S.save.box.push(m); return 'box'; }
     return null;
   };
@@ -240,16 +240,16 @@
     let start = 0;
     for (;;) {
       const b = S.save.box;
-      if (!b.length) { await UI.info('Der Zwinger ist leer. Gefangene Mobs landen hier, wenn dein Team voll ist (6 Plätze).', 'Zwinger'); return; }
+      if (!b.length) { await UI.info('Der Zwinger ist leer. Gefangene Mobs landen hier, wenn dein Team voll ist (3 Plätze).', 'Zwinger'); return; }
       const items = b.map(m => ({ label: mobZeile(m) + tagRar(CAM.FAMILIEN[m.fam].rar), sub: lpText(m) }));
       const r = await UI.choose(items, { title: 'Zwinger', sub: b.length + ' von 100 Plätzen belegt', start, wide: true, numbers: false });
       if (r < 0) return;
       start = Math.min(r, b.length - 2 < 0 ? 0 : r);
       const m = b[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: S.save.team.length < 6 ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
       else if (w === 1) {
-        if (S.save.team.length < 6) { b.splice(r, 1); S.save.team.push(m); }
+        if (S.save.team.length < CAM.TEAM_MAX) { b.splice(r, 1); S.save.team.push(m); }
         else { const i = await A.waehleMob('Wen ersetzt er?'); if (i >= 0) { const alt = S.save.team[i]; S.save.team[i] = m; b[r] = alt; } }
       }
     }
