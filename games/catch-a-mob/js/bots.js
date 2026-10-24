@@ -5,7 +5,7 @@
   const CAM = G.CAM, UI = CAM.UI, $ = UI.$, esc = UI.esc, S = CAM.S, Welt = CAM.Welt, K = CAM.Kampf, A = CAM.A, Save = CAM.Save;
   const H = A.h, ge = H.ge, sleep = H.sleep;
   const Bots = CAM.Bots = { liste: [] };
-  const ANZAHL = 18, CHAMPIONS = 3, WEITE = 16, SUCHE = 32;
+  const ANZAHL = 40, CHAMPIONS = 4, WEITE = 16, SUCHE = 32;
 
   // ---------- Hilfen für faire Duelle ----------
   const lebende = team => team.filter(m => m.hp > 0);
@@ -47,7 +47,7 @@
   function neu(i, rnd, champ) {
     let hx = 0, hy = 0;
     for (let v = 0; v < 400; v++) {
-      const a = rnd() * 6.283, d = champ ? 170 + rnd() * 260 : 14 + Math.pow(rnd(), 1.3) * 430;
+      const a = rnd() * 6.283, d = champ ? 170 + rnd() * 260 : 10 + Math.pow(rnd(), 1.8) * 420;
       hx = Welt.START.x + Math.cos(a) * d; hy = Welt.START.y + Math.sin(a) * d;
       if (hx > 12 && hy > 12 && hx < Welt.W - 12 && hy < Welt.H - 12 && gehbar(hx, hy) && !Welt.dorfBei(hx, hy) && (Welt.get(hx, hy) === Welt.T.BODEN || Welt.get(hx, hy) === Welt.T.GRAS)) break;
     }
@@ -80,7 +80,7 @@
     return ok;
   }
   Bots.update = function (dt, now, frei) {
-    if (S.modus !== 'welt' || S.online) return;
+    if (S.modus !== 'welt') return;
     for (const b of Bots.liste) {
       const d = Math.hypot(b.x - S.x, b.y - S.y);
       if (d > 70 && b.z !== 'geht') continue;          // weit weg: stehen sie still (spart Rechenzeit)
@@ -93,7 +93,7 @@
         else if (now - b.alarm < 600) { /* kurz erschrecken */ }
         else if (d > 1.5) { vx = (S.x - b.x) / d; vy = (S.y - b.y) / d; tempo = 3.9; }
         else { b.z = 'ruhe'; b.t = 3; b.provBis = now + 60000 + Math.random() * 90000; A.botProvokation(b); continue; }
-      } else if (ziel && d < SUCHE && d > 3 && Math.random() < dt * 0.12 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
+      } else if (ziel && d < SUCHE && d > 3 && Math.random() < dt * 0.3 && b.lv >= CAM.maxLv() * 0.5 && b.lv <= CAM.maxLv() * 2 + 4) {
         b.z = 'prov'; b.alarm = now; UI.snd('ruf');
       } else {
         b.t -= dt;
@@ -120,10 +120,64 @@
         const ok = schritt(b, vx * tempo * dt, vy * tempo * dt);
         b.geht = ok;
         if (!ok && b.z === 'geht') { b.z = 'ruhe'; b.t = 0.6; }
+        if (b.z === 'prov') {
+          // hängt er an einer Wand fest, probiert er seitlich vorbeizukommen und gibt nach 2.5 s auf
+          if (!ok) { b.stuck = (b.stuck || 0) + dt; if (!schritt(b, -vy * tempo * dt, vx * tempo * dt)) schritt(b, vy * tempo * dt, -vx * tempo * dt); if (b.stuck > 2.5) { b.z = 'ruhe'; b.t = 2; b.stuck = 0; b.provBis = now + 20000; } }
+          else b.stuck = Math.max(0, (b.stuck || 0) - dt);
+        }
         if (Math.abs(vx) > Math.abs(vy)) b.dir = vx > 0 ? 1 : 3; else b.dir = vy > 0 ? 2 : 0;
       }
     }
   };
+
+  // ---------- Trainer (NPCs) laufen auch herum und gehen manche auf dich los ----------
+  // tr.px/py = Position (Mitte des Feldes), tr.hx/hy = Heimatfeld. Trainer mit id % 5 < 2 sind angriffslustig: Sie sehen dich auf 11 Felder, laufen her und fordern dich heraus.
+  Bots.trainerUpdate = function (dt, now, frei) {
+    if (S.modus !== 'welt') return;
+    for (const tr of Welt.trainer) {
+      if (tr.px === undefined) Object.assign(tr, { px: tr.x + 0.5, py: tr.y + 0.5, hx: tr.x + 0.5, hy: tr.y + 0.5, z: 'ruhe', t: Math.random() * 3, tx: 0, ty: 0, provBis: 0, geht: false });
+      const d = Math.hypot(tr.px - S.x, tr.py - S.y);
+      if (d > 60) { tr.geht = false; continue; }
+      const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
+      let vx = 0, vy = 0, tempo = 0;
+      const wild = tr.id % 5 < 2;
+      if (wild && !aus && frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && now > tr.provBis && d < 11 && tr.z !== 'prov') { tr.z = 'prov'; tr.pa = now; UI.snd('ruf'); }
+      if (tr.z === 'prov') {
+        if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; }
+        else if (now - tr.pa < 600) { /* kurz erschrecken */ }
+        else if (d > 1.4) { vx = (S.x - tr.px) / d; vy = (S.y - tr.py) / d; tempo = 3.4; }
+        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; A.trainerKampf(tr, { erster: 1 }); continue; }
+      } else {
+        tr.t -= dt;
+        if (tr.z === 'ruhe' && tr.t <= 0) {
+          const heim = Math.hypot(tr.px - tr.hx, tr.py - tr.hy) > 5, a = Math.random() * 6.283, r = 1 + Math.random() * 3;
+          tr.tx = heim ? tr.hx : tr.hx + Math.cos(a) * r * 1.6; tr.ty = heim ? tr.hy : tr.hy + Math.sin(a) * r * 1.6; tr.z = 'geht'; tr.t = 4 + Math.random() * 4;
+        } else if (tr.z === 'geht') {
+          const dd = Math.hypot(tr.tx - tr.px, tr.ty - tr.py);
+          if (dd < 0.25 || tr.t <= 0) { tr.z = 'ruhe'; tr.t = 1.5 + Math.random() * 4; }
+          else { vx = (tr.tx - tr.px) / dd; vy = (tr.ty - tr.py) / dd; tempo = 1.3; }
+        } else if (tr.z !== 'ruhe') tr.z = 'ruhe';
+      }
+      tr.geht = false;
+      if (tempo) {
+        const ok = trSchritt(tr, vx * tempo * dt, vy * tempo * dt);
+        tr.geht = ok;
+        if (!ok && tr.z === 'geht') { tr.z = 'ruhe'; tr.t = 0.6; }
+        if (tr.z === 'prov') {
+          if (!ok) { tr.stuck = (tr.stuck || 0) + dt; if (!trSchritt(tr, -vy * tempo * dt, vx * tempo * dt)) trSchritt(tr, vy * tempo * dt, -vx * tempo * dt); if (tr.stuck > 2.5) { tr.z = 'ruhe'; tr.t = 2; tr.stuck = 0; tr.provBis = now + 20000; } }
+          else tr.stuck = Math.max(0, (tr.stuck || 0) - dt);
+        }
+        if (Math.abs(vx) > Math.abs(vy)) tr.dir = vx > 0 ? 1 : 3; else tr.dir = vy > 0 ? 2 : 0;
+      }
+    }
+  };
+  function trGehbar(x, y) { return gehbar(x, y) && !Welt.istSicher(x, y, 1); }
+  function trSchritt(tr, dx, dy) {
+    let ok = false;
+    if (trGehbar(tr.px + dx, tr.py)) { tr.px += dx; ok = true; }
+    if (trGehbar(tr.px, tr.py + dy)) { tr.py += dy; ok = true; }
+    return ok;
+  }
 
   // ---------- Entscheidung des Bots ----------
   // offer: { modus: 'fair'|'echt', gold, mobA (dein Mob), mobB (Mob des Bots) }; p = Siegchance des Bots in Prozent

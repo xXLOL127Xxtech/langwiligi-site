@@ -73,7 +73,7 @@
         const ox = [0, 1, 0, -1][tr.dir], oy = [-1, 0, 1, 0][tr.dir];
         let sieht = false;
         for (let k = 1; k <= 5; k++) {
-          const tx = tr.x + ox * k, ty = tr.y + oy * k;
+          const tx = Math.floor(tr.px) + ox * k, ty = Math.floor(tr.py) + oy * k;
           if (Welt.blockiert(tx, ty)) break;
           if (Math.floor(S.x) === tx && Math.floor(S.y) === ty) { sieht = true; break; }
         }
@@ -85,6 +85,7 @@
     }
     CAM.Wilde.update(dt, now, frei);
     CAM.Bots.update(dt, now, frei);
+    CAM.Bots.trainerUpdate(dt, now, frei);
     // Biome, Wetter
     S.biome = Welt.biomeAt(S.x, S.y);
     S.wetter = CAM.wetterBei(S.biome, now);
@@ -95,9 +96,9 @@
       const z = Welt.ansprechbar(S.x, S.y, S.dir);
       if (z) S.ziel = { typ: 'bau', z };
       let best = null, bd = 2.0;
-      for (const tr of Welt.trainer) { const d = Math.hypot(tr.x + 0.5 - S.x, tr.y + 0.5 - S.y); if (d < bd && !(S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000)) { bd = d; best = tr; } }
+      for (const tr of Welt.trainer) { const d = Math.hypot((tr.px === undefined ? tr.x + 0.5 : tr.px) - S.x, (tr.py === undefined ? tr.y + 0.5 : tr.py) - S.y); if (d < bd && !(S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000)) { bd = d; best = tr; } }
       if (best && !S.ziel) S.ziel = { typ: 'trainer', tr: best };
-      const bm = !S.online ? CAM.Bots.naechster(S.x, S.y, 1.9) : null;
+      const bm = CAM.Bots.naechster(S.x, S.y, 1.9);
       if (bm && !S.ziel) S.ziel = { typ: 'bot', b: bm };
       const wm = CAM.Wilde.naechster(S.x, S.y, 1.9);
       if (wm && !S.ziel) S.ziel = { typ: 'mob', w: wm };
@@ -130,11 +131,12 @@
     const sx = x => (x - vx) * TS, sy = y => (y - vy) * TS;
     const liste = [];
     for (const tr of Welt.trainer) {
-      if (tr.x < vx - 2 || tr.x > vx + W / TS + 2 || tr.y < vy - 2 || tr.y > vy + H / TS + 2) continue;
+      const tpx = tr.px === undefined ? tr.x + 0.5 : tr.px, tpy = tr.py === undefined ? tr.y + 0.5 : tr.py;
+      if (tpx < vx - 2 || tpx > vx + W / TS + 2 || tpy < vy - 2 || tpy > vy + H / TS + 2) continue;
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
-      liste.push({ y: tr.y + 1, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tr.x + 0.5), sy(tr.y + 1), TS, tr.farbe, tr.dir, false, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', blase: tr.alarm ? '❗' : '' }); ctx.globalAlpha = 1; } });
+      liste.push({ y: tpy + 0.5, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tpx), sy(tpy + 0.5), TS, tr.farbe, tr.dir, !!tr.geht, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', blase: tr.alarm || tr.z === 'prov' ? '❗' : '' }); ctx.globalAlpha = 1; } });
     }
-    if (!S.online) for (const b of CAM.Bots.liste) {
+    for (const b of CAM.Bots.liste) {
       if (b.x < vx - 2 || b.x > vx + W / TS + 2 || b.y < vy - 2 || b.y > vy + H / TS + 2) continue;
       liste.push({ y: b.y + 0.5, f: () => person(ctx, sx(b.x), sy(b.y + 0.5), TS, CAM.FARBEN[b.col] || '#999', b.dir, b.geht, b.name, tick, { farbe: CAM.Bots.farbe(b.lv), lv: b.lv, blase: b.z === 'prov' ? '❗' : '' }) });
     }
