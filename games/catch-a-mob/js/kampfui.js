@@ -788,7 +788,7 @@
     }
     // Fangkugel
     if (BS.ball && BS.ball.vis) {
-      const bl = BS.ball; c.save(); c.translate(bl.x, bl.y); c.rotate(bl.rot);
+      const bl = BS.ball; c.save(); c.translate(bl.x, bl.y); c.rotate(bl.rot); c.scale(bl.sc || 1, bl.sc || 1);
       if (bl.glow > 0) { c.fillStyle = 'rgba(255,240,170,' + (bl.glow * 0.5) + ')'; c.beginPath(); c.arc(0, 0, 30 + bl.glow * 8, 0, 6.3); c.fill(); }
       // Fangkugel: dunkle Kugel mit violettem Äquatorband, Knopf und Glanzpunkt
       const kg = c.createRadialGradient(-5, -6, 2, 0, 0, 18); kg.addColorStop(0, '#6a4aa0'); kg.addColorStop(0.55, '#2a1f3d'); kg.addColorStop(1, '#120a1e');
