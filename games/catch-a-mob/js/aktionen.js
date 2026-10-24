@@ -410,6 +410,7 @@
 
   async function xpVerteilen(b, la) {
     const lines = [];
+    if (b.winner === 0) S.save.fangXp = (S.save.fangXp || 0) + 0.1;
     const pool = b.xpPool();
     if (pool <= 0) return lines;
     const nutzer = Array.from(la.used).map(i => la.team[i]).filter(m => m && m.hp > 0);
@@ -447,7 +448,7 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     dexSet(mob.fam, 1);
-    const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team };
+    const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team, fang: CAM.fangStufe(S.save.team, S.save.fangXp) };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
     const intro = (opt.intro || ('Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!')) + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
@@ -456,7 +457,7 @@
     const lines = [];
     if (b.result.caught) {
       const m = b.result.caught; delete m.faintDone; m.status = null;
-      const wo = A.mobDazu(m); dexSet(m.fam, 2);
+      const wo = A.mobDazu(m); dexSet(m.fam, 2); S.save.fangXp = (S.save.fangXp || 0) + 0.15;
       lines.push('<b style="color:#5fd38a">' + esc(mobNameFull(m)) + ' gehört jetzt dir!</b> ' + (wo === 'team' ? '(ins Team aufgenommen)' : wo === 'box' ? '(in den Zwinger gebracht)' : '(Zwinger voll, er wurde freigelassen)'));
     } else if (b.result.fled) lines.push('Du bist entkommen.');
     else if (b.winner === 0) {

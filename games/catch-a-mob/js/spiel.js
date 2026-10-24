@@ -215,7 +215,7 @@
     const B = CAM.BIOME[S.biome], uhr = CAM.tageszeit(now), sais = CAM.SAISONS[CAM.saison(now)];
     const dorf = Welt.dorfBei(S.x, S.y);
     $('hudL').innerHTML = '<b>' + esc(dorf ? dorf.name : B.n) + '</b>' + (dorf ? ' <small>(sicher)</small>' : '') + '<br>' +
-      esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
+      esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Fangstufe ' + CAM.fangStufe(S.save.team, S.save.fangXp).toFixed(1) + ' · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
       (S.online && S.pt >= 0 ? '<div class="party">Party: ' + A.partyListe().map(p => '<span><i style="background:' + (CAM.FARBEN[p.col] || '#999') + '"></i>' + esc(p.name) + '</span>').join(' ') + (A.partyListe().length ? '' : 'nur du') + '</div>' : '');
     const prot = (S.prot[S.idx] || 0) - now;
     $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';

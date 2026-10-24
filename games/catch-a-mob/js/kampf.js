@@ -22,7 +22,7 @@
       this.erster = o.erster == null ? null : o.erster;   // Seite, die den Kampf eröffnet (überfällt, anspringt, herausfordert): Runde 0 gehört nur ihr, sie schlägt zu, bevor die andere Seite wählt
       if (this.erster != null) this.turn = 0;
       this.actors = o.actors.map(a => ({
-        id: a.id, name: a.name, side: a.side, ctrl: a.ctrl, team: a.team, boss: !!a.boss, fleeFirst: !!a.fleeFirst,
+        id: a.id, name: a.name, side: a.side, ctrl: a.ctrl, team: a.team, fang: a.fang || 1, boss: !!a.boss, fleeFirst: !!a.fleeFirst,
         active: Math.max(0, a.team.findIndex(m => m.hp > 0)), out: false, chosen: null, plan: null, used: new Set(), enraged: false, gone: false,
       }));
       this.actors.forEach(a => a.used.add(a.active));
@@ -152,8 +152,7 @@
       if (!tm || !it || this.kind !== 'wild') return;
       ev.push({ k: 'msg', t: a.name + ' wirft ein ' + it.n + '!' });
       const f = CAM.FAMILIEN[tm.fam];
-      let rate = ((3 * tm.mhp - 2 * tm.hp) / (3 * tm.mhp)) * CAM.FANGRATE[f.rar] * it.fang * (tm.status ? (tm.status.t === 'schlaf' ? 1.6 : 1.25) : 1);
-      rate = Math.min(1, rate * 1.15);
+      const rate = CAM.fangChance(a.fang || 1, tm, it.fang);
       const ok = it.fang >= 99 || this.rnd() < rate;
       let shakes = ok ? 3 : Math.floor(this.rnd() * 3);
       ev.push({ k: 'shake', n: shakes, ok });

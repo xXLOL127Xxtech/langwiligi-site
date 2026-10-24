@@ -418,6 +418,26 @@
   CAM.RAR_FARBE = ['#b9b4a8', '#5fd38a', '#c46bff', '#ffb347'];
   CAM.FANGRATE = [0.9, 0.55, 0.3, 0.06];
   CAM.PREIS_RAR = [1, 2.5, 6, 30];
+  // ---------- Fangen ----------
+  // Fang-Stufe = Durchschnitt der Stufen deines Teams + Erfahrung (je gewonnener Kampf +0.1, je Fang +0.15).
+  // Grundchance (einfache Kugel, voller LP): Mob eine Stufe unter 0.73 unter deiner Fang-Stufe = 33 %, viel tiefere Mobs bis 95 %, höhere werden schnell sehr schwer (Stufe 20 bei Fang-Stufe 5.7 ca. 1 %).
+  // Schaden hilft: die Chance wird mit dem Exponenten (1 - 0.65 * Schaden) hochgezogen. Gute Kugeln, Schlaf, Gift und Brand helfen auch.
+  CAM.fangStufe = function (team, xp) {
+    const t = team || [];
+    return (t.length ? t.reduce((a, m) => a + m.lv, 0) / t.length : 1) + (xp || 0);
+  };
+  CAM.fangChance = function (stufe, m, kugel, schaden) {
+    const f = CAM.FAMILIEN[m.fam];
+    if (kugel >= 99) return 1;
+    const s = schaden !== undefined ? schaden : (m.hp <= 0 ? 1 : 1 - m.hp / m.mhp);
+    const d = m.lv - (stufe - 0.73), odds = 0.4925 * Math.exp(-(d < 0 ? 1.2 : 0.259) * d) * (CAM.FANGRATE[f.rar] / 0.9) * kugel;
+    let base = odds / (1 + odds);
+    base = Math.max(0.0005, Math.min(0.95, base));
+    let p = Math.pow(base, 1 - 0.65 * Math.max(0, Math.min(1, s)));
+    if (m.status) p *= m.status.t === 'schlaf' ? 1.5 : 1.2;
+    return Math.max(0.0005, Math.min(0.999, p));
+  };
+  CAM.chanceText = p => (p >= 0.995 ? '100' : p >= 0.1 ? (p * 100).toFixed(0) : (p * 100).toFixed(1)) + ' %';
   const STUFEN_FAKTOR = { 1: [1.05], 3: [0.78, 0.97, 1.2] };
   CAM.EVO_LV = [16, 34];
 

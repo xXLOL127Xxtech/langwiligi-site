@@ -188,7 +188,7 @@
         } else if (lab === 'Fangen') {
           const kugeln = Object.keys(CAM.ITEMS).filter(k => CAM.ITEMS[k].fang && (cfg.beutel()[k] || 0) > 0);
           if (!kugeln.length) { UI.log('Du hast keine Fangkugeln mehr!'); await sleep(900); zeigeLog(); continue; }
-          const ii = kugeln.map(k => ({ label: CAM.ITEMS[k].n, sub: '× ' + cfg.beutel()[k] }));
+          const ii = kugeln.map(k => ({ label: CAM.ITEMS[k].n + ' <small>(' + CAM.chanceText(CAM.fangChance(la.fang || 1, tm, CAM.ITEMS[k].fang)) + ' Chance)</small>', sub: '× ' + cfg.beutel()[k] }));
           ii.push({ label: '← Zurück' });
           const r = await UI.choose(ii, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
