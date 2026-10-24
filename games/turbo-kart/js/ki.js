@@ -3,9 +3,10 @@
 
 const KI_STUFEN = [
   // aufhol: Tempo-Plus, wenn weit hinter dem besten Menschen; vorne: Tempo-Minus, wenn weit davor; abk: Lust auf Abkürzungen
-  { name: 'Leicht', tempo: 0.88, fehler: 0.32, drift: 1, reakt: [1.5, 4], treff: 0.5, aufhol: 0.07, vorne: 0.18, abk: 0.15 },
-  { name: 'Mittel', tempo: 0.955, fehler: 0.18, drift: 2, reakt: [0.8, 2.5], treff: 0.75, aufhol: 0.1, vorne: 0.14, abk: 0.4 },
-  { name: 'Schwer', tempo: 1.0, fehler: 0.07, drift: 3, reakt: [0.3, 1.3], treff: 0.95, aufhol: 0.13, vorne: 0.1, abk: 0.8 },
+  // driftLust: Chance pro Kurve, dass der Bot überhaupt driftet; wackel: Lenkungenauigkeit; patzer: Sekunden zwischen Fahrfehlern
+  { name: 'Leicht', tempo: 0.88, fehler: 0.36, drift: 1, reakt: [1.5, 4], treff: 0.5, aufhol: 0.09, vorne: 0.2, abk: 0.15, driftLust: 0.3, wackel: 0.2, patzer: 9, hinten: 0.07 },
+  { name: 'Mittel', tempo: 0.95, fehler: 0.26, drift: 2, reakt: [0.8, 2.5], treff: 0.7, aufhol: 0.12, vorne: 0.16, abk: 0.4, driftLust: 0.5, wackel: 0.15, patzer: 12, hinten: 0.08 },
+  { name: 'Schwer', tempo: 0.99, fehler: 0.17, drift: 3, reakt: [0.3, 1.3], treff: 0.9, aufhol: 0.14, vorne: 0.12, abk: 0.8, driftLust: 0.7, wackel: 0.1, patzer: 16, hinten: 0.09 },
 ];
 
 class Bot {
@@ -16,6 +17,7 @@ class Bot {
     this.driftCD = 0; this.gegenT = 0; this.steckT = 0; this.rueckT = 0;
     this.ziel = null; this.zielT = 0;
     this.wackel = Math.random() * 10;
+    this.patzerT = 4 + Math.random() * 8; this.patzerDauer = 0; this.patzerDir = 1; this.kurvenWurf = 0;
   }
   input(dt) {
     const k = this.k, r = k.r;
@@ -35,6 +37,10 @@ class Bot {
     // Fahrspur wechseln
     this.biasT -= dt;
     if (this.biasT <= 0) { this.biasT = 2 + Math.random() * 4; this.zielBias = (Math.random() * 2 - 1) * st.fehler * P.w; }
+    // Gelegentlicher Fahrfehler: der Bot driftet kurz aus der Spur
+    this.patzerT -= dt;
+    if (this.patzerT <= 0) { this.patzerT = st.patzer * (0.6 + Math.random() * 0.8); this.patzerDauer = 0.7 + Math.random() * 0.8; this.patzerDir = Math.random() < 0.5 ? -1 : 1; }
+    if (this.patzerDauer > 0) { this.patzerDauer -= dt; this.zielBias = this.patzerDir * P.w * 0.7; }
     this.bias = damp(this.bias, this.zielBias, 0.8, dt);
     const la = 9 + Math.max(k.v, 0) * 0.42;
     const s2 = P.s + la;
@@ -74,7 +80,8 @@ class Bot {
     const tp = abk ? this.abkZiel(abk, P, w, la) : w.punkt(s2, d, _v1);
     const soll = Math.atan2(tp.x - k.pos.x, tp.z - k.pos.z);
     const diff = wrapA(soll - k.yaw);
-    inp.lenk = clamp(-diff * 3.2, -1, 1);
+    this.wackel += dt * 1.7;
+    inp.lenk = clamp(-diff * 3.2 + (Math.sin(this.wackel) + Math.sin(this.wackel * 2.3 + 1)) * 0.5 * st.wackel, -1, 1);
     // Driften
     this.driftCD -= dt;
     const kv = w.S[w.idx(P.s + 12)].k, kJetzt = w.S[w.idx(P.s + 3)].k;
@@ -84,8 +91,9 @@ class Bot {
       inp.drift = false;
     } else if (!k.drift.an) {
       if (st.drift > 0 && !abk && Math.abs(kv) > 0.013 && k.v > 14 && !k.luft && this.driftCD <= 0 && Math.abs(P.d) < P.w * 0.8) {
-        inp.drift = true; inp.lenk = dir;
-        this.driftCD = 0.6;
+        // nicht jede Kurve wird gedriftet
+        if (Math.random() < st.driftLust) { inp.drift = true; inp.lenk = dir; this.driftCD = 0.6; }
+        else this.driftCD = 2.2;
       }
       if (k.hop) { inp.drift = true; inp.lenk = this.letzteDir || dir; }
       if (inp.drift) this.letzteDir = dir;

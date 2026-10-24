@@ -495,11 +495,15 @@ class Rennen {
     let best = -1e9;
     for (const k of this.karts) if (k.istMensch() && !k.fertig) best = Math.max(best, k.fortschritt);
     if (best < -1e8) best = Math.max(...this.karts.map(k => k.fortschritt));
+    // Bots hinter allen Menschen werden zusätzlich schneller
+    let letzter = 1e9;
+    for (const k of this.karts) if (k.istMensch() && !k.fertig) letzter = Math.min(letzter, k.fortschritt);
     for (const k of this.karts) {
       if (k.typ !== 'bot') continue;
       const st = KI_STUFEN[k.botStufe];
       const diff = best - k.fortschritt;
-      const f = diff >= 0 ? 1 + clamp(diff / 220, 0, 1) * st.aufhol : 1 - clamp((-diff - 25) / 200, 0, 1) * st.vorne;
+      let f = diff >= 0 ? 1 + clamp((diff - 10) / 160, 0, 1) * st.aufhol : 1 - clamp((-diff - 15) / 180, 0, 1) * st.vorne;
+      if (letzter < 1e8 && k.fortschritt < letzter) f += clamp((letzter - k.fortschritt) / 80, 0, 1) * st.hinten;
       k.botTempo = st.tempo * f;
     }
   }

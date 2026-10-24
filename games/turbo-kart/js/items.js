@@ -3,9 +3,9 @@
 
 // Gewichte je nach Platz (vorne, Mitte, hinten)
 const ITEM_TABELLE = {
-  banane: [30, 8, 0], banane3: [6, 6, 0], gruen: [24, 12, 3], gruen3: [4, 10, 4], rot: [0, 16, 8], rot3: [0, 6, 10],
-  falle: [10, 3, 0], muenze: [18, 6, 0], hupe: [4, 4, 2], nitro: [0, 12, 10], nitro3: [0, 6, 14], goldnitro: [0, 0, 7],
-  bombe: [0, 6, 4], tinte: [0, 6, 3], stern: [0, 2, 12], blitz: [0, 1, 12], blau: [0, 3, 5], rakete: [0, 0, 10],
+  banane: [34, 8, 0], banane3: [5, 4, 0], gruen: [26, 12, 0], gruen3: [2, 8, 2], rot: [0, 12, 8], rot3: [0, 4, 12],
+  falle: [12, 3, 0], muenze: [22, 6, 0], hupe: [6, 4, 0], nitro: [0, 8, 10], nitro3: [0, 5, 18], goldnitro: [0, 0, 14],
+  bombe: [0, 4, 3], tinte: [0, 4, 3], stern: [0, 3, 18], blitz: [0, 1, 14], blau: [0, 3, 6], rakete: [0, 0, 18],
 };
 const SCHLACHT_ITEMS = ['banane', 'banane3', 'gruen', 'gruen3', 'rot', 'rot3', 'bombe', 'nitro', 'stern', 'falle', 'hupe', 'tinte'];
 const ITEM_CODE = Object.keys(ITEMS);
@@ -110,7 +110,8 @@ class Items {
       const n = r.karts.length;
       // Platz plus etwas Abstand zum Ersten: wer weit zurückliegt, bekommt bessere Items (Blitz, Rakete, Stern)
       const erster = Math.max(...r.karts.map(o => o.fortschritt));
-      const pf = n > 1 ? clamp((k.platz - 1) / (n - 1) + clamp((erster - k.fortschritt - 60) / 600, 0, 0.25), 0, 1) : 0.5;
+      let pf = n > 1 ? clamp((k.platz - 1) / (n - 1) + clamp((erster - k.fortschritt - 40) / 400, 0, 0.35), 0, 1) : 0.5;
+      pf = Math.pow(pf, 0.8);
       liste = Object.entries(ITEM_TABELLE).map(([t, w]) => [t, pf < 0.5 ? lerp(w[0], w[1], pf * 2) : lerp(w[1], w[2], (pf - 0.5) * 2)]);
     }
     // Einschränkungen

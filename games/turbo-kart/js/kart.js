@@ -128,7 +128,7 @@ class Kart {
     this.driftLenk = damp(this.driftLenk || 0, lenk, 10, dt);
     // Höchstgeschwindigkeit
     const P = this.P;
-    let vmax = cc.max * (0.93 + this.w.tempo * 0.02) * (1 + Math.min(this.muenzen, 10) * 0.005);
+    let vmax = cc.max * (0.955 + this.w.tempo * 0.012) * (1 + Math.min(this.muenzen, 10) * 0.005);
     if (this.typ === 'bot') vmax *= this.botTempo || 1;
     else if (this.aufhol) vmax *= 1 + this.aufhol;
     if (this.kleinT > 0) vmax *= 0.72;
@@ -139,15 +139,15 @@ class Kart {
     if (matsch) vmax *= clamp(0.52 + this.w.gelaende * 0.1, 0.45, 0.65);
     let vZiel = vmax;
     if (this.sternT > 0) vZiel = vmax * 1.16;
-    if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * 1.36);
+    if (this.boostT > 0) vZiel = Math.max(vZiel, vmax * (1.27 + this.w.beschl * 0.025));
     if (this.raketeT > 0) vZiel = cc.max * 1.55;
     // Abkürzung: holpriger Weg, mit Turbo kein Problem
     if (P.flaeche === 'piste' && !this.luft && this.boostT <= 0 && this.sternT <= 0 && this.raketeT <= 0) vmax *= clamp((P.rauh || 0.8) + this.w.gelaende * 0.06, 0.74, 0.97);
-    const beschl = (9.5 + this.w.beschl * 2.9) * cc.acc * (1 + (this.aufhol || 0));
+    const beschl = (7.5 + this.w.beschl * 4.2) * cc.acc * (1 + (this.aufhol || 0));
     if (this.treffer) {
       this.v *= Math.exp(-2.6 * dt);
     } else if (this.boostT > 0 || this.raketeT > 0 || (this.sternT > 0 && gas)) {
-      if (this.v < vZiel) this.v = Math.min(vZiel, this.v + 45 * dt);
+      if (this.v < vZiel) this.v = Math.min(vZiel, this.v + (26 + this.w.beschl * 9) * dt);
       else this.v = damp(this.v, vZiel, 2, dt);
     } else if (gas && !bremse) {
       if (this.v < 0) this.v += 30 * dt;
@@ -186,7 +186,7 @@ class Kart {
       d.ein = ein;
       dreh = -d.dir * handl * lerp(DRIFT_AUSSEN, DRIFT_INNEN, eng) * lerp(0.3, 1, ein) * vf;
       d.eng = eng;
-      d.t += dt * (0.65 + 0.85 * eng) * (this.luft ? 0.3 : 1);
+      d.t += dt * (0.65 + 0.85 * eng) * (0.88 + this.w.beschl * 0.05) * (this.luft ? 0.3 : 1);
       const st = d.t > DRIFT_STUFEN[2] ? 3 : d.t > DRIFT_STUFEN[1] ? 2 : d.t > DRIFT_STUFEN[0] ? 1 : 0;
       if (st > d.stufe) { d.stufe = st; if (this.lokal >= 0) Ton.sfx('funke' + st, 0.8); }
     } else {
@@ -361,7 +361,7 @@ class Kart {
     d.an = false; d.t = 0; d.stufe = 0; d.dir = 0;
   }
   boost(dauer, art) {
-    this.boostT = Math.max(this.boostT, dauer);
+    this.boostT = Math.max(this.boostT, dauer * (0.85 + this.w.beschl * 0.06));
     this.v = Math.max(this.v, CC[this.r.cc].max * 0.95);
     if (this.lokal >= 0) { Ton.sfx(art && art.startsWith('drift') ? 'mini1' : 'boost', 0.9); this.r.kameraStoss(this.lokal); }
   }
