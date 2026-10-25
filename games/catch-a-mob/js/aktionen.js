@@ -14,9 +14,11 @@
   const tagRar = r => '<span class="tag" style="background:' + CAM.RAR_FARBE[r] + '">' + CAM.RARITAET[r] + '</span>';
   function elTags(m) { return CAM.elemente(m).map(tagEl).join(''); }
   function mobNameFull(m) { return CAM.name(m) + (m.glanz ? ' ✦' : ''); }
-  function mobZeile(m) { return esc(mobNameFull(m)) + ' <small style="color:#a9a59b">Lv ' + m.lv + '</small>'; }
+  // Kleines Bild des Mobs vor dem Namen (überall in Listen)
+  function mobBild(m, px) { const c = CAM.spriteMit(m); return '<img src="' + (c._url || (c._url = c.toDataURL())) + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated;vertical-align:middle;margin:-6px 8px -6px 0">'; }
+  function mobZeile(m) { return mobBild(m, 36) + esc(mobNameFull(m)) + ' <small style="color:#a9a59b">Lv ' + m.lv + '</small>'; }
   function lpText(m) { return m.hp <= 0 ? '<span style="color:#ff6b5e">besiegt</span>' : m.hp + '/' + m.mhp + ' LP'; }
-  function spriteImg(m, px) { const c = CAM.spriteMit(m); return '<img src="' + c.toDataURL() + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated">'; }
+  function spriteImg(m, px) { const c = CAM.spriteMit(m); return '<img src="' + (c._url || (c._url = c.toDataURL())) + '" width="' + px + '" height="' + px + '" style="image-rendering:pixelated">'; }
   A.mobNameFull = mobNameFull;
   A.h = { ge, tagEl, tagRar, elTags, mobZeile, lpText, spriteImg, sleep };
 
@@ -40,6 +42,8 @@
     return r;
   };
   function verlierGold() { const v = Math.floor(S.save.gold * 0.8); S.save.gold -= v; return v; }
+  // Überfall: Der Räuber nimmt 100 Gold (hat das Opfer unter 150 Gold, 70 % davon)
+  const raub = g => g < 150 ? Math.floor(g * 0.7) : 100;
   // Niederlage: 10 % der Erfahrung, die für die aktuelle Stufe nötig ist, gehen bei jedem Mob im Team verloren (nie unter 0, keine Stufe weniger)
   function verlierXp() { S.save.team.forEach(m => { m.xp = Math.max(0, (m.xp || 0) - Math.floor(CAM.xpBedarf(m.lv) * 0.1)); }); }
 
@@ -242,11 +246,25 @@
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
     const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>ab Stufe ' + x.lv + ' · ' + (CAM.moveText(mv) || '–') + '</td></tr>'; }).join('');
-    const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
+    const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + (m.nick ? ' · ' + esc(CAM.artName(m)) : '') + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
       '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>' + (() => { const n = CAM.naechsteAttacke(m); return '<p><small style="color:#a9a59b">' + (n ? 'Nächste Attacke bei Stufe ' + n.lv + ' · ' : '') + m.moves.length + ' von höchstens 6 Attacken' + (CAM.runeMoeglich(m) ? '' : '') + '</small></p>'; })();
     await UI.info(html, 'Mob-Details');
+  };
+  // Eigenen Namen für einen Mob vergeben (leer lassen = wieder der Name der Art)
+  A.umbenennen = function (m) {
+    return new Promise(res => {
+      const host = UI.openPanel('Mob umbenennen', 'Art: ' + CAM.artName(m) + ' · höchstens 14 Zeichen. Leer lassen für den Originalnamen.');
+      host.innerHTML = '<div style="text-align:center;margin:6px 0">' + spriteImg(m, 96) + '</div><input type="text" id="nm-t" maxlength="14" spellcheck="false" style="width:100%;box-sizing:border-box" value="' + esc(m.nick || '') + '" placeholder="' + esc(CAM.artName(m)) + '"><div class="row" style="margin-top:12px"><button class="btn" id="nm-ok">Speichern</button><button class="btn alt" id="nm-x">Abbrechen</button></div>';
+      const t = $('nm-t'); t.focus(); t.select();
+      const fertig = ok => {
+        if (ok) { const v = t.value.replace(/[<>&"]/g, '').trim().slice(0, 14); if (v && v !== CAM.artName(m)) m.nick = v; else delete m.nick; Save.speichern(); }
+        UI.closePanel(); res();
+      };
+      $('nm-ok').onclick = () => fertig(true); $('nm-x').onclick = () => fertig(false);
+      t.addEventListener('keydown', e => { if (e.key === 'Enter') fertig(true); else if (e.key === 'Escape') fertig(false); e.stopPropagation(); });
+    });
   };
   A.teamMenue = async function () {
     let start = 0;
@@ -257,11 +275,12 @@
       if (r < 0) return;
       start = r;
       const m = t[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Umbenennen' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
-      else if (w === 1) await A.veredeln(m);
-      else if (w === 2) { t.splice(r, 1); t.unshift(m); start = 0; }
-      else if (w === 3) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
+      else if (w === 1) await A.umbenennen(m);
+      else if (w === 2) await A.veredeln(m);
+      else if (w === 3) { t.splice(r, 1); t.unshift(m); start = 0; }
+      else if (w === 4) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
   A.zwinger = async function () {
@@ -274,9 +293,10 @@
       if (r < 0) return;
       start = Math.min(r, b.length - 2 < 0 ? 0 : r);
       const m = b[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Umbenennen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
-      else if (w === 1) {
+      else if (w === 1) await A.umbenennen(m);
+      else if (w === 2) {
         if (S.save.team.length < CAM.TEAM_MAX) { b.splice(r, 1); S.save.team.push(m); }
         else { const i = await A.waehleMob('Wen ersetzt er?'); if (i >= 0) { const alt = S.save.team[i]; S.save.team[i] = m; b[r] = alt; } }
       }
@@ -305,7 +325,7 @@
       const dex = S.save.dex, F = CAM.FAMILIEN;
       const seen = Object.keys(dex).length, caught = Object.values(dex).filter(v => v >= 2).length;
       const items = F.map((f, i) => ({
-        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (f.spezial ? '<span style="color:#ffb36b">★</span> ' : '') + (dex[i] ? esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
+        label: '<small style="color:#8e89a8">' + String(i + 1).padStart(2, '0') + '</small> ' + (f.spezial ? '<span style="color:#ffb36b">★</span> ' : '') + (dex[i] ? mobBild({ fam: i, stufe: 1 }, 36) + esc(f.n[f.n.length - 1] === f.n[0] ? f.n[0] : f.n.join(' › ')) : '???'),
         sub: dex[i] >= 2 ? '<span style="color:#5fd38a">gefangen</span>' : dex[i] ? 'gesehen' : '–',
       }));
       const r = await UI.choose(items, { title: 'Mob-Buch', sub: 'Gesehen ' + seen + ' / ' + F.length + ' · Gefangen ' + caught + ' / ' + F.length, numbers: false, wide: true });
@@ -460,7 +480,18 @@
     }
     return lines;
   }
-  async function verloren(titelText) {
+  // modus: 'voll' (Mobs, die du angreifst oder die dich angreifen, Riesen): 80 % Gold, 10 % Erfahrung, Heilhaus.
+  //         'mild' (Duell oder Kampf mit Einverständnis, Arena): nichts geht verloren, deine Mobs haben noch 5 LP.
+  //         'raub' (Überfall durch NPC): nur die Beute geht verloren (höchstens 100 Gold), deine Mobs haben noch 5 LP.
+  async function verloren(titelText, modus) {
+    if (modus === 'mild' || modus === 'raub') {
+      let text = titelText || 'Dein Team ist erschöpft.';
+      if (modus === 'raub') { const g = Math.min(S.save.gold, raub(S.save.gold)); S.save.gold -= g; text += '<br>' + (g ? 'Du wirst bestohlen: ' + ge(g) + ' sind weg.' : 'Du hattest zum Glück nichts dabei.'); }
+      S.save.team.forEach(m => { if (m.hp < 5) m.hp = Math.min(5, m.mhp); m.status = null; delete m.faintDone; });
+      Save.speichern(); UI.snd('niederlage');
+      await UI.info(text + '<br><small>Deine Mobs haben noch 5 LP. Heile sie im Heilhaus.</small>', 'Niederlage');
+      return;
+    }
     const v = verlierGold(); verlierXp();
     // zum nächsten Dorf, Mobs heilen
     let best = null, bd = 1e9;
@@ -532,7 +563,7 @@
       const gold = 30 + tr.lv * 10 * tr.anz; S.save.gold += gold; lines.push(tr.name + ' bezahlt dir ' + gold + ' Gold.');
     }
     Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
-    if (b.winner === 1) { S.trainerT[tr.id] = Date.now() - TRAINER_PAUSE_MS + 60000; await verloren('Du wurdest von ' + esc(tr.name) + ' besiegt.'); return true; }
+    if (b.winner === 1) { S.trainerT[tr.id] = Date.now() - TRAINER_PAUSE_MS + 60000; await verloren(opt.erster === 1 ? esc(tr.name) + ' hat dich überfallen und besiegt.' : 'Du wurdest von ' + esc(tr.name) + ' besiegt.', opt.erster === 1 ? 'raub' : 'mild'); return true; }
     if (lines.length) await UI.info(lines.join('<br>'), 'Sieg!');
     return true;
   };
@@ -844,7 +875,7 @@
       }
     }
     Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
-    if (b.over && b.winner === 1) { await verloren('Der Riese war zu stark.'); return; }
+    if (b.over && b.winner === 1) { await verloren('Der Riese war zu stark.', 'voll'); return; }
     if (lines.length) await UI.info(lines.join('<br>'), 'Raid geschafft!');
   };
   A.intern = { vorbereiten, nachbereiten, kampfBasis, xpVerteilen, verloren, dexSet };
