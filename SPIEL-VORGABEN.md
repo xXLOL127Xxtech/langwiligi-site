@@ -196,4 +196,4 @@ Liefere einen **Ordner `<spiel-id>/`** mit:
 - [ ] Keine externen Dateien ausser cdnjs und Google Fonts, kein Tracking, keine Popups
 - [ ] Alle Texte auf Deutsch, ohne ß
 
-**Updates-Verlauf pflegen:** Bei jeder Änderung (auch jeder kleinen) einen Eintrag oben in `startseite/verlauf.json` ergänzen (`d` Datum, `z` Uhrzeit, `a` Bereich, `t` kurzer Text, `tag` Neu/Update/Intern, `pr`, `b`). Daraus entsteht die Unterseite `/updates/`. Bei sichtbaren Änderungen zusätzlich `startseite/updates.json`.
+**Updates-Verlauf pflegen:** Bei jeder Änderung (auch jeder kleinen) einen Eintrag oben in `startseite/verlauf.json` ergänzen (`d` Datum, `z` Uhrzeit, `a` Bereich, `t` kurzer Text, `tag` Neu/Update/Intern, `k` Art des Updates, `pr`, `b`). Daraus entsteht die Unterseite `/updates/`. Bei sichtbaren Änderungen zusätzlich `startseite/updates.json`.

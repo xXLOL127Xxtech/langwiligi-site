@@ -1,8 +1,7 @@
 // Seite /updates/: alle Änderungen aus verlauf.json (neueste oben), durchsuchbar und nach Art filterbar
 (function () {
   'use strict';
-  var REPO = 'https://github.com/xXLOL127Xxtech/langwiligi-site/pull/';
-  var $ = function (id) { return document.getElementById(id); };
+    var $ = function (id) { return document.getElementById(id); };
   var MON = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
   var WT = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   var data = [], tag = '', q = '';
@@ -12,7 +11,7 @@
   function render() {
     var low = q.toLowerCase();
     var rows = data.filter(function (u) {
-      return (!tag || u.tag === tag) && (!low || (u.a + ' ' + u.t + ' ' + (u.b || '')).toLowerCase().indexOf(low) >= 0);
+      return (!tag || u.tag === tag) && (!low || (u.a + ' ' + u.t + ' ' + (u.k || '')).toLowerCase().indexOf(low) >= 0);
     });
     $('vl-count').textContent = '// ' + rows.length + (rows.length === 1 ? ' Änderung' : ' Änderungen');
     if (!rows.length) { $('vl-list').innerHTML = '<p class="upd-load">&gt; nichts gefunden.</p>'; return; }
@@ -26,8 +25,7 @@
       }
       html += '<li class="vl-e"><time class="vl-z">' + esc(u.z) + '</time><span class="upd-g ' + esc(u.tag.toLowerCase()) + '">' + esc(u.tag) + '</span>' +
         '<p>' + (u.a ? '<b>' + esc(u.a) + '</b> ' : '') + esc(u.t) + '</p>' +
-        '<span class="vl-meta">' + (u.pr ? '<a href="' + REPO + u.pr + '" target="_blank" rel="noopener">PR ' + u.pr + '</a>' : '<span>nur Branch</span>') +
-        (u.b ? '<span class="vl-b">' + esc(u.b) + '</span>' : '') + '</span></li>';
+        '<span class="vl-meta">' + esc(u.k || '') + '</span></li>';
     });
     $('vl-list').innerHTML = html + '</ol></section>';
   }
