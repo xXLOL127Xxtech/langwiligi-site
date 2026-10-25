@@ -294,17 +294,30 @@
           '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
       }).join('');
     }
+    // Neuste Updates unten auf der Seite (drei Einträge) + Links, die das Fenster öffnen
+    var news = $('news-list');
+    function kurz() {
+      news.innerHTML = data.slice(0, 3).map(function (u) {
+        return '<article class="news-e"><div class="upd-h"><span class="upd-d">' + esc(fmt(u.d)) + '</span>' +
+          '<span class="upd-g ' + esc((u.tag || '').toLowerCase()) + '">' + esc(u.tag || 'Update') + '</span></div>' +
+          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.slice(0, 3).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
+      }).join('');
+    }
     function laden() {
       return data ? Promise.resolve(data) : fetch('_start/updates.json?v=' + VER, { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (j) { data = j; return j; });
     }
     var VER = (document.querySelector('script[src*="start.js"]').src.split('v=')[1] || '1');
     function gesehen() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
-    laden().then(function (j) { if (j.length && j[0].d > gesehen()) mark.hidden = false; }, function () {});
-    $('upd-open').addEventListener('click', function () {
+    laden().then(function (j) { kurz(); if (j.length && j[0].d > gesehen()) mark.hidden = false; },
+      function () { news.innerHTML = '<p class="upd-load">&gt; Updates konnten nicht geladen werden.</p>'; });
+    function oeffnen() {
       dlg.showModal();
       laden().then(function () { show(); if (data.length) { try { localStorage.setItem(KEY, data[0].d); } catch (e) {} mark.hidden = true; } },
         function () { list.innerHTML = '<p class="upd-load">&gt; fehler: Updates konnten nicht geladen werden.</p>'; });
-    });
+    }
+    $('upd-open').addEventListener('click', oeffnen);
+    $('news-all').addEventListener('click', oeffnen);
+    $('foot-upd').addEventListener('click', function (e) { e.preventDefault(); oeffnen(); });
     $('upd-close').addEventListener('click', function () { dlg.close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
   })();
@@ -316,6 +329,9 @@
     try { if (!form.player.value) form.player.value = localStorage.getItem('lw-name') || ''; } catch (e) {}
     say(''); send.disabled = false; tip.showModal(); form.game.focus();
   });
+  $('foot-tip').addEventListener('click', function (e) { e.preventDefault(); $('tip-open').click(); });
+  $('foot-up').addEventListener('click', function (e) { e.preventDefault(); scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
+  $('yr').textContent = new Date().getFullYear();
   $('tip-close').addEventListener('click', function () { tip.close(); });
   tip.addEventListener('click', function (e) { if (e.target === tip) tip.close(); });
   form.addEventListener('submit', function (e) {
