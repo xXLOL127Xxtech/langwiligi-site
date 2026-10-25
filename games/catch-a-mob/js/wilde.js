@@ -6,7 +6,7 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_WASSER = 4, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
+  const MAX_WASSER = 3, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
   const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -174,7 +174,13 @@
       W.spawnT = 6 + Math.random() * 8;
       const gruppen = new Set(W.liste.filter(imLand).map(w => w.herde)).size;
       if (gruppen < MAX_GRUPPEN && Math.random() < 0.65 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
-      if (S.modus === 'welt' && !Welt.dorfBei(S.x, S.y) && Math.random() < 0.85) W.spawnenWasser(now);   // Wassertiere sind schon da, auch wenn man sie von Land aus nicht sieht
+    }
+    // Wassertiere: Die Gegend ist von Anfang an gefüllt (auch wenn man sie von Land aus nicht sieht) und füllt sich nach einem Fang langsam wieder
+    if (S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) {
+      if (S.schwimmt && !W.warImWasser) { W.warImWasser = true; for (let i = 0; i < MAX_WASSER; i++) if (!W.spawnenWasser(now)) break; }   // beim Eintauchen sofort alle da
+      if (!S.schwimmt) W.warImWasser = false;
+      W.wasserT = (W.wasserT || 0) - dt;
+      if (W.wasserT <= 0) { W.wasserT = 3; W.spawnenWasser(now); }
     }
     const fuehrer = {};
     for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;

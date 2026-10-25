@@ -1,4 +1,8 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Wassertiere sofort da", "tag": "Update", "p": [
+    "Wenn du ins Wasser gehst, sind die Wassertiere sofort da (bis zu 3 in der Gegend), sie tauchen nicht mehr nach und nach auf",
+    "Es werden nie mehr als 3 Wassertiere gleichzeitig erzeugt, nach einem Fang füllt sich die Gegend langsam wieder"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Leuchtling fliegt wieder über Land", "tag": "Update", "p": [
     "Der Leuchtling schwebt über Land und Wasser und ist immer zu sehen, auch wenn du nicht schwimmst",
     "Sichtbare Tiere tauchen nie vor deinen Augen auf, sondern erst am Bildrand",
