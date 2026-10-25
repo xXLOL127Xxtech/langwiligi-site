@@ -177,6 +177,8 @@ h1 .site { display: block; margin-top: .16em; color: var(--cyan); text-shadow: 5
   box-shadow: 0 0 0 1px #000, 0 0 34px rgba(34, 228, 255, .28), 8px 8px 0 rgba(255, 46, 136, .55);
   clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
 .upd-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font: 14px/1 var(--mono); letter-spacing: .06em; color: var(--bg); background: var(--cyan); }
+.upd-full { margin-left: auto; margin-right: 10px; font: 700 13px/1 var(--mono); letter-spacing: .04em; color: var(--bg); text-decoration: none; padding: 5px 8px; border: 1px solid var(--bg); }
+.upd-full:hover, .upd-full:focus-visible { background: var(--bg); color: var(--cyan); outline: none; }
 .upd-bar button { font: 700 15px/1 var(--mono); color: var(--bg); background: transparent; border: 0; padding: 4px 6px; cursor: pointer; }
 .upd-bar button:hover, .upd-bar button:focus-visible { background: var(--bg); color: var(--cyan); outline: none; }
 .upd-body { overflow-y: auto; padding: 20px 22px 24px; background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .14) 2px 3px), var(--panel); }
@@ -376,7 +378,6 @@ dialog .row button:disabled { opacity: .5; cursor: default; }
   .card { opacity: 1; }
 }
 
-.upd-more { display: inline-block; margin-top: 6px; }
 
 /* ---------- Seite /updates/ (Verlauf) ---------- */
 .vl-top { padding: clamp(28px, 5vw, 56px) 0 20px; }
