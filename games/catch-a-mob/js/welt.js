@@ -163,7 +163,9 @@
   };
 
   Welt.get = function (x, y) { x |= 0; y |= 0; return (x < 0 || y < 0 || x >= W || y >= H) ? T.WASSER : Welt.tiles[y * W + x]; };
-  Welt.blockiert = (x, y) => BLOCK[Welt.get(Math.floor(x), Math.floor(y))] === 1;
+  // schwimm = true: Wasser ist begehbar (nur für dich, andere Wesen bleiben an Land)
+  Welt.blockiert = (x, y, schwimm) => { const t = Welt.get(Math.floor(x), Math.floor(y)); return BLOCK[t] === 1 && !(schwimm && t === T.WASSER); };
+  Welt.istWasser = (x, y) => Welt.get(Math.floor(x), Math.floor(y)) === T.WASSER;
   Welt.biomeAt = function (x, y) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= W || y >= H) return 0; return Welt.biome[y * W + x]; };
   Welt.istSicher = function (x, y, rand) {
     rand = rand || 0;

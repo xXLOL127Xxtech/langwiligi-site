@@ -70,9 +70,10 @@
       const plan = A.alleHeilenPlan();
       const r = await UI.choose([{ label: 'Alle heilen (' + (plan.liste.length ? plan.preis + ' G' : 'nichts zu tun') + ')', sub: plan.liste.length ? plan.liste.length + ' Mobs · längste Pflege ' + dauerText(plan.sek) + (plan.bleibt ? ' · ' + plan.bleibt + ' bleibt bei dir' : '') : 'alle gesund', disabled: !plan.liste.length || S.save.gold < plan.preis },
         { label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
-        { label: 'Mobs abholen', sub: pf.length ? fertig + ' fertig · ' + (pf.length - fertig) + ' in Pflege' : 'niemand in Pflege', disabled: !pf.length },
+        { label: 'Mobs abholen', sub: abholText(pf, jetzt), disabled: !pf.length },
         { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
-        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start });
+        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start,
+          live: () => { const p2 = pflegeListe(); return [null, null, { sub: abholText(p2, Date.now()), disabled: !p2.length }]; } });
       if (r === 0) { start = 0; A.alleHeilen(hier, plan); }
       else if (r === 1) { start = 1; await A.mobHeilen(hier); }
       else if (r === 2) { start = 2; await A.mobAbholen(hier); }
@@ -81,6 +82,13 @@
     }
   };
   // Alle verletzten Mobs auf einmal abgeben. Mindestens ein Mob bleibt im Team bei dir.
+  // Text für «Mobs abholen»: läuft live herunter, sobald jemand fertig ist, steht es da
+  function abholText(pf, jetzt) {
+    if (!pf.length) return 'niemand in Pflege';
+    const fertig = pf.filter(e => e.ende <= jetzt).length, offen = pf.filter(e => e.ende > jetzt).map(e => Math.ceil((e.ende - jetzt) / 1000));
+    const naechster = offen.length ? 'nächster in ' + dauerText(Math.min.apply(null, offen)) : '';
+    return (fertig ? '<b style="color:#7ee08f">' + fertig + ' fertig, zum Entnehmen wählen</b>' : '') + (fertig && naechster ? ' · ' : '') + naechster;
+  }
   A.alleHeilenPlan = function () {
     const alle = S.save.team.map(m => ({ m, ort: 'team' })).concat(S.save.box.map(m => ({ m, ort: 'box' })));
     let liste = alle.map(o => Object.assign(o, { h: CAM.heilInfo(o.m) })).filter(o => o.h);
@@ -136,12 +144,13 @@
     for (;;) {
       const pf = pflegeListe(), jetzt = Date.now();
       if (!pf.length) { await UI.info('Niemand ist in Pflege.', 'Heilhaus'); return; }
-      const items = pf.map(e => {
-        const rest = Math.ceil((e.ende - jetzt) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
-        const sub = rest > 0 ? 'noch ' + dauerText(rest) + ' · Heilhaus ' + ort : e.dorf === hier ? 'fertig · gratis abholen' : 'fertig in ' + ort + ' · Transport ' + ge(fee);
-        return { label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar), sub, disabled: rest > 0 || S.save.gold < fee };
-      });
-      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. Anderes Dorf: mit Transportgebühr.', start, numbers: false, wide: true });
+      const info = e => {
+        const jetzt2 = Date.now(), rest = Math.ceil((e.ende - jetzt2) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
+        const sub = rest > 0 ? '<span class="chip warn">noch ' + dauerText(rest) + '</span> Heilhaus ' + ort : e.dorf === hier ? '<span class="chip gut">fertig</span> gratis entnehmen' : '<span class="chip gut">fertig</span> in ' + ort + ' · Transport ' + ge(fee);
+        return { sub, disabled: rest > 0 || S.save.gold < fee };
+      };
+      const items = pf.map(e => Object.assign({ label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar) }, info(e)));
+      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. Anderes Dorf: mit Transportgebühr.', start, numbers: false, wide: true, live: () => pf.map(info) });
       if (r < 0) return;
       start = r;
       const e = pf[r], fee = transportGebuehr(e, hier);
@@ -514,8 +523,18 @@
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
     const intro = (opt.intro || ('Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!')) + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
-    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro, erster: opt.erster }));
+    // Wassertiere, die ganz unter Wasser leben: Du tauchst ab, der Kampf findet unter Wasser statt und die Luft reicht nur 2 Minuten
+    const unter = f.lebt === 'wasser' && !!S.schwimmt;
+    if (unter) { S.tauch = { t0: performance.now(), dauer: 1300 }; UI.snd('platsch'); await sleep(1500); }
+    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: unter ? intro + ' Du tauchst ab!' : intro, erster: opt.erster, unterwasser: unter }));
+    S.tauch = null;
     const b = res.b; nachbereiten(S.save.team);
+    if (res.ertrunken) {
+      if (opt.entity) opt.entity.ruheBis = Date.now() + 20000;
+      A.zumUfer(); Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
+      await verloren('Dir ist die Luft ausgegangen! Du tauchst in letzter Sekunde auf und rettest dich ans Ufer.', 'mild');
+      return;
+    }
     const lines = [];
     if (b.result.caught) {
       const m = b.result.caught; delete m.faintDone; m.status = null;
@@ -536,6 +555,14 @@
     S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
     if (b.winner === 1 && !b.result.fled) { await verloren(); return; }
     if (lines.length) await UI.info(lines.join('<br>'), b.result.caught ? 'Gefangen!' : 'Kampf vorbei');
+  };
+
+  // Nächstes Ufer suchen (nach dem Ertrinken)
+  A.zumUfer = function () {
+    for (let r = 1; r < 60; r++) for (let k = 0; k < 24; k++) {
+      const a = k / 24 * 6.2832, x = Math.floor(S.x + Math.cos(a) * r) + 0.5, y = Math.floor(S.y + Math.sin(a) * r) + 0.5;
+      if (!Welt.blockiert(x, y) && !Welt.blockiert(x - 0.3, y - 0.2) && !Welt.blockiert(x + 0.3, y + 0.3)) { S.x = x; S.y = y; S.schwimmt = false; return; }
+    }
   };
 
   A.wildMenue = async function (w) {

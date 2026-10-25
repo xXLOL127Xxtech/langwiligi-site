@@ -18,10 +18,30 @@
   G.addEventListener('resize', resize);
 
   // ---------- Figuren ----------
+  // Im Wasser: nur der Oberkörper schaut heraus, Wellenringe, beim Tauchen versinkt die Person mit Spritzern und Blasen
+  function schwimmer(c, x, y, ts, col, dir, tick, look, sw) {
+    const u = ts / 16, q = sw.tauch || 0, wl = y - 7 * u, sink = Math.min(1, q * 1.15) * 28 * u, bob = Math.sin(tick / 230 + x * 0.013) * 0.7 * u;
+    c.save(); c.beginPath(); c.rect(x - ts * 1.2, y - ts * 3, ts * 2.4, ts * 3 - 7 * u); c.clip();
+    CAM.zeichneMensch(c, x, y - 0.6 * u + bob + sink, ts, col, dir, true, tick, look);
+    c.restore();
+    c.fillStyle = 'rgba(60,140,215,.5)'; c.beginPath(); c.ellipse(x, wl + 1.2 * u, 7.5 * u, 2.4 * u, 0, 0, 6.3); c.fill();
+    c.strokeStyle = 'rgba(235,248,255,.85)'; c.lineWidth = Math.max(1, u * 0.7);
+    for (let k = 0; k < 2; k++) { const p = ((tick / 900 + k * 0.5) % 1); c.globalAlpha = 1 - p; c.beginPath(); c.ellipse(x, wl + 1.2 * u, (7.5 + p * 7) * u, (2.4 + p * 2.2) * u, 0, 0, 6.3); c.stroke(); }
+    c.globalAlpha = 1;
+    if (q > 0) {   // Spritzer beim Eintauchen, danach Blasen
+      c.fillStyle = 'rgba(235,248,255,.9)';
+      if (q < 0.55) for (let i = 0; i < 9; i++) { const a = i / 9 * 3.14 + 3.14, f = Math.min(1, q / 0.55); c.fillRect(x + Math.cos(a) * 9 * u * f * (1 + (i % 3) * 0.3), wl - Math.abs(Math.sin(a)) * 14 * u * f * (1 - f * 0.5), 2 * u * 0.8 + 1, 2 * u * 0.8 + 1); }
+      c.strokeStyle = 'rgba(220,245,255,.9)'; c.lineWidth = Math.max(1, u * 0.6);
+      if (q > 0.35) for (let i = 0; i < 6; i++) { const t = ((tick / 700 + i * 0.17) % 1); c.globalAlpha = 1 - t; c.beginPath(); c.arc(x + Math.sin(i * 2 + tick / 300) * 5 * u, wl - t * 12 * u * (q > 0.8 ? 1.4 : 1), (1.3 + (i % 3)) * u * 0.8, 0, 6.3); c.stroke(); }
+      c.globalAlpha = 1;
+    }
+  }
   function person(c, x, y, ts, col, dir, gehen, name, tick, extra) {
     const u = ts / 16;
+    if (extra && extra.schwimm) { schwimmer(c, x, y, ts, col, dir, tick, CAM.lookVon(extra.look || name), extra.schwimm); if (extra.schwimm.tauch > 0.3) name = ''; }
+    else {
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y - u, 5.5 * u, 2 * u, 0, 0, 6.3); c.fill();
-    CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(extra && extra.look || name));
+    CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(extra && extra.look || name)); }
     if (extra && extra.lv) name = name + ' · Lv ' + extra.lv;
     if (name) {
       c.font = '700 ' + Math.max(11, Math.round(ts * 0.3)) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
@@ -33,27 +53,30 @@
   }
 
   // ---------- Update ----------
-  function blockiertBox(x, y) { return Welt.blockiert(x - 0.28, y - 0.18) || Welt.blockiert(x + 0.28, y - 0.18) || Welt.blockiert(x - 0.28, y + 0.3) || Welt.blockiert(x + 0.28, y + 0.3); }
+  function blockiertBox(x, y) { return Welt.blockiert(x - 0.28, y - 0.18, true) || Welt.blockiert(x + 0.28, y - 0.18, true) || Welt.blockiert(x - 0.28, y + 0.3, true) || Welt.blockiert(x + 0.28, y + 0.3, true); }
 
   function update(dt, now, tick) {
     const welt = S.modus === 'welt';
     S.anim += dt;
     const frei = welt && !UI.stack.length && !S.busy && !K.aktiv;
     S.bewegt = false;
+    S.schwimmt = welt && Welt.istWasser(S.x, S.y + 0.2);
     if (frei) {
       const kd = UI.keysDown;
       let dx = (kd.d || kd.arrowright ? 1 : 0) - (kd.a || kd.arrowleft ? 1 : 0), dy = (kd.s || kd.arrowdown ? 1 : 0) - (kd.w || kd.arrowup ? 1 : 0);
       if (dx || dy) {
-        const n = Math.hypot(dx, dy), sp = 5.4 * dt * (kd.shift ? 1.5 : 1);
+        const n = Math.hypot(dx, dy), sp = 5.4 * dt * (kd.shift ? 1.5 : 1) * (S.schwimmt ? 0.7 : 1);
         dx = dx / n * sp; dy = dy / n * sp;
         if (!blockiertBox(S.x + dx, S.y)) S.x += dx;
         if (!blockiertBox(S.x, S.y + dy)) S.y += dy;
         S.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0);
         S.bewegt = true;
-        S.x = Math.max(1, Math.min(Welt.W - 1, S.x)); S.y = Math.max(1, Math.min(Welt.H - 1, S.y));
+        S.x = Math.max(4, Math.min(Welt.W - 4, S.x)); S.y = Math.max(4, Math.min(Welt.H - 4, S.y));
+        S.schwimmt = Welt.istWasser(S.x, S.y + 0.2);
         const kk = Math.floor(S.x) + ',' + Math.floor(S.y);
         if (kk !== S.letzteKachel) {
           S.letzteKachel = kk; S.schritte++;
+          if (S.schwimmt) UI.snd('platsch');
           if (S.save.items.ei) { S.save.eiS = (S.save.eiS || 0) + 1; if (S.save.eiS >= 600) { S.save.eiS = 0; CAM.itemAdd('ei', -1); const z = CAM.neuerMob(26, Math.max(5, Math.floor(CAM.maxLv() * 0.8))); const wo = A.mobDazu(z); S.save.dex[26] = 2; UI.snd('fang'); UI.toast('Das Drachenei ist geschlüpft: ' + CAM.name(z) + (wo === 'box' ? ' (im Zwinger)' : '') + '!', 4000); } }
           const t = Welt.get(S.x, S.y);
           if (t === T.GRAS && S.schritte >= 14 && !Welt.istSicher(S.x, S.y) && CAM.lebend() && Math.random() < 0.012) {
@@ -140,6 +163,7 @@
       liste.push({ y: b.y + 0.5, f: () => person(ctx, sx(b.x), sy(b.y + 0.5), TS, CAM.FARBEN[b.col] || '#999', b.dir, b.geht, b.name, tick, { farbe: CAM.Bots.farbe(b.lv), lv: b.lv, blase: b.z === 'prov' ? '❗' : '' }) });
     }
     for (const w of CAM.Wilde.liste) {
+      if (!CAM.Wilde.sichtbar(w)) continue;
       if (w.x < vx - 2 || w.x > vx + W / TS + 2 || w.y < vy - 2 || w.y > vy + H / TS + 2) continue;
       liste.push({ y: w.y + 0.45, f: () => wilderMob(w, sx(w.x), sy(w.y + 0.45), now, tick) });
     }
@@ -157,10 +181,10 @@
       if (p.x < vx - 2 || p.x > vx + W / TS + 2 || p.y < vy - 2 || p.y > vy + H / TS + 2) continue;
       const bl = p.gestT && now - p.gestT < 3500 ? p.gest : '';
       const prot = (S.prot[p.idx] || 0) > now;
-      liste.push({ y: p.y + 0.5, f: () => person(ctx, sx(p.x), sy(p.y + 0.5), TS, CAM.FARBEN[p.col] || '#999', p.dir, p.geht, p.name + (prot ? ' 🛡' : '') + (p.bs ? ' ⚔' : ''), tick, { lv: p.lv, look: p.name, farbe: (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : CAM.Bots.farbe(p.lv), blase: bl }) });
+      liste.push({ y: p.y + 0.5, f: () => person(ctx, sx(p.x), sy(p.y + 0.5), TS, CAM.FARBEN[p.col] || '#999', p.dir, p.geht, p.name + (prot ? ' 🛡' : '') + (p.bs ? ' ⚔' : ''), tick, { schwimm: Welt.istWasser(p.x, p.y + 0.2) ? {} : null, lv: p.lv, look: p.name, farbe: (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : CAM.Bots.farbe(p.lv), blase: bl }) });
     }
     const bl = S.gest && now - S.gest.t < 3500 ? S.gest.z : '';
-    liste.push({ y: S.y + 0.5, f: () => person(ctx, sx(S.x), sy(S.y + 0.5), TS, CAM.FARBEN[S.save.col] || '#4f8ff7', S.dir, S.bewegt, S.name, tick, { farbe: '#c9a6ff', blase: bl }) });
+    liste.push({ y: S.y + 0.5, f: () => person(ctx, sx(S.x), sy(S.y + 0.5), TS, CAM.FARBEN[S.save.col] || '#4f8ff7', S.dir, S.bewegt, S.name, tick, { farbe: '#c9a6ff', blase: bl, schwimm: S.schwimmt || S.tauch ? { tauch: S.tauch ? Math.min(1, (performance.now() - S.tauch.t0) / S.tauch.dauer) : 0 } : null }) });
     liste.sort((a, b) => a.y - b.y).forEach(o => o.f());
     // Pfeile zu Party-Mitgliedern ausserhalb des Bildes
     if (S.online && S.pt >= 0) {
@@ -177,11 +201,13 @@
         ctx.strokeText(p.name + ' · ' + dist, cx, cy - 16); ctx.fillText(p.name + ' · ' + dist, cx, cy - 16);
       }
     }
+    if (S.schwimmt || S.tauch) { ctx.fillStyle = 'rgba(30,100,190,.10)'; ctx.fillRect(0, 0, W, H); }
     // Wetter, Nacht
     const dunkel = 1 - CAM.tageslicht(now);
     CAM.WetterAnzeige.zeichnen(ctx, W, H, tick, dunkel, S.biome, S.qualitaet);
   }
 
+  const tauchCv = document.createElement('canvas'); tauchCv.width = tauchCv.height = 80;
   function wilderMob(w, x, y, now, tick, ohneName) {
     const m = w.mob, f = CAM.FAMILIEN[m.fam], boese = CAM.Wilde.boese(m);
     const gr = TS * (f.legend ? 3.2 : [2.0, 2.4, 2.8][m.stufe - 1]);
@@ -189,14 +215,33 @@
     const ph = w.geht ? Math.floor(w.lauf !== undefined ? w.lauf : tick / 90) % 4 : -1;
     const schwebt = !!f.fliegt, schweb = schwebt ? TS * 0.34 + Math.sin(tick / 300 + w.id * 1.7) * TS * 0.07 : 0;
     const hop = (w.geht && !schwebt ? Math.abs(Math.sin((w.lauf || 0) * Math.PI / 2)) * TS * 0.04 : 0) + (w.huepf > 0 ? Math.sin((1 - w.huepf / 0.35) * Math.PI) * TS * 0.5 : 0) + schweb;
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36 * (1 - schweb / TS * 0.4), gr * 0.08, 0, 0, 6.3); ctx.fill();
-    if (boese) { ctx.fillStyle = 'rgba(255,50,40,' + (0.14 + 0.08 * Math.sin(tick / 200)) + ')'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.55, gr * 0.16, 0, 0, 6.3); ctx.fill(); }
+    const imW = f.lebt !== 'land' && Welt.istWasser(w.x, w.y + 0.1), tief = imW && f.lebt === 'wasser';
+    const einblenden = Math.min(1, (now - (w.geboren || 0)) / 1500);
+    if (!imW) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36 * (1 - schweb / TS * 0.4), gr * 0.08, 0, 0, 6.3); ctx.fill(); }
+    if (boese && !tief) { ctx.fillStyle = 'rgba(255,50,40,' + (0.14 + 0.08 * Math.sin(tick / 200)) + ')'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.55, gr * 0.16, 0, 0, 6.3); ctx.fill(); }
     ctx.save(); ctx.imageSmoothingEnabled = false;
     ctx.translate(x, y - hop); ctx.scale(w.dir === 3 ? -1 : 1, 1);   // Bilder schauen nach rechts
     const atmen = ph < 0 ? 1 + Math.sin(tick / 520 + w.id) * 0.012 : 1;   // im Stehen atmet er leicht
     ctx.scale(1, atmen);
-    ctx.drawImage(CAM.spriteMit(m, ph), -gr / 2, -gr * 0.94, gr, gr);
+    if (tief) {   // unter Wasser: bläulich, leicht durchsichtig, wiegt sich
+      const sp = CAM.spriteMit(m, ph), t = tauchCv.getContext('2d'); t.clearRect(0, 0, tauchCv.width, tauchCv.height); t.globalCompositeOperation = 'source-over';
+      t.drawImage(sp, 0, 0, tauchCv.width, tauchCv.height); t.globalCompositeOperation = 'source-atop'; t.fillStyle = 'rgba(30,100,190,.36)'; t.fillRect(0, 0, tauchCv.width, tauchCv.height);
+      ctx.globalAlpha = 0.86 * einblenden; ctx.translate(0, Math.sin(tick / 500 + w.id) * gr * 0.025);
+      ctx.drawImage(tauchCv, -gr / 2, -gr * 0.94, gr, gr); ctx.globalAlpha = 1;
+    } else if (imW) {   // schwimmt an der Oberfläche (z. B. Ente): untere Hälfte im Wasser
+      ctx.save(); ctx.beginPath(); ctx.rect(-gr, -gr * 1.6, gr * 2, gr * 1.6 - gr * 0.14); ctx.clip();
+      ctx.globalAlpha = einblenden; ctx.translate(0, Math.sin(tick / 420 + w.id) * gr * 0.02);
+      ctx.drawImage(CAM.spriteMit(m, ph), -gr / 2, -gr * 0.94, gr, gr); ctx.restore();
+    } else ctx.drawImage(CAM.spriteMit(m, ph), -gr / 2, -gr * 0.94, gr, gr);
     ctx.restore();
+    if (imW) {
+      const wy = y - hop - gr * 0.1;
+      if (!tief) { ctx.fillStyle = 'rgba(60,140,215,.5)'; ctx.beginPath(); ctx.ellipse(x, wy, gr * 0.34, gr * 0.06, 0, 0, 6.3); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(235,248,255,.8)'; ctx.lineWidth = 1.2;
+      if (!tief) for (let k = 0; k < 2; k++) { const p = ((tick / 1000 + k * 0.5 + w.id * 0.13) % 1); ctx.globalAlpha = (1 - p) * einblenden; ctx.beginPath(); ctx.ellipse(x, wy, gr * (0.3 + p * 0.22), gr * (0.055 + p * 0.03), 0, 0, 6.3); ctx.stroke(); }
+      if (tief) for (let i = 0; i < 3; i++) { const t2 = ((tick / 1500 + i * 0.33 + w.id * 0.1) % 1); ctx.globalAlpha = (1 - t2) * 0.8 * einblenden; ctx.beginPath(); ctx.arc(x + (i - 1) * gr * 0.14 + Math.sin(tick / 400 + i) * gr * 0.03, y - gr * 0.3 - t2 * gr * 0.7, gr * 0.03 + 1, 0, 6.3); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
     const d = Math.hypot(w.x - S.x, w.y - S.y);
     if (!ohneName && d < 8) {
       const txt = (boese ? '☠ ' : '') + CAM.name(m) + ' Lv ' + m.lv;
@@ -373,7 +418,7 @@
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];
     if (S.save.welt !== 2) { S.save.welt = 2; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
     S.x = S.save.x; S.y = S.save.y;
-    if (Welt.blockiert(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
+    if (Welt.blockiert(S.x, S.y, true)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
     S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 3; CAM.Wilde.fuell = 3;
     CAM.Bots.erzeugen();

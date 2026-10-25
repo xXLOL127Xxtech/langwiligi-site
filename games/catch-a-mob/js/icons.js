@@ -96,6 +96,7 @@
   const Icons = CAM.Icons = {
     html: (form, px, farbe) => html(form, farbe, px || 20),
     el: mach(EL, 14), st: mach(ST, 16), item: mach(ITEM, 24),
+    form: (form, farbe) => zeichne(form, farbe).c,
     canvas: (kind, k) => { const e = ({ st: ST, el: EL, item: ITEM }[kind] || {})[k]; return e ? zeichne(e[0], e[1]).c : null; },
   };
 
@@ -129,6 +130,9 @@
         : (wer === 'ich' ? 'Du erleidest ' + p + ' % ' + (n < 0 ? 'mehr' : 'weniger') + ' Schaden.' : 'Er erleidet ' + p + ' % ' + (n < 0 ? 'mehr' : 'weniger') + ' Schaden.');
     void best; return (wer === 'ich' ? (w === 'atk' ? 'Dein ' : 'Deine ') : (w === 'atk' ? 'Sein ' : 'Seine ')) + name + ' ' + s + p + ' %: ' + wirkung + ' Hält bis zum Kampfende oder Wechsel.';
   };
+  CAM.stufeTip = (w, n, ich) => stufeText(w, n, ich ? 'ich' : 'er');
+  CAM.statusTip = (key, ich) => (ich ? 'Dein Mob: ' : 'Gegner: ') + CAM.STATUS_NAME[key] + '. ' + CAM.STATUS_INFO[key];
+  CAM.STAT_ICON = { atk: ['sword', null, 20], def: ['shield', 'b', 20], acc: ['target', null, 10] };
   // Eine Attacke als Marken: Stärke, Genauigkeit, Effekte. fx = Bonus auf Status-Chancen (Vorbereitung)
   CAM.moveChips = function (mv, bonus) {
     const I = Icons.html, o = [];

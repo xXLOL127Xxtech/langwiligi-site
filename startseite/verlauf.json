@@ -1,6 +1,56 @@
 [
 {
 "d":"2026-10-25",
+"z":"18:10",
+"a":"Catch a Mob",
+"t":"Wasser begehbar mit Schwimm-Animation",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"18:10",
+"a":"Catch a Mob",
+"t":"6 neue Wasser-Fabelwesen, nur sichtbar wenn man schwimmt",
+"tag":"Neu",
+"k":"Neues Spiel",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"18:10",
+"a":"Catch a Mob",
+"t":"Kampf unter Wasser mit Tauchanimation und 2-Minuten-Luft",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"18:10",
+"a":"Catch a Mob",
+"t":"Heilhaus: Zähler laufen live, fertige Mobs sofort entnehmen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"18:10",
+"a":"Catch a Mob",
+"t":"Effekt-Erklärung nur noch an den Schildern neben dem Namen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"17:15",
 "a":"Catch a Mob",
 "t":"Attacken und Effekte als farbige Marken mit Symbolen und Erklärung beim Darüberfahren",

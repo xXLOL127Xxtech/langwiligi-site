@@ -1,4 +1,13 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Schwimmen und Wasser-Fabelwesen", "tag": "Neu", "p": [
+    "Wasser ist begehbar: Du schwimmst mit Schwimm-Animation, etwas langsamer, mit Wellenringen",
+    "6 neue Wasser-Fabelwesen: Plätscherfisch, Entling, Seepferdchen, Tintling, Perlchen und Zitteraal",
+    "Tiere, die nur im Wasser leben, siehst du erst, wenn du selbst schwimmst. Enten, Frösche und Schildkröten leben an Land und im Wasser, Rehe und Co. nur an Land",
+    "Greifst du ein Tier unter Wasser an, taucht dein Spieler ab. Der Kampf findet unter Wasser statt, die Luft reicht 2 Minuten, sonst ertrinkst du fast",
+    "Schwimmt ein Tier an der Oberfläche (z. B. eine Ente), gibt es keinen Tauchgang und keinen Timer",
+    "Im Heilhaus läuft die Zeit bei «Mobs abholen» herunter, und fertige Mobs kannst du sofort entnehmen, ohne das Menü zu verlassen",
+    "Zustände und Veränderungen im Kampf stehen als Schilder neben dem Namen, die Erklärung erscheint nur beim Darüberfahren"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Lesbarere Attacken und Effekte", "tag": "Update", "p": [
     "Attacken zeigen Stärke, Genauigkeit und Effekte als farbige Marken mit Pixel-Symbol (Schwert, Zielscheibe, Schild)",
     "Rot sind Nachteile, grün Vorteile, jeweils mit Pfeil und Prozentzahl, z. B. Zielscheibe −20 %",
