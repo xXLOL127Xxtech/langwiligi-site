@@ -205,6 +205,31 @@ function countPlay(game, ip, now) {
   Object.keys(g).forEach(k => { if (k < oldest) delete g[k]; });
   savePlays();
 }
+// Spielzeit: zeit[spiel][JJJJ-MM-TT] = [Sekunden, Anzahl Besuche]. Die Besuche melden ihre Zeit beim Verlassen der Seite.
+const TIME_FILE = path.join(DATA_DIR, 'spielzeit.json');
+let zeit = {};
+try { zeit = JSON.parse(fs.readFileSync(TIME_FILE, 'utf8')); } catch (e) { zeit = {}; }
+let zeitTimer = null;
+function saveZeit() {
+  clearTimeout(zeitTimer);
+  zeitTimer = setTimeout(() => {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(TIME_FILE + '.tmp', JSON.stringify(zeit));
+    fs.renameSync(TIME_FILE + '.tmp', TIME_FILE);
+  }, 1000);
+}
+const zeitPosts = new Map();   // ip -> Zeitpunkte der letzten Stunde
+function countTime(game, sek, ip, now) {
+  const list = (zeitPosts.get(ip) || []).filter(t => now - t < 3600000);
+  if (list.length >= 120) return;
+  list.push(now); zeitPosts.set(ip, list);
+  if (zeitPosts.size > 5000) zeitPosts.clear();
+  const g = zeit[game] || (zeit[game] = {}), d = day(now), e = g[d] || (g[d] = [0, 0]);
+  e[0] += sek; e[1]++;
+  const oldest = addDays(d, -PLAY_DAYS);
+  Object.keys(g).forEach(k => { if (k < oldest) delete g[k]; });
+  saveZeit();
+}
 // Aufrufe eines Tages: Startseite und alle Spiele zusammen
 function dayTotals(d) {
   const t = { start: 0, spiele: 0 };
@@ -275,18 +300,28 @@ function visitStats() {
   const cur = monday(today);
   const weeks = Object.keys(history.wochen).filter(w => w < cur).sort().map(w => Object.assign({ w }, history.wochen[w]));
   weeks.push(Object.assign({ w: cur, laufend: true }, weekAvg(cur, today)));
-  const week = addDays(today, -6), month = addDays(today, -29), games = [];
+  const week = addDays(today, -6), month = addDays(today, -29), games = [], heute = [];
   Object.keys(plays).forEach(g => {
     if (g === START_KEY) return;
-    const e = { game: g, name: gameTitle(g), week: 0, month: 0 };
+    const e = { game: g, name: gameTitle(g), week: 0, month: 0, total: 0 };
     Object.keys(plays[g]).forEach(d => {
+      e.total += plays[g][d];
       if (d >= month) e.month += plays[g][d];
       if (d >= week) e.week += plays[g][d];
     });
+    const z = zeit[g] || {};
+    let sek = 0, n = 0;
+    Object.keys(z).forEach(d => { if (d >= month) { sek += z[d][0]; n += z[d][1]; } });
+    e.avgSek = n ? Math.round(sek / n) : null;
     if (e.month) games.push(e);
+    if (plays[g][today]) {
+      const t = z[today];
+      heute.push({ game: g, name: e.name, n: plays[g][today], sek: t ? t[0] : 0, avgSek: t && t[1] ? Math.round(t[0] / t[1]) : null });
+    }
   });
   games.sort((a, b) => b.month - a.month || b.week - a.week);
-  return { today, days, weeks, games };
+  heute.sort((a, b) => b.n - a.n);
+  return { today, days, weeks, games, heute };
 }
 
 // Öffentliche Zahlen pro Spiel: Durchschnitt, Anzahl Bewertungen, Aufrufe der letzten 7 Tage
@@ -337,6 +372,10 @@ figure{margin:0;min-width:0}figcaption{font-weight:600;margin:0 0 6px}figcaption
 .chart text.val{fill:var(--text);font-weight:600;font-size:12px}.chart .bar.hi{filter:brightness(1.3)}
 .tip{position:absolute;top:4px;pointer-events:none;background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:6px 9px;font-size:13px;white-space:nowrap;display:none;transform:translateX(-50%)}
 .tip b{display:block;font-size:16px;font-variant-numeric:tabular-nums}.tip span{color:var(--muted)}
+[hidden]{display:none!important}
+.tile.btn{cursor:pointer;text-align:left;font:inherit;color:inherit;background:transparent}.tile.btn:hover,.tile.btn[aria-expanded="true"]{border-color:var(--yellow)}.tile.btn span:after{content:' ▾'}
+.sum.zeit{grid-template-columns:1fr auto auto}#heute{margin:0 0 16px}#heute h3{margin:0 0 6px;font-size:15px}
+#top-h{cursor:pointer}#top-h:hover{color:var(--yellow)}#top-h:after{content:' ▾'}#top-h[aria-expanded="true"]:after{content:' ▴'}
 .empty{color:var(--muted);display:flex;align-items:center;justify-content:center;height:100%}
 #top-h{margin:20px 0 6px;font-size:15px}details{margin-top:14px;color:var(--muted);font-size:14px}summary{cursor:pointer}
 table{border-collapse:collapse;margin-top:8px;font-variant-numeric:tabular-nums}td,th{padding:3px 14px 3px 0;text-align:right;color:var(--text)}td:first-child,th:first-child{text-align:left}th{color:var(--muted);font-weight:600}
@@ -347,7 +386,8 @@ table{border-collapse:collapse;margin-top:8px;font-variant-numeric:tabular-nums}
 <div class="charts"><figure><figcaption>Startseite <span class="unit"></span></figcaption><div class="chart" id="ch-start" tabindex="0"></div></figure>
 <figure><figcaption>Spiele, alle zusammen <span class="unit"></span></figcaption><div class="chart" id="ch-spiele" tabindex="0"></div></figure></div>
 <details><summary>Als Tabelle</summary><table id="tbl"></table></details>
-<h3 id="top-h">Meistgespielt</h3><div class="sum" id="top"></div></section>
+<div id="heute" hidden></div>
+<h3 id="top-h" role="button" tabindex="0" aria-expanded="false">Meistgespielt</h3><div class="sum" id="top" hidden></div></section>
 <div class="cols"><section id="tips-col"><h2>Empfehlungen</h2><p class="sub" id="tips-sub">Lade …</p><div id="tips"></div></section>
 <section id="rates-col"><h2>Bewertungen</h2><p class="sub" id="rates-sub">Lade …</p><div class="sum" id="sum"></div>
 <select id="filter"><option value="">Alle Spiele</option></select> <label class="msg"><input type="checkbox" id="notes"> nur mit Verbesserungsvorschlag</label><div id="rates"></div></section></div></main>
@@ -379,7 +419,7 @@ document.getElementById('filter').addEventListener('change',listRates);document.
 document.body.addEventListener('click',function(e){var b=e.target.closest('button[data-t]');if(!b)return;
 if(b.dataset.t==='tip')call('empfehlungen.json','POST',{action:b.dataset.a,id:b.dataset.id}).then(showTips,err);
 else call('bewertungen.json','POST',{action:'delete',id:b.dataset.id}).then(showRates,err)});
-var visits=null,range='7',COLORS={start:'#0fa3bf',spiele:'#ff2e88'};
+var visits=null,heuteOffen=false,range='7',COLORS={start:'#0fa3bf',spiele:'#ff2e88'};
 function day(d,o){o.timeZone='UTC';return new Date(d+'T12:00:00Z').toLocaleDateString('de-CH',o)}
 function num(v){return v==null?'–':(Math.round(v*10)/10).toLocaleString('de-CH')}
 function avg(list,k){var s=0,n=0;list.forEach(function(d){if(d[k]!=null){s+=d[k];n++}});return n?s/n:null}
@@ -429,9 +469,17 @@ document.getElementById('tbl').innerHTML='<tr><th>'+(range==='jahre'?'Woche (Ø 
 s.map(function(x,i){return '<tr><td>'+esc(x.t)+'</td><td>'+num(x.v)+'</td><td>'+num(p[i].v)+'</td></tr>'}).reverse().join('')}
 function showVisits(v){visits=v;var d=v.days,t=d[d.length-1],y=d[d.length-2];
 document.getElementById('tiles').innerHTML=[[num(t.start),'Startseite heute'],[num(y.start),'Startseite gestern'],[num(avg(d.slice(-7),'start')),'Startseite Ø pro Tag, 7 Tage'],
-[num(avg(d.slice(-30),'start')),'Startseite Ø pro Tag, 30 Tage'],[num(t.spiele),'Spiel-Aufrufe heute']].map(function(x){return '<div class="tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('');
-document.getElementById('top').innerHTML=v.games.length?'<b>Spiel</b><span>7 Tage</span><span>30 Tage</span>'+v.games.slice(0,15).map(function(g){return '<b>'+esc(g.name)+'</b><span>'+g.week+'</span><span>'+g.month+'</span>'}).join(''):'<span class="msg">Noch keine Aufrufe.</span>';
-render()}
+[num(avg(d.slice(-30),'start')),'Startseite Ø pro Tag, 30 Tage'],[num(t.spiele),'Spiel-Aufrufe heute']].map(function(x,i){return i===4?'<button class="tile btn" id="tile-heute" aria-expanded="'+(heuteOffen?'true':'false')+'"><b>'+x[0]+'</b><span>'+x[1]+'</span></button>':'<div class="tile"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join('');
+document.getElementById('top').innerHTML=v.games.length?'<b>Spiel</b><span>7 Tage</span><span>30 Tage</span>'+v.games.map(function(g){return '<b>'+esc(g.name)+'</b><span>'+g.week+'× gespielt</span><span>'+g.month+'× gespielt</span>'}).join(''):'<span class="msg">Noch keine Aufrufe.</span>';
+showHeute();render()}
+function dauer(s){if(s==null)return '–';if(s<90)return s+' s';var m=Math.round(s/60);return m<90?m+' Min.':Math.floor(m/60)+' Std. '+(m%60)+' Min.'}
+function showHeute(){var el=document.getElementById('heute'),b=document.getElementById('tile-heute'),h=visits&&visits.heute||[];
+el.hidden=!heuteOffen;if(b)b.setAttribute('aria-expanded',heuteOffen?'true':'false');if(!heuteOffen)return;
+el.innerHTML='<h3>Heute gespielt</h3>'+(h.length?'<div class="sum zeit"><b>Spiel</b><span>Aufrufe</span><span>Zeit pro Besuch (Ø)</span>'+h.map(function(g){return '<b>'+esc(g.name)+'</b><span>'+g.n+'×</span><span>'+(g.avgSek==null?'noch offen':'ca. '+dauer(g.avgSek))+'</span>'}).join('')+'</div><p class="msg">Die Zeit zählt nur, solange das Spiel im Vordergrund offen ist, und wird beim Verlassen der Seite gemeldet.</p>':'<p class="msg">Heute wurde noch nichts gespielt.</p>')}
+document.addEventListener('click',function(e){if(e.target.closest('#tile-heute')){heuteOffen=!heuteOffen;showHeute()}
+var h=e.target.closest('#top-h');if(h)toggleTop(h)});
+document.addEventListener('keydown',function(e){var h=e.target.closest&&e.target.closest('#top-h');if(h&&(e.key==='Enter'||e.key===' ')){e.preventDefault();toggleTop(h)}});
+function toggleTop(h){var o=h.getAttribute('aria-expanded')!=='true';h.setAttribute('aria-expanded',o?'true':'false');document.getElementById('top').hidden=!o}
 document.querySelector('.range').addEventListener('click',function(e){var b=e.target.closest('button[data-r]');if(!b)return;range=b.dataset.r;
 document.querySelectorAll('.range button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});render()});
 var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(render,150)});
@@ -1060,6 +1108,13 @@ const server = http.createServer((req, res) => {
       const game = cleanGame(m && m.game);
       if (m && m.seite === 'start') countPlay(START_KEY, clientIp(req), Date.now());
       else if (game && isKnownGame(game)) countPlay(game, clientIp(req), Date.now());
+      json(res, 200, { ok: true });
+    });
+  }
+  if (url.pathname === '/api/spielzeit' && req.method === 'POST') {
+    return readBody(req, 512, m => {
+      const game = cleanGame(m && m.game), sek = Math.floor(Number(m && m.sek));
+      if (game && isKnownGame(game) && sek >= 5 && sek <= 14400) countTime(game, sek, clientIp(req), Date.now());
       json(res, 200, { ok: true });
     });
   }

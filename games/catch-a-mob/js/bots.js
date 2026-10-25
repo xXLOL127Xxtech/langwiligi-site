@@ -131,6 +131,7 @@
       const d = Math.hypot(b.x - S.x, b.y - S.y);
       if (d > 70 && b.z !== 'geht') continue;          // weit weg: stehen sie still (spart Rechenzeit)
       b.geht = false;
+      if (b.halt) continue;                             // fordert gerade heraus oder verhandelt: bleibt stehen
       let vx = 0, vy = 0, tempo = 0;
       const ziel = frei && CAM.lebend() && !Welt.istSicher(S.x, S.y) && !Welt.dorfBei(b.x, b.y) && now > b.provBis && now > b.ruheBis;
       if (b.z === 'prov') {
@@ -188,7 +189,7 @@
     for (const tr of Welt.trainer) {
       if (tr.px === undefined) Object.assign(tr, { px: tr.x + 0.5, py: tr.y + 0.5, hx: tr.x + 0.5, hy: tr.y + 0.5, z: 'ruhe', t: Math.random() * 3, tx: 0, ty: 0, provBis: 0, geht: false });
       const d = Math.hypot(tr.px - S.x, tr.py - S.y);
-      if (d > 60) { tr.geht = false; continue; }
+      if (d > 60 || tr.halt) { tr.geht = false; continue; }   // halt: kämpft oder verhandelt gerade, bleibt stehen
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
       let vx = 0, vy = 0, tempo = 0;
       const wild = tr.id % 5 < 2;
@@ -197,7 +198,7 @@
         if (aus || !frei || !CAM.lebend() || Welt.istSicher(S.x, S.y) || d > 16) { tr.z = 'ruhe'; tr.t = 2; jagdEnde(now, 5000); }
         else if (now - tr.pa < 600) { /* kurz erschrecken */ }
         else if (d > 1.4) { [vx, vy] = lenke(tr, tr.px, tr.py, S.x, S.y, now, true); tempo = 3.4; }
-        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; jagdEnde(now); A.trainerKampf(tr, { erster: 1 }); continue; }
+        else { tr.z = 'ruhe'; tr.t = 3; tr.provBis = now + 90000; jagdEnde(now); tr.halt = true; Promise.resolve(A.trainerKampf(tr, { erster: 1 })).finally(() => { tr.halt = false; }); continue; }
       } else {
         tr.t -= dt;
         if (tr.z === 'ruhe' && tr.t <= 0) {
@@ -256,6 +257,10 @@
 
   A.botMenue = async function (b) {
     if (S.busy) return;
+    b.halt = true;
+    try { await botMenue(b); } finally { b.halt = false; }
+  };
+  async function botMenue(b) {
     for (;;) {
       const grund = !CAM.lebend() ? 'Dein Team ist erschöpft' : Welt.istSicher(S.x, S.y) ? 'In einer sicheren Zone nicht erlaubt' : Welt.istSicher(b.x, b.y) ? b.name + ' steht in einer sicheren Zone' : b.team.length < 1 ? 'Kein Team' : '';
       const r = await UI.choose([{ label: 'Zum Duell herausfordern', sub: CAM.lebend() ? 'mit Einsatz' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() || Date.now() < b.ruheBis }, { label: 'Team ansehen' },
@@ -281,7 +286,7 @@
   // Der Bot fordert dich heraus
   A.botProvokation = async function (b) {
     if (S.busy || UI.stack.length || K.aktiv || !CAM.lebend()) return;
-    S.busy = true;
+    S.busy = true; b.halt = true;   // bleibt stehen, bis Herausforderung, Handel und Kampf vorbei sind
     try {
       UI.snd('ruf');
       const eigen = S.save.team, fair = Math.random() < 0.7, mid = CAM.lvlMitte(eigen, b.team), lvl = fair ? mid : 0;
@@ -299,7 +304,7 @@
       if (r !== 0) { b.ruheBis = Date.now() + 240000; UI.toast(b.name + ' zieht enttäuscht ab.'); return; }
       S.busy = false;
       await A.botDuell(b, offer, lvl, 1);
-    } finally { S.busy = false; }
+    } finally { S.busy = false; b.halt = false; }
   };
 
   // Kampf Spieler gegen Bot und Auszahlung des Einsatzes

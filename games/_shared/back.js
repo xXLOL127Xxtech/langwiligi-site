@@ -273,11 +273,28 @@
     }, 1500);
   }
 
+  // Spielzeit: zählt nur Sekunden, in denen der Tab sichtbar ist, und meldet sie beim Verlassen oder Wegwechseln (nur eine Zahl, keine Cookies)
+  function startTimer() {
+    var sek = 0, since = document.hidden ? 0 : Date.now();
+    function stop() { if (since) { sek += (Date.now() - since) / 1000; since = 0; } }
+    function send() {
+      stop();
+      var s = Math.round(sek); sek = 0;
+      if (s < 5 || !ONLINE) return;
+      var body = JSON.stringify({ game: GAME, sek: Math.min(s, 14400) });
+      try { if (navigator.sendBeacon && navigator.sendBeacon(API + '/spielzeit', body)) return; } catch (e) {}
+      try { fetch(API + '/spielzeit', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true }); } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', function () { if (document.hidden) send(); else since = Date.now(); });
+    addEventListener('pagehide', send);
+  }
+
   function add() {
     document.head.appendChild(css);
     document.body.appendChild(a);
     if (!GAME) return;
     post('/aufruf', { game: GAME }).catch(function () {});
+    startTimer();
     if (!ratedNow()) setTimeout(startWatching, 1500);
   }
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
