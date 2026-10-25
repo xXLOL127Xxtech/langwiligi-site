@@ -6,7 +6,7 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_WASSER = 3, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
+  const MAX_WASSER = 4, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
   const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -14,6 +14,7 @@
     if (Welt.istSicher(x, y, 2)) return false;   // Dörfer betreten wilde Mobs nicht
     return true;
   }
+  const imLand = w => CAM.FAMILIEN[w.mob.fam].lebt !== 'wasser';   // Wassertiere zählen nicht gegen die Grenzen für Landtiere
   W.boese = m => !!CAM.FAMILIEN[m.fam].bos;
   // Wassertiere (nur im Wasser) sieht und trifft man erst, wenn man selbst schwimmt
   W.sichtbar = w => CAM.FAMILIEN[w.mob.fam].lebt !== 'wasser' || !!S.schwimmt;
@@ -61,7 +62,7 @@
     const sais = CAM.saison(now), nacht = CAM.tageslicht(now) < 0.35, w = CAM.wetterBei(bi, now);
     let tot = 0;
     const l = B.spawn.map(([fam, g0]) => {
-      const f = CAM.FAMILIEN[fam]; let g = g0 * passt(f, o, nacht, w);
+      const f = CAM.FAMILIEN[fam]; let g = f.lebt === 'wasser' ? 0 : g0 * passt(f, o, nacht, w);   // reine Wassertiere gibt es nicht an Land
       if (f.el === CAM.SAISON_BONUS[sais]) g *= 1.5;
       if (nacht && !(f.hab && f.hab.zeit) && (f.el === 'Schatten' || f.el === 'Licht' || f.el2 === 'Schatten')) g *= 1.8;
       if (w === 'gewitter' && f.el === 'Luft') g *= 1.8;
@@ -80,7 +81,7 @@
   W.wildMob = function (x, y, now, fam, lv) {
     if (fam == null) {
       fam = W.waehle(x, y, now);
-      if (fam == null) { const sp = CAM.BIOME[Welt.biomeAt(x, y)].spawn; fam = sp[Math.floor(Math.random() * sp.length)][0]; }
+      if (fam == null) { const sp = CAM.BIOME[Welt.biomeAt(x, y)].spawn.filter(e => CAM.FAMILIEN[e[0]].lebt !== 'wasser'); fam = sp[Math.floor(Math.random() * sp.length)][0]; }
     }
     return CAM.neuerMob(fam, lv || Welt.wildLevel(x, y, Math.random()), { glanz: Math.random() < 1 / 64 });
   };
@@ -99,8 +100,8 @@
   // Neue Mobs tauchen nur ausserhalb des Bildes auf (im Ring knapp daneben), nie vor deinen Augen
   W.spawnen = function (now) {
     const v = sicht();
-    if (W.liste.filter(w => imBild(w.x, w.y)).length >= MAX_SICHT) return false;
-    const frei = MAX_TIERE - W.liste.filter(w => umgebung(w.x, w.y)).length;
+    if (W.liste.filter(w => imLand(w) && imBild(w.x, w.y)).length >= MAX_SICHT) return false;
+    const frei = MAX_TIERE - W.liste.filter(w => imLand(w) && umgebung(w.x, w.y)).length;
     if (frei <= 0) return false;
     for (let versuch = 0; versuch < 40; versuch++) {
       const a = Math.random() * 6.283, rmin = Math.hypot(v.w / 2, v.h / 2) + 1.5, r = rmin + Math.random() * 9;
@@ -151,7 +152,7 @@
     if (hier >= MAX_WASSER) return false;
     const kand = CAM.FAMILIEN.filter(f => f.lebt === 'wasser' || f.lebt === 'beide');
     for (let versuch = 0; versuch < 30; versuch++) {
-      const a = Math.random() * 6.283, r = 3 + Math.random() * 8, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
+      const a = Math.random() * 6.283, r = 3 + Math.random() * 15, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
       if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6 || !Welt.istWasser(x, y)) continue;
       let tot = 0; const gew = kand.map(f => { let g = (RAR_FAKTOR[f.rar] || 1) * (f.lebt === 'wasser' ? 2 : 1); if (f.bos && CAM.tageslicht(now) > 0.6) g *= 0.6; tot += g; return g; });
       let q = Math.random() * tot, f = kand[0];
@@ -170,9 +171,9 @@
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
       W.spawnT = 6 + Math.random() * 8;
-      const gruppen = new Set(W.liste.map(w => w.herde)).size;
+      const gruppen = new Set(W.liste.filter(imLand).map(w => w.herde)).size;
       if (gruppen < MAX_GRUPPEN && Math.random() < 0.65 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
-      if (S.schwimmt && S.modus === 'welt' && Math.random() < 0.85) W.spawnenWasser(now);
+      if (S.modus === 'welt' && !Welt.dorfBei(S.x, S.y) && Math.random() < 0.85) W.spawnenWasser(now);   // Wassertiere sind schon da, auch wenn man sie von Land aus nicht sieht
     }
     const fuehrer = {};
     for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;

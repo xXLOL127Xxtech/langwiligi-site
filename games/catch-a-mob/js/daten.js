@@ -171,14 +171,15 @@
     { tile: 'gras', herde: [2, 4], scheu: true }, { nah: 'wasser', tile: 'boden', herde: [1, 3] }, { nah: 'baum', herde: [2, 3], scheu: false }, { herde: [2, 3] }, { tile: 'boden' }, { nah: 'lava' }, { nah: 'kristall' }, { nah: 'grab', zeit: 'nacht' },
   ];
   F.forEach((f, i) => { if (!f.hab) f.hab = HAB[i] || {}; });
-  ['Tümpelchen', 'Quakling', 'Molchling', 'Salzkrabbe', 'Leuchtling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) f.hab.lebt = 'beide'; });   // Land und Wasser
+  ['Tümpelchen', 'Quakling', 'Salzkrabbe'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) f.hab.lebt = 'beide'; });   // Land und Wasser
+['Molchling', 'Leuchtling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) { f.hab.lebt = 'wasser'; delete f.hab.nah; } });   // nur im Wasser
   F.forEach(f => { f.lebt = (f.hab && f.hab.lebt) || 'land'; });
   [9, 10, 29, 33, 35].forEach(i => { if (F[i] && F[i].hab) delete F[i].hab.herde; });   // Krabben, Pilze, Raupen, Frösche und Quallen leben allein: als Herde ergibt das keinen Sinn
   CAM.habText = function (f) {
     const h = f.hab || {}, t = [];
     if (h.herde) t.push('Gruppen');
     if (h.tile === 'gras') t.push('auf Wiesen'); else if (h.tile === 'boden') t.push('auf offenem Boden');
-    const nah = [].concat(h.nah || []).map(n => ({ wasser: 'am Wasser', baum: 'zwischen Bäumen', fels: 'bei Felsen', lava: 'bei Lava', grab: 'bei Gräbern', kristall: 'bei Kristallen' }[n]));
+    const nah = (h.lebt === 'wasser' ? [] : [].concat(h.nah || [])).map(n => ({ wasser: 'am Wasser', baum: 'zwischen Bäumen', fels: 'bei Felsen', lava: 'bei Lava', grab: 'bei Gräbern', kristall: 'bei Kristallen' }[n]));
     if (nah.length) t.push(nah.join(' oder '));
     if (h.lebt === 'wasser') t.unshift('nur im Wasser (sichtbar, wenn du schwimmst)'); else if (h.lebt === 'beide') t.unshift('an Land und im Wasser');
     if (h.zeit === 'nacht') t.push(h.streng ? 'nur nachts' : 'meist nachts'); else if (h.zeit === 'tag') t.push(h.streng ? 'nur tagsüber' : 'meist tagsüber');
