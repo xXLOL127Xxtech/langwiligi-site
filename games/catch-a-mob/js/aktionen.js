@@ -241,27 +241,12 @@
   A.mobDetails = async function (m) {
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
-    const moves = m.moves.map(id => CAM.moveFuer(m, id)).map(mv => '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>').join('');
+    const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>ab Stufe ' + x.lv + ' · ' + (CAM.moveText(mv) || '–') + '</td></tr>'; }).join('');
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
       '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>' + (() => { const n = CAM.naechsteAttacke(m); return '<p><small style="color:#a9a59b">' + (n ? 'Nächste Attacke bei Stufe ' + n.lv + ' · ' : '') + m.moves.length + ' von höchstens 6 Attacken' + (CAM.runeMoeglich(m) ? '' : '') + '</small></p>'; })();
     await UI.info(html, 'Mob-Details');
-  };
-  A.attackenWaehlen = async function (m) {
-    let start = 0;
-    for (;;) {
-      const alle = CAM.gelernt(m), slots = CAM.MOVE_SLOTS(m.lv), aktiv = m.moves.slice();
-      const items = alle.map(id => { const mv = CAM.moveFuer(m, id); return { label: (aktiv.includes(id) ? '✔ ' : '') + esc(mv.n) + ' ' + tagEl(mv.el), sub: CAM.moveText(mv) }; });
-      items.push({ label: 'Fertig', sub: aktiv.length + ' von ' + slots + ' Plätzen belegt' });
-      const r = await UI.choose(items, { title: mobNameFull(m) + ': Attacken', sub: 'Wähle bis zu ' + slots + ' Attacken für den Kampf.', numbers: false, wide: true, start });
-      if (r < 0 || r === alle.length) return;
-      start = r;
-      const id = alle[r];
-      if (aktiv.includes(id)) { if (aktiv.length <= 1) { UI.toast('Eine Attacke muss bleiben.'); continue; } m.wahl = aktiv.filter(x => x !== id); }
-      else { if (aktiv.length >= slots) { UI.toast('Alle ' + slots + ' Plätze belegt. Nimm zuerst eine ab.'); continue; } m.wahl = aktiv.concat(id); }
-      m.moves = CAM.attackenFuer(m.fam, m.lv, m); UI.snd('tick');
-    }
   };
   A.teamMenue = async function () {
     let start = 0;
@@ -272,12 +257,11 @@
       if (r < 0) return;
       start = r;
       const m = t[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Attacken wählen', sub: CAM.gelernt(m).length + ' bekannt · höchstens 6' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
-      else if (w === 1) await A.attackenWaehlen(m);
-      else if (w === 2) await A.veredeln(m);
-      else if (w === 3) { t.splice(r, 1); t.unshift(m); start = 0; }
-      else if (w === 4) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
+      else if (w === 1) await A.veredeln(m);
+      else if (w === 2) { t.splice(r, 1); t.unshift(m); start = 0; }
+      else if (w === 3) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
   A.zwinger = async function () {
@@ -382,20 +366,17 @@
 
   A.hauptmenue = async function () {
     for (;;) {
-      const items = [{ label: 'Team' }, { label: 'Beutel' }, { label: 'Mob-Buch' }, { label: 'Karte', sub: 'M' }];
-      if (S.online) { items.push({ label: 'Party' }, { label: 'Duell-Rangliste' }, { label: 'Welt-Einladung' }); }
+      // Team (T) und Beutel (I) haben unten links eigene Knöpfe
+      const items = [{ label: 'Mob-Buch' }, { label: 'Karte', sub: 'M' }];
+      if (S.online) items.push({ label: 'Party' });
       items.push({ label: 'Spielstand-Code' }, { label: 'Optionen' }, { label: 'Zum Titelmenü' });
       const labels = items.map(i => i.label);
       const r = await UI.choose(items, { title: 'Menü', sub: S.name + ' · ' + S.save.gold + ' Gold · ' + S.save.team.length + '/6 im Team', numbers: false });
       if (r < 0) return;
       const l = labels[r];
-      if (l === 'Team') await A.teamMenue();
-      else if (l === 'Beutel') await A.beutelMenue();
-      else if (l === 'Mob-Buch') await A.buch();
+      if (l === 'Mob-Buch') await A.buch();
       else if (l === 'Karte') await A.karte();
       else if (l === 'Party') await A.partyMenue();
-      else if (l === 'Duell-Rangliste') await A.rangliste();
-      else if (l === 'Welt-Einladung') await A.einladung();
       else if (l === 'Spielstand-Code') await A.spielstandCode();
       else if (l === 'Optionen') await A.optionen();
       else if (l === 'Zum Titelmenü') { const ok = await UI.confirm('Zurück zum Titelmenü? Dein Spielstand wird gespeichert.' + (S.online ? ' Du verlässt die Online-Welt.' : ''), 'Titelmenü'); if (ok) { A.zumTitel(); return; } }

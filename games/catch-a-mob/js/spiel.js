@@ -211,8 +211,8 @@
   }
 
   function hud(now) {
-    if (S.modus !== 'welt' || K.aktiv) { $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('keys').classList.add('hidden'); return; }
-    $('hud').classList.remove('hidden'); $('keys').classList.remove('hidden');
+    if (S.modus !== 'welt' || K.aktiv) { $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('keys').classList.add('hidden'); $('quick').classList.add('hidden'); return; }
+    $('hud').classList.remove('hidden'); $('keys').classList.remove('hidden'); $('quick').classList.remove('hidden');
     const B = CAM.BIOME[S.biome], uhr = CAM.tageszeit(now), sais = CAM.SAISONS[CAM.saison(now)];
     const dorf = Welt.dorfBei(S.x, S.y);
     $('hudL').innerHTML = '<b>' + esc(dorf ? dorf.name : B.n) + '</b>' + (dorf ? ' <small>(sicher)</small>' : '') + '<br>' +
@@ -227,7 +227,7 @@
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
     else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
-    $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
+    $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
 
   function frame(ts) {
@@ -257,6 +257,13 @@
     if (menueOffen || S.busy || K.aktiv) return;
     menueOffen = true; await A.hauptmenue(); menueOffen = false; Save.speichern();
   }
+  // Beutel (I) und Team (T): auch über die Knöpfe unten links
+  function schnell(f) {
+    if (S.modus !== 'welt' || K.aktiv || S.busy || menueOffen || UI.stack.length) return;
+    menueOffen = true; f().then(() => { menueOffen = false; Save.speichern(); });
+  }
+  $('qBeutel').addEventListener('click', () => schnell(A.beutelMenue));
+  $('qTeam').addEventListener('click', () => schnell(A.teamMenue));
   async function aktion() {
     const z = S.ziel; if (!z || S.busy || menueOffen) return;
     menueOffen = true;
@@ -276,6 +283,8 @@
     if (S.modus !== 'welt') return false;
     if (k === 'escape') { menue(); return true; }
     if (k === 'e' || k === 'enter' || k === ' ') { aktion(); return true; }
+    if (k === 'i') { schnell(A.beutelMenue); return true; }
+    if (k === 't') { schnell(A.teamMenue); return true; }
     if (k === 'm') { if (!S.busy && !menueOffen) { menueOffen = true; A.karte().then(() => { menueOffen = false; }); } return true; }
     if (S.online && /^[1-4]$/.test(k)) { const g = +k - 1; S.gest = { z: CAM.GESTEN[g][0], t: Date.now() }; Netz.senden({ t: 'gest', g }); UI.snd('ruf'); return true; }
     return false;
@@ -283,7 +292,7 @@
 
   // ---------- Titelbild ----------
   async function anleitung() {
-    await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
+    await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Beutel:</b> I · <b>Team:</b> T · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
       '<p><b>Ziel:</b> Fang Mobs im hohen Gras, gewinne die 8 Abzeichen in den Arenen und besiege die Riesen. Mit Veredlern verbesserst du deine Mobs. Dein Team hat 3 Plätze.</p>' +
       '<p><b>Duelle:</b> Mit Bots und Mitspielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
   }
