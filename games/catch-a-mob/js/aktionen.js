@@ -245,7 +245,7 @@
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
-      '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>';
+      '<table><tr><th>Attacke</th><th>Element</th><th>Wirkung</th></tr>' + moves + '</table>' + (() => { const n = CAM.naechsteAttacke(m); return '<p><small style="color:#a9a59b">' + (n ? 'Nächste Attacke bei Stufe ' + n.lv + ' · ' : '') + m.moves.length + ' von höchstens 6 Attacken' + (CAM.runeMoeglich(m) ? '' : '') + '</small></p>'; })();
     await UI.info(html, 'Mob-Details');
   };
   A.attackenWaehlen = async function (m) {
@@ -272,7 +272,7 @@
       if (r < 0) return;
       start = r;
       const m = t[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Attacken wählen', sub: CAM.gelernt(m).length + ' bekannt · ' + CAM.MOVE_SLOTS(m.lv) + ' Plätze' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
+      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Attacken wählen', sub: CAM.gelernt(m).length + ' bekannt · höchstens 6' }, { label: 'Verbessern', sub: CAM.UPG.some(k => S.save.items[k]) ? '' : 'keine Veredler' }, { label: 'Nach vorne stellen', disabled: r === 0 }, { label: 'In den Zwinger', disabled: t.length <= 1 || S.save.box.length >= 100 }, { label: 'Zurück' }], { title: mobNameFull(m) });
       if (w === 0) await A.mobDetails(m);
       else if (w === 1) await A.attackenWaehlen(m);
       else if (w === 2) await A.veredeln(m);
@@ -302,11 +302,12 @@
     for (;;) {
       const keys = Object.keys(S.save.items).filter(k => CAM.ITEMS[k]);
       if (!keys.length) { await UI.info('Dein Beutel ist leer.', 'Beutel'); return; }
-      const items = keys.map(k => { const it = CAM.ITEMS[k]; const nutz = it.heil || it.beleb || it.heilStatus || it.upg; return { label: it.n + ' × ' + S.save.items[k], sub: it.info, disabled: !nutz }; });
+      const items = keys.map(k => { const it = CAM.ITEMS[k]; const nutz = it.heil || it.beleb || it.heilStatus || it.upg || it.rune; return { label: it.n + ' × ' + S.save.items[k], sub: it.info, disabled: !nutz }; });
       const r = await UI.choose(items, { title: 'Beutel', sub: 'Gold: ' + S.save.gold, numbers: false });
       if (r < 0) return;
       const k = keys[r], it = CAM.ITEMS[k];
       if (it.upg) { await A.veredeln(); continue; }
+      if (it.rune) { await A.rune(); continue; }
       const i = await A.waehleMob(it.n + ' anwenden bei …', m => it.beleb ? m.hp <= 0 : it.heilStatus ? (m.hp > 0 && m.status) : (m.hp > 0 && m.hp < m.mhp));
       if (i < 0) continue;
       const m = S.save.team[i];
@@ -473,7 +474,7 @@
         if (m.hp > 0) m.hp += m.mhp - altMhp;
         lines.push('<b style="color:#ffd54a">' + esc(altN) + ' steigt auf Stufe ' + m.lv + '!</b> <small style="color:#5fd38a">LP +' + (m.mhp - altMhp) + ' · Angriff +' + (m.atk - altAtk) + ' · Verteidigung +' + (m.def - altDef) + (m.spd > altSpd ? ' · Tempo +' + (m.spd - altSpd) : '') + '</small>');
         if (m.stufe > altS) lines.push('<b style="color:#c9a6ff">' + esc(altN) + ' entwickelt sich zu ' + esc(CAM.name(m)) + '!</b>');
-        CAM.gelernt(m).filter(x => !altGel.includes(x)).forEach(x => lines.push('Neue Attacke: ' + esc(CAM.MOVES[x].n) + (m.moves.includes(x) ? '' : ' <small>(Team, Mob, «Attacken wählen»)</small>')));
+        CAM.gelernt(m).filter(x => !altGel.includes(x)).forEach(x => lines.push('Neue Attacke: ' + esc(CAM.MOVES[x].n) + ''));
       }
     }
     return lines;
@@ -495,7 +496,6 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     dexSet(mob.fam, 1);
-    if (opt.erster === 1) await UI.banner(opt.hinterhalt ? 'HINTERHALT!' : 'ANGRIFF!');
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team, fang: CAM.fangStufe(S.save.team, S.save.fangXp) };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
@@ -833,7 +833,7 @@
     const boss = CAM.neuerMob(bossDef.fam, lv);
     const n = members.length;
     boss.mhp = Math.floor(boss.mhp * 4 * (1 + 0.85 * (n - 1))); boss.hp = boss.mhp; boss.atk = Math.floor(boss.atk * 1.1);
-    boss.moves = boss.moves.filter(id => !CAM.MOVES[id].heal).slice(0, 3).concat([CAM.EL_ZORN[f.el]]);
+    boss.moves = f.sig.filter(id => !CAM.MOVES[id].heal).slice(0, 3).concat([CAM.EL_ZORN[f.el]]);   // Riesen setzen von Anfang an alle ihre Attacken ein
     dexSet(bossDef.fam, 1);
     const pn = i => i === S.idx ? S.name : ((S.peers.get(i) || {}).name || 'Spieler');
     const actors = members.map(i => ({ id: 'p' + i, name: pn(i), side: 0, ctrl: i === S.idx ? 'local' : 'remote', team: teams[i] }));
@@ -856,6 +856,7 @@
       { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
       if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
       if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
+      if (Math.random() < 0.06) { CAM.itemAdd('rune', 1); lines.push('<b style="color:#ffb36b">Eine Attackenrune!</b> Sehr selten: Ein Mob lernt damit eine zusätzliche Attacke.'); }
       if (Math.random() < 0.25) {
         const z = CAM.neuerMob(bossDef.fam, Math.max(10, lv - 4)); const wo = A.mobDazu(z); dexSet(bossDef.fam, 2);
         lines.push('<b style="color:#c9a6ff">' + esc(bossDef.n) + ' lässt sich zähmen und schliesst sich dir an!</b> ' + (wo === 'box' ? '(im Zwinger)' : wo ? '' : '(Zwinger voll)'));
