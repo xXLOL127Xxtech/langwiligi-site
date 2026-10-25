@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Zwinger, Rangliste, Stufe", "tag": "Update", "p": [
+    "Neuer Zwinger: links die Mobs im Zwinger, rechts dein Team. Mob mit Enter wählen, dann in der anderen Spalte Enter zum Tauschen, in einen freien Platz setzen oder im Zwinger ablegen",
+    "Die Rangliste lässt sich mit dem Kreuz oder der Taste R schliessen und wieder öffnen",
+    "Deine Stufe steht jetzt auch neben deinem Namen in der Welt"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Schwimmen und Wasser-Fabelwesen", "tag": "Neu", "p": [
     "Wasser ist begehbar: Du schwimmst mit Schwimm-Animation, etwas langsamer, mit Wellenringen",
     "6 neue Wasser-Fabelwesen: Plätscherfisch, Entling, Seepferdchen, Tintling, Perlchen und Zitteraal",

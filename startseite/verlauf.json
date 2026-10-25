@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-25",
+"z":"18:40",
+"a":"Catch a Mob",
+"t":"Zwinger mit Team rechts, Mobs einfach tauschen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"18:40",
+"a":"Catch a Mob",
+"t":"Rangliste schliessbar (Kreuz oder R), eigene Stufe am Namen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"18:10",
 "a":"Catch a Mob",
 "t":"Wasser begehbar mit Schwimm-Animation",

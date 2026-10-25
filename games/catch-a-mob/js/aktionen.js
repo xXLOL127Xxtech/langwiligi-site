@@ -294,24 +294,75 @@
       else if (w === 4) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
-  A.zwinger = async function () {
-    let start = 0;
-    for (;;) {
-      const b = S.save.box;
-      if (!b.length) { await UI.info('Der Zwinger ist leer.', 'Zwinger'); return; }
-      const items = b.map(m => ({ label: mobZeile(m) + tagRar(CAM.FAMILIEN[m.fam].rar), sub: lpText(m) }));
-      const r = await UI.choose(items, { title: 'Zwinger', sub: b.length + ' von 100 Plätzen belegt', start, wide: true, numbers: false });
-      if (r < 0) return;
-      start = Math.min(r, b.length - 2 < 0 ? 0 : r);
-      const m = b[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Umbenennen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
-      if (w === 0) await A.mobDetails(m);
-      else if (w === 1) await A.umbenennen(m);
-      else if (w === 2) {
-        if (S.save.team.length < CAM.TEAM_MAX) { b.splice(r, 1); S.save.team.push(m); }
-        else { const i = await A.waehleMob('Wen ersetzt er?'); if (i >= 0) { const alt = S.save.team[i]; S.save.team[i] = m; b[r] = alt; } }
+  // Zwinger: links die Mobs im Zwinger, rechts dein Team. Mob wählen (Enter), dann in der anderen Spalte Enter drücken: tauschen oder verschieben.
+  A.zwinger = function () {
+    return new Promise(res => {
+      const MAX = CAM.TEAM_MAX; let host = UI.openPanel('Zwinger', '', true);
+      let col = S.save.box.length ? 0 : 1, cur = [0, 0], pick = null, toast = '';
+      const box = () => S.save.box, team = () => S.save.team;
+      const laenge = c => c === 0 ? box().length + 1 : MAX;   // links: Mobs + «Hier ablegen», rechts: feste Plätze
+      const mobAt = (c, i) => c === 0 ? box()[i] : team()[i];
+      const kann = () => team().some(m => m.hp > 0);
+      function aktion() {
+        const m = mobAt(col, cur[col]);
+        if (!pick) { if (m) pick = { col, i: cur[col] }; else toast = 'Wähle zuerst einen Mob aus.'; return; }
+        if (pick.col === col) {
+          if (pick.i === cur[col]) pick = null; else if (m) pick = { col, i: cur[col] };
+          return;
+        }
+        const bi = pick.col === 0 ? pick.i : cur[0], ti = pick.col === 1 ? pick.i : cur[1];
+        const bm = box()[bi], tm = team()[ti];
+        const alt = { box: box().slice(), team: team().slice() };
+        if (bm && tm) { team()[ti] = bm; box()[bi] = tm; }                                       // tauschen
+        else if (bm && !tm) { team().push(bm); box().splice(bi, 1); }                              // in einen freien Platz
+        else if (!bm && tm) { if (team().length <= 1) { toast = 'Dein letzter Mob muss im Team bleiben.'; pick = null; return; } team().splice(ti, 1); box().push(tm); }   // in den Zwinger
+        if (!kann()) { S.save.box = alt.box; S.save.team = alt.team; toast = 'Dein Team braucht mindestens einen kampffähigen Mob.'; pick = null; return; }
+        pick = null; UI.snd('heil'); Save.speichern(); toast = '';
+        cur[0] = Math.min(cur[0], Math.max(0, box().length)); cur[1] = Math.min(cur[1], MAX - 1);
       }
-    }
+      function zeichne() {
+        const spalte = c => {
+          let h = '';
+          const n = c === 0 ? box().length : MAX;
+          for (let i = 0; i < n; i++) {
+            const m = mobAt(c, i), cl = ['it'];
+            if (c === col && cur[c] === i) cl.push('sel'); else if (cur[c] === i) cl.push('cur');
+            if (pick && pick.col === c && pick.i === i) cl.push('gew');
+            h += '<button class="' + cl.join(' ') + '" data-c="' + c + '" data-i="' + i + '">' + (m
+              ? '<span class="lb">' + (c === 1 ? '<small style="color:#8e89a8">' + (i + 1) + '</small> ' : '') + mobZeile(m) + elTags(m) + (pick && pick.col === c && pick.i === i ? ' <span class="chip warn">gewählt</span>' : '') + '</span><span class="sb">' + lpText(m) + (c === 1 && i === 0 ? ' · <b style="color:#ffd54a">vorne</b>' : '') + '</span>'
+              : '<span class="lb" style="color:#8e89a8">' + (c === 1 ? '<small>' + (i + 1) + '</small> freier Platz' : '') + '</span>') + '</button>';
+          }
+          if (c === 0) { const i = n, cl = ['it', 'leer']; if (c === col && cur[0] === i) cl.push('sel'); else if (cur[0] === i) cl.push('cur'); h += '<button class="' + cl.join(' ') + '" data-c="0" data-i="' + i + '"><span class="lb" style="color:#cfc9e0">' + CAM.Icons.html('box', 20) + (pick && pick.col === 1 ? 'Hier in den Zwinger legen' : (box().length ? 'Zwinger-Ende' : 'Zwinger ist leer')) + '</span></button>'; }
+          return h;
+        };
+        host.innerHTML = '<div class="zw"><div class="zc"><h3>' + CAM.Icons.html('box', 20) + 'Zwinger <small>' + box().length + ' / 100</small></h3><div class="zl" id="zl0">' + spalte(0) + '</div></div>' +
+          '<div class="zc"><h3>' + CAM.Icons.html('ball', 20, 'r') + 'Team <small>' + team().length + ' / ' + MAX + '</small></h3><div class="zl" id="zl1">' + spalte(1) + '</div></div></div>' +
+          '<div class="zt">' + (toast ? '<span class="chip schlecht">' + esc(toast) + '</span>' : (pick ? 'Jetzt in der <b>' + (pick.col === 0 ? 'Team-Spalte (rechts)' : 'Zwinger-Spalte (links)') + '</b> Enter drücken: ' + (pick.col === 0 ? 'in einen Platz oder mit einem Teammitglied tauschen' : 'mit einem Zwinger-Mob tauschen oder ablegen') + '.' : 'Mob mit <kbd>Enter</kbd> wählen, dann in der anderen Spalte <kbd>Enter</kbd> zum Tauschen.')) + '</div>' +
+          '<div class="zt"><kbd>←</kbd><kbd>→</kbd> Spalte · <kbd>↑</kbd><kbd>↓</kbd> Mob · <kbd>I</kbd> Details · <kbd>U</kbd> Umbenennen · <kbd>Esc</kbd> Zurück</div>';
+        host.querySelectorAll('.it').forEach(b => {
+          b.onmouseenter = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; markiere(); };
+          b.onclick = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; UI.snd('klick'); aktion(); zeichne(); };
+        });
+        const s = host.querySelector('.it.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+      }
+      function markiere() { host.querySelectorAll('.it').forEach(b => { const c = +b.dataset.c, i = +b.dataset.i; b.classList.toggle('sel', c === col && cur[c] === i); b.classList.toggle('cur', !(c === col && cur[c] === i) && cur[c] === i); }); }
+      const h = async e => {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 's' || k === 'S') { cur[col] = (cur[col] + 1) % laenge(col); UI.snd('tick'); toast = ''; zeichne(); }
+        else if (k === 'ArrowUp' || k === 'w' || k === 'W') { cur[col] = (cur[col] + laenge(col) - 1) % laenge(col); UI.snd('tick'); toast = ''; zeichne(); }
+        else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'A' || k === 'd' || k === 'D' || k === 'Tab') { col = 1 - col; UI.snd('tick'); zeichne(); }
+        else if (k === 'Enter' || k === ' ' || k === 'e' || k === 'E') { UI.snd('klick'); aktion(); zeichne(); }
+        else if (k === 'Escape' || k === 'Backspace' || k === 'q' || k === 'Q') { if (pick) { pick = null; zeichne(); } else { UI.popKeys(h); UI.closePanel(); res(); } }
+        else if (k === 'i' || k === 'I' || k === 'u' || k === 'U') {
+          const m = mobAt(col, cur[col]); if (!m) return true;
+          UI.popKeys(h);
+          if (k === 'i' || k === 'I') await A.mobDetails(m); else await A.umbenennen(m);
+          Save.speichern(); host = UI.openPanel('Zwinger', '', true); UI.pushKeys(h); zeichne();
+        }
+        return true;
+      };
+      UI.pushKeys(h); zeichne();
+    });
   };
   A.beutelMenue = async function () {
     for (;;) {

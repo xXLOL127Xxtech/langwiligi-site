@@ -184,7 +184,7 @@
       liste.push({ y: p.y + 0.5, f: () => person(ctx, sx(p.x), sy(p.y + 0.5), TS, CAM.FARBEN[p.col] || '#999', p.dir, p.geht, p.name + (prot ? ' 🛡' : '') + (p.bs ? ' ⚔' : ''), tick, { schwimm: Welt.istWasser(p.x, p.y + 0.2) ? {} : null, lv: p.lv, look: p.name, farbe: (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : CAM.Bots.farbe(p.lv), blase: bl }) });
     }
     const bl = S.gest && now - S.gest.t < 3500 ? S.gest.z : '';
-    liste.push({ y: S.y + 0.5, f: () => person(ctx, sx(S.x), sy(S.y + 0.5), TS, CAM.FARBEN[S.save.col] || '#4f8ff7', S.dir, S.bewegt, S.name, tick, { farbe: '#c9a6ff', blase: bl, schwimm: S.schwimmt || S.tauch ? { tauch: S.tauch ? Math.min(1, (performance.now() - S.tauch.t0) / S.tauch.dauer) : 0 } : null }) });
+    liste.push({ y: S.y + 0.5, f: () => person(ctx, sx(S.x), sy(S.y + 0.5), TS, CAM.FARBEN[S.save.col] || '#4f8ff7', S.dir, S.bewegt, S.name, tick, { farbe: '#c9a6ff', lv: CAM.maxLv(), blase: bl, schwimm: S.schwimmt || S.tauch ? { tauch: S.tauch ? Math.min(1, (performance.now() - S.tauch.t0) / S.tauch.dauer) : 0 } : null }) });
     liste.sort((a, b) => a.y - b.y).forEach(o => o.f());
     // Pfeile zu Party-Mitgliedern ausserhalb des Bildes
     if (S.online && S.pt >= 0) {
@@ -272,7 +272,7 @@
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
     else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
-    $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
+    $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>R</kbd> Rangliste · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
 
   function frame(ts) {
@@ -330,6 +330,7 @@
     if (k === 'e' || k === 'enter' || k === ' ') { aktion(); return true; }
     if (k === 'i') { schnell(A.beutelMenue); return true; }
     if (k === 't') { schnell(A.teamMenue); return true; }
+    if (k === 'r') { CAM.Seite.umschalten(); return true; }
     if (k === 'm') { if (!S.busy && !menueOffen) { menueOffen = true; A.karte().then(() => { menueOffen = false; }); } return true; }
     if (S.online && /^[1-4]$/.test(k)) { const g = +k - 1; S.gest = { z: CAM.GESTEN[g][0], t: Date.now() }; Netz.senden({ t: 'gest', g }); UI.snd('ruf'); return true; }
     return false;
