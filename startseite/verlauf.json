@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-25",
+"z":"21:00",
+"a":"Catch a Mob",
+"t":"Wassertiere: feste Obergrenze, keine neuen beim Ein- und Austauchen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":90,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"21:00",
+"a":"Catch a Mob",
+"t":"Tiere verschwinden nicht mehr im Bild, unsichtbare zählen nicht als gesehen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":90,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"20:10",
 "a":"Catch a Mob",
 "t":"Wassertiere sind beim Schwimmen sofort da statt nach und nach",

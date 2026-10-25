@@ -6,7 +6,7 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_WASSER = 3, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
+  const MAX_WASSER = 3, MAX_BEIDE = 1, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
   const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -113,6 +113,7 @@
       const fam = W.waehle(x, y, now);
       if (fam == null) continue;
       const f = CAM.FAMILIEN[fam], h = f.hab || {};
+      if (f.lebt === 'beide' && W.zaehleWasser().beide >= MAX_BEIDE) continue;   // nicht noch mehr Wasser-Land-Tiere
       // bösartige Mobs gibt es nachts öfter
       if (f.bos && CAM.tageslicht(now) > 0.6 && Math.random() < 0.4) continue;
       const lv = Welt.wildLevel(x, y, Math.random());
@@ -146,13 +147,19 @@
     if (geh(w.x, w.y + dy)) { w.y += dy; bewegt = true; }
     return bewegt;
   }
+  // Wie viele Tiere des Wassers gibt es in der Gegend? rein = nur im Wasser, beide = Land und Wasser (egal, wo sie gerade stehen). Beide Gruppen haben ihre eigene Grenze.
+  W.zaehleWasser = function () {
+    let rein = 0, beide = 0;
+    for (const w of W.liste) { if (Math.hypot(w.x - S.x, w.y - S.y) > 60) continue; const l = CAM.FAMILIEN[w.mob.fam].lebt; if (l === 'wasser') rein++; else if (l === 'beide') beide++; }
+    return { rein, beide };
+  };
   // Neue Wassertiere tauchen nur auf, solange du schwimmst (sie sind dann auch zu sehen)
   W.spawnenWasser = function (now) {
-    const hier = W.liste.filter(w => CAM.FAMILIEN[w.mob.fam].lebt !== 'land' && Welt.istWasser(w.x, w.y) && umgebung(w.x, w.y)).length;
-    if (hier >= MAX_WASSER) return false;
-    const kand = CAM.FAMILIEN.filter(f => f.lebt === 'wasser' || f.lebt === 'beide');
+    const z = W.zaehleWasser();
+    const kand = CAM.FAMILIEN.filter(f => (f.lebt === 'wasser' && z.rein < MAX_WASSER) || (f.lebt === 'beide' && z.beide < MAX_BEIDE));
+    if (!kand.length) return false;
     for (let versuch = 0; versuch < 30; versuch++) {
-      const a = Math.random() * 6.283, r = 3 + Math.random() * 15, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
+      const a = Math.random() * 6.283, r = 3 + Math.random() * 13, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
       if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6 || !Welt.istWasser(x, y)) continue;
       let tot = 0; const gew = kand.map(f => { let g = (RAR_FAKTOR[f.rar] || 1) * (f.lebt === 'wasser' ? 2 : 1); if (f.bos && CAM.tageslicht(now) > 0.6) g *= 0.6; tot += g; return g; });
       let q = Math.random() * tot, f = kand[0];
@@ -177,7 +184,7 @@
     }
     // Wassertiere: Die Gegend ist von Anfang an gefüllt (auch wenn man sie von Land aus nicht sieht) und füllt sich nach einem Fang langsam wieder
     if (S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) {
-      if (S.schwimmt && !W.warImWasser) { W.warImWasser = true; for (let i = 0; i < MAX_WASSER; i++) if (!W.spawnenWasser(now)) break; }   // beim Eintauchen sofort alle da
+      if (S.schwimmt && !W.warImWasser) { W.warImWasser = true; for (let i = 0; i < MAX_WASSER + MAX_BEIDE; i++) if (!W.spawnenWasser(now)) break; }   // beim Eintauchen sofort alle da
       if (!S.schwimmt) W.warImWasser = false;
       W.wasserT = (W.wasserT || 0) - dt;
       if (W.wasserT <= 0) { W.wasserT = 3; W.spawnenWasser(now); }
@@ -188,8 +195,8 @@
     const sicher = Welt.istSicher(S.x, S.y);
     for (const w of W.liste.slice()) {
       const d = Math.hypot(w.x - S.x, w.y - S.y);
-      if (d > Math.hypot(sicht().w, sicht().h) * 1.15 || now - w.geboren > LEBEN) { W.entfernen(w); continue; }
-      if (d < 6 && !w.gesehen) { w.gesehen = true; if (!S.save.dex[w.mob.fam]) { S.save.dex[w.mob.fam] = 1; } }
+      if (d > Math.hypot(sicht().w, sicht().h) * 1.15 || (now - w.geboren > LEBEN && !imBild(w.x, w.y, 3))) { W.entfernen(w); continue; }   // verschwinden nie vor deinen Augen
+      if (d < 6 && !w.gesehen && W.sichtbar(w)) { w.gesehen = true; if (!S.save.dex[w.mob.fam]) { S.save.dex[w.mob.fam] = 1; } }
       w.huepf = Math.max(0, w.huepf - dt);
       const boese = W.boese(w.mob), kann = frei && CAM.lebend() && !sicher && now > w.ruheBis && W.sichtbar(w);
       let vx = 0, vy = 0, tempo = 0;
