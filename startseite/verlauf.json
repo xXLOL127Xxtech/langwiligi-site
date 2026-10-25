@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-25",
+"z":"14:02",
+"a":"Catch a Mob",
+"t":"«ab Stufe» bei gesperrten Attacken ist jetzt rot",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"festive-mayer-mgugqk"
+},
+{
+"d":"2026-10-25",
 "z":"13:20",
 "a":"Updates",
 "t":"Verlauf zeigt rechts die Art des Updates statt PR und Branch",

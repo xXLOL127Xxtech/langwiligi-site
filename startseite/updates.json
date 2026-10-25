@@ -11,7 +11,8 @@
     "Seltene Mobs sind stärker und tauchen seltener auf",
     "Beutel (I) und Team (T) mit Knöpfen unten links, schlankeres Menü",
     "Mob-Bild vor jedem Namen, Mobs lassen sich umbenennen",
-    "Niederlagen bei Duellen und in der Arena kosten nichts, bei Überfällen nur die Beute"
+    "Niederlagen bei Duellen und in der Arena kosten nichts, bei Überfällen nur die Beute",
+    "«ab Stufe» bei gesperrten Attacken ist rot"
   ] },
   { "d": "2026-10-25", "t": "Startseite", "tag": "Neu", "p": [
     "Neues Updates-Fenster: Hier siehst du alle Änderungen mit Datum"
