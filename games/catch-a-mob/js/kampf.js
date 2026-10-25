@@ -61,7 +61,8 @@
       for (const a of this.actors) if (!a.out && a.ctrl === 'ai') a.plan = this.aiChoose(a);
     }
     stufe(m, w) { return (this.kst.get(m) || {})[w] || 0; }
-    stufeMul(m, w) { const n = this.stufe(m, w); return w === 'acc' ? (n >= 0 ? (3 + n) / 3 : 3 / (3 - n)) : (n >= 0 ? (2 + n) / 2 : 2 / (2 - n)); }
+    // Angriff und Verteidigung: je Stufe 20 % mehr oder weniger. Genauigkeit wirkt anders: je Stufe 10 Prozentpunkte (90 % wird 80 %), siehe doMove.
+    stufeMul(m, w) { const n = this.stufe(m, w); return Math.max(0.3, 1 + 0.2 * n); }
     aendern(m, w, n) { const k = this.kst.get(m) || {}; const alt = k[w] || 0; k[w] = Math.max(-4, Math.min(4, alt + n)); this.kst.set(m, k); return k[w] - alt; }
     einmalGenutzt(m, id) { const x = this.ein.get(m); return !!(x && x.has(id)); }
     // Wie gut ist diese Attacke jetzt für den Computer?
@@ -276,7 +277,14 @@
           st.n--;
           if (st.n <= 0) me.status = null;
           if (this.rnd() < 0.4) { ev.push({ k: 'msg', t: CAM.name(me) + ' ist gelähmt und kann sich nicht bewegen!' }); return; }
-        } else if (st.t === 'blind' || st.t === 'schwaeche') {
+        } else if (st.t === 'verwirrt') {
+          st.n--;
+          if (st.n <= 0) { me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' ist nicht mehr verwirrt.' }); }
+          if (this.rnd() < 0.35) {
+            const d = Math.max(1, Math.floor(me.mhp / 10)); me.hp = Math.max(0, me.hp - d);
+            ev.push({ k: 'hp', a: a.id, i: a.active, hp: me.hp, dmg: d, t: CAM.name(me) + ' ist verwirrt und verletzt sich selbst!' }); return;
+          }
+        } else if (st.t === 'blind' || st.t === 'schwaeche' || st.t === 'bruch') {
           st.n--;
           if (st.n <= 0) { me.status = null; ev.push({ k: 'status', a: a.id, i: a.active, st: null, t: CAM.name(me) + ' ist wieder ganz bei sich.' }); }
         }
@@ -337,13 +345,14 @@
         return;
       }
       const syn = a.syn || {};
-      const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1) * this.stufeMul(me, 'acc') * (1 + (syn.accSelf || 0) / 100);
+      const accMul = ((CAM.WETTER_FX[this.weather] && CAM.WETTER_FX[this.weather].acc) || 1) * (blind ? 0.6 : 1) * (1 + (syn.accSelf || 0) / 100);
+      const accStufe = 10 * this.stufe(me, 'acc');
       let gesamt = 0;
       for (const t of targets) {
         const tm = t.team[t.active];
         if (this.schild.has(tm)) { this.schild.delete(tm); ev.push({ k: 'msg', t: CAM.name(tm) + ' schützt sich vor dem Angriff!' }); continue; }
         const ausw = 1 - ((t.syn && t.syn.ausw) || 0) / 100;
-        if (this.rnd() * 100 >= mv.acc * accMul * ausw) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // jede Attacke hat ihre eigene Genauigkeit (mv.acc in %)
+        if (this.rnd() * 100 >= Math.max(5, Math.min(100, mv.acc * accMul * ausw + accStufe))) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // jede Attacke hat ihre eigene Genauigkeit (mv.acc in %)
         if (mv.pow) {
           const eff = CAM.effekt(mv.el, CAM.elemente(tm));
           const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
@@ -353,7 +362,7 @@
             const crit = this.rnd() < 1 / 8 + (mv.krit || 0) + (syn.krit || 0) / 100 ? 1.5 : 1;
             const rand = 0.85 + this.rnd() * 0.15;
             const atk = me.atk * this.stufeMul(me, 'atk') * (me.status && me.status.t === 'brand' ? 0.8 : 1) * (schwach ? 0.7 : 1) * (a.enraged ? 1.25 : 1);
-            const def = tm.def * this.stufeMul(tm, 'def');
+            const def = tm.def * this.stufeMul(tm, 'def') * (tm.status && tm.status.t === 'bruch' ? 0.75 : 1);
             let dmg = Math.floor(((2 * me.lv / 5 + 2) * mv.pow * atk / def) / 50 + 2);
             dmg = Math.max(1, Math.floor(dmg * stab * eff * crit * rand * this.wFx(mv.el) * (mv.aoe ? 0.8 : 1) * (1 + (syn.dmg || 0) / 100) * (1 - ((t.syn && t.syn.def) || 0) / 100)));
             tm.hp = Math.max(0, tm.hp - dmg); gesamt += dmg; n++; if (crit > 1) kritisch = true;

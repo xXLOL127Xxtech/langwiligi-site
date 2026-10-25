@@ -91,10 +91,11 @@
 
   // Gift/Brand: Schaden pro Runde. Schlaf: setzt aus. Furcht: 30 % Aussetzer. Betäubt: verliert genau den nächsten Zug.
   // Gelähmt: 40 % Aussetzer (3 Züge). Geblendet: Treffer 40 % seltener (3 Züge). Geschwächt: 30 % weniger Schaden (3 Züge).
-  CAM.STATUS = { gift: 'vergiftet', brand: 'brennt', schlaf: 'schläft', furcht: 'verängstigt', betaeubt: 'betäubt', laehmung: 'gelähmt', blind: 'geblendet', schwaeche: 'geschwächt' };
-  CAM.STATUS_KURZ = { gift: 'GIF', brand: 'BRA', schlaf: 'SCH', furcht: 'ANG', betaeubt: 'BET', laehmung: 'LÄH', blind: 'BLI', schwaeche: 'SCW' };
-  CAM.STATUS_COL = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0', betaeubt: '#ffd54a', laehmung: '#e8e04a', blind: '#fff3b0', schwaeche: '#8fa0b8' };
-  CAM.STATUS_NAME = { gift: 'Gift', brand: 'Brand', schlaf: 'Schlaf', furcht: 'Angst', betaeubt: 'Betäubung', laehmung: 'Lähmung', blind: 'Blendung', schwaeche: 'Schwäche' };
+  // Zehn Spezialeffekte. Verwirrt: 35 % Chance, sich selbst zu verletzen (3 Züge). Zerbrechlich: erleidet 30 % mehr Schaden (3 Züge).
+  CAM.STATUS = { gift: 'vergiftet', brand: 'brennt', schlaf: 'schläft', furcht: 'verängstigt', betaeubt: 'betäubt', laehmung: 'gelähmt', blind: 'geblendet', schwaeche: 'geschwächt', verwirrt: 'verwirrt', bruch: 'zerbrechlich' };
+  CAM.STATUS_KURZ = { gift: 'GIF', brand: 'BRA', schlaf: 'SCH', furcht: 'ANG', betaeubt: 'BET', laehmung: 'LÄH', blind: 'BLI', schwaeche: 'SCW', verwirrt: 'VER', bruch: 'ZER' };
+  CAM.STATUS_COL = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0', betaeubt: '#ffd54a', laehmung: '#e8e04a', blind: '#fff3b0', schwaeche: '#8fa0b8', verwirrt: '#ff8ad8', bruch: '#7de0d0' };
+  CAM.STATUS_NAME = { gift: 'Gift', brand: 'Brand', schlaf: 'Schlaf', furcht: 'Angst', betaeubt: 'Betäubung', laehmung: 'Lähmung', blind: 'Blendung', schwaeche: 'Schwäche', verwirrt: 'Verwirrung', bruch: 'Zerbrechlichkeit' };
   CAM.fxText = mv => mv.st ? mv.p + ' % Chance auf ' + CAM.STATUS_NAME[mv.st] : '';
 
   // ---------- Mobs ----------
@@ -459,22 +460,22 @@
     ['feuersturm', 'Feuersturm', 'Feuer', 110, 75, 38, { rueck: 0.2, st: 'brand', p: 30 }],
     ['blasensalve', 'Blasensalve', 'Wasser', 22, 90, 8, { multi: [2, 4] }],
     ['regentanz', 'Regentanz', 'Wasser', 0, 100, 18, { self: 1, wetter: 'regen' }],
-    ['nebelwand', 'Nebelwand', 'Wasser', 0, 90, 22, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['nebelwand', 'Nebelwand', 'Wasser', 10, 100, 22, { stg: [{ z: 'foe', w: 'acc', n: -2 }], anim: { t: 'wolke', cols: ['#dfe9f2', '#9fb0d0'] } }],
     ['sturzflut', 'Sturzflut', 'Wasser', 95, 80, 36, { st: 'furcht', p: 20 }],
     ['blattsauger', 'Blattsauger', 'Pflanze', 40, 95, 8, { saug: 0.5 }],
     ['giftsporen', 'Giftsporen', 'Pflanze', 0, 85, 14, { st: 'gift', p: 100 }],
     ['schlafspore', 'Schlafspore', 'Pflanze', 0, 70, 20, { st: 'schlaf', p: 100 }],
     ['giftnebel', 'Giftnebel', 'Pflanze', 20, 90, 26, { st: 'gift', p: 30, boost: { st: 'gift', add: 40, n: 4 } }],
     ['wachstum', 'Wachstum', 'Pflanze', 0, 100, 32, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'def', n: 1 }] }],
-    ['sandwolke', 'Sandwolke', 'Erde', 0, 90, 10, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['sandwolke', 'Sandwolke', 'Erde', 10, 100, 10, { stg: [{ z: 'foe', w: 'acc', n: -1 }], anim: { t: 'sand', cols: ['#d9c27c', '#a8884a'] } }],
     ['erdkraft', 'Erdkraft', 'Erde', 70, 90, 20, { stg: [{ z: 'foe', w: 'def', n: -1, p: 30 }] }],
     ['versteinern', 'Versteinern', 'Erde', 0, 100, 28, { self: 1, stg: [{ z: 'self', w: 'def', n: 2 }] }],
     ['felslawine', 'Felslawine', 'Erde', 105, 70, 40, { st: 'betaeubt', p: 25 }],
-    ['windstoss', 'Windstoss', 'Luft', 30, 95, 8, { krit: 0.25 }],
+    ['boeenstoss', 'Böenstoss', 'Luft', 30, 95, 8, { krit: 0.25 }],
     ['rueckenwind', 'Rückenwind', 'Luft', 0, 100, 16, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'acc', n: 1 }] }],
     ['sturmwarnung', 'Sturmwarnung', 'Luft', 0, 100, 24, { self: 1, wetter: 'wind' }],
     ['schockstoss', 'Schockstoss', 'Luft', 40, 90, 26, { einmal: 1, st: 'laehmung', p: 100 }],
-    ['sturzflug', 'Sturzflug', 'Luft', 90, 75, 30, { rueck: 0.2 }],
+    ['luftsturz', 'Luftsturz', 'Luft', 90, 75, 30, { rueck: 0.2 }],
     ['blendlicht', 'Blendlicht', 'Licht', 20, 90, 10, { st: 'blind', p: 70 }],
     ['lichtschild', 'Lichtschild', 'Licht', 0, 100, 20, { self: 1, schutz: 1 }],
     ['sonnenstrahl', 'Sonnenstrahl', 'Licht', 110, 85, 34, { erschoepft: 1 }],
@@ -482,11 +483,16 @@
     ['schreckgriff', 'Schreckgriff', 'Schatten', 25, 90, 18, { st: 'betaeubt', p: 40 }],
     ['seelenraub', 'Seelenraub', 'Schatten', 55, 90, 28, { saug: 0.5 }],
     ['fluchsiegel', 'Fluchsiegel', 'Schatten', 0, 70, 44, { einmal: 1, st: 'laehmung', p: 100 }],
+    ['eisnadeln', 'Eisnadeln', 'Wasser', 30, 95, 14, { st: 'bruch', p: 40, anim: { t: 'salve', shape: 'eis', n: 6, cols: ['#ffffff', '#3ad4ff'] } }],
+    ['wirbeltanz', 'Wirbeltanz', 'Luft', 0, 85, 20, { st: 'verwirrt', p: 100 }],
+    ['panzerbruch', 'Panzerbruch', 'Erde', 40, 90, 24, { st: 'bruch', p: 50, anim: { t: 'lunge', deco: 'faust', cols: ['#8a7a62', '#c9a05a'] } }],
+    ['irrlichttanz', 'Irrlichttanz', 'Licht', 0, 85, 22, { st: 'verwirrt', p: 100 }],
   ];
   CAM.TECH = [];
   TECH.forEach(([id, n, el, pow, acc, lv, o]) => {
     const mv = M[id] = Object.assign({ n, el, pow, acc, id }, o);
-    if (mv.self) mv.anim = { t: mv.heal ? 'heilen' : 'segen', cols: [CAM.EL_FARBE[el], '#ffffff'] };
+    if (mv.anim) { /* eigene Animation */ }
+    else if (mv.self) mv.anim = { t: mv.heal ? 'heilen' : 'segen', cols: [CAM.EL_FARBE[el], '#ffffff'] };
     else if (!pow) mv.anim = { t: 'strahl', cols: [CAM.EL_FARBE[el], '#ffffff'] };
     CAM.TECH.push({ id, el, lv });
   });
@@ -524,7 +530,8 @@
     if (!mv.self) t.push('Genauigkeit ' + mv.acc + ' %');
     if (mv.multi) t.push(mv.multi[0] + '–' + mv.multi[1] + ' Treffer');
     if (mv.st) t.push(mv.p + ' % ' + CAM.STATUS_NAME[mv.st]);
-    (mv.stg || []).forEach(g => t.push((g.z === 'self' ? 'selbst ' : 'Gegner ') + STG_N[g.w] + (g.n > 0 ? ' +' : ' ') + g.n + (g.p ? ' (' + g.p + ' %)' : '')));
+    // Genauigkeit: je Stufe 10 Prozentpunkte (90 % wird 80 %). Angriff und Verteidigung: je Stufe 20 %.
+    (mv.stg || []).forEach(g => t.push((g.z === 'self' ? 'selbst ' : 'Gegner ') + STG_N[g.w] + ' ' + (g.n > 0 ? '+' : '−') + Math.abs(g.n) * (g.w === 'acc' ? 10 : 20) + ' %' + (g.p ? ' (' + g.p + ' % Chance)' : '')));
     if (mv.boost) t.push('Status-Chancen +' + mv.boost.add + ' % (' + mv.boost.n + ' Züge)');
     if (mv.wetter) t.push('Wetter: ' + CAM.WETTER[mv.wetter]);
     if (mv.schutz) t.push('schützt vor dem nächsten Treffer');
@@ -586,6 +593,7 @@
   };
   CAM.chanceText = p => (p >= 0.995 ? '100' : p >= 0.1 ? (p * 100).toFixed(0) : (p * 100).toFixed(1)) + ' %';
   const STUFEN_FAKTOR = { 1: [1.05], 3: [0.78, 0.97, 1.2] };
+  CAM.RAR_STAERKE = [0.93, 1, 1.07, 1];   // gewöhnliche Mobs sind etwas schwächer, epische stärker (Riesen sind schon stark gebaut)
   CAM.EVO_LV = [16, 34];
 
   CAM.stufeFuer = function (fam, lv) {
@@ -605,7 +613,7 @@
   // Bei jedem Stufenaufstieg steigen die LP um mindestens 1 und Angriff und Verteidigung ebenfalls (der Zusatz lv * 0.55 sorgt dafür).
   CAM.werte = function (fam, stufe, lv) {
     const f = F[fam], b = f.base;
-    const k = STUFEN_FAKTOR[f.stufen][stufe - 1];
+    const k = STUFEN_FAKTOR[f.stufen][stufe - 1] * CAM.RAR_STAERKE[f.rar];
     const w = i => Math.floor((2 * b[i] * k * lv) / 100) + 5;
     const w2 = i => Math.floor((2 * b[i] * k * lv) / 100 + lv * 0.55) + 5;
     return {
@@ -638,7 +646,10 @@
     m.stufe = CAM.stufeFuer(m.fam, m.lv);
     const w = CAM.werte(m.fam, m.stufe, m.lv);
     m.mhp = w.hp; m.atk = w.atk; m.def = w.def; m.spd = w.spd;
-    if (m.bon) { m.mhp = Math.round(m.mhp * (1 + (m.bon.hp || 0) / 100)); m.atk = Math.round(m.atk * (1 + (m.bon.atk || 0) / 100)); m.def = Math.round(m.def * (1 + (m.bon.def || 0) / 100)); m.spd = Math.round(m.spd * (1 + (m.bon.spd || 0) / 100)); }
+    if (m.bon) {
+      if (!m.bonV) { for (const k in m.bon) m.bon[k] = Math.min(k === 'hp' ? 30 : 12, Math.round(m.bon[k] / 5 * (k === 'hp' ? 3.5 : 2))); m.bonV = 2; }   // alte Spielstände: Prozent-Steine in feste Werte umgerechnet
+      m.mhp += m.bon.hp || 0; m.atk += m.bon.atk || 0; m.def += m.bon.def || 0; m.spd += m.bon.spd || 0;
+    }
     m.moves = CAM.attackenFuer(m.fam, m.lv, m);
     if (m.hp > m.mhp) m.hp = m.mhp;
   };
@@ -750,16 +761,20 @@
     siegel3: { n: 'Meister-Fangkugel', preis: 1200, fang: 1, zehn: true, info: 'Zehn Versuche' },
     trank: { n: 'Heiltrank', preis: 45, heil: 40, info: 'Heilt 40 LP' },
     trank2: { n: 'Grosser Heiltrank', preis: 150, heil: 120, info: 'Heilt 120 LP' },
-    // Veredler: nur durch Arenen und Riesen, nicht käuflich. +5 % pro Stein (höchstens +25 % pro Wert), Effekte 25 % (höchstens 60 %)
-    v_hp:  { n: 'Lebenskristall', preis: 0, upg: 'hp', info: '+5 % LP', nurBeute: true },
-    v_atk: { n: 'Kraftstein', preis: 0, upg: 'atk', info: '+5 % Angriff', nurBeute: true },
-    v_def: { n: 'Schildstein', preis: 0, upg: 'def', info: '+5 % Verteidigung', nurBeute: true },
-    v_spd: { n: 'Sturmfeder', preis: 0, upg: 'spd', info: '+5 % Tempo', nurBeute: true },
-    v_gift: { n: 'Giftdorn', preis: 0, upg: 'fx', st: 'gift', info: 'Eine Attacke vergiftet mit 25 %', nurBeute: true },
-    v_brand: { n: 'Glutsplitter', preis: 0, upg: 'fx', st: 'brand', info: 'Eine Attacke verbrennt mit 25 %', nurBeute: true },
-    v_laehmung: { n: 'Blitzkern', preis: 0, upg: 'fx', st: 'laehmung', info: 'Eine Attacke lähmt mit 25 %', nurBeute: true },
-    v_betaeubt: { n: 'Schlagrune', preis: 0, upg: 'fx', st: 'betaeubt', info: 'Eine Attacke betäubt mit 25 %', nurBeute: true },
-    v_blind: { n: 'Blendstaub', preis: 0, upg: 'fx', st: 'blind', info: 'Eine Attacke blendet mit 25 %', nurBeute: true },
+    // Veredler: nur durch Arenen und Riesen, nicht käuflich. Kleine feste Werte (LP +1 bis 6, Rest +1 bis 3 pro Stein, begrenzt), Effekte 15 % (höchstens 40 %)
+    v_hp:  { n: 'Lebenskristall', preis: 0, upg: 'hp', zufall: [1, 6], info: '+1 bis 6 LP', nurBeute: true },
+    v_atk: { n: 'Kraftstein', preis: 0, upg: 'atk', zufall: [1, 3], info: '+1 bis 3 Angriff', nurBeute: true },
+    v_def: { n: 'Schildstein', preis: 0, upg: 'def', zufall: [1, 3], info: '+1 bis 3 Verteidigung', nurBeute: true },
+    v_spd: { n: 'Sturmfeder', preis: 0, upg: 'spd', zufall: [1, 3], info: '+1 bis 3 Tempo', nurBeute: true },
+    v_gift: { n: 'Giftdorn', preis: 0, upg: 'fx', st: 'gift', info: 'Eine Attacke vergiftet mit 15 %', nurBeute: true },
+    v_brand: { n: 'Glutsplitter', preis: 0, upg: 'fx', st: 'brand', info: 'Eine Attacke verbrennt mit 15 %', nurBeute: true },
+    v_laehmung: { n: 'Blitzkern', preis: 0, upg: 'fx', st: 'laehmung', info: 'Eine Attacke lähmt mit 15 %', nurBeute: true },
+    v_betaeubt: { n: 'Schlagrune', preis: 0, upg: 'fx', st: 'betaeubt', info: 'Eine Attacke betäubt mit 15 %', nurBeute: true },
+    v_blind: { n: 'Blendstaub', preis: 0, upg: 'fx', st: 'blind', info: 'Eine Attacke blendet mit 15 %', nurBeute: true },
+    v_verwirrt: { n: 'Wirbelkern', preis: 0, upg: 'fx', st: 'verwirrt', info: 'Eine Attacke verwirrt mit 15 %', nurBeute: true },
+    v_bruch: { n: 'Brechstein', preis: 0, upg: 'fx', st: 'bruch', info: 'Eine Attacke macht zerbrechlich mit 15 %', nurBeute: true },
+    // Sehr selten (Riesen, Arenaleitungen): bringt einem Mob mit weniger als 6 Attacken eine zusätzliche Attacke seines Elements bei
+    rune: { n: 'Attackenrune', preis: 0, rune: true, info: 'Ein Mob lernt eine zusätzliche Attacke', nurBeute: true },
     ei: { n: 'Drachenei', preis: 0, fund: false, info: 'Schlüpft nach 600 Schritten', nurBeute: true },
     beleber: { n: 'Wiederbeleber', preis: 150, beleb: 0.5, info: 'Belebt einen Mob mit halben LP' },
     gegengift: { n: 'Gegengift', preis: 25, heilStatus: true, info: 'Heilt Statuseffekte' },

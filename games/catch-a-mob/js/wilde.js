@@ -7,7 +7,7 @@
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
   const MAX_SICHT = 3, MAX_GRUPPEN = 4, MAX_TIERE = 6, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
-  const RAR_FAKTOR = [1, 0.6, 0.22, 0.1];   // seltene Mobs tauchen entsprechend seltener auf
+  const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
     if (Welt.blockiert(x - 0.3, y - 0.2) || Welt.blockiert(x + 0.3, y - 0.2) || Welt.blockiert(x - 0.3, y + 0.25) || Welt.blockiert(x + 0.3, y + 0.25)) return false;

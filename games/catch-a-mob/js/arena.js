@@ -75,6 +75,7 @@
         const gold = 100 + a.lv * 20; S.save.gold += gold;
         lines.push('<b style="color:#c9a6ff">' + def.sym + ' ' + esc(def.abz) + '!</b> Du bekommst ' + ge(gold) + ' und:');
         for (let i = 0; i < 3; i++) { const k = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(k, 1); lines.push('· ' + esc(CAM.ITEMS[k].n) + ' <small>(' + esc(CAM.ITEMS[k].info) + ')</small>'); }
+        if (Math.random() < 0.04) { CAM.itemAdd('rune', 1); lines.push('· <b style="color:#ffb36b">Attackenrune</b> <small>(sehr selten: ein Mob lernt eine zusätzliche Attacke)</small>'); }
         lines.push('<small>Verbessern: Menü, Team, Mob, «Verbessern».</small>');
       } else { const gold = 20 + a.lv * 5; S.save.gold += gold; lines.push('Du bekommst ' + ge(gold) + '.'); }
     }
@@ -84,7 +85,7 @@
   };
 
   // ---------- Verbessern mit Veredlern ----------
-  const MAX_BONUS = 25, FX_START = 25, FX_MAX = 60;
+  const MAX_BONUS = { hp: 30, atk: 12, def: 12, spd: 12 }, FX_START = 15, FX_MAX = 40;
   A.veredeln = async function (m0) {
     for (;;) {
       const keys = CAM.UPG.filter(k => (S.save.items[k] || 0) > 0);
@@ -108,19 +109,34 @@
       if (i < 0) return false;
       const id = moves[i], cur = CAM.moveFuer(m, id);
       m.fx = m.fx || {};
-      if (cur.st === it.st) { if (cur.p >= FX_MAX) { await UI.info('Dieser Effekt ist schon am Maximum (' + FX_MAX + ' %).', 'Verbessern'); return false; } m.fx[id] = { st: it.st, p: Math.min(FX_MAX, cur.p + 10) }; }
+      if (cur.st === it.st) { if (cur.p >= FX_MAX) { await UI.info('Dieser Effekt ist schon am Maximum (' + FX_MAX + ' %).', 'Verbessern'); return false; } m.fx[id] = { st: it.st, p: Math.min(FX_MAX, cur.p + 5) }; }
       else m.fx[id] = { st: it.st, p: FX_START };
       await UI.info(esc(CAM.name(m)) + ': ' + esc(CAM.MOVES[id].n) + ' hat jetzt ' + CAM.fxText(CAM.moveFuer(m, id)) + '.', 'Verbessert');
       return true;
     }
     m.bon = m.bon || {};
-    if ((m.bon[it.upg] || 0) >= MAX_BONUS) { await UI.info('Dieser Wert ist schon am Maximum (+' + MAX_BONUS + ' %).', 'Verbessert'); return false; }
-    const alt = m.mhp; m.bon[it.upg] = (m.bon[it.upg] || 0) + 5; CAM.neuBerechnen(m);
+    m.bonV = 2;
+    const max = MAX_BONUS[it.upg], cur = m.bon[it.upg] || 0;
+    if (cur >= max) { await UI.info('Dieser Wert ist schon am Maximum (+' + max + ').', 'Verbessert'); return false; }
+    const plus = Math.min(max - cur, it.zufall[0] + Math.floor(Math.random() * (it.zufall[1] - it.zufall[0] + 1)));
+    const alt = m.mhp; m.bon[it.upg] = cur + plus; CAM.neuBerechnen(m);
     if (it.upg === 'hp' && m.hp > 0) m.hp += m.mhp - alt;
-    await UI.info(esc(CAM.name(m)) + ': ' + esc(it.info) + ' (insgesamt +' + m.bon[it.upg] + ' %).', 'Verbessert');
+    await UI.info(esc(CAM.name(m)) + ': +' + plus + ' ' + NAMEN[it.upg] + ' (insgesamt +' + m.bon[it.upg] + ').', 'Verbessert');
     return true;
   }
+  // Attackenrune: bringt einem Mob mit weniger als 6 möglichen Attacken eine zusätzliche Technik seines Elements bei
+  A.rune = async function () {
+    const alle = S.save.team.concat(S.save.box).filter(m => CAM.runeMoeglich(m));
+    if (!alle.length) { await UI.info('Kein Mob kann damit noch eine Attacke lernen. Mobs mit schon 6 möglichen Attacken oder mit einer Rune gehen nicht.', 'Attackenrune'); return; }
+    const i = await UI.choose(alle.map(x => ({ label: H.mobZeile(x), sub: x.moves.length + ' Attacken' })), { title: 'Attackenrune: bei wem?', numbers: false, wide: true });
+    if (i < 0) return;
+    const m = alle[i], ids = CAM.runeAuswahl(m);
+    const j = await UI.choose(ids.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' <small>' + esc(mv.el) + '</small>', sub: CAM.moveText(mv) }; }), { title: 'Welche Attacke?', sub: esc(CAM.name(m)) + ' lernt sie für immer.', numbers: false, wide: true });
+    if (j < 0) return;
+    m.extra = ids[j]; m.wahl = null; CAM.neuBerechnen(m); CAM.itemAdd('rune', -1); UI.snd('stufe'); Save.speichern();
+    await UI.info(esc(CAM.name(m)) + ' kann jetzt ' + esc(CAM.MOVES[ids[j]].n) + '!', 'Attackenrune');
+  };
   const NAMEN = { hp: 'LP', atk: 'Angriff', def: 'Verteidigung', spd: 'Tempo' };
-  function bonusText(m) { const t = Object.keys(m.bon || {}).filter(k => m.bon[k]).map(k => '+' + m.bon[k] + ' % ' + NAMEN[k]); return t.length ? t.join(' · ') : 'noch nichts verbessert'; }
+  function bonusText(m) { const t = Object.keys(m.bon || {}).filter(k => m.bon[k]).map(k => '+' + m.bon[k] + ' ' + NAMEN[k]); return t.length ? t.join(' · ') : 'noch nichts verbessert'; }
   A.bonusText = m => { const t = bonusText(m), fx = Object.keys(m.fx || {}).filter(id => CAM.MOVES[id]).map(id => CAM.MOVES[id].n + ': ' + CAM.fxText(CAM.moveFuer(m, id))); return (t.indexOf('noch nichts') < 0 ? t : '') + (fx.length ? (t.indexOf('noch nichts') < 0 ? ' · ' : '') + fx.join(' · ') : ''); };
 })(window);
