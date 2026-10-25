@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Startseite", "tag": "Update", "p": [
+    "Aufgeräumte Leiste: 1 Filtern, 2 Sortieren, dazu getrennt Updates und «Spiel vorschlagen»",
+    "Neuste Updates stehen jetzt auch ganz unten auf der Seite",
+    "Neuer Fuss mit Logo, Copyright und Schnell-Links"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob", "tag": "Update", "p": [
     "Neues Attacken-System: 1 bis 3 Attacken am Start, weitere bei Stufe 10, 15 und 30, höchstens 6",
     "Zehn Spezialeffekte, neu Verwirrung und Zerbrechlichkeit. Jede Attacke zeigt Genauigkeit und Effekt-Chance",
