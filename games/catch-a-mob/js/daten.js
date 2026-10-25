@@ -601,7 +601,8 @@
     if (f.stufen === 1) return 1;
     return lv >= CAM.EVO_LV[1] ? 3 : lv >= CAM.EVO_LV[0] ? 2 : 1;
   };
-  CAM.name = function (m) { return F[m.fam].n[Math.min(F[m.fam].stufen, m.stufe) - 1]; };
+  CAM.artName = function (m) { return F[m.fam].n[Math.min(F[m.fam].stufen, m.stufe) - 1]; };   // Name der Art
+  CAM.name = function (m) { return m.nick || CAM.artName(m); };   // eigener Name, falls vergeben
   CAM.elemente = function (m) {
     const f = F[m.fam];
     const e = [f.el];

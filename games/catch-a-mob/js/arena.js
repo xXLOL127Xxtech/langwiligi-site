@@ -80,7 +80,7 @@
       } else { const gold = 20 + a.lv * 5; S.save.gold += gold; lines.push('Du bekommst ' + ge(gold) + '.'); }
     }
     Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
-    if (b.winner === 1) { await I.verloren('Die Arenaleitung war zu stark.'); return; }
+    if (b.winner === 1) { await I.verloren('Die Arenaleitung war zu stark.', 'mild'); return; }
     if (lines.length) await UI.info(lines.join('<br>'), 'Arena geschafft!');
   };
 
