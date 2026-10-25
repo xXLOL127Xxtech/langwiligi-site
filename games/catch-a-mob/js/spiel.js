@@ -211,8 +211,8 @@
   }
 
   function hud(now) {
-    if (S.modus !== 'welt' || K.aktiv) { $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('keys').classList.add('hidden'); $('quick').classList.add('hidden'); return; }
-    $('hud').classList.remove('hidden'); $('keys').classList.remove('hidden'); $('quick').classList.remove('hidden');
+    if (S.modus !== 'welt' || K.aktiv) { CAM.Seite.zeigen(false); $('hud').classList.add('hidden'); $('hint').classList.add('hidden'); $('keys').classList.add('hidden'); $('quick').classList.add('hidden'); return; }
+    CAM.Seite.zeigen(true, now); $('hud').classList.remove('hidden'); $('keys').classList.remove('hidden'); $('quick').classList.remove('hidden');
     const B = CAM.BIOME[S.biome], uhr = CAM.tageszeit(now), sais = CAM.SAISONS[CAM.saison(now)];
     const dorf = Welt.dorfBei(S.x, S.y);
     $('hudL').innerHTML = '<b>' + esc(dorf ? dorf.name : B.n) + '</b>' + (dorf ? ' <small>(sicher)</small>' : '') + '<br>' +
@@ -248,7 +248,7 @@
       zeichneWelt(now, ts, d.x + Math.sin(t) * 5, d.y - 1 + Math.cos(t * 0.7) * 2);
       ctx.fillStyle = 'rgba(10,6,20,.55)'; ctx.fillRect(0, 0, W, H);
     }
-    if (ts - hudT > 200) { hudT = ts; hud(now); }
+    if (ts - hudT > 200) { hudT = ts; hud(now); } else if (CAM.Seite.an) CAM.Seite.zeigen(true, now);
   }
 
   // ---------- Eingaben ----------

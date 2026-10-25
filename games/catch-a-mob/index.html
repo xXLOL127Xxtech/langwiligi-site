@@ -35,6 +35,19 @@
   #quick button { width: 58px; height: 58px; font-size: 30px; line-height: 1; position: relative; cursor: pointer; border: 0; border-radius: 0; background: #2a1f40; color: #fff; box-shadow: 0 0 0 3px #07040e, inset 0 0 0 3px #4a3578; }
   #quick button:hover { background: #6a35c9; }
   #quick kbd { position: absolute; right: 4px; bottom: 2px; font: 700 11px ui-monospace, Consolas, monospace; color: #cfc9e0; }
+  #rang { position: absolute; right: 12px; top: 92px; width: 232px; padding: 8px 10px; z-index: 4; pointer-events: none; font-size: 12px; }
+  #rang .ti { color: #ffd54a; text-transform: uppercase; letter-spacing: .08em; }
+  #rang table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  #rang th { color: #a9a59b; font-weight: 400; text-align: right; } #rang th:nth-child(2) { text-align: left; }
+  #rang td { padding: 2px 3px; text-align: right; white-space: nowrap; } #rang td:first-child { color: #a9a59b; }
+  #rang td.nm { text-align: left; max-width: 108px; overflow: hidden; text-overflow: ellipsis; } #rang td.pt { text-align: center; color: #a9a59b; }
+  #rang tr.ich td { color: #ffd54a; font-weight: 700; }
+  #rang i, #mini i { display: inline-block; width: 8px; height: 8px; margin-right: 5px; box-shadow: 0 0 0 1px #07040e; }
+  #rang small { color: #a9a59b; } #rang .leg, #mini .leg { color: #a9a59b; font-size: 10px; margin-top: 5px; }
+  #rang .px { width: 14px; height: 14px; margin: 0; vertical-align: -2px; }
+  #mini { position: absolute; right: 12px; bottom: 12px; padding: 6px; z-index: 4; pointer-events: none; }
+  #mini canvas { position: static; display: block; width: 168px; height: 168px; image-rendering: pixelated; }
+  #mini .leg i { margin-left: 4px; }
   #hint { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); pointer-events: none; }
   #keys { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); pointer-events: none; font-size: 12px; color: #cfc9e0; white-space: nowrap; }
   #keys kbd { background: rgba(255, 255, 255, 0.12); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font: 700 11px ui-monospace, Consolas, monospace; color: #fff; }
@@ -177,6 +190,7 @@ input[type=text], textarea { border-radius:0; background:#0e0817; border:0; box-
 <script src="js/bots.js"></script>
 <script src="js/handel.js"></script>
 <script src="js/arena.js"></script>
+<script src="js/seitenleiste.js"></script>
 <script src="js/spiel.js"></script>
 </body>
 </html>

@@ -519,7 +519,7 @@
     const lines = [];
     if (b.result.caught) {
       const m = b.result.caught; delete m.faintDone; m.status = null;
-      const wo = A.mobDazu(m); dexSet(m.fam, 2); S.save.fangXp = (S.save.fangXp || 0) + 0.15;
+      const wo = A.mobDazu(m); dexSet(m.fam, 2); S.save.fangXp = (S.save.fangXp || 0) + 0.15; S.save.gef = (S.save.gef | 0) + 1;
       lines.push('<b style="color:#5fd38a">' + esc(mobNameFull(m)) + ' gehört jetzt dir!</b> ' + (wo === 'team' ? '(ins Team aufgenommen)' : wo === 'box' ? '(in den Zwinger gebracht)' : '(Zwinger voll, er wurde freigelassen)'));
     } else if (b.result.fled) lines.push('Du bist entkommen.');
     else if (b.winner === 0) {
@@ -572,7 +572,7 @@
 
   // ---------- Online: Hilfen ----------
   A.praesenz = function () {
-    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv(), ab: CAM.abzMaske(S.save.abz) };
+    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv(), ab: CAM.abzMaske(S.save.abz), fg: A.gefangen ? A.gefangen() : 0 };
   };
   A.hallo = function (an, antwort) {
     const m = { t: 'hi', n: S.name, c: S.save.col, w: S.save.w, l: S.save.l, re: !!antwort, ...A.praesenz() };
@@ -648,7 +648,7 @@
     switch (d.t) {
       case 'hi': {
         const p = S.peers.get(von) || { idx: von, x: d.x, y: d.y, tx: d.x, ty: d.y };
-        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, ab: d.ab | 0, gest: '', gestT: 0 });
+        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, ab: d.ab | 0, fg: d.fg | 0, gest: '', gestT: 0 });
         if (p.x === undefined) { p.x = d.x; p.y = d.y; }
         S.peers.set(von, p);
         if (!d.re) A.hallo(von, true);
@@ -656,7 +656,7 @@
       }
       case 'p': {
         const p = S.peers.get(von); if (!p) { A.hallo(von, true); return; }
-        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.ab = d.ab | 0; p.zeit = Date.now();
+        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.ab = d.ab | 0; p.fg = d.fg | 0; p.zeit = Date.now();
         break;
       }
       case 'gest': { const p = S.peers.get(von); if (p) { p.gest = CAM.GESTEN[d.g] ? CAM.GESTEN[d.g][0] : ''; p.gestT = Date.now(); } break; }

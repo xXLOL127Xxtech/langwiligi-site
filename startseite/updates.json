@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Rangliste und Minikarte", "tag": "Update", "p": [
+    "Rechts auf dem Bildschirm steht eine Rangliste mit Name, Abzeichen, höchster Stufe und gefangenen Mobs (Spieler und Bots)",
+    "Unten rechts zeigt eine kleine Karte, wo du, die Online-Spieler, deine Party und die Dörfer sind",
+    "Weniger Bots, Trainer und wilde Mobs in der Umgebung"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Pixelart-Symbole", "tag": "Update", "p": [
     "Pixelart-Bilder vor Gegenständen (Beutel, Laden, Belohnungen), Menüpunkten, Elementen und Zuständen wie Gift, Brand oder Lähmung",
     "Der Zustand eines Mobs im Kampf zeigt jetzt auch sein Symbol",
