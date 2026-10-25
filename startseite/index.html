@@ -115,6 +115,7 @@
         <button type="button" data-s="neu" aria-pressed="true">Neu</button>
         <button type="button" data-s="top" aria-pressed="false">Bewertung</button>
       </div>
+      <button type="button" class="upd-btn" id="upd-open" aria-haspopup="dialog"><span class="upd-led" aria-hidden="true"></span>Updates<i class="upd-new" id="upd-new" hidden>neu</i></button>
       <button type="button" class="tip-btn" id="tip-open">Du willst ein Spiel hier sehen? Klick hier</button>
     </div>
     <p class="count" id="count" aria-live="polite"></p>
@@ -152,6 +153,17 @@
       <a href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md" target="_blank" rel="noopener">Eigenes Spiel hochladen</a>
     </footer>
   </main>
+
+  <dialog id="upd" aria-labelledby="upd-h">
+    <div class="upd-box">
+      <div class="upd-bar"><span>&gt; changelog.log</span><button type="button" id="upd-close" aria-label="Schliessen">✕</button></div>
+      <div class="upd-body">
+        <p class="kicker">// System-Updates</p>
+        <h2 id="upd-h">Was ist neu?</h2>
+        <div id="upd-list" class="upd-list"><p class="upd-load">&gt; lade updates …</p></div>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="tip">
     <form id="tip-form">

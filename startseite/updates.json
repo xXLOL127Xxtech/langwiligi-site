@@ -1,0 +1,45 @@
+[
+  { "d": "2026-10-25", "t": "Catch a Mob", "tag": "Update", "p": [
+    "Neues Attacken-System: 1 bis 3 Attacken am Start, weitere bei Stufe 10, 15 und 30, höchstens 6",
+    "Zehn Spezialeffekte, neu Verwirrung und Zerbrechlichkeit. Jede Attacke zeigt Genauigkeit und Effekt-Chance",
+    "Seltene Mobs sind stärker und tauchen seltener auf",
+    "Beutel (I) und Team (T) mit Knöpfen unten links, schlankeres Menü",
+    "Mob-Bild vor jedem Namen, Mobs lassen sich umbenennen",
+    "Niederlagen bei Duellen und in der Arena kosten nichts, bei Überfällen nur die Beute"
+  ] },
+  { "d": "2026-10-25", "t": "Startseite", "tag": "Neu", "p": [
+    "Neues Updates-Fenster: Hier siehst du alle Änderungen mit Datum"
+  ] },
+  { "d": "2026-10-25", "t": "Übersicht", "tag": "Intern", "p": [
+    "Spiel-Aufrufe heute und Meistgespielt lassen sich aufklappen, mit Spielzeit pro Besuch"
+  ] },
+  { "d": "2026-10-24", "t": "Catch a Mob", "tag": "Update", "p": [
+    "Duelle mit Handelsfenster, Fairness-Anzeige und Gegenangeboten",
+    "Trainer und Bots laufen herum, fordern heraus oder überfallen dich",
+    "Arenen mit Abzeichen, Rangliste und Wegweisern",
+    "36 Techniken, Teamgeist durch zusammenpassende Elemente, Wetter im Kampf",
+    "Fangchance nach Fangstufe, Mob-Stufe und Schaden, längere Fang-Animation"
+  ] },
+  { "d": "2026-10-23", "t": "Neue Spiele", "tag": "Neu", "p": [
+    "Catch a Mob: Fabelwesen fangen, trainieren und in Duellen antreten",
+    "Eisenherbst",
+    "Sabotage-Golf"
+  ] },
+  { "d": "2026-10-22", "t": "Wanderlicht und Hüpf-Helden", "tag": "Update", "p": [
+    "Wanderlicht: Burgen mit Innenräumen, Fernsicht bis zum Horizont, Musik je nach Ort, Blutmond, neue Wunder",
+    "Hüpf-Helden: 4 neue Welten, Geheimwege, neue Bosse, scrollbare Weltwahl",
+    "Freunde, Online-Status und Einladungen mit Vorschaubild"
+  ] },
+  { "d": "2026-10-20", "t": "Neue Spiele", "tag": "Neu", "p": [
+    "Hüpf-Helden: Jump and Run für 1 bis 4 Spieler",
+    "Wanderlicht: endlose Pixelwelt voller Wunder"
+  ] },
+  { "d": "2026-10-19", "t": "Neue Spiele und Suche", "tag": "Neu", "p": [
+    "Strassenbaron: Brettspiel-Klassiker in 3D",
+    "Federsturm: Schleuder-Physikspiel mit Solo-, Duell- und Koop-Kampagne",
+    "Bessere Auffindbarkeit bei Google (Sitemap, Titel, strukturierte Daten)"
+  ] },
+  { "d": "2026-10-16", "t": "Start der Seite", "tag": "Neu", "p": [
+    "langwiligi.site geht mit über 40 Spielen für 1 gegen 1 online"
+  ] }
+]
