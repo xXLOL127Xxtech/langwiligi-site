@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-25",
+"z":"19:20",
+"a":"Catch a Mob",
+"t":"Leuchtling und Molchling nur im Wasser, Wassertiere spawnen schon vor dem Schwimmen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"19:20",
+"a":"Catch a Mob",
+"t":"Lebensraum aller Fabelwesen geprüft",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"18:55",
 "a":"Catch a Mob",
 "t":"Zwinger: Ablegen-Feld verständlicher beschriftet",

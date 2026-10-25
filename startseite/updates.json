@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Wassertiere korrigiert", "tag": "Update", "p": [
+    "Leuchtling und Molchling leben jetzt nur im Wasser und können nicht mehr an Land",
+    "Wassertiere sind schon im Wasser, bevor du schwimmst. Von Land aus siehst du sie nicht, sobald du schwimmst, sind sie da",
+    "Alle Fabelwesen halten sich an ihren Lebensraum: Landtiere nur an Land, Wassertiere nur im Wasser, Entling, Frosch, Schildkröte und Krabbe an Land und im Wasser"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Zwinger, Rangliste, Stufe", "tag": "Update", "p": [
     "Neuer Zwinger: links die Mobs im Zwinger, rechts dein Team. Mob mit Enter wählen, dann in der anderen Spalte Enter zum Tauschen, in einen freien Platz setzen oder im Zwinger ablegen",
     "Die Rangliste lässt sich mit dem Kreuz oder der Taste R schliessen und wieder öffnen",
