@@ -1,0 +1,902 @@
+[
+{
+"d":"2026-10-25",
+"z":"12:01",
+"a":"Updates",
+"t":"Neue Seite /updates/ mit allen Änderungen samt Uhrzeit, Startseite zeigt die letzten 3 Tage",
+"tag":"Neu",
+"pr":null,
+"b":"intelligent-ptolemy-1m0l84"
+},
+{
+"d":"2026-10-25",
+"z":"12:00",
+"a":"Startseite",
+"t":"Ein Knopf «Filtern & Sortieren» mit Modus, Typ und Reihenfolge",
+"tag":"Update",
+"pr":null,
+"b":"intelligent-ptolemy-1m0l84"
+},
+{
+"d":"2026-10-25",
+"z":"10:32",
+"a":"Startseite",
+"t":"Neue Leiste, neuste Updates und Marken-Fuss unten",
+"tag":"Update",
+"pr":79,
+"b":"intelligent-ptolemy-1m0l84"
+},
+{
+"d":"2026-10-25",
+"z":"10:25",
+"a":"Startseite",
+"t":"Updates-Fenster mit allen Änderungen und Datum",
+"tag":"Neu",
+"pr":78,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"10:14",
+"a":"Catch a Mob",
+"t":"Mob-Bild vor jedem Namen, Mobs umbenennen, mildere Niederlagen",
+"tag":"Update",
+"pr":77,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"10:06",
+"a":"Catch a Mob",
+"t":"Nicht gelernte Attacken im Kampf ausgegraut",
+"tag":"Update",
+"pr":77,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"09:33",
+"a":"Catch a Mob",
+"t":"Beutel (I) und Team (T) mit Knöpfen, nicht gelernte Attacken ausgegraut",
+"tag":"Update",
+"pr":76,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"09:06",
+"a":"Catch a Mob",
+"t":"Attacken neu geordnet, zehn Spezialeffekte, seltene Mobs stärker",
+"tag":"Update",
+"pr":75,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"08:49",
+"a":"Catch a Mob",
+"t":"Keine HINTERHALT-Einblendung mehr, Mob greift direkt an",
+"tag":"Update",
+"pr":75,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"08:31",
+"a":"Übersicht",
+"t":"Spiel-Aufrufe heute und Meistgespielt aufklappbar, Spielzeit pro Besuch",
+"tag":"Intern",
+"pr":74,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"08:19",
+"a":"Catch a Mob",
+"t":"Bots und Trainer bleiben beim Herausfordern stehen",
+"tag":"Update",
+"pr":74,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-25",
+"z":"08:15",
+"a":"Catch a Mob",
+"t":"Jede Attacke hat eine eigene Genauigkeit",
+"tag":"Update",
+"pr":74,
+"b":"tender-brown-chk3na"
+},
+{
+"d":"2026-10-24",
+"z":"13:46",
+"a":"Catch a Mob",
+"t":"36 Techniken, bis zu 6 Attacken, Teamgeist durch Elemente",
+"tag":"Update",
+"pr":73,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"13:38",
+"a":"Catch a Mob",
+"t":"Trainer rennen bei Sichtkontakt los, Schrift ÜBERFALL",
+"tag":"Update",
+"pr":73,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"13:14",
+"a":"Catch a Mob",
+"t":"Bots sind kaum noch spendabel",
+"tag":"Update",
+"pr":72,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"13:11",
+"a":"Catch a Mob",
+"t":"Arenen mit Abzeichen, Rangliste und Wegweisern",
+"tag":"Update",
+"pr":72,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:53",
+"a":"Catch a Mob",
+"t":"Gegenangebot nur annehmbar, wenn unverändert; 10 % Daneben",
+"tag":"Update",
+"pr":71,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:51",
+"a":"Catch a Mob",
+"t":"Siegchance flacher, Bots nehmen Gegenangebote an",
+"tag":"Update",
+"pr":71,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:44",
+"a":"Catch a Mob",
+"t":"Kampf strikt abwechselnd",
+"tag":"Update",
+"pr":70,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:41",
+"a":"Catch a Mob",
+"t":"Handelsfenster für Duelle mit Fairness-Anzeige und Gegenangeboten",
+"tag":"Update",
+"pr":70,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:35",
+"a":"Catch a Mob",
+"t":"Siegchance gegen NPCs mit Tagesform",
+"tag":"Update",
+"pr":70,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:33",
+"a":"Catch a Mob",
+"t":"Bots können überfallen werden",
+"tag":"Update",
+"pr":70,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:30",
+"a":"Catch a Mob",
+"t":"NPCs finden Wege um Hindernisse, es jagt nur einer gleichzeitig",
+"tag":"Update",
+"pr":70,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:20",
+"a":"Catch a Mob",
+"t":"Neue Spezialeffekte, wenige Mobs nur ausserhalb des Bildes",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:16",
+"a":"Catch a Mob",
+"t":"Trainer-NPCs laufen herum und fordern heraus, mehr Bots auch online",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:08",
+"a":"Catch a Mob",
+"t":"Knopf «Alle heilen», Niederlage kostet Gold und Erfahrung",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:06",
+"a":"Catch a Mob",
+"t":"Kritische Treffer mit eigener Anzeige",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:05",
+"a":"Catch a Mob",
+"t":"Fangkugel pulsiert vor dem Ergebnis",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:05",
+"a":"Catch a Mob",
+"t":"Längere, spannendere Fang-Animation",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:03",
+"a":"Catch a Mob",
+"t":"Team nur noch 3 Mobs, Rest kommt in den Zwinger",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"12:02",
+"a":"Catch a Mob",
+"t":"Starke Fangkugel ist auch bei tiefen Mob-Stufen besser als die einfache",
+"tag":"Update",
+"pr":69,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:47",
+"a":"Catch a Mob",
+"t":"Fehler beim Fangen behoben",
+"tag":"Update",
+"pr":68,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:46",
+"a":"Catch a Mob",
+"t":"Duelle nur mit Einverständnis, Überfall klaut Gold",
+"tag":"Update",
+"pr":68,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:39",
+"a":"Catch a Mob",
+"t":"Einfache Kugel ab hohen Stufen viel schlechter, starke Kugel 100 Gold",
+"tag":"Update",
+"pr":67,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:26",
+"a":"Catch a Mob",
+"t":"Fangchance nach Fangstufe, Mob-Stufe und Schaden",
+"tag":"Update",
+"pr":67,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:13",
+"a":"Catch a Mob",
+"t":"Deutlich mehr wilde Mobs in der Welt",
+"tag":"Update",
+"pr":67,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:12",
+"a":"Catch a Mob",
+"t":"Wer angreift oder herausfordert, schlägt zuerst zu",
+"tag":"Update",
+"pr":67,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"11:08",
+"a":"Catch a Mob",
+"t":"Bots laufen weiter und fordern aktiv heraus, Heilen nach Stufe",
+"tag":"Update",
+"pr":66,
+"b":"vibrant-tesla-4zuh4f"
+},
+{
+"d":"2026-10-24",
+"z":"10:22",
+"a":"Catch a Mob",
+"t":"20 neue Fabelwesen, Laufanimation",
+"tag":"Update",
+"pr":65,
+"b":"great-euler-chm7ug"
+},
+{
+"d":"2026-10-24",
+"z":"10:21",
+"a":"Freunde",
+"t":"Menü schliesst sich bei Klick auf die Seite",
+"tag":"Update",
+"pr":64,
+"b":"optimistic-bell-uof5nz"
+},
+{
+"d":"2026-10-24",
+"z":"09:58",
+"a":"Catch a Mob",
+"t":"Grössere Welt, Bot-Duelle mit Einsatz, Spezial-Mobs",
+"tag":"Update",
+"pr":63,
+"b":"awesome-lamport-iy37dm"
+},
+{
+"d":"2026-10-24",
+"z":"09:50",
+"a":"Catch a Mob",
+"t":"Fangkugeln, Heiltrank, Heilhaus und eigene Attacken",
+"tag":"Update",
+"pr":63,
+"b":"awesome-lamport-iy37dm"
+},
+{
+"d":"2026-10-24",
+"z":"08:25",
+"a":"Lobby",
+"t":"Lobbys im Spiel-Look neu gestaltet (31 Spiele)",
+"tag":"Update",
+"pr":62,
+"b":"dazzling-thompson-w9y16t"
+},
+{
+"d":"2026-10-24",
+"z":"08:13",
+"a":"Freunde",
+"t":"Einmalige Benutzernamen und Einladungen direkt in den Raum",
+"tag":"Update",
+"pr":62,
+"b":"dazzling-thompson-w9y16t"
+},
+{
+"d":"2026-10-24",
+"z":"07:24",
+"a":"Catch a Mob",
+"t":"Kampfanimationen für jeden Angriff, wandernde wilde Mobs",
+"tag":"Update",
+"pr":61,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-24",
+"z":"06:44",
+"a":"Turbo-Kart",
+"t":"Bots menschlicher, Items und Aufholen angepasst",
+"tag":"Update",
+"pr":60,
+"b":"eager-hypatia-k1bupg"
+},
+{
+"d":"2026-10-24",
+"z":"06:08",
+"a":"Online",
+"t":"Alle landen in derselben Welt, Räume bis 20 Spieler",
+"tag":"Update",
+"pr":59,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"20:27",
+"a":"Doku",
+"t":"Sabotage-Golf in der Spieleliste ergänzt",
+"tag":"Intern",
+"pr":null,
+"b":null
+},
+{
+"d":"2026-10-23",
+"z":"19:01",
+"a":"Catch a Mob",
+"t":"Neues Spiel: Online-Welt und Bots, Mobs fangen",
+"tag":"Neu",
+"pr":58,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:34",
+"a":"Dossier",
+"t":"Überfall-Sperre von 30 Minuten ergänzt",
+"tag":"Intern",
+"pr":58,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:29",
+"a":"Dossier",
+"t":"Duell-Regeln und Etappen ergänzt",
+"tag":"Intern",
+"pr":57,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:29",
+"a":"Dossier",
+"t":"Textkorrekturen",
+"tag":"Intern",
+"pr":57,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:29",
+"a":"Dossier",
+"t":"Vorschlag überarbeitet: Catch a Mob",
+"tag":"Intern",
+"pr":57,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:23",
+"a":"Sabotage-Golf",
+"t":"Echtzeit-Rennen, Zielbox, Items und Online bis 16 Spieler",
+"tag":"Update",
+"pr":56,
+"b":"ccr-d39c8f26-8yn0sz"
+},
+{
+"d":"2026-10-23",
+"z":"18:22",
+"a":"Eisenherbst",
+"t":"Leertaste schlägt mehrfach, Luftschläge schrecken NPCs nicht mehr auf",
+"tag":"Update",
+"pr":55,
+"b":"intelligent-shannon-urrego"
+},
+{
+"d":"2026-10-23",
+"z":"18:19",
+"a":"Dossier",
+"t":"Vorschlag für ein Fang- und Kampfspiel (Fabelfänger)",
+"tag":"Intern",
+"pr":57,
+"b":"adoring-bell-aehwjf"
+},
+{
+"d":"2026-10-23",
+"z":"18:13",
+"a":"Eisenherbst",
+"t":"Schärfere Figuren, Zielen mit dem Zeiger, Schild wehrt Geschosse ab",
+"tag":"Update",
+"pr":54,
+"b":"ccr-de0515bf-ej127t"
+},
+{
+"d":"2026-10-23",
+"z":"18:10",
+"a":"Eisenherbst",
+"t":"Endlose Welt mit Goblin-Höhlen, Dörfern und Ruinen",
+"tag":"Update",
+"pr":54,
+"b":"ccr-de0515bf-ej127t"
+},
+{
+"d":"2026-10-23",
+"z":"16:54",
+"a":"Eisenherbst",
+"t":"Grössere Karte, neue Räuberlager und Patrouillen",
+"tag":"Update",
+"pr":53,
+"b":"ccr-de0515bf-ej127t"
+},
+{
+"d":"2026-10-23",
+"z":"10:55",
+"a":"Sabotage-Golf",
+"t":"Bessere Grafik mit Schattierung, Bäumen und Rauch",
+"tag":"Update",
+"pr":51,
+"b":"ccr-d39c8f26-8yn0sz"
+},
+{
+"d":"2026-10-23",
+"z":"10:54",
+"a":"Eisenherbst 1438",
+"t":"Neues Spiel: historisches 2D-Rollenspiel, Solo und Online-Koop",
+"tag":"Neu",
+"pr":52,
+"b":"ccr-de0515bf-ej127t"
+},
+{
+"d":"2026-10-23",
+"z":"10:38",
+"a":"Sabotage-Golf",
+"t":"Neues Spiel: zerstörbares Pixel-Golf mit Sabotage-Runden",
+"tag":"Neu",
+"pr":51,
+"b":"ccr-d39c8f26-8yn0sz"
+},
+{
+"d":"2026-10-23",
+"z":"10:14",
+"a":"Schoggi-Boss",
+"t":"Neues Spiel: Schoggi-Tycoon mit Rezept-Entdeckung, Handeln und Kontrolleur",
+"tag":"Neu",
+"pr":null,
+"b":null
+},
+{
+"d":"2026-10-22",
+"z":"20:47",
+"a":"Server",
+"t":"Lokal-Angaben korrigiert, Server gegen Spam gehärtet",
+"tag":"Intern",
+"pr":47,
+"b":"hopeful-franklin-tuysdj"
+},
+{
+"d":"2026-10-22",
+"z":"20:44",
+"a":"Wanderlicht",
+"t":"Stabilere Bäume, Besenflug mit Physik, Blitzbaum",
+"tag":"Update",
+"pr":49,
+"b":"zealous-pasteur-bu6hbl"
+},
+{
+"d":"2026-10-22",
+"z":"20:38",
+"a":"Hüpf-Helden",
+"t":"Pfeil-Knöpfe links und rechts der Karte zum Wechseln der Welt",
+"tag":"Update",
+"pr":48,
+"b":"beautiful-keller-uzxtni"
+},
+{
+"d":"2026-10-22",
+"z":"20:34",
+"a":"Freunde",
+"t":"Freunde, Online-Status und Einladungen mit Vorschaubild",
+"tag":"Neu",
+"pr":47,
+"b":"hopeful-franklin-tuysdj"
+},
+{
+"d":"2026-10-22",
+"z":"20:20",
+"a":"Wanderlicht",
+"t":"Ladebildschirm, Ego-Ansicht und Lichter in der Wildnis",
+"tag":"Update",
+"pr":45,
+"b":"zealous-pasteur-bu6hbl"
+},
+{
+"d":"2026-10-22",
+"z":"20:16",
+"a":"Hüpf-Helden",
+"t":"Scrollbare Weltwahl, versteckte Tunnel und neue Bosse",
+"tag":"Update",
+"pr":46,
+"b":"beautiful-keller-uzxtni"
+},
+{
+"d":"2026-10-22",
+"z":"20:02",
+"a":"Hüpf-Helden",
+"t":"Drehsprung, Geheimwege, Boss-Angriffe und 4 neue Welten",
+"tag":"Update",
+"pr":44,
+"b":"beautiful-keller-uzxtni"
+},
+{
+"d":"2026-10-22",
+"z":"19:42",
+"a":"Wanderlicht",
+"t":"Flacherer Boden, Pfade, Flüsse mit Brücken, Feuerball",
+"tag":"Update",
+"pr":43,
+"b":"zealous-pasteur-bu6hbl"
+},
+{
+"d":"2026-10-22",
+"z":"19:03",
+"a":"Wanderlicht",
+"t":"Bessere Leistung, neuer Nebel, dichtere Wälder",
+"tag":"Update",
+"pr":42,
+"b":"zealous-tesla-6zj8dj"
+},
+{
+"d":"2026-10-22",
+"z":"18:10",
+"a":"Wanderlicht",
+"t":"Grafik-Feinschliff, Schmetterlinge, neues Titelbild",
+"tag":"Update",
+"pr":41,
+"b":"zealous-tesla-6zj8dj"
+},
+{
+"d":"2026-10-22",
+"z":"17:50",
+"a":"Wanderlicht",
+"t":"Burgen mit Innenräumen und Möbeln",
+"tag":"Update",
+"pr":41,
+"b":"zealous-tesla-6zj8dj"
+},
+{
+"d":"2026-10-22",
+"z":"17:13",
+"a":"Wanderlicht",
+"t":"Neue Grafik mit Bäumen, Wäldern und Figuren",
+"tag":"Update",
+"pr":41,
+"b":"zealous-tesla-6zj8dj"
+},
+{
+"d":"2026-10-22",
+"z":"15:01",
+"a":"Wanderlicht",
+"t":"Wolkenmeer unter hohen Gipfeln, weniger Überstrahlung",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:56",
+"a":"Wanderlicht",
+"t":"Blutmond in jeder fünften Nacht",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:52",
+"a":"Wanderlicht",
+"t":"Stärkere Spiegelung, feinere Farben, neues Titelbild",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:44",
+"a":"Wanderlicht",
+"t":"Musik und Klang je nach Ort",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:43",
+"a":"Wanderlicht",
+"t":"Drachengrab und versunkene Stadt als neue Wunder",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:38",
+"a":"Wanderlicht",
+"t":"Kniender Riese, Wolkenschatten und weichere Schatten",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-22",
+"z":"14:30",
+"a":"Wanderlicht",
+"t":"Fernsicht bis zum Horizont, Gebirge und Polarlicht",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-21",
+"z":"11:14",
+"a":"Wanderlicht",
+"t":"Schlösser am Horizont, Höhlen, Feenlichtung und Ritter",
+"tag":"Update",
+"pr":40,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-20",
+"z":"19:54",
+"a":"Wanderlicht",
+"t":"Neues Spiel: endlose Pixelwelt voller Wunder",
+"tag":"Neu",
+"pr":39,
+"b":"ccr-d062e3d2-79iko9"
+},
+{
+"d":"2026-10-20",
+"z":"19:21",
+"a":"Hüpf-Helden",
+"t":"Weltkarte, Geschichte, Bosse und Bonushäuser",
+"tag":"Update",
+"pr":38,
+"b":"peaceful-euler-h2xc9v"
+},
+{
+"d":"2026-10-20",
+"z":"18:16",
+"a":"Hüpf-Helden",
+"t":"Neues Spiel: Jump and Run für 1–4 Spieler",
+"tag":"Neu",
+"pr":37,
+"b":"peaceful-euler-h2xc9v"
+},
+{
+"d":"2026-10-20",
+"z":"17:05",
+"a":"Übersicht",
+"t":"Kurze Spielnamen bei Meistgespielt und Bewertungen",
+"tag":"Intern",
+"pr":36,
+"b":"happy-fermat-76lrh0"
+},
+{
+"d":"2026-10-19",
+"z":"19:59",
+"a":"Google",
+"t":"IndexNow meldet nur Startseite und neu geänderte Spiele",
+"tag":"Intern",
+"pr":35,
+"b":"ccr-48919361-gbdgd9"
+},
+{
+"d":"2026-10-19",
+"z":"19:31",
+"a":"Google",
+"t":"Suchbegriffe, strukturierte Daten und IndexNow",
+"tag":"Intern",
+"pr":34,
+"b":"ccr-48919361-gbdgd9"
+},
+{
+"d":"2026-10-19",
+"z":"17:27",
+"a":"Federsturm",
+"t":"Steinsockel unter jeder Burg, Waschbären im Gras sind erledigt",
+"tag":"Update",
+"pr":33,
+"b":"amazing-johnson-5kicj5"
+},
+{
+"d":"2026-10-19",
+"z":"17:09",
+"a":"Federsturm",
+"t":"Waschbären verwundbarer am Anfang, kürzere Wartezeit nach Fehlschüssen",
+"tag":"Update",
+"pr":32,
+"b":"amazing-johnson-5kicj5"
+},
+{
+"d":"2026-10-19",
+"z":"16:53",
+"a":"Google",
+"t":"Beschreibung nennt automatisch die meistgespielten Spiele",
+"tag":"Intern",
+"pr":31,
+"b":"adoring-sagan-mn6fd7"
+},
+{
+"d":"2026-10-19",
+"z":"16:42",
+"a":"Google",
+"t":"Sitemap, robots.txt und bessere Titel",
+"tag":"Intern",
+"pr":30,
+"b":"adoring-sagan-mn6fd7"
+},
+{
+"d":"2026-10-19",
+"z":"16:14",
+"a":"Strassenbaron",
+"t":"Neues Spiel: Brettspiel-Klassiker in 3D",
+"tag":"Neu",
+"pr":29,
+"b":"relaxed-edison-5idwd3"
+},
+{
+"d":"2026-10-19",
+"z":"15:57",
+"a":"Federsturm",
+"t":"Neues Spiel: Schleuder-Physikspiel mit Solo-, Duell- und Koop-Kampagne",
+"tag":"Neu",
+"pr":28,
+"b":"amazing-johnson-5kicj5"
+},
+{
+"d":"2026-10-19",
+"z":"15:31",
+"a":"Startseite",
+"t":"Nur die 3 zuletzt hochgeladenen Spiele gelten als neu",
+"tag":"Update",
+"pr":27,
+"b":"serene-fermat-l1cjj6"
+},
+{
+"d":"2026-10-19",
+"z":"08:42",
+"a":"Server",
+"t":"Aktualisierung nutzt nur noch eine SSH-Verbindung",
+"tag":"Intern",
+"pr":26,
+"b":"upbeat-ritchie-bd6isq"
+},
+{
+"d":"2026-10-19",
+"z":"08:38",
+"a":"Server",
+"t":"Aktualisierung prüft die Lobbys und meldet Fehler klar",
+"tag":"Intern",
+"pr":25,
+"b":"upbeat-ritchie-bd6isq"
+},
+{
+"d":"2026-10-19",
+"z":"08:02",
+"a":"Server",
+"t":"Seite läuft über die Server-IP, solange langwiligi.site gesperrt ist",
+"tag":"Intern",
+"pr":24,
+"b":"upbeat-ritchie-bd6isq"
+},
+{
+"d":"2026-10-17",
+"z":"00:02",
+"a":"Seite",
+"t":"Grundstock bis hier: Startseite und erste Spiele (Pull Requests 1 bis 23)",
+"tag":"Intern",
+"pr":23,
+"b":"elegant-edison-x3vi9c"
+}
+]

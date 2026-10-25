@@ -1,7 +1,8 @@
 [
   { "d": "2026-10-25", "t": "Startseite", "tag": "Update", "p": [
-    "Aufgeräumte Leiste: 1 Filtern, 2 Sortieren, dazu getrennt Updates und «Spiel vorschlagen»",
-    "Neuste Updates stehen jetzt auch ganz unten auf der Seite",
+    "Ein Knopf «Filtern & Sortieren»: Modus, Typ und Reihenfolge an einem Ort, aktive Filter stehen als Marken daneben",
+    "Neuste Updates der letzten 3 Tage stehen ganz unten auf der Seite",
+    "Neue Seite «Alle Updates» mit jeder Änderung, Datum, Uhrzeit und Pull Request (langwiligi.site/updates/)",
     "Neuer Fuss mit Logo, Copyright und Schnell-Links"
   ] },
   { "d": "2026-10-25", "t": "Catch a Mob", "tag": "Update", "p": [

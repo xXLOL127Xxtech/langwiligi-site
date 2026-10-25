@@ -93,39 +93,32 @@
     </header>
 
     <div class="toolbar">
-      <div class="tb-group tb-filter">
-        <span class="tb-label">1 · Filtern</span>
-        <nav class="filters" aria-label="Spiele filtern">
-          <div class="dd" data-key="f">
-            <button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="false"><span class="dd-k">Modus</span><b class="dd-v">Alle</b><i class="dd-c"></i></button>
-            <div class="dd-menu" role="menu" hidden>
-              <button type="button" role="menuitemradio" data-v="alle">Alle Modi</button>
-              <button type="button" role="menuitemradio" data-v="lokal">Lokal <small>2 an einem Gerät</small></button>
-              <button type="button" role="menuitemradio" data-v="online">Online <small>mit Freunden</small></button>
-              <button type="button" role="menuitemradio" data-v="bots">Gegen Bots</button>
-              <button type="button" role="menuitemradio" data-v="solo">Solo</button>
-            </div>
-          </div>
-          <div class="dd" data-key="t">
-            <button type="button" class="dd-btn" aria-haspopup="true" aria-expanded="false"><span class="dd-k">Typ</span><b class="dd-v">Alle</b><i class="dd-c"></i></button>
-            <div class="dd-menu" role="menu" hidden></div>
-          </div>
-          <button type="button" class="dd-reset" id="reset" hidden>Zurücksetzen ✕</button>
-        </nav>
-      </div>
-      <div class="tb-group tb-sort">
-        <span class="tb-label">2 · Sortieren</span>
-        <div class="seg sort" role="group" aria-label="Sortieren">
-          <button type="button" data-s="neu" aria-pressed="true">Neueste</button>
-          <button type="button" data-s="top" aria-pressed="false">Beste Bewertung</button>
+      <div class="fp" id="fp">
+        <button type="button" class="fp-btn" id="fp-btn" aria-haspopup="true" aria-expanded="false" aria-controls="fp-panel">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M6 10h8M9 15h2"/></svg>Filtern &amp; Sortieren<i class="fp-n" id="fp-n" hidden></i><i class="fp-c"></i>
+        </button>
+        <div class="fp-panel" id="fp-panel" role="group" aria-label="Filtern und Sortieren" hidden>
+          <section><h3>Modus <small>Wie willst du spielen?</small></h3>
+            <div class="chips" data-key="f">
+              <button type="button" data-v="alle">Alle</button>
+              <button type="button" data-v="lokal">Lokal <small>2 an einem Gerät</small></button>
+              <button type="button" data-v="online">Online <small>mit Freunden</small></button>
+              <button type="button" data-v="bots">Gegen Bots</button>
+              <button type="button" data-v="solo">Solo</button>
+            </div></section>
+          <section><h3>Typ <small>Welche Art Spiel?</small></h3><div class="chips" data-key="t"></div></section>
+          <section><h3>Sortieren <small>Reihenfolge der Karten</small></h3>
+            <div class="chips sort" data-key="s">
+              <button type="button" data-s="neu">Neueste zuerst</button>
+              <button type="button" data-s="top">Beste Bewertung</button>
+            </div></section>
+          <div class="fp-foot"><button type="button" class="fp-reset" id="reset">Alles zurücksetzen</button><button type="button" class="fp-done" id="fp-done">Fertig</button></div>
         </div>
       </div>
-      <div class="tb-group tb-site">
-        <span class="tb-label">Mehr</span>
-        <div class="tb-actions">
-          <button type="button" class="upd-btn" id="upd-open" aria-haspopup="dialog"><span class="upd-led" aria-hidden="true"></span>Updates<i class="upd-new" id="upd-new" hidden>neu</i></button>
-          <button type="button" class="tip-btn" id="tip-open"><span aria-hidden="true">+</span> Spiel vorschlagen</button>
-        </div>
+      <div class="fp-active" id="fp-active" aria-live="polite"></div>
+      <div class="tb-actions">
+        <button type="button" class="upd-btn" id="upd-open" aria-haspopup="dialog"><span class="upd-led" aria-hidden="true"></span>Updates<i class="upd-new" id="upd-new" hidden>neu</i></button>
+        <button type="button" class="tip-btn" id="tip-open"><span aria-hidden="true">+</span> Spiel vorschlagen</button>
       </div>
     </div>
     <p class="count" id="count" aria-live="polite"></p>
@@ -160,8 +153,8 @@
 
     <section class="news" aria-labelledby="news-h">
       <div class="news-head">
-        <div><p class="kicker">// Neuste Updates</p><h2 id="news-h">Was ist neu auf der Seite?</h2></div>
-        <button type="button" class="news-all" id="news-all">Alle Updates ansehen →</button>
+        <div><p class="kicker">// Neuste Updates · letzte 3 Tage</p><h2 id="news-h">Was ist neu auf der Seite?</h2></div>
+        <a class="news-all" href="updates/">Alle Updates mit Uhrzeit ansehen →</a>
       </div>
       <div class="news-list" id="news-list"><p class="upd-load">&gt; lade updates …</p></div>
     </section>
@@ -176,7 +169,7 @@
         <nav class="brand-links" aria-label="Weitere Links">
           <a href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md" target="_blank" rel="noopener">Eigenes Spiel hochladen</a>
           <a href="#" id="foot-tip">Spiel vorschlagen</a>
-          <a href="#" id="foot-upd">Updates</a>
+          <a href="updates/">Alle Updates</a>
           <a href="#" id="foot-up">Nach oben ↑</a>
         </nav>
       </div>
@@ -191,6 +184,7 @@
         <p class="kicker">// System-Updates</p>
         <h2 id="upd-h">Was ist neu?</h2>
         <div id="upd-list" class="upd-list"><p class="upd-load">&gt; lade updates …</p></div>
+        <a class="news-all upd-more" href="updates/">Ganzer Verlauf mit Uhrzeit →</a>
       </div>
     </div>
   </dialog>

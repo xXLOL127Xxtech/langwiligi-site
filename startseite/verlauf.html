@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alle Updates – KEI Langwiligi site</title>
+  <meta name="description" content="Alle Änderungen an KEI Langwiligi site mit Datum und Uhrzeit: neue Spiele, Verbesserungen und Änderungen im Hintergrund.">
+  <link rel="canonical" href="https://langwiligi.site/updates/">
+  <meta name="theme-color" content="#07060d">
+  <!--ICONS-->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="../_start/start.css?v=<!--VERSION-->">
+</head>
+<body class="verlauf-seite">
+  <main>
+    <header class="vl-top">
+      <a class="vl-back" href="../">← Zur Startseite</a>
+      <p class="kicker">// changelog.log</p>
+      <h1 class="vl-h1">Alle <span class="glitch" data-text="Updates">Updates</span></h1>
+      <p class="lead">Jede Änderung an der Seite, neueste oben. Mit Datum, Uhrzeit und dem Pull Request dazu.</p>
+      <ul class="hud" id="vl-hud"></ul>
+    </header>
+
+    <div class="vl-bar">
+      <input type="search" id="vl-q" placeholder="Suchen, z.B. Catch a Mob, Grafik, Server …" aria-label="Updates durchsuchen" autocomplete="off">
+      <div class="chips vl-tags" id="vl-tags" role="group" aria-label="Art filtern">
+        <button type="button" data-t="" aria-pressed="true">Alle</button>
+        <button type="button" data-t="Neu" aria-pressed="false">Neu</button>
+        <button type="button" data-t="Update" aria-pressed="false">Update</button>
+        <button type="button" data-t="Intern" aria-pressed="false">Intern</button>
+      </div>
+    </div>
+    <p class="count" id="vl-count" aria-live="polite"></p>
+    <div id="vl-list" class="vl-list"><p class="upd-load">&gt; lade verlauf …</p></div>
+
+    <footer class="brand">
+      <div class="brand-line" aria-hidden="true"></div>
+      <div class="brand-main">
+        <div class="brand-logo"><span class="kei">KEI</span><span>LANGWILIGI</span><span class="dot">.site</span></div>
+        <nav class="brand-links" aria-label="Links"><a href="../">Zur Startseite</a><a href="#" id="vl-up">Nach oben ↑</a></nav>
+      </div>
+      <p class="brand-copy"><span>© <span id="yr">2026</span> <b>KEI Langwiligi site</b></span><span class="sep">◢</span><span>Alle Rechte vorbehalten</span></p>
+    </footer>
+  </main>
+  <script src="../_start/verlauf.js?v=<!--VERSION-->"></script>
+</body>
+</html>

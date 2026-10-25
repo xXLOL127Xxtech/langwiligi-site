@@ -35,81 +35,66 @@
     addEventListener('keydown', skip);
   }
 
-  // ---------- Filter (Modus + Typ, je ein Ausklapp-Menü) + Sortierung ----------
+  // ---------- Filtern & Sortieren: ein Knopf, darin Modus, Typ und Reihenfolge ----------
   // Typen: gleiche Liste wie in tools/spiel-pruefen.js. Schlüssel = Name klein geschrieben.
   var TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau'];
   var MODI = { alle: 'Alle', lokal: 'Lokal', online: 'Online', bots: 'Gegen Bots', solo: 'Solo' };
   var filter = load('lw-filter', 'alle'), typ = load('lw-typ', 'alle'), sort = load('lw-sort', 'neu');
-  var sortBtns = document.querySelectorAll('.sort button[data-s]');
-  var dds = Array.prototype.slice.call(document.querySelectorAll('.filters .dd'));
-  var ddMode = document.querySelector('.dd[data-key="f"]'), ddTyp = document.querySelector('.dd[data-key="t"]');
+  var fp = $('fp'), fpBtn = $('fp-btn'), fpPanel = $('fp-panel');
+  var chMode = fpPanel.querySelector('[data-key="f"]'), chTyp = fpPanel.querySelector('[data-key="t"]'), chSort = fpPanel.querySelector('[data-key="s"]');
   function typesOf(c) { return (c.dataset.typ || '').split(' ').filter(Boolean); }
   function modeOk(c, f) { return c.dataset.filter.split(' ').indexOf(f) >= 0; }
   function typOk(c, t) { return t === 'alle' || typesOf(c).indexOf(t) >= 0; }
-  // Typ-Menü aus den vorhandenen Spielen bauen (nur Typen, die es auch gibt)
+  // Typ-Auswahl aus den vorhandenen Spielen bauen (nur Typen, die es auch gibt)
   (function () {
-    var menu = ddTyp.querySelector('.dd-menu'), have = {};
+    var have = {};
     cards.forEach(function (c) { typesOf(c).forEach(function (t) { have[t] = 1; }); });
-    var html = '<button type="button" role="menuitemradio" data-v="alle">Alle Typen</button>';
-    TYPEN.forEach(function (name) { var k = name.toLowerCase(); if (have[k]) html += '<button type="button" role="menuitemradio" data-v="' + k + '">' + name + '</button>'; });
-    menu.innerHTML = html;
+    var html = '<button type="button" data-v="alle">Alle</button>';
+    TYPEN.forEach(function (name) { var k = name.toLowerCase(); if (have[k]) html += '<button type="button" data-v="' + k + '">' + name + '</button>'; });
+    chTyp.innerHTML = html;
   })();
   function typName(k) { for (var i = 0; i < TYPEN.length; i++) if (TYPEN[i].toLowerCase() === k) return TYPEN[i]; return 'Alle'; }
   if (!MODI[filter]) filter = 'alle';
-  if (typ !== 'alle' && !ddTyp.querySelector('[data-v="' + typ + '"]')) typ = 'alle';
+  if (typ !== 'alle' && !chTyp.querySelector('[data-v="' + typ + '"]')) typ = 'alle';
   if (sort !== 'neu' && sort !== 'top') sort = 'neu';
 
-  // Menüs auf- und zuklappen
-  function openDd(dd, open, focus) {
-    var btn = dd.querySelector('.dd-btn'), menu = dd.querySelector('.dd-menu');
-    btn.setAttribute('aria-expanded', open);
-    menu.hidden = !open;
-    dd.classList.toggle('open', open);
-    if (open && focus) { var cur = menu.querySelector('[aria-checked="true"]') || menu.querySelector('button'); cur.focus(); }
+  function openFp(open) {
+    fpBtn.setAttribute('aria-expanded', open);
+    fpPanel.hidden = !open;
+    fp.classList.toggle('open', open);
   }
-  function closeAll(except) { dds.forEach(function (d) { if (d !== except) openDd(d, false); }); }
-  dds.forEach(function (dd) {
-    var btn = dd.querySelector('.dd-btn'), menu = dd.querySelector('.dd-menu');
-    btn.addEventListener('click', function () { var o = menu.hidden; closeAll(dd); openDd(dd, o, false); });
-    btn.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeAll(dd); openDd(dd, true, true); }
-    });
-    menu.addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-v]');
-      if (!b) return;
-      if (dd === ddMode) { filter = b.dataset.v; save('lw-filter', filter); } else { typ = b.dataset.v; save('lw-typ', typ); }
-      openDd(dd, false); btn.focus();
-      apply(true);
-    });
-    menu.addEventListener('keydown', function (e) {
-      var items = Array.prototype.slice.call(menu.querySelectorAll('button')), i = items.indexOf(document.activeElement);
-      if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
-      else if (e.key === 'Escape') { openDd(dd, false); btn.focus(); }
-      else if (e.key === 'Tab') openDd(dd, false);
-    });
+  fpBtn.addEventListener('click', function () { openFp(fpPanel.hidden); });
+  $('fp-done').addEventListener('click', function () { openFp(false); fpBtn.focus(); });
+  document.addEventListener('click', function (e) { if (!e.target.closest('#fp')) openFp(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !fpPanel.hidden) { openFp(false); fpBtn.focus(); } });
+  chMode.addEventListener('click', function (e) { var b = e.target.closest('button[data-v]'); if (!b) return; filter = b.dataset.v; save('lw-filter', filter); apply(true); });
+  chTyp.addEventListener('click', function (e) { var b = e.target.closest('button[data-v]'); if (!b) return; typ = b.dataset.v; save('lw-typ', typ); apply(true); });
+  chSort.addEventListener('click', function (e) { var b = e.target.closest('button[data-s]'); if (!b || sort === b.dataset.s) return; sort = b.dataset.s; save('lw-sort', sort); apply(true); });
+  $('reset').addEventListener('click', function () { filter = 'alle'; typ = 'alle'; sort = 'neu'; save('lw-filter', filter); save('lw-typ', typ); save('lw-sort', sort); apply(true); });
+  // Aktive Auswahl als Marken neben dem Knopf, ein Klick entfernt sie wieder
+  $('fp-active').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-x]'); if (!b) return;
+    if (b.dataset.x === 'f') { filter = 'alle'; save('lw-filter', filter); } else { typ = 'alle'; save('lw-typ', typ); }
+    apply(true);
   });
-  document.addEventListener('click', function (e) { if (!e.target.closest('.dd')) closeAll(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
-  $('reset').addEventListener('click', function () { filter = 'alle'; typ = 'alle'; save('lw-filter', filter); save('lw-typ', typ); apply(true); });
 
-  // Häkchen, Anzahl pro Eintrag und Beschriftung der Menüknöpfe
+  // Markierung, Anzahl pro Eintrag und Zusammenfassung
   function updateMenus() {
-    ddMode.querySelectorAll('.dd-menu button').forEach(function (b) {
+    chMode.querySelectorAll('button').forEach(function (b) {
       var v = b.dataset.v, n = cards.filter(function (c) { return modeOk(c, v) && typOk(c, typ); }).length;
-      b.setAttribute('aria-checked', v === filter);
-      b.dataset.n = n; b.disabled = !n && v !== filter;
+      b.setAttribute('aria-pressed', v === filter); b.dataset.n = n; b.disabled = !n && v !== filter;
     });
-    ddTyp.querySelectorAll('.dd-menu button').forEach(function (b) {
+    chTyp.querySelectorAll('button').forEach(function (b) {
       var v = b.dataset.v, n = cards.filter(function (c) { return modeOk(c, filter) && typOk(c, v); }).length;
-      b.setAttribute('aria-checked', v === typ);
-      b.dataset.n = n; b.disabled = !n && v !== typ;
+      b.setAttribute('aria-pressed', v === typ); b.dataset.n = n; b.disabled = !n && v !== typ;
     });
-    ddMode.querySelector('.dd-v').textContent = MODI[filter];
-    ddTyp.querySelector('.dd-v').textContent = typ === 'alle' ? 'Alle' : typName(typ);
-    ddMode.classList.toggle('set', filter !== 'alle');
-    ddTyp.classList.toggle('set', typ !== 'alle');
-    $('reset').hidden = filter === 'alle' && typ === 'alle';
+    chSort.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.s === sort); });
+    var n = (filter !== 'alle') + (typ !== 'alle'), badge = $('fp-n');
+    badge.hidden = !n; badge.textContent = n;
+    fp.classList.toggle('set', n > 0);
+    $('fp-active').innerHTML = (filter !== 'alle' ? '<button type="button" data-x="f" aria-label="Filter ' + MODI[filter] + ' entfernen">' + MODI[filter] + ' ✕</button>' : '') +
+      (typ !== 'alle' ? '<button type="button" data-x="t" aria-label="Filter ' + typName(typ) + ' entfernen">' + typName(typ) + ' ✕</button>' : '');
+    $('reset').disabled = filter === 'alle' && typ === 'alle' && sort === 'neu';
   }
 
   function score(slug) {
@@ -123,7 +108,6 @@
 
   function apply(animate) {
     updateMenus();
-    sortBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.s === sort); });
     // Positionen merken, umsortieren, dann sanft an den neuen Platz gleiten (FLIP)
     var before = animate ? cards.map(function (c) { return c.hidden ? null : c.getBoundingClientRect(); }) : null;
     var shown = 0;
@@ -151,9 +135,6 @@
       });
     });
   }
-  sortBtns.forEach(function (b) {
-    b.addEventListener('click', function () { if (sort === b.dataset.s) return; sort = b.dataset.s; save('lw-sort', sort); apply(true); });
-  });
   apply(false);
 
   // Werkzeugleiste bekommt eine Linie, sobald sie oben klebt
@@ -297,10 +278,13 @@
     // Neuste Updates unten auf der Seite (drei Einträge) + Links, die das Fenster öffnen
     var news = $('news-list');
     function kurz() {
-      news.innerHTML = data.slice(0, 3).map(function (u) {
+      var tage = [];
+      data.forEach(function (u) { if (tage.indexOf(u.d) < 0) tage.push(u.d); });
+      var jung = tage.slice(0, 3);
+      news.innerHTML = data.filter(function (u) { return jung.indexOf(u.d) >= 0; }).map(function (u) {
         return '<article class="news-e"><div class="upd-h"><span class="upd-d">' + esc(fmt(u.d)) + '</span>' +
           '<span class="upd-g ' + esc((u.tag || '').toLowerCase()) + '">' + esc(u.tag || 'Update') + '</span></div>' +
-          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.slice(0, 3).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
+          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
       }).join('');
     }
     function laden() {
@@ -316,8 +300,6 @@
         function () { list.innerHTML = '<p class="upd-load">&gt; fehler: Updates konnten nicht geladen werden.</p>'; });
     }
     $('upd-open').addEventListener('click', oeffnen);
-    $('news-all').addEventListener('click', oeffnen);
-    $('foot-upd').addEventListener('click', function (e) { e.preventDefault(); oeffnen(); });
     $('upd-close').addEventListener('click', function () { dlg.close(); });
     dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
   })();

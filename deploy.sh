@@ -287,6 +287,7 @@ ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile
   echo '<?xml version="1.0" encoding="UTF-8"?>'
   echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
   echo "  <url><loc>$SITE/</loc></url>"
+  echo "  <url><loc>$SITE/updates/</loc></url>"
   for dir in "$SRC"/*/; do
     [ -f "$dir/index.html" ] || continue
     slug="$(basename "$dir")"
@@ -316,7 +317,7 @@ fi
 
 # Startseite aus der Vorlage zusammensetzen
 mkdir -p "$BUILD/_start"
-cp "$START/start.css" "$START/start.js" "$START/updates.json" "$BUILD/_start/"
+cp "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" "$BUILD/_start/"
 # Logo im Browser-Tab (favicon.ico gilt auch für alle Spiele, die kein eigenes Symbol haben).
 # Eigenes Bild: startseite/logo.png (quadratisch, z.B. 512 × 512) hochladen, dann wird es statt favicon.svg verwendet.
 if [ -f "$START/logo.png" ]; then
@@ -337,7 +338,7 @@ fi
 # Vorschaubild für geteilte Links (og:image); neu bauen mit: node tools/vorschaubild/bauen.js
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
-ver="$(cat "$START/start.css" "$START/start.js" "$START/updates.json" | cksum | cut -d' ' -f1)"
+ver="$(cat "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" | cksum | cut -d' ' -f1)"
 CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" FREUNDEV="$FREUNDE_V" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
@@ -348,6 +349,9 @@ CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ti
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
   { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--FREUNDE-V-->", ENVIRON["FREUNDEV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
+# Unterseite /updates/: alle Änderungen mit Datum und Uhrzeit (startseite/verlauf.html + verlauf.json)
+mkdir -p "$BUILD/updates"
+sed -e "s|<!--VERSION-->|$ver|g" -e "s|<!--ICONS-->|$(printf '%s' "$icons" | sed -e 's/href="\([a-z-]*\.[a-z]*\)/href="..\/\1/g' -e 's/[&|]/\\&/g')|" "$START/verlauf.html" > "$BUILD/updates/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat
 mkdir -p "$BUILD/.server"
