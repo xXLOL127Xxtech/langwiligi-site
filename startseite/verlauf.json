@@ -6,7 +6,7 @@
 "t":"Wassertiere: feste Obergrenze, keine neuen beim Ein- und Austauchen",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":90,
 "b":"sharp-feynman-dehvc4"
 },
 {
@@ -16,7 +16,7 @@
 "t":"Tiere verschwinden nicht mehr im Bild, unsichtbare zählen nicht als gesehen",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":90,
 "b":"sharp-feynman-dehvc4"
 },
 {
