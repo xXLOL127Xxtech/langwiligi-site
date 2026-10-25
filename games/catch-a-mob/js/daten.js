@@ -154,6 +154,13 @@
     { n: ['Käferchen', 'Hirschkäfer', 'Zangenkönig'], el: 'Erde', base: [60, 64, 72, 34], rar: 0, kind: 'kaefer', pal: ['#5a3a2a', '#24160e', '#c98a42', '#ffe14d'], hab: { nah: 'baum', zeit: 'tag' } },
     { n: ['Sternenfohlen', 'Einhorn', 'Regenbogenross'], el: 'Licht', el2: 'Luft', base: [62, 60, 58, 76], rar: 2, kind: 'quad', opt: { slim: true, horn: 'uni', mane: true, tail: 'flow', hoof: true, herb: true, ears: 'point' }, pal: ['#f4eefc', '#a89ac8', '#ff9ad8', '#7a4ad0'], hab: { tile: 'gras', zeit: 'tag', wetter: ['klar'], scheu: true } },
     { n: ['Molchling', 'Axolotl', 'Seedrache'], el: 'Wasser', base: [62, 52, 56, 46], rar: 1, kind: 'echse', opt: { kiemen: true }, pal: ['#f2a6c0', '#a8607a', '#ff6a9a', '#2a1a2a'], hab: { nah: 'wasser', scheu: false } },
+    // ---------- 6 Wasser-Fabelwesen (Nummer 48 bis 53): leben im Wasser, die meisten sieht man nur, wenn man selbst schwimmt (hab.lebt: wasser = nur im Wasser, beide = Land und Wasser) ----------
+    { n: ['Plätscherfisch', 'Schuppenjäger', 'Tiefseeräuber'], el: 'Wasser', base: [54, 60, 50, 66], rar: 0, kind: 'fisch', pal: ['#4a8fd0', '#1f4a80', '#9fe0ff', '#ffe14d'], hab: { lebt: 'wasser' } },
+    { n: ['Entling', 'Schnatterer', 'Seekapitän'], el: 'Wasser', el2: 'Luft', base: [58, 50, 52, 56], rar: 0, kind: 'ente', pal: ['#b9a98a', '#6a5a3a', '#ff9a2e', '#1a1210'], hab: { nah: 'wasser', lebt: 'beide', scheu: false } },
+    { n: ['Seepferdchen', 'Korallenross', 'Tidenhengst'], el: 'Wasser', el2: 'Licht', base: [50, 52, 48, 62], rar: 1, kind: 'seepferd', pal: ['#ffb36b', '#b8602e', '#ffe14d', '#1a1210'], hab: { lebt: 'wasser' } },
+    { n: ['Tintling', 'Tintenkrake', 'Tiefenschreck'], bos: true, el: 'Wasser', el2: 'Schatten', base: [62, 64, 52, 52], rar: 1, kind: 'krake', pal: ['#7a4aa8', '#3a1f60', '#ff8ad8', '#ffe14d'], hab: { lebt: 'wasser' } },
+    { n: ['Perlchen', 'Perlmuschel', 'Muschelkönigin'], el: 'Wasser', el2: 'Licht', base: [58, 44, 80, 20], rar: 2, kind: 'muschel', pal: ['#e8c8d8', '#8a6078', '#ffffff', '#1a1210'], hab: { lebt: 'wasser' } },
+    { n: ['Zitteraal', 'Blitzaal', 'Donneraal'], bos: true, el: 'Wasser', el2: 'Luft', base: [56, 66, 46, 66], rar: 1, kind: 'serpent', opt: { glow: true }, pal: ['#2f6a8a', '#14303f', '#ffe14d', '#fff6b0'], hab: { lebt: 'wasser' } },
   ];
   F.forEach((f, i) => { f.id = i; f.stufen = f.n.length; });
   // Lebensräume der ersten 16 Familien (die neuen tragen hab direkt in der Zeile)
@@ -164,6 +171,8 @@
     { tile: 'gras', herde: [2, 4], scheu: true }, { nah: 'wasser', tile: 'boden', herde: [1, 3] }, { nah: 'baum', herde: [2, 3], scheu: false }, { herde: [2, 3] }, { tile: 'boden' }, { nah: 'lava' }, { nah: 'kristall' }, { nah: 'grab', zeit: 'nacht' },
   ];
   F.forEach((f, i) => { if (!f.hab) f.hab = HAB[i] || {}; });
+  ['Tümpelchen', 'Quakling', 'Molchling', 'Salzkrabbe', 'Leuchtling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) f.hab.lebt = 'beide'; });   // Land und Wasser
+  F.forEach(f => { f.lebt = (f.hab && f.hab.lebt) || 'land'; });
   [9, 10, 29, 33, 35].forEach(i => { if (F[i] && F[i].hab) delete F[i].hab.herde; });   // Krabben, Pilze, Raupen, Frösche und Quallen leben allein: als Herde ergibt das keinen Sinn
   CAM.habText = function (f) {
     const h = f.hab || {}, t = [];
@@ -171,6 +180,7 @@
     if (h.tile === 'gras') t.push('auf Wiesen'); else if (h.tile === 'boden') t.push('auf offenem Boden');
     const nah = [].concat(h.nah || []).map(n => ({ wasser: 'am Wasser', baum: 'zwischen Bäumen', fels: 'bei Felsen', lava: 'bei Lava', grab: 'bei Gräbern', kristall: 'bei Kristallen' }[n]));
     if (nah.length) t.push(nah.join(' oder '));
+    if (h.lebt === 'wasser') t.unshift('nur im Wasser (sichtbar, wenn du schwimmst)'); else if (h.lebt === 'beide') t.unshift('an Land und im Wasser');
     if (h.zeit === 'nacht') t.push(h.streng ? 'nur nachts' : 'meist nachts'); else if (h.zeit === 'tag') t.push(h.streng ? 'nur tagsüber' : 'meist tagsüber');
     if (h.wetter) t.push('bei ' + h.wetter.map(w => (CAM.WETTER[w] || w)).join('/'));
     return t.join(', ');
@@ -412,6 +422,36 @@
      ['blasenreigen', 'Blasenreigen', 'Wasser', 54, 100, { t: 'salve', shape: 'blase', n: 8, cols: ['#ffd0dc', '#ffffff'] }],
      ['regeneration', 'Regeneration', 'Wasser', 0, 100, { t: 'segen', cols: ['#ff9ab8', '#ffffff'] }, null, 0, 0.45],
      ['seedrachenwoge', 'Seedrachenwoge', 'Wasser', 100, 85, { t: 'flut', gross: true, cols: ['#ff6a9a', '#bfe6ff'] }, 'furcht', 15]],
+    // 48 Plätscherfisch
+    [['flossenschlag', 'Flossenschlag', 'Wasser', 40, 100, { t: 'lunge', deco: 'schweif', cols: ['#9fe0ff', '#ffffff'] }],
+     ['schuppenhagel', 'Schuppenhagel', 'Wasser', 54, 100, { t: 'salve', shape: 'tropfen', n: 7, cols: ['#9fe0ff', '#4a8fd0'] }],
+     ['wasserstrudel', 'Wasserstrudel', 'Wasser', 72, 95, { t: 'wirbel', cols: ['#4a8fd0', '#bfe6ff'] }],
+     ['tiefseebiss', 'Tiefseebiss', 'Wasser', 98, 90, { t: 'lunge', deco: 'biss', gross: true, cols: ['#ffe14d', '#ffffff'] }]],
+    // 49 Entling
+    [['schnabelhieb', 'Schnabelhieb', 'Luft', 40, 100, { t: 'lunge', deco: 'schnabel', cols: ['#ff9a2e', '#ffffff'] }],
+     ['wasserspritzer', 'Wasserspritzer', 'Wasser', 54, 100, { t: 'salve', shape: 'blase', n: 6, cols: ['#bfe6ff', '#ffffff'] }],
+     ['tauchflug', 'Tauchflug', 'Luft', 72, 95, { t: 'sprung', deco: 'sturz', cols: ['#b9a98a', '#ffffff'] }],
+     ['quakorkan', 'Quakorkan', 'Luft', 96, 95, { t: 'schall', gross: true, cols: ['#ff9a2e', '#ffffff'] }]],
+    // 50 Seepferdchen
+    [['blasenstoss', 'Blasenstoss', 'Wasser', 40, 100, { t: 'salve', shape: 'blase', n: 5, cols: ['#bfe6ff', '#ffffff'] }],
+     ['korallenpeitsche', 'Korallenpeitsche', 'Wasser', 56, 100, { t: 'peitsche', cols: ['#ffb36b', '#ff6a5e'] }],
+     ['lichtwoge', 'Lichtwoge', 'Licht', 0, 100, { t: 'segen', cols: ['#fff0a8', '#ffb36b'] }, null, 0, 0.45],
+     ['gezeitensturm', 'Gezeitensturm', 'Wasser', 100, 85, { t: 'flut', gross: true, cols: ['#4a9dff', '#ffe14d'] }]],
+    // 51 Tintling
+    [['tentakelhieb', 'Tentakelhieb', 'Wasser', 42, 100, { t: 'peitsche', cols: ['#7a4aa8', '#ff8ad8'] }],
+     ['tintenwolke', 'Tintenwolke', 'Schatten', 30, 100, { t: 'wolke', cols: ['#1a1030', '#3a1f60'] }],
+     ['saugnapfgriff', 'Saugnapfgriff', 'Wasser', 70, 95, { t: 'saugen', cols: ['#ff8ad8', '#7a4aa8'] }],
+     ['tiefenschlund', 'Tiefenschlund', 'Schatten', 100, 85, { t: 'wirbel', gross: true, cols: ['#3a1f60', '#7a4aa8'] }]],
+    // 52 Perlchen
+    [['klappschlag', 'Klappschlag', 'Wasser', 40, 100, { t: 'lunge', deco: 'zange', cols: ['#ffffff', '#e8c8d8'] }],
+     ['perlenwurf', 'Perlenwurf', 'Licht', 60, 100, { t: 'ball', shape: 'orb', r: 12, cols: ['#ffffff', '#ffd0e8'] }],
+     ['perlenglanz', 'Perlenglanz', 'Licht', 0, 100, { t: 'segen', cols: ['#ffffff', '#ffd0e8'] }, null, 0, 0.45],
+     ['perlenstrahl', 'Perlenstrahl', 'Licht', 96, 90, { t: 'strahl', gross: true, cols: ['#ffffff', '#ff9ad8'] }]],
+    // 53 Zitteraal
+    [['zitterbiss', 'Zitterbiss', 'Wasser', 40, 100, { t: 'lunge', deco: 'biss', cols: ['#ffe14d', '#ffffff'] }],
+     ['funkenpeitsche', 'Funkenpeitsche', 'Luft', 58, 100, { t: 'peitsche', cols: ['#ffe14d', '#fff6b0'] }],
+     ['stromschlag', 'Stromschlag', 'Luft', 74, 92, { t: 'blitz', cols: ['#ffe14d', '#ffffff'] }],
+     ['donnerwoge', 'Donnerwoge', 'Luft', 100, 85, { t: 'flut', gross: true, cols: ['#ffe14d', '#4a8fd0'] }]],
   ];
   // Genauigkeit nach Art des Angriffs: Nahkampf und Atem treffen gut, Rammen, Sprünge, Blitze und Steinhagel verfehlen leicht.
   // Starke Attacken sind zusätzlich ungenauer (je 10 Stärke etwa 1 %). Einzelne Attacken weichen ab (ACC_SON).
@@ -707,17 +747,17 @@
       wetter: { klar: 5, regen: 2, nebel: 1, wind: 1 },
       pal: { g1: '#5a8c4a', g2: '#64975a', gr: '#3d7a3a', gr2: '#7fd06a', tr: '#2f6f3a', tr2: '#4e9b4e', trunk: '#4a3322', w: '#2f6a9a', w2: '#5aa0d0', path: '#a89870', deco: '#f7a8c8' },
       dorf: 'Blütenhain', boss: 0,
-      spawn: [[28, 30], [29, 30], [30, 24], [31, 14], [8, 26], [33, 10], [34, 14], [45, 8], [47, 8], [7, 8], [2, 8], [0, 8], [1, 6], [5, 8], [40, 3], [46, 2]] },
+      spawn: [[49, 12], [28, 30], [29, 30], [30, 24], [31, 14], [8, 26], [33, 10], [34, 14], [45, 8], [47, 8], [7, 8], [2, 8], [0, 8], [1, 6], [5, 8], [40, 3], [46, 2]] },
     { id: 1, n: 'Sonnenküste', cx: 315, cy: 305, lake: 0.30, tree: 0.80, grass: 0.52, obst: 'palme',
       wetter: { klar: 5, hitze: 3, gewitter: 2, regen: 1 },
       pal: { g1: '#d9c27c', g2: '#cdb36a', gr: '#8fa850', gr2: '#c5d97a', tr: '#3f8a3a', tr2: '#68b84a', trunk: '#7a5a30', w: '#2a8ab5', w2: '#70d0e8', path: '#b89a5a', deco: '#ffffff' },
       dorf: 'Sonnenhafen', boss: 1,
-      spawn: [[9, 35], [32, 24], [35, 22], [36, 24], [30, 8], [31, 8], [41, 10], [1, 14], [4, 18], [0, 8], [3, 10]] },
+      spawn: [[49, 12], [9, 35], [32, 24], [35, 22], [36, 24], [30, 8], [31, 8], [41, 10], [1, 14], [4, 18], [0, 8], [3, 10]] },
     { id: 2, n: 'Herbstwald', cx: 85, cy: 215, lake: 0.08, tree: 0.58, grass: 0.46, obst: 'baum',
       wetter: { wind: 4, nebel: 3, regen: 3, klar: 2 },
       pal: { g1: '#7a5a34', g2: '#85643a', gr: '#a0521e', gr2: '#e08a2e', tr: '#c24e1a', tr2: '#e0a02e', trunk: '#4a2e1a', w: '#3a5a6a', w2: '#6a8a9a', path: '#9a8458', deco: '#e0a02e' },
       dorf: 'Laubfall', boss: 2,
-      spawn: [[10, 30], [28, 14], [39, 18], [37, 14], [45, 16], [34, 12], [38, 8], [29, 10], [4, 20], [2, 12], [7, 10], [3, 10], [40, 6]] },
+      spawn: [[49, 12], [10, 30], [28, 14], [39, 18], [37, 14], [45, 16], [34, 12], [38, 8], [29, 10], [4, 20], [2, 12], [7, 10], [3, 10], [40, 6]] },
     { id: 3, n: 'Frostgipfel', cx: 205, cy: 70, lake: 0.12, tree: 0.66, grass: 0.50, obst: 'tanne',
       wetter: { schnee: 4, klar: 3, nebel: 2 },
       pal: { g1: '#dfe9f2', g2: '#cfdce8', gr: '#b8cfe2', gr2: '#f4fbff', tr: '#2f5f4a', tr2: '#e8f4ff', trunk: '#3a2a22', w: '#5a7fa8', w2: '#a8d0f0', path: '#9aa8b8', deco: '#ffffff' },

@@ -512,6 +512,89 @@
         if (stufe >= 3) { tri(20 * (0.9 + 0.1 * s), by - 6 * s, 22 * (0.9 + 0.1 * s), by - 15 * s, 25 * (0.9 + 0.1 * s), by - 6 * s, P.a); }
         break;
       }
+      case 'fisch': {   // Fisch: schlängelt sich, Schwanzflosse schlägt
+        const cy = base - 15 * s - 2, sw = ph < 0 ? 0 : wave(1, 2) * 2.4 * s, rx = 12 * s, ry = 7.6 * s, tx = 20 - rx + 1;
+        tri(tx + 3, cy, tx - 8 * s, cy - 8 * s + sw, tx - 8 * s, cy + 8 * s + sw, P.d);               // Schwanzflosse
+        tri(tx + 2, cy, tx - 5 * s, cy - 4 * s + sw * 0.6, tx - 5 * s, cy + 4 * s + sw * 0.6, P.a);
+        tri(17, cy - ry + 1, 21, cy - ry - 7 * s, 27, cy - ry + 2, P.d);                                // Rückenflosse
+        ell(20, cy, rx, ry, P.b);                                                                      // Körper
+        ell(21, cy + 3.4 * s, rx * 0.85, ry * 0.5, P.a);                                              // heller Bauch
+        tri(19, cy + 2 * s, 14, cy + 9 * s + sw * 0.4, 22, cy + 4 * s, P.d);                          // Brustflosse
+        rect(27 + 1, cy - 5 * s, 1, 9 * s, P.d);                                                       // Kiemenbogen
+        for (let i = 0; i < 6; i++) for (let k = 0; k < 2; k++) px(11 + i * 2.6 * s, cy - 3 * s + k * 3.6 * s + (i % 2), P.d);   // Schuppen
+        rect(20 + rx - 2, cy + 1 * s, 3, 1, P.d);                                                      // Maul
+        eye(20 + rx - 5 * s, cy - 2.4 * s, true);
+        if (stufe >= 2) for (let i = 0; i < 4; i++) tri(14 + i * 3.5 * s, cy - ry - 1, 15 + i * 3.5 * s, cy - ry - 6 * s - (i % 2) * 2, 17 + i * 3.5 * s, cy - ry - 1, P.a);
+        if (stufe >= 3) { for (let i = 0; i < 4; i++) tri(20 + rx - 3 - i * 2, cy + 2, 21 + rx - 3 - i * 2, cy + 5 * s, 22 + rx - 3 - i * 2, cy + 2, P.e); tri(20 + rx - 2, cy - 5 * s, 20 + rx + 5, cy - 9 * s, 20 + rx - 6, cy - 7 * s, P.e); }
+        break;
+      }
+      case 'ente': {   // Ente: watschelt, Schnabel, Flügel am Körper
+        const by = base - 10 * s - 3 - (ph < 0 ? 0 : Math.abs(wave(0, 2)) * 0.8), hx = 28 * (0.9 + 0.1 * s);
+        for (let i = 0; i < 2; i++) { const [gx, gl] = gait(i * 3, 2.2), lx = 17 + i * 4.5 * s; rect(lx + gx * 0.4, by + 5 * s, 1.4, base - by - 5 * s - gl, P.a); rect(lx + gx * 0.4 - 1, base - 1.5 - gl, 4, 1.5, P.a); }   // Schwimmfüsse
+        tri(8 - 2, by - 1, 8 + 4, by - 8 * s, 14, by + 1, P.d);                                          // Schwanzfedern
+        ell(18, by, 11.5 * s, 7.2 * s, P.b);                                                            // Körper
+        ell(19, by + 2.4 * s, 9 * s, 3.6 * s, P.a === '#ff9a2e' ? '#e8e0c8' : P.a);                       // heller Bauch
+        ell(15, by - 0.5 * s, 7 * s, 4.4 * s, P.d);                                                     // Flügel
+        rect(11, by - 1 * s, 9 * s, 1, P.b);
+        ell(hx - 1, by - 6 * s, 3.4 * s, 6 * s, P.b);                                                   // Hals
+        ell(hx, by - 12 * s, 4.6 * s, 4.4 * s, '#2f8f5a');                                              // Kopf (grün)
+        rect(hx - 4 * s, by - 8 * s, 6 * s, 1.2, '#ffffff');                                           // weisser Halsring
+        ell(hx + 5.2 * s, by - 11 * s, 3.4 * s, 1.5 * s + 0.5, P.a); rect(hx + 3 * s, by - 11.6 * s, 6 * s, 1.4, P.a);   // Schnabel
+        eye(hx + 1.6 * s, by - 13 * s, true);
+        if (stufe >= 2) { tri(hx - 3 * s, by - 15 * s, hx - 6 * s, by - 20 * s, hx - 1 * s, by - 15.5 * s, P.d); tri(hx - 1 * s, by - 16 * s, hx - 3 * s, by - 21 * s, hx + 1 * s, by - 16 * s, '#2f8f5a'); }
+        if (stufe >= 3) { rect(hx - 6 * s, by - 17 * s, 11 * s, 2, '#1f2a5a'); rect(hx - 4 * s, by - 22 * s, 7 * s, 5, '#1f2a5a'); rect(hx - 4 * s, by - 18.4 * s, 7 * s, 1.2, P.e); }
+        break;
+      }
+      case 'seepferd': {   // Seepferdchen: aufrecht, S-förmig, Schwanz eingerollt
+        const n = Math.round(18 * s) + 6, sw = ph < 0 ? 0 : ph * 0.8;
+        for (let i = n; i >= 0; i--) {
+          const t = i / n, y = base - 33 * s + t * 27 * s, curl = t > 0.78 ? (t - 0.78) * 52 * s : 0, x = 18 + Math.sin(t * 3.4 + sw) * 2.6 * s + (t < 0.2 ? 2 : 0) - Math.sin(curl * 0.16) * 3 + (t > 0.78 ? Math.sin(curl * 0.4) * 4 * s : 0);
+          const r = (5.4 * (1 - t * 0.78) + 1.2) * s, yy = t > 0.78 ? y + Math.sin(curl * 0.3) * 3 * s : y;
+          ell(x, yy, r, r, i % 3 === 0 ? P.d : P.b);
+          if (i % 3 === 1) px(x + r * 0.6, yy, P.a);                                                    // Bauchringe
+          if (t > 0.1 && t < 0.7) tri(x - r, yy - 1, x - r - 5 * s, yy + (i % 2 ? -2 : 1), x - r, yy + 2, P.a);   // Rückenflosse
+        }
+        const hx = 18 + 2 + Math.sin(sw) * 0 , hy = base - 33 * s;
+        ell(hx + 1 * s, hy, 5.2 * s, 4.4 * s, P.b);
+        rect(hx + 4 * s, hy - 0.5, 8 * s, 2.6, P.b); rect(hx + 11 * s, hy - 0.5, 2, 3, P.d);           // Schnauze
+        eye(hx + 2.4 * s, hy - 1.6 * s, true);
+        for (let i = 0; i < 3; i++) tri(hx - 3 * s + i * 2.2 * s, hy - 3.4 * s, hx - 2 * s + i * 2.2 * s, hy - 8 * s - (i % 2) * 2, hx - 1 * s + i * 2.2 * s, hy - 3.4 * s, P.a);   // Kamm
+        if (stufe >= 2) for (let i = 0; i < 4; i++) px(hx + 6 * s + i, hy + 3 * s + i * 0.4, P.e);
+        if (stufe >= 3) { tri(hx - 4 * s, hy - 8 * s, hx - 1 * s, hy - 16 * s, hx + 3 * s, hy - 8 * s, P.e); }
+        break;
+      }
+      case 'krake': {   // Tintenkrake: Kopfkuppel, acht Arme wellen
+        const by = base - 20 * s - 3, bob = ph < 0 ? 0 : wave(0, 1) * 1.2;
+        for (let i = 0; i < 7; i++) {
+          const x0 = 20 - 9 * s + i * 3 * s, len = (11 + (i % 3) * 4) * s + (stufe >= 3 ? 5 : 0);
+          for (let k = 0; k < len; k++) {
+            const x = x0 + Math.sin(k * 0.45 + i * 1.3 + (ph < 0 ? 0 : ph * 1.57)) * (1.2 + k * 0.1), y = by + 4 * s + k * 0.95 + bob;
+            rect(x, y, 2.2, 1.2, k % 4 === 0 ? P.a : P.b);
+          }
+        }
+        ell(20, by - 1 + bob, 10.5 * s, 9.5 * s, P.b);                                                 // Kopfkuppel
+        ell(20, by + 5 * s + bob, 11 * s, 4 * s, P.b);
+        for (let i = 0; i < 5; i++) ell(14 + i * 3 * s, by - 5 * s + (i % 2) * 3 * s + bob, 1.4 * s + 0.4, 1.4 * s + 0.4, P.d);   // Flecken
+        ell(15 * (0.95 + 0.05 * s), by + 1 * s + bob, 3.2 * s, 3.6 * s, '#ffffff'); ell(25 * (0.95), by + 1 * s + bob, 3.2 * s, 3.6 * s, '#ffffff');
+        eye(15.6, by + 1.4 * s + bob, true); eye(25.6, by + 1.4 * s + bob, true);
+        rect(12, by - 3 * s + bob, 6, 1, P.d); rect(22, by - 3 * s + bob, 6, 1, P.d);                  // Brauen
+        if (stufe >= 2) for (let i = 0; i < 3; i++) tri(14 + i * 5 * s, by - 8 * s + bob, 16 + i * 5 * s, by - 14 * s + bob, 18 + i * 5 * s, by - 8 * s + bob, P.a);
+        if (stufe >= 3) { tri(9, by - 3 + bob, 3, by - 14 * s + bob, 14, by - 8 + bob, P.e); tri(31, by - 3 + bob, 37, by - 14 * s + bob, 26, by - 8 + bob, P.e); }
+        break;
+      }
+      case 'muschel': {   // Perlmuschel: Schale klappt auf und zu
+        const open = ph < 0 ? 2 : 2 + (Math.sin(ph * 1.5708) + 1) * 2.4, by = base - 6 * s - 2;
+        ell(20, by + 1, 13.5 * s, 6 * s, P.d);                                                          // untere Schale
+        for (let i = -4; i <= 4; i++) rect(20 + i * 2.8 * s, by - 3 * s, 1, 8 * s, P.b);
+        ell(20, by - open * 0.4, 11.5 * s, 3.6 * s + open * 0.5, P.a);                                  // Innenseite (hell)
+        ell(20, by - 5.5 * s - open - 1, 13.5 * s, 7.5 * s, P.b);                                        // obere Schale
+        for (let i = -5; i <= 5; i++) { const x = 20 + i * 2.4 * s; rect(x, by - 12 * s - open + Math.abs(i) * 0.3, 1, 8 * s, P.d); }
+        ell(20, by - 3 * s, 4 * s, 4 * s, '#ffffff'); ell(18.6, by - 4.2 * s, 1.3 * s, 1.3 * s, '#ffe8f4');   // Perle
+        eye(14.6 * (0.95 + 0.05 * s), by - 8.5 * s - open, true); eye(24.6, by - 8.5 * s - open, true);
+        if (stufe >= 2) { ell(11, by - 1, 2 * s, 2 * s, '#ffffff'); ell(29, by - 1, 2 * s, 2 * s, '#ffffff'); }
+        if (stufe >= 3) { for (let i = 0; i < 5; i++) tri(13 + i * 3.5 * s, by - 12 * s - open, 14.5 + i * 3.5 * s, by - 19 * s - open - (i % 2) * 3, 16 + i * 3.5 * s, by - 12 * s - open, P.e); }
+        break;
+      }
     }
     nachbearbeiten(c, f, fam, stufe, glanz, P, augen, cv);
     return cv;
@@ -521,7 +604,7 @@
   const rgb = h => { const n = parseInt(h.slice(1, 7), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
   const mixRGB = (c, k) => { const t = k < 0 ? 0 : 255, a = Math.abs(k); return [Math.round(c[0] + (t - c[0]) * a), Math.round(c[1] + (t - c[1]) * a), Math.round(c[2] + (t - c[2]) * a)]; };
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-  const MATERIAL = { quad: 'fell', blob: 'schleim', bird: 'feder', skull: 'knochen', wisp: 'schleim', dragon: 'schuppen', crab: 'schuppen', mushroom: 'pilz', serpent: 'schuppen', golem: 'stein', ghoul: 'stoff', raupe: 'pilz', falter: 'feder', hummel: 'fell', schildkroete: 'schuppen', frosch: 'schleim', schnecke: 'schleim', qualle: 'schleim', skorpion: 'schuppen', spinne: 'fell', fledermaus: 'fell', eule: 'feder', baum: 'rinde', wolke: 'schleim', echse: 'schuppen', kaefer: 'schuppen' };
+  const MATERIAL = { quad: 'fell', blob: 'schleim', bird: 'feder', skull: 'knochen', wisp: 'schleim', dragon: 'schuppen', crab: 'schuppen', mushroom: 'pilz', serpent: 'schuppen', fisch: 'schuppen', seepferd: 'schuppen', ente: 'feder', krake: 'schleim', muschel: 'stein', golem: 'stein', ghoul: 'stoff', raupe: 'pilz', falter: 'feder', hummel: 'fell', schildkroete: 'schuppen', frosch: 'schleim', schnecke: 'schleim', qualle: 'schleim', skorpion: 'schuppen', spinne: 'fell', fledermaus: 'fell', eule: 'feder', baum: 'rinde', wolke: 'schleim', echse: 'schuppen', kaefer: 'schuppen' };
 
   function boxBlur(src, r) {   // Kastenfilter (zweimal waagrecht und senkrecht)
     const out = new Float32Array(N * N), tmp = new Float32Array(N * N), k = 2 * r + 1;

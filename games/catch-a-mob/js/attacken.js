@@ -22,6 +22,7 @@
     36: [[1, 'blind', 25], [2, 'gift', 30]], 37: [[1, 'laehmung', 25], [2, 'gift', 35]], 38: [[1, 'verwirrt', 25], [3, 'schlaf', 25]], 39: [[2, 'schlaf', 30]],
     40: [[2, 'betaeubt', 25], [3, 'gift', 35]], 41: [[2, 'laehmung', 30]], 43: [[1, 'brand', 25]], 44: [[1, 'brand', 30], [3, 'brand', 35]],
     46: [[2, 'verwirrt', 30], [3, 'schlaf', 30]], 47: [[1, 'blind', 25], [3, 'schwaeche', 30]],
+    49: [[3, 'verwirrt', 30]], 50: [[3, 'schlaf', 25]], 51: [[1, 'blind', 30], [3, 'betaeubt', 25]], 52: [[3, 'blind', 25]], 53: [[2, 'laehmung', 35], [3, 'betaeubt', 25]],
   };
   // Familien, die mit nur einer starken Attacke starten und die zweite erst bei Stufe 30 lernen (danach für immer nur zwei)
   const EINE = [6, 12, 14];

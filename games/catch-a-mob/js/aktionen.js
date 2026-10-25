@@ -70,9 +70,10 @@
       const plan = A.alleHeilenPlan();
       const r = await UI.choose([{ label: 'Alle heilen (' + (plan.liste.length ? plan.preis + ' G' : 'nichts zu tun') + ')', sub: plan.liste.length ? plan.liste.length + ' Mobs · längste Pflege ' + dauerText(plan.sek) + (plan.bleibt ? ' · ' + plan.bleibt + ' bleibt bei dir' : '') : 'alle gesund', disabled: !plan.liste.length || S.save.gold < plan.preis },
         { label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
-        { label: 'Mobs abholen', sub: pf.length ? fertig + ' fertig · ' + (pf.length - fertig) + ' in Pflege' : 'niemand in Pflege', disabled: !pf.length },
+        { label: 'Mobs abholen', sub: abholText(pf, jetzt), disabled: !pf.length },
         { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
-        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start });
+        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start,
+          live: () => { const p2 = pflegeListe(); return [null, null, { sub: abholText(p2, Date.now()), disabled: !p2.length }]; } });
       if (r === 0) { start = 0; A.alleHeilen(hier, plan); }
       else if (r === 1) { start = 1; await A.mobHeilen(hier); }
       else if (r === 2) { start = 2; await A.mobAbholen(hier); }
@@ -81,6 +82,13 @@
     }
   };
   // Alle verletzten Mobs auf einmal abgeben. Mindestens ein Mob bleibt im Team bei dir.
+  // Text für «Mobs abholen»: läuft live herunter, sobald jemand fertig ist, steht es da
+  function abholText(pf, jetzt) {
+    if (!pf.length) return 'niemand in Pflege';
+    const fertig = pf.filter(e => e.ende <= jetzt).length, offen = pf.filter(e => e.ende > jetzt).map(e => Math.ceil((e.ende - jetzt) / 1000));
+    const naechster = offen.length ? 'nächster in ' + dauerText(Math.min.apply(null, offen)) : '';
+    return (fertig ? '<b style="color:#7ee08f">' + fertig + ' fertig, zum Entnehmen wählen</b>' : '') + (fertig && naechster ? ' · ' : '') + naechster;
+  }
   A.alleHeilenPlan = function () {
     const alle = S.save.team.map(m => ({ m, ort: 'team' })).concat(S.save.box.map(m => ({ m, ort: 'box' })));
     let liste = alle.map(o => Object.assign(o, { h: CAM.heilInfo(o.m) })).filter(o => o.h);
@@ -136,12 +144,13 @@
     for (;;) {
       const pf = pflegeListe(), jetzt = Date.now();
       if (!pf.length) { await UI.info('Niemand ist in Pflege.', 'Heilhaus'); return; }
-      const items = pf.map(e => {
-        const rest = Math.ceil((e.ende - jetzt) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
-        const sub = rest > 0 ? 'noch ' + dauerText(rest) + ' · Heilhaus ' + ort : e.dorf === hier ? 'fertig · gratis abholen' : 'fertig in ' + ort + ' · Transport ' + ge(fee);
-        return { label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar), sub, disabled: rest > 0 || S.save.gold < fee };
-      });
-      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. Anderes Dorf: mit Transportgebühr.', start, numbers: false, wide: true });
+      const info = e => {
+        const jetzt2 = Date.now(), rest = Math.ceil((e.ende - jetzt2) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
+        const sub = rest > 0 ? '<span class="chip warn">noch ' + dauerText(rest) + '</span> Heilhaus ' + ort : e.dorf === hier ? '<span class="chip gut">fertig</span> gratis entnehmen' : '<span class="chip gut">fertig</span> in ' + ort + ' · Transport ' + ge(fee);
+        return { sub, disabled: rest > 0 || S.save.gold < fee };
+      };
+      const items = pf.map(e => Object.assign({ label: mobZeile(e.m) + tagRar(CAM.FAMILIEN[e.m.fam].rar) }, info(e)));
+      const r = await UI.choose(items, { title: 'Mobs abholen', sub: 'Du hast ' + S.save.gold + ' Gold. Anderes Dorf: mit Transportgebühr.', start, numbers: false, wide: true, live: () => pf.map(info) });
       if (r < 0) return;
       start = r;
       const e = pf[r], fee = transportGebuehr(e, hier);
@@ -247,7 +256,7 @@
   A.mobDetails = async function (m) {
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
-    const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td><span style="color:#ff5c5c">ab Stufe ' + x.lv + '</span> · ' + (CAM.moveText(mv) || '–') + '</td></tr>'; }).join('');
+    const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveChips(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td><span style="color:#ff5c5c">ab Stufe ' + x.lv + '</span> · ' + (CAM.moveChips(mv) || '–') + '</td></tr>'; }).join('');
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + (m.nick ? ' · ' + esc(CAM.artName(m)) : '') + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
@@ -285,24 +294,75 @@
       else if (w === 4) { if (t.filter(x => x !== m && x.hp > 0).length) { t.splice(r, 1); S.save.box.push(m); start = 0; } else await UI.info('Du brauchst mindestens einen kampffähigen Mob im Team.'); }
     }
   };
-  A.zwinger = async function () {
-    let start = 0;
-    for (;;) {
-      const b = S.save.box;
-      if (!b.length) { await UI.info('Der Zwinger ist leer.', 'Zwinger'); return; }
-      const items = b.map(m => ({ label: mobZeile(m) + tagRar(CAM.FAMILIEN[m.fam].rar), sub: lpText(m) }));
-      const r = await UI.choose(items, { title: 'Zwinger', sub: b.length + ' von 100 Plätzen belegt', start, wide: true, numbers: false });
-      if (r < 0) return;
-      start = Math.min(r, b.length - 2 < 0 ? 0 : r);
-      const m = b[r];
-      const w = await UI.choose([{ label: 'Details ansehen' }, { label: 'Umbenennen' }, { label: S.save.team.length < CAM.TEAM_MAX ? 'Ins Team holen' : 'Mit Teammitglied tauschen' }, { label: 'Zurück' }], { title: mobNameFull(m) });
-      if (w === 0) await A.mobDetails(m);
-      else if (w === 1) await A.umbenennen(m);
-      else if (w === 2) {
-        if (S.save.team.length < CAM.TEAM_MAX) { b.splice(r, 1); S.save.team.push(m); }
-        else { const i = await A.waehleMob('Wen ersetzt er?'); if (i >= 0) { const alt = S.save.team[i]; S.save.team[i] = m; b[r] = alt; } }
+  // Zwinger: links die Mobs im Zwinger, rechts dein Team. Mob wählen (Enter), dann in der anderen Spalte Enter drücken: tauschen oder verschieben.
+  A.zwinger = function () {
+    return new Promise(res => {
+      const MAX = CAM.TEAM_MAX; let host = UI.openPanel('Zwinger', '', true);
+      let col = S.save.box.length ? 0 : 1, cur = [0, 0], pick = null, toast = '';
+      const box = () => S.save.box, team = () => S.save.team;
+      const laenge = c => c === 0 ? box().length + 1 : MAX;   // links: Mobs + «Hier ablegen», rechts: feste Plätze
+      const mobAt = (c, i) => c === 0 ? box()[i] : team()[i];
+      const kann = () => team().some(m => m.hp > 0);
+      function aktion() {
+        const m = mobAt(col, cur[col]);
+        if (!pick) { if (m) pick = { col, i: cur[col] }; else toast = 'Wähle zuerst einen Mob aus.'; return; }
+        if (pick.col === col) {
+          if (pick.i === cur[col]) pick = null; else if (m) pick = { col, i: cur[col] };
+          return;
+        }
+        const bi = pick.col === 0 ? pick.i : cur[0], ti = pick.col === 1 ? pick.i : cur[1];
+        const bm = box()[bi], tm = team()[ti];
+        const alt = { box: box().slice(), team: team().slice() };
+        if (bm && tm) { team()[ti] = bm; box()[bi] = tm; }                                       // tauschen
+        else if (bm && !tm) { team().push(bm); box().splice(bi, 1); }                              // in einen freien Platz
+        else if (!bm && tm) { if (team().length <= 1) { toast = 'Dein letzter Mob muss im Team bleiben.'; pick = null; return; } team().splice(ti, 1); box().push(tm); }   // in den Zwinger
+        if (!kann()) { S.save.box = alt.box; S.save.team = alt.team; toast = 'Dein Team braucht mindestens einen kampffähigen Mob.'; pick = null; return; }
+        pick = null; UI.snd('heil'); Save.speichern(); toast = '';
+        cur[0] = Math.min(cur[0], Math.max(0, box().length)); cur[1] = Math.min(cur[1], MAX - 1);
       }
-    }
+      function zeichne() {
+        const spalte = c => {
+          let h = '';
+          const n = c === 0 ? box().length : MAX;
+          for (let i = 0; i < n; i++) {
+            const m = mobAt(c, i), cl = ['it'];
+            if (c === col && cur[c] === i) cl.push('sel'); else if (cur[c] === i) cl.push('cur');
+            if (pick && pick.col === c && pick.i === i) cl.push('gew');
+            h += '<button class="' + cl.join(' ') + '" data-c="' + c + '" data-i="' + i + '">' + (m
+              ? '<span class="lb">' + (c === 1 ? '<small style="color:#8e89a8">' + (i + 1) + '</small> ' : '') + mobZeile(m) + elTags(m) + (pick && pick.col === c && pick.i === i ? ' <span class="chip warn">gewählt</span>' : '') + '</span><span class="sb">' + lpText(m) + (c === 1 && i === 0 ? ' · <b style="color:#ffd54a">vorne</b>' : '') + '</span>'
+              : '<span class="lb" style="color:#8e89a8">' + (c === 1 ? '<small>' + (i + 1) + '</small> freier Platz' : '') + '</span>') + '</button>';
+          }
+          if (c === 0) { const i = n, cl = ['it', 'leer']; if (c === col && cur[0] === i) cl.push('sel'); else if (cur[0] === i) cl.push('cur'); h += '<button class="' + cl.join(' ') + '" data-c="0" data-i="' + i + '"><span class="lb" style="color:#cfc9e0">' + CAM.Icons.html('box', 20) + (pick && pick.col === 1 ? 'Hier in den Zwinger legen' : (box().length ? 'Zwinger-Ende' : 'Zwinger ist leer')) + '</span></button>'; }
+          return h;
+        };
+        host.innerHTML = '<div class="zw"><div class="zc"><h3>' + CAM.Icons.html('box', 20) + 'Zwinger <small>' + box().length + ' / 100</small></h3><div class="zl" id="zl0">' + spalte(0) + '</div></div>' +
+          '<div class="zc"><h3>' + CAM.Icons.html('ball', 20, 'r') + 'Team <small>' + team().length + ' / ' + MAX + '</small></h3><div class="zl" id="zl1">' + spalte(1) + '</div></div></div>' +
+          '<div class="zt">' + (toast ? '<span class="chip schlecht">' + esc(toast) + '</span>' : (pick ? 'Jetzt in der <b>' + (pick.col === 0 ? 'Team-Spalte (rechts)' : 'Zwinger-Spalte (links)') + '</b> Enter drücken: ' + (pick.col === 0 ? 'in einen Platz oder mit einem Teammitglied tauschen' : 'mit einem Zwinger-Mob tauschen oder ablegen') + '.' : 'Mob mit <kbd>Enter</kbd> wählen, dann in der anderen Spalte <kbd>Enter</kbd> zum Tauschen.')) + '</div>' +
+          '<div class="zt"><kbd>←</kbd><kbd>→</kbd> Spalte · <kbd>↑</kbd><kbd>↓</kbd> Mob · <kbd>I</kbd> Details · <kbd>U</kbd> Umbenennen · <kbd>Esc</kbd> Zurück</div>';
+        host.querySelectorAll('.it').forEach(b => {
+          b.onmouseenter = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; markiere(); };
+          b.onclick = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; UI.snd('klick'); aktion(); zeichne(); };
+        });
+        const s = host.querySelector('.it.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+      }
+      function markiere() { host.querySelectorAll('.it').forEach(b => { const c = +b.dataset.c, i = +b.dataset.i; b.classList.toggle('sel', c === col && cur[c] === i); b.classList.toggle('cur', !(c === col && cur[c] === i) && cur[c] === i); }); }
+      const h = async e => {
+        const k = e.key;
+        if (k === 'ArrowDown' || k === 's' || k === 'S') { cur[col] = (cur[col] + 1) % laenge(col); UI.snd('tick'); toast = ''; zeichne(); }
+        else if (k === 'ArrowUp' || k === 'w' || k === 'W') { cur[col] = (cur[col] + laenge(col) - 1) % laenge(col); UI.snd('tick'); toast = ''; zeichne(); }
+        else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'A' || k === 'd' || k === 'D' || k === 'Tab') { col = 1 - col; UI.snd('tick'); zeichne(); }
+        else if (k === 'Enter' || k === ' ' || k === 'e' || k === 'E') { UI.snd('klick'); aktion(); zeichne(); }
+        else if (k === 'Escape' || k === 'Backspace' || k === 'q' || k === 'Q') { if (pick) { pick = null; zeichne(); } else { UI.popKeys(h); UI.closePanel(); res(); } }
+        else if (k === 'i' || k === 'I' || k === 'u' || k === 'U') {
+          const m = mobAt(col, cur[col]); if (!m) return true;
+          UI.popKeys(h);
+          if (k === 'i' || k === 'I') await A.mobDetails(m); else await A.umbenennen(m);
+          Save.speichern(); host = UI.openPanel('Zwinger', '', true); UI.pushKeys(h); zeichne();
+        }
+        return true;
+      };
+      UI.pushKeys(h); zeichne();
+    });
   };
   A.beutelMenue = async function () {
     for (;;) {
@@ -514,8 +574,18 @@
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
     const intro = (opt.intro || ('Ein wilder ' + mobNameFull(mob) + ' (Lv ' + mob.lv + ') erscheint!')) + (mob.glanz ? ' Er glänzt ganz seltsam …' : '');
-    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro, erster: opt.erster }));
+    // Wassertiere, die ganz unter Wasser leben: Du tauchst ab, der Kampf findet unter Wasser statt und die Luft reicht nur 2 Minuten
+    const unter = f.lebt === 'wasser' && !!S.schwimmt;
+    if (unter) { S.tauch = { t0: performance.now(), dauer: 1300 }; UI.snd('platsch'); await sleep(1500); }
+    const res = await K.starten(kampfBasis('wild', { actors: [lokal, wild], localId: lokal.id, seed: (Math.random() * 2 ** 31) | 0, intro: unter ? intro + ' Du tauchst ab!' : intro, erster: opt.erster, unterwasser: unter }));
+    S.tauch = null;
     const b = res.b; nachbereiten(S.save.team);
+    if (res.ertrunken) {
+      if (opt.entity) opt.entity.ruheBis = Date.now() + 20000;
+      A.zumUfer(); Save.speichern(); S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
+      await verloren('Dir ist die Luft ausgegangen! Du tauchst in letzter Sekunde auf und rettest dich ans Ufer.', 'mild');
+      return;
+    }
     const lines = [];
     if (b.result.caught) {
       const m = b.result.caught; delete m.faintDone; m.status = null;
@@ -536,6 +606,14 @@
     S.busy = false; Netz.senden({ t: 'p', ...A.praesenz() });
     if (b.winner === 1 && !b.result.fled) { await verloren(); return; }
     if (lines.length) await UI.info(lines.join('<br>'), b.result.caught ? 'Gefangen!' : 'Kampf vorbei');
+  };
+
+  // Nächstes Ufer suchen (nach dem Ertrinken)
+  A.zumUfer = function () {
+    for (let r = 1; r < 60; r++) for (let k = 0; k < 24; k++) {
+      const a = k / 24 * 6.2832, x = Math.floor(S.x + Math.cos(a) * r) + 0.5, y = Math.floor(S.y + Math.sin(a) * r) + 0.5;
+      if (!Welt.blockiert(x, y) && !Welt.blockiert(x - 0.3, y - 0.2) && !Welt.blockiert(x + 0.3, y + 0.3)) { S.x = x; S.y = y; S.schwimmt = false; return; }
+    }
   };
 
   A.wildMenue = async function (w) {

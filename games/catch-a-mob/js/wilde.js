@@ -6,7 +6,7 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
+  const MAX_WASSER = 3, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
   const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -15,6 +15,20 @@
     return true;
   }
   W.boese = m => !!CAM.FAMILIEN[m.fam].bos;
+  // Wassertiere (nur im Wasser) sieht und trifft man erst, wenn man selbst schwimmt
+  W.sichtbar = w => CAM.FAMILIEN[w.mob.fam].lebt !== 'wasser' || !!S.schwimmt;
+  // Wo darf diese Familie stehen? land: nur Land, wasser: nur Wasser, beide: Land und Wasser
+  W.kannStehen = function (f, x, y) {
+    if (Welt.istSicher(x, y, 2)) return false;
+    const punkte = [[x - 0.3, y - 0.2], [x + 0.3, y - 0.2], [x - 0.3, y + 0.25], [x + 0.3, y + 0.25]];
+    for (const [px, py] of punkte) {
+      const nass = Welt.istWasser(px, py);
+      if (f.lebt === 'wasser') { if (!nass) return false; }
+      else if (f.lebt === 'beide') { if (!nass && Welt.blockiert(px, py)) return false; }
+      else if (Welt.blockiert(px, py)) return false;
+    }
+    return true;
+  };
 
   // Was gibt es rund um einen Punkt? (Wasser, Bäume, Felsen … im Umkreis von 3 Feldern)
   function ort(x, y) {
@@ -120,16 +134,35 @@
   W.entfernen = w => { W.liste = W.liste.filter(x => x !== w); };
   W.naechster = function (x, y, rad) {
     let best = null, bd = rad;
-    for (const w of W.liste) { const d = Math.hypot(w.x - x, w.y - y); if (d < bd) { bd = d; best = w; } }
+    for (const w of W.liste) { if (!W.sichtbar(w)) continue; const d = Math.hypot(w.x - x, w.y - y); if (d < bd) { bd = d; best = w; } }
     return best;
   };
 
   function schritt(w, dx, dy) {
     let bewegt = false;
-    if (gehbar(w.x + dx, w.y)) { w.x += dx; bewegt = true; }
-    if (gehbar(w.x, w.y + dy)) { w.y += dy; bewegt = true; }
+    const f = CAM.FAMILIEN[w.mob.fam], geh = f.lebt === 'land' ? gehbar : (x, y) => W.kannStehen(f, x, y);
+    if (geh(w.x + dx, w.y)) { w.x += dx; bewegt = true; }
+    if (geh(w.x, w.y + dy)) { w.y += dy; bewegt = true; }
     return bewegt;
   }
+  // Neue Wassertiere tauchen nur auf, solange du schwimmst (sie sind dann auch zu sehen)
+  W.spawnenWasser = function (now) {
+    const hier = W.liste.filter(w => CAM.FAMILIEN[w.mob.fam].lebt !== 'land' && Welt.istWasser(w.x, w.y) && umgebung(w.x, w.y)).length;
+    if (hier >= MAX_WASSER) return false;
+    const kand = CAM.FAMILIEN.filter(f => f.lebt === 'wasser' || f.lebt === 'beide');
+    for (let versuch = 0; versuch < 30; versuch++) {
+      const a = Math.random() * 6.283, r = 3 + Math.random() * 8, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
+      if (x < 6 || y < 6 || x > Welt.W - 6 || y > Welt.H - 6 || !Welt.istWasser(x, y)) continue;
+      let tot = 0; const gew = kand.map(f => { let g = (RAR_FAKTOR[f.rar] || 1) * (f.lebt === 'wasser' ? 2 : 1); if (f.bos && CAM.tageslicht(now) > 0.6) g *= 0.6; tot += g; return g; });
+      let q = Math.random() * tot, f = kand[0];
+      for (let i = 0; i < kand.length; i++) { q -= gew[i]; if (q <= 0) { f = kand[i]; break; } }
+      if (!W.kannStehen(f, x, y)) continue;
+      const m = W.wildMob(x, y, now, f.id, Welt.wildLevel(x, y, Math.random()));
+      const e = neu(m, x, y, now, W.nextHerde++, true); e.scheu = false;
+      return true;
+    }
+    return false;
+  };
 
   W.update = function (dt, now, frei) {
     // Neue nachspawnen: selten, nur ausserhalb des Bildes und nie über das Limit
@@ -139,6 +172,7 @@
       W.spawnT = 6 + Math.random() * 8;
       const gruppen = new Set(W.liste.map(w => w.herde)).size;
       if (gruppen < MAX_GRUPPEN && Math.random() < 0.65 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
+      if (S.schwimmt && S.modus === 'welt' && Math.random() < 0.85) W.spawnenWasser(now);
     }
     const fuehrer = {};
     for (const w of W.liste) if (w.fuehrer) fuehrer[w.herde] = w;
@@ -149,7 +183,7 @@
       if (d > Math.hypot(sicht().w, sicht().h) * 1.15 || now - w.geboren > LEBEN) { W.entfernen(w); continue; }
       if (d < 6 && !w.gesehen) { w.gesehen = true; if (!S.save.dex[w.mob.fam]) { S.save.dex[w.mob.fam] = 1; } }
       w.huepf = Math.max(0, w.huepf - dt);
-      const boese = W.boese(w.mob), kann = frei && CAM.lebend() && !sicher && now > w.ruheBis;
+      const boese = W.boese(w.mob), kann = frei && CAM.lebend() && !sicher && now > w.ruheBis && W.sichtbar(w);
       let vx = 0, vy = 0, tempo = 0;
       if (boese && kann && d < 7.5 && !S.sp) {
         // Jagd
@@ -163,7 +197,7 @@
           continue;
         }
       } else if (w.z === 'jagt') { w.z = 'ruhe'; w.t = 1.5; }
-      else if (!boese && w.scheu && d < 3.2 && frei) {
+      else if (!boese && w.scheu && d < 3.2 && frei && W.sichtbar(w)) {
         // scheue Mobs weichen aus
         w.z = 'flieht'; vx = (w.x - S.x) / (d || 1); vy = (w.y - S.y) / (d || 1); tempo = 2.6;
       } else {

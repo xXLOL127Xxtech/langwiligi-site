@@ -25,6 +25,20 @@
   document.addEventListener('keyup', e => { UI.keysDown[e.key.toLowerCase()] = false; });
   G.addEventListener('blur', () => { UI.keysDown = {}; });
 
+  // ---------- Erklärung beim Darüberfahren (Elemente mit data-tip) ----------
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.className = 'hidden'; document.body.appendChild(tip);
+  document.addEventListener('mouseover', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (!t) { tip.classList.add('hidden'); return; }
+    tip.textContent = t.getAttribute('data-tip'); tip.classList.remove('hidden');
+    const r = t.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(G.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    tip.style.top = (r.top - h - 8 < 4 ? r.bottom + 8 : r.top - h - 8) + 'px';
+  });
+  document.addEventListener('mouseleave', () => tip.classList.add('hidden'));
+  UI.tipZeigen = (text, x, y) => { tip.textContent = text; tip.classList.remove('hidden'); const w = tip.offsetWidth, h = tip.offsetHeight; tip.style.left = Math.max(8, Math.min(G.innerWidth - w - 8, x - w / 2)) + 'px'; tip.style.top = Math.max(4, y - h - 14) + 'px'; };
+  UI.tipVerstecken = () => tip.classList.add('hidden');
+
   // ---------- Fenster ----------
   UI.openPanel = function (title, sub, wide) {
     const box = $('panel-box');
@@ -63,7 +77,17 @@
         setSel(n);
         UI.snd('tick');
       }
-      function done(v) { UI.popKeys(h); if (!opt.into && !opt.keep) UI.closePanel(); res(v); }
+      // Live-Anzeige (z. B. Zähler, die herunterlaufen): opt.live() liefert pro Eintrag { sub, disabled }
+      let liveIv = null;
+      if (opt.live) liveIv = setInterval(() => {
+        const u = opt.live(); if (!u) return;
+        u.forEach((x, i) => {
+          if (!x || !items[i]) return;
+          if (x.sub !== undefined && x.sub !== items[i].sub) { items[i].sub = x.sub; let sb = btns[i].querySelector('.sb'); if (!sb) { sb = document.createElement('span'); sb.className = 'sb'; btns[i].appendChild(sb); } sb.innerHTML = x.sub; }
+          if (x.disabled !== undefined && x.disabled !== !!items[i].disabled) { items[i].disabled = x.disabled; btns[i].classList.toggle('dis', x.disabled); if (!x.disabled) UI.snd('heil'); }
+        });
+      }, 1000);
+      function done(v) { if (liveIv) clearInterval(liveIv); UI.popKeys(h); if (!opt.into && !opt.keep) UI.closePanel(); res(v); }
       const h = e => {
         const k = e.key, two = opt.cols === 2;
         if (k === 'ArrowDown' || k === 's' || k === 'S') move(two ? 2 : 1);
@@ -150,6 +174,8 @@
       case 'kampf': ton(200, 0.3, 'sawtooth', 0.06, 0, 400); ton(150, 0.3, 'sawtooth', 0.06, 0.12, 300); break;
       case 'sieg': [523, 659, 784, 1046, 784, 1046].forEach((f, i) => ton(f, 0.18, 'square', 0.05, i * 0.13)); break;
       case 'niederlage': [330, 262, 196].forEach((f, i) => ton(f, 0.3, 'triangle', 0.07, i * 0.2)); break;
+      case 'platsch': ton(260, 0.12, 'sine', 0.05, 0, 520); ton(180, 0.2, 'triangle', 0.04, 0.05, 90); break;
+      case 'blubb': ton(420, 0.08, 'sine', 0.04, 0, 900); ton(520, 0.08, 'sine', 0.035, 0.09, 1000); break;
       case 'schritt': ton(90, 0.04, 'triangle', 0.02); break;
       case 'geld': ton(990, 0.06, 'square', 0.04); ton(1320, 0.1, 'square', 0.04, 0.06); break;
       case 'ruf': ton(880, 0.1, 'triangle', 0.05); ton(1175, 0.14, 'triangle', 0.05, 0.1); break;

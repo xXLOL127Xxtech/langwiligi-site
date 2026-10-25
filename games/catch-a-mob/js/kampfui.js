@@ -37,6 +37,13 @@
   };
   function animFuer(id) { const mv = CAM.MOVES[id]; if (mv && mv.anim) return mv.anim; return ANIM[id] || (id && id.startsWith('zorn_') ? { t: 'welle' } : { t: 'lunge', deco: 'schlag' }); }
 
+  // Luft-Anzeige (nur Kämpfe unter Wasser)
+  function luftEl() {
+    let el = $('luft');
+    if (!el) { el = document.createElement('div'); el.id = 'luft'; el.className = 'hbox hidden'; el.innerHTML = '<span>' + CAM.Icons.html('drop', 18, 'c') + 'Luft <b>2:00</b></span><div class="bar"><i></i></div>'; document.body.appendChild(el); }
+    return el;
+  }
+
   // ---------- Starten ----------
   K.starten = async function (cfg) {
     const b = new CAM.Battle({ kind: cfg.kind, seed: cfg.seed, weather: cfg.weather, actors: cfg.actors, erster: cfg.erster });
@@ -51,6 +58,20 @@
     }
     $('bbar').classList.remove('hidden');
     $('bmenu').innerHTML = '';
+    let luftIv = null;
+    if (cfg.unterwasser) {   // Unter Wasser reicht die Luft nur 2 Minuten
+      BS.luftEnde = performance.now() + 120000;
+      const el = luftEl(); el.classList.remove('hidden');
+      const aktual = () => {
+        if (!BS) return;
+        const rest = Math.max(0, BS.luftEnde - performance.now()), s = Math.ceil(rest / 1000);
+        el.querySelector('b').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        el.querySelector('i').style.width = (rest / 1200) + '%';
+        el.classList.toggle('knapp', rest < 20000);
+        if (rest <= 0 && !BS.ertrunken) { BS.ertrunken = true; BS.ende = true; if (BS.abbruch) BS.abbruch(); const r = UI.sayResolve; if (r) { UI.sayResolve = null; r(); } }
+      };
+      aktual(); luftIv = setInterval(aktual, 250);
+    }
     UI.snd('kampf');
     UI.log(esc(cfg.intro || ''));
     await sleep(1000);
@@ -82,13 +103,24 @@
       }
       if (!BS.ende) await sleep(500);
     } finally {
+      if (luftIv) { clearInterval(luftIv); luftEl().classList.add('hidden'); }
       $('bbar').classList.add('hidden'); $('bmenu').innerHTML = '';
       K.aktiv = null;
     }
-    const res = { b, abgebrochen: BS.ende && !b.over };
+    const res = { b, abgebrochen: BS.ende && !b.over, ertrunken: !!BS.ertrunken };
     BS = null;
     return res;
   };
+
+  // Maus über einem Schild neben dem Namen: Erklärung zeigen
+  K.maus = function (e) {
+    if (!BS || !BS.w || !BS.pillen) { UI.tipVerstecken(); return; }
+    const cv = e.currentTarget, r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * BS.w / r.width, y = (e.clientY - r.top) * BS.h / r.height;
+    const p = BS.pillen.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
+    if (p) UI.tipZeigen(p.tip, r.left + (p.x + p.w / 2) * r.width / BS.w, r.top + p.y * r.height / BS.h); else UI.tipVerstecken();
+  };
+  $('cv').addEventListener('mousemove', K.maus);
+  $('cv').addEventListener('mouseleave', () => UI.tipVerstecken());
 
   // Aktionen anderer Spieler
   K.eingang = function (m) {
@@ -124,15 +156,11 @@
 
   // ---------- Abfrage der Aktion ----------
   function gegner(b, a) { return b.foes(a).find(f => f.team[f.active] && f.team[f.active].hp > 0) || b.foes(a)[0]; }
-  function stufenInfo(b, me, tm) {
-    const N = { atk: 'Angriff', def: 'Verteidigung', acc: 'Genauigkeit' };
-    const f = (m, wer) => ['atk', 'def', 'acc'].filter(w => b.stufe(m, w)).map(w => N[w] + ' ' + (b.stufe(m, w) > 0 ? '+' : '') + b.stufe(m, w)).join(', ') && wer + ': ' + ['atk', 'def', 'acc'].filter(w => b.stufe(m, w)).map(w => N[w] + ' ' + (b.stufe(m, w) > 0 ? '+' : '') + b.stufe(m, w)).join(', ');
-    return [f(me, 'Du'), f(tm, 'Gegner')].filter(Boolean).join(' · ');
-  }
+  function stufenInfo() { return ''; }   // Effekte stehen als Schilder neben dem Namen der Mobs (mit Erklärung beim Darüberfahren)
   function effText(mv, tm) {
     if (!mv.pow) return '';
     const e = CAM.effekt(mv.el, CAM.elemente(tm));
-    return e > 1 ? ' <b style="color:#5fd38a">sehr effektiv</b>' : e < 1 ? ' <span style="color:#ff6b5e">schwach</span>' : '';
+    return e > 1 ? '<span class="chip gut" data-tip="Das Element ist gegen den Gegner stark: mehr Schaden.">▲ sehr effektiv</span>' : e < 1 ? '<span class="chip schlecht" data-tip="Das Element ist gegen den Gegner schwach: weniger Schaden.">▼ schwach</span>' : '';
   }
   function tagEl(el) { return '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + (CAM.Icons ? CAM.Icons.el(el, 12) : '') + el + '</span>'; }
 
@@ -149,7 +177,7 @@
     let deadline = cfg.timer ? Date.now() + cfg.timer * 1000 : 0, iv = null;
     const zeigeLog = () => {
       const rest = deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : 0;
-      UI.log('Was soll <b>' + esc(mobName(me)) + '</b> tun?' + (deadline ? ' <span id="timer">' + rest + ' s</span>' : ''), [tele, wet && 'Wetter: ' + esc(wet) + (b.wetterN ? ' (' + b.wetterN + ' Züge)' : ''), stufenInfo(b, me, tm)].filter(Boolean).join('<br>'));
+      UI.log('Was soll <b>' + esc(mobName(me)) + '</b> <span class="lvl">Lv ' + me.lv + ' · ' + Math.max(0, Math.ceil(me.hp)) + '/' + me.mhp + ' LP</span> tun?' + (deadline ? ' <span id="timer">' + rest + ' s</span>' : ''), [tele, wet && 'Wetter: ' + esc(wet) + (b.wetterN ? ' (' + b.wetterN + ' Züge)' : ''), stufenInfo(b, me, tm)].filter(Boolean).join('<br>'));
     };
     zeigeLog();
     if (deadline) iv = setInterval(() => { if (Date.now() >= deadline) { if (BS && BS.abbruch) BS.abbruch(); } else if (BS && !BS.sub) zeigeLog(); }, 500);
@@ -170,9 +198,9 @@
         BS.sub = true;
         if (lab === 'Attacke') {
           const bo = b.boost.get(me);
-          const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); const weg = mv.einmal && b.einmalGenutzt(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (weg ? 'schon benutzt' : CAM.moveText(mv).replace(/(\d+ % [A-Za-zäöü]+)/, '<span style="color:' + (mv.st ? CAM.STATUS_COL[mv.st] : '#fff') + '">$1</span>') + (bo && mv.st ? ' <b style="color:#ffd54a">+' + bo.add + ' %</b>' : '')) + effText(mv, tm), disabled: weg }; });
+          const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); const weg = mv.einmal && b.einmalGenutzt(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (weg ? '<span class="chip warn">schon benutzt</span>' : CAM.moveChips(mv, bo && (!bo.st || bo.st === mv.st) ? bo.add : 0)) + effText(mv, tm), disabled: weg }; });
           // Noch nicht gelernte Attacken stehen ausgegraut darunter (nicht wählbar)
-          if (CAM.alleAttacken) CAM.alleAttacken(me).filter(x => !x.ok).forEach(x => { const mv = CAM.moveFuer(me, x.id); mi.push({ label: esc(mv.n) + ' ' + tagEl(mv.el), sub: '<span style="color:#ff5c5c">ab Stufe ' + x.lv + '</span> · ' + CAM.moveText(mv), disabled: true }); });
+          if (CAM.alleAttacken) CAM.alleAttacken(me).filter(x => !x.ok).forEach(x => { const mv = CAM.moveFuer(me, x.id); mi.push({ label: esc(mv.n) + ' ' + tagEl(mv.el), sub: '<span class="chip schlecht">ab Stufe ' + x.lv + '</span>' + CAM.moveChips(mv), disabled: true }); });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
@@ -693,7 +721,18 @@
     if (pz < p) { c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(x + 10, y + 25, bw * p, 8); }
     c.fillStyle = pz > 0.5 ? '#5fd38a' : pz > 0.2 ? '#ffd54a' : '#ff6b5e'; c.fillRect(x + 10, y + 25, bw * Math.min(p, pz) + (pz > p ? bw * (pz - p) * 0 : 0), 8);
     if (s.hup > 0) { c.fillStyle = 'rgba(255,255,255,' + (s.hup / 320 * 0.6) + ')'; c.fillRect(x + 10, y + 25, bw * p, 8); }
-    if (s.st) { const col = CAM.STATUS_COL[s.st]; c.fillStyle = col; roundRect(c, x + 10, y + 38, 46, 14, 7); c.fill(); const si = CAM.Icons && CAM.Icons.canvas('st', s.st); if (si) { c.imageSmoothingEnabled = false; c.drawImage(si, x + 14, y + 39, 12, 12); } c.fillStyle = '#fff'; c.font = '700 10px system-ui'; c.textAlign = 'center'; c.fillText(CAM.STATUS_KURZ[s.st], x + 41, y + 48.5); }
+    // Schilder neben dem Namen: Zustand (z. B. GIF) und Veränderungen (z. B. Zielscheibe −20 %). Mit dem Mauszeiger darüber erscheint die Erklärung.
+    { let sx = x + 10; const ich = !!(BS.b && BS.b.actors.some(a => a.side === 0 && a.team[a.active] === m && a.id === BS.local)), P = [];
+      if (s.st) P.push({ ico: CAM.Icons.canvas('st', s.st), txt: CAM.STATUS_KURZ[s.st], col: CAM.STATUS_COL[s.st], tip: CAM.statusTip(s.st, ich) });
+      ['atk', 'def', 'acc'].forEach(wk => { const n = BS.b.stufe(m, wk); if (!n) return; const si = CAM.STAT_ICON[wk]; P.push({ ico: CAM.Icons.form(si[0], si[1]), txt: (n > 0 ? '+' : '−') + Math.abs(n) * si[2] + '%', col: n > 0 ? '#2f7a45' : '#8a2a32', tip: CAM.stufeTip(wk, n, ich) }); });
+      P.forEach(q => {
+        c.font = '700 10px system-ui'; const pw = 22 + c.measureText(q.txt).width;
+        c.fillStyle = q.col; roundRect(c, sx, y + 38, pw, 14, 7); c.fill();
+        c.imageSmoothingEnabled = false; c.drawImage(q.ico, sx + 4, y + 39, 12, 12);
+        c.fillStyle = '#fff'; c.textAlign = 'left'; c.fillText(q.txt, sx + 18, y + 48.5);
+        (BS.pillen = BS.pillen || []).push({ x: sx, y: y + 38, w: pw, h: 14, tip: q.tip });
+        sx += pw + 4;
+      }); }
     if (gross) {
       c.fillStyle = '#cfc9e0'; c.font = '12px system-ui'; c.textAlign = 'right'; c.fillText(Math.ceil(s.hp) + ' / ' + m.mhp, x + w - 10, y + 49);
       if (xp) { const need = CAM.xpBedarf(m.lv); c.fillStyle = 'rgba(138,63,252,.25)'; c.fillRect(x + 10, y + 53, bw, 3); c.fillStyle = '#8a3ffc'; c.fillRect(x + 10, y + 53, bw * Math.min(1, m.xp / need), 3); }
@@ -733,10 +772,39 @@
     c.restore();
   }
 
+  // Unter Wasser: Licht von oben, Sandboden, Seetang, aufsteigende Blasen
+  function unterwasserBild(c, w, area, tick) {
+    const g = c.createLinearGradient(0, 0, 0, area);
+    g.addColorStop(0, '#2b8fd0'); g.addColorStop(0.35, '#14609e'); g.addColorStop(0.72, '#0b3463'); g.addColorStop(1, '#071a38');
+    c.fillStyle = g; c.fillRect(-20, -20, w + 40, area + 60);
+    for (let i = 0; i < 6; i++) {   // Lichtstrahlen
+      const x = ((i * w / 5 + tick * 0.015) % (w + 300)) - 150;
+      c.fillStyle = 'rgba(190,240,255,' + (0.06 + 0.03 * Math.sin(tick / 900 + i)) + ')';
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 70, 0); c.lineTo(x + 280, area * 0.8); c.lineTo(x + 150, area * 0.8); c.closePath(); c.fill();
+    }
+    const fy = area * 0.6, sg = c.createLinearGradient(0, fy, 0, area + 40);   // Sandboden
+    sg.addColorStop(0, '#d2bc82'); sg.addColorStop(1, '#6e5f3e');
+    c.fillStyle = sg; c.beginPath(); c.moveTo(-20, fy + 8); for (let x = -20; x <= w + 40; x += 40) c.lineTo(x, fy + Math.sin(x * 0.02) * 6 + 4); c.lineTo(w + 40, area + 60); c.lineTo(-20, area + 60); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.12)'; for (let i = 0; i < 26; i++) c.fillRect((i * 97 + 13) % w, fy + 18 + ((i * 53) % (area * 0.36)), 22 + (i % 4) * 8, 3);
+    c.lineWidth = 5; c.lineCap = 'round';
+    for (let k = 0; k < 9; k++) {   // Seetang
+      const x = (k * 137 + 50) % w, h2 = 50 + (k % 4) * 26, by = fy + 16 + (k % 3) * 14;
+      c.strokeStyle = k % 2 ? '#2f9a5a' : '#1f7a4a'; c.beginPath(); c.moveTo(x, by);
+      c.bezierCurveTo(x + Math.sin(tick / 700 + k) * 14, by - h2 * 0.4, x - Math.sin(tick / 800 + k * 2) * 14, by - h2 * 0.75, x + Math.sin(tick / 600 + k) * 10, by - h2); c.stroke();
+    }
+    c.lineCap = 'butt';
+    c.strokeStyle = 'rgba(225,246,255,.55)'; c.lineWidth = 1.5;
+    for (let i = 0; i < 20; i++) {   // Blasen
+      const t = ((tick / 4200 + i * 0.137) % 1), x = ((i * 83 + 20) % w) + Math.sin(tick / 500 + i) * 7, y = area * (1.02 - t), r = 2 + (i % 4) * 1.4;
+      c.globalAlpha = Math.min(1, t * 4) * (1 - t * 0.6); c.beginPath(); c.arc(x, y, r, 0, 6.3); c.stroke();
+    }
+    c.globalAlpha = 1;
+  }
+
   K.zeichnen = function (c, w, h, t, tick) {
     if (!BS) return;
     const now = performance.now(), dt = Math.min(0.05, (now - BS.letzt) / 1000); BS.letzt = now;
-    BS.w = w; BS.h = h;
+    BS.w = w; BS.h = h; BS.pillen = [];
     const b = BS.b, area = h - BAR_H, cfg = BS.cfg;
     const pal = CAM.BIOME[cfg.biome || 0].P;
     // Kamerawackeln
@@ -744,6 +812,7 @@
     c.save();
     if (BS.shake > 0.3) c.translate((Math.random() - 0.5) * BS.shake, (Math.random() - 0.5) * BS.shake);
     // Hintergrund
+    if (cfg.unterwasser) unterwasserBild(c, w, area, tick); else {
     const g = c.createLinearGradient(0, 0, 0, area);
     g.addColorStop(0, '#120c22'); g.addColorStop(0.55, '#2a1c3c'); g.addColorStop(0.56, pal.g1); g.addColorStop(1, pal.g2);
     c.fillStyle = g; c.fillRect(-20, -20, w + 40, h + 40);
@@ -751,6 +820,7 @@
     for (let i = 0; i < 30; i++) c.fillRect((i * 97 + 13) % w, area * 0.56 + ((i * 53) % (area * 0.44)), 24 + (i % 4) * 8, 3);
     c.fillStyle = 'rgba(220,210,250,0.55)'; c.beginPath(); c.arc(w * 0.82, area * 0.17, Math.min(40, area * 0.1), 0, 6.3); c.fill();
     c.fillStyle = '#120c22'; c.beginPath(); c.arc(w * 0.82 + 12, area * 0.17 - 6, Math.min(34, area * 0.088), 0, 6.3); c.fill();
+    }
 
     for (const a of b.actors) {
       const s = BS.shown[a.id];

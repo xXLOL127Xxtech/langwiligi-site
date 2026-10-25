@@ -10,6 +10,12 @@
   const mini = document.createElement('div'); mini.id = 'mini'; mini.className = 'hbox hidden';
   mini.innerHTML = '<canvas width="' + MINI + '" height="' + MINI + '"></canvas><div class="leg"><i style="background:#fff"></i>du <i style="background:#5fd38a"></i>online <i style="background:#ffd54a"></i>Party <i style="background:#ff9f1c"></i>Dorf</div>';
   document.body.appendChild(rang); document.body.appendChild(mini);
+  const tab = document.createElement('button'); tab.id = 'rangTab'; tab.className = 'hidden'; tab.title = 'Rangliste öffnen (R)'; tab.innerHTML = Icons.html('trophy', 16) + 'Rangliste <kbd style="font-size:10px">R</kbd>';
+  document.body.appendChild(tab);
+  let zu = false; try { zu = localStorage.getItem('cam-rang-zu') === '1'; } catch (e) { /* ohne Speicher */ }
+  Seite.umschalten = () => { zu = !zu; try { localStorage.setItem('cam-rang-zu', zu ? '1' : '0'); } catch (e) { /* ohne Speicher */ } tR = 0; Seite.zeigen(Seite.an, performance.now()); };
+  tab.onclick = Seite.umschalten;
+  rang.addEventListener('click', e => { if (e.target.closest && e.target.closest('.x')) Seite.umschalten(); });
   const cv = mini.querySelector('canvas'), c = cv.getContext('2d');
 
   // Wie viele Mobs hat jemand gefangen? Eigene Zahl aus dem Spielstand, Bots grob nach ihrer Stufe (sie fangen nicht wirklich).
@@ -30,7 +36,7 @@
   const zeile = (e, i) => '<tr' + (e.ich ? ' class="ich"' : '') + '><td>' + (i + 1) + '</td><td class="nm"><i style="background:' + (CAM.FARBEN[e.col] || '#999') + '"></i>' + esc(e.name) + (e.bot ? '<small> Bot</small>' : '') + '</td><td>' + e.abz + '</td><td>' + e.lv + '</td><td>' + e.fg + '</td></tr>';
   function rangZeichnen() {
     const l = eintraege(), ich = l.findIndex(e => e.ich), top = l.slice(0, ZEILEN);
-    let h = '<b class="ti">Rangliste</b><table><tr><th>#</th><th>Name</th><th>' + Icons.html('badge', 14) + '</th><th>Lv</th><th>' + Icons.html('ball', 14, 'r') + '</th></tr>' + top.map(zeile).join('');
+    let h = '<b class="ti">Rangliste</b><button class="x" title="Schliessen (R)">✕</button><table><tr><th>#</th><th>Name</th><th>' + Icons.html('badge', 14) + '</th><th>Lv</th><th>' + Icons.html('ball', 14, 'r') + '</th></tr>' + top.map(zeile).join('');
     if (ich >= ZEILEN) h += '<tr><td colspan="5" class="pt">…</td></tr>' + zeile(l[ich], ich);
     rang.innerHTML = h + '</table><div class="leg">Abzeichen · höchste Stufe · gefangen</div>';
   }
@@ -50,9 +56,9 @@
 
   let tR = 0, tM = 0;
   Seite.zeigen = function (an, now) {
-    Seite.an = an; rang.classList.toggle('hidden', !an); mini.classList.toggle('hidden', !an);
+    Seite.an = an; rang.classList.toggle('hidden', !an || zu); tab.classList.toggle('hidden', !an || !zu); mini.classList.toggle('hidden', !an);
     if (!an) return;
-    if (now - tR > 1000) { tR = now; rangZeichnen(); }
+    if (!zu && now - tR > 1000) { tR = now; rangZeichnen(); }
     if (now - tM > 100) { tM = now; miniZeichnen(); }
   };
 })(window);
