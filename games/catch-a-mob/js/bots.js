@@ -334,6 +334,7 @@
         b.gold += 15 + b.lv;
       } else {
         UI.snd('niederlage'); lines.push('<b style="color:#ff6b5e">' + esc(b.name) + ' hat gewonnen.</b>');
+        A.duellVerloren(); lines.push('<small>Deine Mobs haben nur noch die Hälfte der LP.</small>');
         if (offer.goldMe) { const g = Math.min(offer.goldMe, S.save.gold); S.save.gold -= g; b.gold += g; lines.push('Du zahlst ' + ge(g) + '.'); }
         if (offer.mobA) {
           let i = S.save.team.indexOf(offer.mobA);

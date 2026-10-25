@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-25",
+"z":"14:20",
+"a":"Catch a Mob",
+"t":"Nach verlorenem Duell haben die Mobs nur noch die Hälfte der LP",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":84,
+"b":"festive-mayer-mgugqk"
+},
+{
+"d":"2026-10-25",
 "z":"14:02",
 "a":"Catch a Mob",
 "t":"«ab Stufe» bei gesperrten Attacken ist jetzt rot",
