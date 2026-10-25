@@ -495,7 +495,7 @@
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     vorbereiten(S.save.team);
     dexSet(mob.fam, 1);
-    if (opt.erster === 1) await UI.banner(opt.hinterhalt ? 'HINTERHALT!' : 'ANGRIFF!');
+    if (opt.erster === 1 && !opt.hinterhalt) await UI.banner('ANGRIFF!');   // beim Sprung aus dem Gebüsch gibt es keine Einblendung, der Mob greift einfach an
     const lokal = { id: 'p' + S.idx, name: S.name, side: 0, ctrl: 'local', team: S.save.team, fang: CAM.fangStufe(S.save.team, S.save.fangXp) };
     const wild = { id: 'w', name: 'Wild', side: 1, ctrl: 'ai', team: [mob] };
     const f = CAM.FAMILIEN[mob.fam];
