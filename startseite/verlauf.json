@@ -6,7 +6,7 @@
 "t":"Dasselbe Gerät kann nicht mehr zweimal im selben Spiel sitzen",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":85,
 "b":"sharp-feynman-dehvc4"
 },
 {
@@ -16,7 +16,7 @@
 "t":"Überfall: Mobs kämpfen mit echter Stufe und nur gelernten Attacken",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":85,
 "b":"sharp-feynman-dehvc4"
 },
 {
