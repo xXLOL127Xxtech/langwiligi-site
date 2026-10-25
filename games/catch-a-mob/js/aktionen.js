@@ -10,7 +10,7 @@
   const TRAINER_PAUSE_MS = 10 * 60 * 1000;
 
   const ge = (n) => '<span class="gold">' + n + ' G</span>';
-  const tagEl = el => '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + el + '</span>';
+  const tagEl = el => '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + (CAM.Icons ? CAM.Icons.el(el, 12) : '') + el + '</span>';
   const tagRar = r => '<span class="tag" style="background:' + CAM.RAR_FARBE[r] + '">' + CAM.RARITAET[r] + '</span>';
   function elTags(m) { return CAM.elemente(m).map(tagEl).join(''); }
   function mobNameFull(m) { return CAM.name(m) + (m.glanz ? ' ✦' : ''); }
@@ -526,7 +526,7 @@
       UI.snd('sieg');
       lines.push(...await xpVerteilen(b, b.actor(lokal.id)));
       const gold = 5 + mob.lv * 3; S.save.gold += gold; lines.push('Du findest ' + gold + ' Gold.');
-      if (Math.random() < 0.35) { const k = CAM.FUNDE[Welt.biomeAt(S.x, S.y)][Math.floor(Math.random() * 2)]; CAM.itemAdd(k, 1); lines.push('Fundstück: ' + CAM.ITEMS[k].n); }
+      if (Math.random() < 0.35) { const k = CAM.FUNDE[Welt.biomeAt(S.x, S.y)][Math.floor(Math.random() * 2)]; CAM.itemAdd(k, 1); lines.push('Fundstück: ' + CAM.Icons.item(k, 20) + CAM.ITEMS[k].n); }
     }
     if (opt.entity) {
       if (b.winner === 0) CAM.Wilde.entfernen(opt.entity);
@@ -865,7 +865,7 @@
       lines.push(...await xpVerteilen(b, la));
       const gold = 150 + lv * 25; S.save.gold += gold; lines.push('Beute: ' + ge(gold));
       CAM.itemAdd('siegel2', 2); lines.push('2 × Starke Fangkugel');
-      { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
+      { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">' + CAM.Icons.item(uk, 20) + 'Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
       if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
       if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
       if (Math.random() < 0.06) { CAM.itemAdd('rune', 1); lines.push('<b style="color:#ffb36b">Eine Attackenrune!</b> Sehr selten: Ein Mob lernt damit eine zusätzliche Attacke.'); }

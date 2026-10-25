@@ -63,6 +63,8 @@
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
   .bar { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; min-width: 90px; }
   .bar > i { display: block; height: 100%; background: var(--green); }
+  .px { image-rendering: pixelated; vertical-align: -5px; margin-right: 8px; }
+  .tag .px { vertical-align: -2px; margin-right: 3px; }
   .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; color: #111; font-weight: 700; margin-left: 4px; }
   input[type=text], textarea { font: inherit; width: 100%; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 9px; color: var(--text); padding: 9px 11px; user-select: text; -webkit-user-select: text; }
   textarea { height: 110px; font: 12px ui-monospace, Consolas, monospace; resize: none; }
@@ -164,6 +166,7 @@ input[type=text], textarea { border-radius:0; background:#0e0817; border:0; box-
 <script src="js/sprites.js"></script>
 <script src="js/welt.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/netz.js"></script>
 <script src="js/kampfui.js"></script>
 <script src="js/kampfanim.js"></script>

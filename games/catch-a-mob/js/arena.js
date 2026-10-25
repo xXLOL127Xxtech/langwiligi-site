@@ -74,7 +74,7 @@
         abz().push(a.idx);
         const gold = 100 + a.lv * 20; S.save.gold += gold;
         lines.push('<b style="color:#c9a6ff">' + def.sym + ' ' + esc(def.abz) + '!</b> Du bekommst ' + ge(gold) + ' und:');
-        for (let i = 0; i < 3; i++) { const k = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(k, 1); lines.push('· ' + esc(CAM.ITEMS[k].n) + ' <small>(' + esc(CAM.ITEMS[k].info) + ')</small>'); }
+        for (let i = 0; i < 3; i++) { const k = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(k, 1); lines.push('· ' + CAM.Icons.item(k, 20) + esc(CAM.ITEMS[k].n) + ' <small>(' + esc(CAM.ITEMS[k].info) + ')</small>'); }
         if (Math.random() < 0.04) { CAM.itemAdd('rune', 1); lines.push('· <b style="color:#ffb36b">Attackenrune</b> <small>(sehr selten: ein Mob lernt eine zusätzliche Attacke)</small>'); }
         lines.push('<small>Verbessern: Menü, Team, Mob, «Verbessern».</small>');
       } else { const gold = 20 + a.lv * 5; S.save.gold += gold; lines.push('Du bekommst ' + ge(gold) + '.'); }

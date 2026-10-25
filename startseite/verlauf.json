@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-25",
+"z":"16:20",
+"a":"Catch a Mob",
+"t":"Pixelart-Symbole bei Gegenständen, Menüs, Elementen und Zuständen",
+"tag":"Update",
+"k":"Grafik",
+"pr":85,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"16:00",
 "a":"Server",
 "t":"Dasselbe Gerät kann nicht mehr zweimal im selben Spiel sitzen",

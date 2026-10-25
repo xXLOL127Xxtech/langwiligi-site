@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Pixelart-Symbole", "tag": "Update", "p": [
+    "Pixelart-Bilder vor Gegenständen (Beutel, Laden, Belohnungen), Menüpunkten, Elementen und Zuständen wie Gift, Brand oder Lähmung",
+    "Der Zustand eines Mobs im Kampf zeigt jetzt auch sein Symbol",
+    "Die Knöpfe unten links für Beutel und Team haben eigene Bilder"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Überfall fair", "tag": "Update", "p": [
     "Beim Überfall im Online-Spiel kämpfen alle Mobs mit ihren echten Stufen und nur mit den Attacken, die sie auf dieser Stufe wirklich gelernt haben (vorher waren es alle auf Stufe 30)",
     "Stufen werden nur bei einem fairen Duell angeglichen, wenn beide zustimmen",
