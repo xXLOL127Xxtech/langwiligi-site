@@ -245,7 +245,7 @@
   A.mobDetails = async function (m) {
     const f = CAM.FAMILIEN[m.fam];
     const need = CAM.xpBedarf(m.lv);
-    const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>ab Stufe ' + x.lv + ' · ' + (CAM.moveText(mv) || '–') + '</td></tr>'; }).join('');
+    const moves = CAM.alleAttacken(m).map(x => { const mv = CAM.moveFuer(m, x.id); return x.ok ? '<tr><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td>' + (CAM.moveText(mv) || '–') + '</td></tr>' : '<tr style="opacity:.38"><td>' + esc(mv.n) + '</td><td>' + tagEl(mv.el) + '</td><td><span style="color:#ff5c5c">ab Stufe ' + x.lv + '</span> · ' + (CAM.moveText(mv) || '–') + '</td></tr>'; }).join('');
     const html = '<div class="row" style="align-items:flex-start">' + spriteImg(m, 112) + '<div style="flex:1"><p><b style="font-size:17px">' + esc(mobNameFull(m)) + '</b> <small>Lv ' + m.lv + (m.nick ? ' · ' + esc(CAM.artName(m)) : '') + '</small><br>' + elTags(m) + tagRar(f.rar) + '</p>' +
       '<p>LP ' + m.hp + '/' + m.mhp + ' · Angriff ' + m.atk + ' · Verteidigung ' + m.def + ' · Tempo ' + m.spd + '</p>' + (A.bonusText(m) ? '<p style="color:#c9a6ff"><small>Verbessert: ' + esc(A.bonusText(m)) + '</small></p>' : '') +
       '<div class="bar"><i style="width:' + Math.min(100, Math.round(m.xp / need * 100)) + '%;background:#8a3ffc"></i></div><small style="color:#a9a59b">Erfahrung ' + m.xp + ' / ' + need + (f.stufen > 1 && m.stufe < 3 ? ' · entwickelt sich auf Stufe ' + CAM.EVO_LV[m.stufe - 1] : '') + '</small></div></div>' +
