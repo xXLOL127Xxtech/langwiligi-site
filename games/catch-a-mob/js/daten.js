@@ -412,9 +412,23 @@
      ['regeneration', 'Regeneration', 'Wasser', 0, 100, { t: 'segen', cols: ['#ff9ab8', '#ffffff'] }, null, 0, 0.45],
      ['seedrachenwoge', 'Seedrachenwoge', 'Wasser', 100, 85, { t: 'flut', gross: true, cols: ['#ff6a9a', '#bfe6ff'] }, 'furcht', 15]],
   ];
+  // Genauigkeit nach Art des Angriffs: Nahkampf und Atem treffen gut, Rammen, Sprünge, Blitze und Steinhagel verfehlen leicht.
+  // Starke Attacken sind zusätzlich ungenauer (je 10 Stärke etwa 1 %). Einzelne Attacken weichen ab (ACC_SON).
+  const ACC_ART = { lunge: 92, hieb: 90, schatten: 90, stich: 88, zunge: 88, peitsche: 88, ranken: 82, netz: 80, ball: 86, wurf: 86, salve: 90, strahl: 90, atem: 96, wolke: 92,
+    puls: 96, schall: 96, nova: 92, saeule: 85, seelen: 85, saugen: 88, sand: 88, regenbogen: 88, wirbel: 82, tornado: 82, flut: 82, spiesse: 76, meteor: 75, blitz: 72, sprung: 78, rolle: 65 };
+  const ACC_SON = { gehaeuserammen: 50, panzerrolle: 60, raupenrolle: 60, dornenwirbel: 62, hutschlag: 80, baerenstampf: 74, felssprung: 78, kaeferflug: 80, geweihstoss: 76, hirschsturm: 70,
+    felswurf: 82, erdschleuder: 82, blitzschlag: 70, sturmgewitter: 65, lawine: 68, gipfelsturm: 68, vulkanausbruch: 70, sternenregen: 78, kometenschweif: 76, himmelssturz: 80,
+    infernoheulen: 82, weltenbrand: 72, ascheregen: 72, phoenixsturz: 72, schattensturz: 72, mondjagd: 76, sternenjagd: 78, urwaldzorn: 70 };
+  const sigAcc = (id, acc, pow, anim) => {
+    if (!pow) return acc;   // reine Status-Attacken behalten ihren Wert
+    if (ACC_SON[id]) return ACC_SON[id];
+    const art = ACC_ART[anim && anim.t] || 90;
+    return Math.max(45, Math.min(100, Math.round((art - Math.max(0, pow - 40) / 10 * (anim && anim.gross ? 1.5 : 1)) / 5) * 5));
+  };
   SIG.forEach((list, i) => {
     const f = F[i];
     f.sig = list.map(([id, n, el, pow, acc, anim, st, pr, heal]) => {
+      acc = sigAcc(id, acc, pow, anim);
       const mv = M[id] = { n, el, pow, acc, anim, id };
       if (st) { mv.st = st; mv.p = pr; }
       if (heal) mv.heal = heal;
@@ -435,39 +449,39 @@
     ['sammeln', 'Sammeln', 'Normal', 0, 100, 10, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }] }],
     ['panzern', 'Panzern', 'Normal', 0, 100, 12, { self: 1, stg: [{ z: 'self', w: 'def', n: 1 }] }],
     ['schutzschild', 'Schutzschild', 'Normal', 0, 100, 16, { self: 1, schutz: 1 }],
-    ['wuchtschlag', 'Wuchtschlag', 'Normal', 100, 90, 22, { rueck: 0.25 }],
+    ['wuchtschlag', 'Wuchtschlag', 'Normal', 100, 80, 22, { rueck: 0.25 }],
     ['kampfrausch', 'Kampfrausch', 'Normal', 0, 100, 30, { self: 1, selbst: 0.25, stg: [{ z: 'self', w: 'atk', n: 2 }] }],
     ['tiefschlaf', 'Tiefschlaf', 'Normal', 0, 100, 36, { self: 1, heal: 1, schlaf: 2 }],
-    ['finalstoss', 'Finalstoss', 'Normal', 130, 85, 42, { erschoepft: 1 }],
-    ['gluthauch', 'Gluthauch', 'Feuer', 35, 100, 8, { st: 'brand', p: 40 }],
+    ['finalstoss', 'Finalstoss', 'Normal', 130, 70, 42, { erschoepft: 1 }],
+    ['gluthauch', 'Gluthauch', 'Feuer', 35, 95, 8, { st: 'brand', p: 40 }],
     ['sonnentanz', 'Sonnentanz', 'Feuer', 0, 100, 18, { self: 1, wetter: 'hitze' }],
     ['brennstoff', 'Brennstoff', 'Feuer', 20, 100, 24, { boost: { st: 'brand', add: 40, n: 4 } }],
-    ['feuersturm', 'Feuersturm', 'Feuer', 110, 85, 38, { rueck: 0.2, st: 'brand', p: 30 }],
-    ['blasensalve', 'Blasensalve', 'Wasser', 22, 100, 8, { multi: [2, 4] }],
+    ['feuersturm', 'Feuersturm', 'Feuer', 110, 75, 38, { rueck: 0.2, st: 'brand', p: 30 }],
+    ['blasensalve', 'Blasensalve', 'Wasser', 22, 90, 8, { multi: [2, 4] }],
     ['regentanz', 'Regentanz', 'Wasser', 0, 100, 18, { self: 1, wetter: 'regen' }],
-    ['nebelwand', 'Nebelwand', 'Wasser', 0, 100, 22, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
-    ['sturzflut', 'Sturzflut', 'Wasser', 95, 90, 36, { st: 'furcht', p: 20 }],
-    ['blattsauger', 'Blattsauger', 'Pflanze', 40, 100, 8, { saug: 0.5 }],
+    ['nebelwand', 'Nebelwand', 'Wasser', 0, 90, 22, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['sturzflut', 'Sturzflut', 'Wasser', 95, 80, 36, { st: 'furcht', p: 20 }],
+    ['blattsauger', 'Blattsauger', 'Pflanze', 40, 95, 8, { saug: 0.5 }],
     ['giftsporen', 'Giftsporen', 'Pflanze', 0, 85, 14, { st: 'gift', p: 100 }],
-    ['schlafspore', 'Schlafspore', 'Pflanze', 0, 75, 20, { st: 'schlaf', p: 100 }],
-    ['giftnebel', 'Giftnebel', 'Pflanze', 20, 100, 26, { st: 'gift', p: 30, boost: { st: 'gift', add: 40, n: 4 } }],
+    ['schlafspore', 'Schlafspore', 'Pflanze', 0, 70, 20, { st: 'schlaf', p: 100 }],
+    ['giftnebel', 'Giftnebel', 'Pflanze', 20, 90, 26, { st: 'gift', p: 30, boost: { st: 'gift', add: 40, n: 4 } }],
     ['wachstum', 'Wachstum', 'Pflanze', 0, 100, 32, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'def', n: 1 }] }],
-    ['sandwolke', 'Sandwolke', 'Erde', 0, 100, 10, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
-    ['erdkraft', 'Erdkraft', 'Erde', 70, 95, 20, { stg: [{ z: 'foe', w: 'def', n: -1, p: 30 }] }],
+    ['sandwolke', 'Sandwolke', 'Erde', 0, 90, 10, { stg: [{ z: 'foe', w: 'acc', n: -1 }] }],
+    ['erdkraft', 'Erdkraft', 'Erde', 70, 90, 20, { stg: [{ z: 'foe', w: 'def', n: -1, p: 30 }] }],
     ['versteinern', 'Versteinern', 'Erde', 0, 100, 28, { self: 1, stg: [{ z: 'self', w: 'def', n: 2 }] }],
-    ['felslawine', 'Felslawine', 'Erde', 105, 85, 40, { st: 'betaeubt', p: 25 }],
-    ['windstoss', 'Windstoss', 'Luft', 30, 100, 8, { krit: 0.25 }],
+    ['felslawine', 'Felslawine', 'Erde', 105, 70, 40, { st: 'betaeubt', p: 25 }],
+    ['windstoss', 'Windstoss', 'Luft', 30, 95, 8, { krit: 0.25 }],
     ['rueckenwind', 'Rückenwind', 'Luft', 0, 100, 16, { self: 1, stg: [{ z: 'self', w: 'atk', n: 1 }, { z: 'self', w: 'acc', n: 1 }] }],
     ['sturmwarnung', 'Sturmwarnung', 'Luft', 0, 100, 24, { self: 1, wetter: 'wind' }],
-    ['schockstoss', 'Schockstoss', 'Luft', 40, 100, 26, { einmal: 1, st: 'laehmung', p: 100 }],
-    ['sturzflug', 'Sturzflug', 'Luft', 90, 95, 30, { rueck: 0.2 }],
-    ['blendlicht', 'Blendlicht', 'Licht', 20, 100, 10, { st: 'blind', p: 70 }],
+    ['schockstoss', 'Schockstoss', 'Luft', 40, 90, 26, { einmal: 1, st: 'laehmung', p: 100 }],
+    ['sturzflug', 'Sturzflug', 'Luft', 90, 75, 30, { rueck: 0.2 }],
+    ['blendlicht', 'Blendlicht', 'Licht', 20, 90, 10, { st: 'blind', p: 70 }],
     ['lichtschild', 'Lichtschild', 'Licht', 0, 100, 20, { self: 1, schutz: 1 }],
-    ['sonnenstrahl', 'Sonnenstrahl', 'Licht', 110, 90, 34, { erschoepft: 1 }],
-    ['schwaechen', 'Schwächen', 'Schatten', 0, 100, 12, { stg: [{ z: 'foe', w: 'atk', n: -1 }, { z: 'foe', w: 'def', n: -1 }] }],
-    ['schreckgriff', 'Schreckgriff', 'Schatten', 25, 100, 18, { st: 'betaeubt', p: 40 }],
-    ['seelenraub', 'Seelenraub', 'Schatten', 55, 100, 28, { saug: 0.5 }],
-    ['fluchsiegel', 'Fluchsiegel', 'Schatten', 0, 85, 44, { einmal: 1, st: 'laehmung', p: 100 }],
+    ['sonnenstrahl', 'Sonnenstrahl', 'Licht', 110, 85, 34, { erschoepft: 1 }],
+    ['schwaechen', 'Schwächen', 'Schatten', 0, 90, 12, { stg: [{ z: 'foe', w: 'atk', n: -1 }, { z: 'foe', w: 'def', n: -1 }] }],
+    ['schreckgriff', 'Schreckgriff', 'Schatten', 25, 90, 18, { st: 'betaeubt', p: 40 }],
+    ['seelenraub', 'Seelenraub', 'Schatten', 55, 90, 28, { saug: 0.5 }],
+    ['fluchsiegel', 'Fluchsiegel', 'Schatten', 0, 70, 44, { einmal: 1, st: 'laehmung', p: 100 }],
   ];
   CAM.TECH = [];
   TECH.forEach(([id, n, el, pow, acc, lv, o]) => {
@@ -507,6 +521,7 @@
   CAM.moveText = function (mv) {
     const t = [];
     if (mv.pow) t.push('Stärke ' + mv.pow); else if (mv.heal) t.push('Heilt ' + Math.round(mv.heal * 100) + ' %');
+    if (!mv.self) t.push('Genauigkeit ' + mv.acc + ' %');
     if (mv.multi) t.push(mv.multi[0] + '–' + mv.multi[1] + ' Treffer');
     if (mv.st) t.push(mv.p + ' % ' + CAM.STATUS_NAME[mv.st]);
     (mv.stg || []).forEach(g => t.push((g.z === 'self' ? 'selbst ' : 'Gegner ') + STG_N[g.w] + (g.n > 0 ? ' +' : ' ') + g.n + (g.p ? ' (' + g.p + ' %)' : '')));

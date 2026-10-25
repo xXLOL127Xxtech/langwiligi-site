@@ -71,7 +71,7 @@
       let v = 0;
       if (mv.pow) {
         v = mv.pow * CAM.effekt(mv.el, CAM.elemente(tm)) * (CAM.elemente(me).includes(mv.el) ? 1.25 : 1) * (mv.multi ? (mv.multi[0] + mv.multi[1]) / 2 : 1);
-        v *= 1 - (mv.rueck || 0) * 0.5; if (mv.erschoepft) v *= 0.6; if (mv.saug && hpA < 0.7) v *= 1.2;
+        v *= (mv.acc / 100) * (1 - (mv.rueck || 0) * 0.5); if (mv.erschoepft) v *= 0.6; if (mv.saug && hpA < 0.7) v *= 1.2;
         if (mv.st && !tm.status) v += mv.p * 0.3;
         if (mv.boost && !this.boost.has(me)) v += 12;
         return v;
@@ -343,7 +343,7 @@
         const tm = t.team[t.active];
         if (this.schild.has(tm)) { this.schild.delete(tm); ev.push({ k: 'msg', t: CAM.name(tm) + ' schützt sich vor dem Angriff!' }); continue; }
         const ausw = 1 - ((t.syn && t.syn.ausw) || 0) / 100;
-        if (this.rnd() * 100 >= mv.acc * accMul * ausw * 0.9) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // Grundchance zu verfehlen: 10 % (schwächere Attacken öfter)
+        if (this.rnd() * 100 >= mv.acc * accMul * ausw) { ev.push({ k: 'msg', t: 'Die Attacke geht daneben!' }); continue; }   // jede Attacke hat ihre eigene Genauigkeit (mv.acc in %)
         if (mv.pow) {
           const eff = CAM.effekt(mv.el, CAM.elemente(tm));
           const stab = CAM.elemente(me).includes(mv.el) ? 1.25 : 1;
