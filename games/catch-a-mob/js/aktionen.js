@@ -580,9 +580,6 @@
     Netz.senden(m);
   };
   function peer(idx) { return S.peers.get(idx); }
-  function duellTeam() {
-    return S.save.team.slice(0, 3).map(m => { const c = CAM.kopie(m); c.lv = 30; CAM.neuBerechnen(c); c.hp = c.mhp; c.status = null; delete c.faintDone; c.xp = 0; return c; });
-  }
   A.ueberfallGrund = function (p) {
     const now = Date.now();
     if (Welt.istSicher(S.x, S.y)) return 'Du stehst in einer sicheren Zone.';
@@ -751,13 +748,13 @@
 
   async function warteAuf(fn, ms) { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) return false; await sleep(80); } return true; }
 
-  // ---------- Duell (3 gegen 3, Stufe 30) ----------
+  // ---------- Duell (3 gegen 3): fairer Kampf = alle auf die vereinbarte Stufe, sonst und beim Überfall echte Stufen ----------
   const gewonnen0 = (b, seite) => b.over && b.winner === seite;
   A.duellStart = async function (d) {
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     const andere = d.a === S.idx ? d.b : d.a, bid = 'd' + d.seed;
-    const o = d.o || null, lvl = o ? (o.fair | 0) : 30, ichBinA = d.a === S.idx;
+    const o = d.o || null, lvl = o ? (o.fair | 0) : 0, ichBinA = d.a === S.idx;
     const meinGold = o ? (ichBinA ? o.gm : o.gt) | 0 : 0, seinGold = o ? (ichBinA ? o.gt : o.gm) | 0 : 0, stake = o && (ichBinA ? o.mm : o.mt) ? S.save.team[0] : null, seinStake = !!(o && (ichBinA ? o.mt : o.mm));
     const mein = CAM.duellKopien(S.save.team, lvl), goldStart = S.save.gold;
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: goldStart });

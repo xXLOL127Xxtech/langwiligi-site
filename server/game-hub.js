@@ -548,7 +548,7 @@ function onMessage(ws, raw) {
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
       const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
-      room.players[0] = { ws, name: roomName(ws, m) };
+      room.players[0] = { ws, name: roomName(ws, m), code: accountOf(m) };
       rooms.set(room.code, room); ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
       roomChanged(room);
@@ -559,7 +559,7 @@ function onMessage(ws, raw) {
       leave(ws);
       const game = cleanGame(m.game);
       let room = null;
-      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && (!room || freeSeats(r) < freeSeats(room))) room = r;
+      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && !sitztSchon(r, ws, m) && (!room || freeSeats(r) < freeSeats(room))) room = r;
       if (!room) {
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
         room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
@@ -567,7 +567,7 @@ function onMessage(ws, raw) {
       }
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
-      room.players[idx] = { ws, name: roomName(ws, m) }; ws.room = room;
+      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -588,8 +588,9 @@ function onMessage(ws, raw) {
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
+      if (sitztSchon(room, ws, m)) return send(ws, { t: 'error', msg: 'already-in' });
       leave(ws);
-      room.players[idx] = { ws, name: roomName(ws, m) }; ws.room = room;
+      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -712,6 +713,9 @@ function ensureAccount(ip, secret, wanted) {
   return code;
 }
 // Name für einen Raum: der Name des Kontos (so kann sich niemand als jemand anderes ausgeben). Ohne Schlüssel (alte Seiten) der angegebene Name.
+// Dasselbe Gerät (gleicher Schlüssel = gleiches Konto) darf nur einmal pro Raum sitzen, auch nicht mit zwei Tabs
+function accountOf(m) { const s = String(m.secret || ''); return /^[A-Za-z0-9]{16,64}$/.test(s) ? friendCode(s) : null; }
+function sitztSchon(room, ws, m) { const c = accountOf(m); return !!c && room.players.some(p => p && p.ws !== ws && p.code === c); }
 function roomName(ws, m) {
   const code = ensureAccount(ws.ip, m.secret, m.name);
   if (!code) return cleanName(m.name);

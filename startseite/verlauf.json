@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-25",
+"z":"16:00",
+"a":"Server",
+"t":"Dasselbe Gerät kann nicht mehr zweimal im selben Spiel sitzen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
+"z":"16:00",
+"a":"Catch a Mob",
+"t":"Überfall: Mobs kämpfen mit echter Stufe und nur gelernten Attacken",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"sharp-feynman-dehvc4"
+},
+{
+"d":"2026-10-25",
 "z":"14:20",
 "a":"Catch a Mob",
 "t":"Nach verlorenem Duell haben die Mobs nur noch die Hälfte der LP",

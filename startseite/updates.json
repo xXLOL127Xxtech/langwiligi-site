@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Überfall fair", "tag": "Update", "p": [
+    "Beim Überfall im Online-Spiel kämpfen alle Mobs mit ihren echten Stufen und nur mit den Attacken, die sie auf dieser Stufe wirklich gelernt haben (vorher waren es alle auf Stufe 30)",
+    "Stufen werden nur bei einem fairen Duell angeglichen, wenn beide zustimmen",
+    "Dasselbe Gerät kann nicht mehr zweimal im selben Spiel mitspielen"
+  ] },
   { "d": "2026-10-25", "t": "Startseite", "tag": "Update", "p": [
     "Ein Knopf «Filtern & Sortieren»: Modus, Typ und Reihenfolge an einem Ort, aktive Filter stehen als Marken daneben",
     "Neuste Updates der letzten 3 Tage stehen ganz unten auf der Seite",
