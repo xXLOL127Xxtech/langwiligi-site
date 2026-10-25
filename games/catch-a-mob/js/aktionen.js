@@ -10,7 +10,7 @@
   const TRAINER_PAUSE_MS = 10 * 60 * 1000;
 
   const ge = (n) => '<span class="gold">' + n + ' G</span>';
-  const tagEl = el => '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + el + '</span>';
+  const tagEl = el => '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + (CAM.Icons ? CAM.Icons.el(el, 12) : '') + el + '</span>';
   const tagRar = r => '<span class="tag" style="background:' + CAM.RAR_FARBE[r] + '">' + CAM.RARITAET[r] + '</span>';
   function elTags(m) { return CAM.elemente(m).map(tagEl).join(''); }
   function mobNameFull(m) { return CAM.name(m) + (m.glanz ? ' ✦' : ''); }
@@ -519,14 +519,14 @@
     const lines = [];
     if (b.result.caught) {
       const m = b.result.caught; delete m.faintDone; m.status = null;
-      const wo = A.mobDazu(m); dexSet(m.fam, 2); S.save.fangXp = (S.save.fangXp || 0) + 0.15;
+      const wo = A.mobDazu(m); dexSet(m.fam, 2); S.save.fangXp = (S.save.fangXp || 0) + 0.15; S.save.gef = (S.save.gef | 0) + 1;
       lines.push('<b style="color:#5fd38a">' + esc(mobNameFull(m)) + ' gehört jetzt dir!</b> ' + (wo === 'team' ? '(ins Team aufgenommen)' : wo === 'box' ? '(in den Zwinger gebracht)' : '(Zwinger voll, er wurde freigelassen)'));
     } else if (b.result.fled) lines.push('Du bist entkommen.');
     else if (b.winner === 0) {
       UI.snd('sieg');
       lines.push(...await xpVerteilen(b, b.actor(lokal.id)));
       const gold = 5 + mob.lv * 3; S.save.gold += gold; lines.push('Du findest ' + gold + ' Gold.');
-      if (Math.random() < 0.35) { const k = CAM.FUNDE[Welt.biomeAt(S.x, S.y)][Math.floor(Math.random() * 2)]; CAM.itemAdd(k, 1); lines.push('Fundstück: ' + CAM.ITEMS[k].n); }
+      if (Math.random() < 0.35) { const k = CAM.FUNDE[Welt.biomeAt(S.x, S.y)][Math.floor(Math.random() * 2)]; CAM.itemAdd(k, 1); lines.push('Fundstück: ' + CAM.Icons.item(k, 20) + CAM.ITEMS[k].n); }
     }
     if (opt.entity) {
       if (b.winner === 0) CAM.Wilde.entfernen(opt.entity);
@@ -572,7 +572,7 @@
 
   // ---------- Online: Hilfen ----------
   A.praesenz = function () {
-    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv(), ab: CAM.abzMaske(S.save.abz) };
+    return { x: Math.round(S.x * 10) / 10, y: Math.round(S.y * 10) / 10, d: S.dir, pt: S.pt, bs: S.busy ? 1 : 0, lv: CAM.maxLv(), ab: CAM.abzMaske(S.save.abz), fg: A.gefangen ? A.gefangen() : 0 };
   };
   A.hallo = function (an, antwort) {
     const m = { t: 'hi', n: S.name, c: S.save.col, w: S.save.w, l: S.save.l, re: !!antwort, ...A.praesenz() };
@@ -580,9 +580,6 @@
     Netz.senden(m);
   };
   function peer(idx) { return S.peers.get(idx); }
-  function duellTeam() {
-    return S.save.team.slice(0, 3).map(m => { const c = CAM.kopie(m); c.lv = 30; CAM.neuBerechnen(c); c.hp = c.mhp; c.status = null; delete c.faintDone; c.xp = 0; return c; });
-  }
   A.ueberfallGrund = function (p) {
     const now = Date.now();
     if (Welt.istSicher(S.x, S.y)) return 'Du stehst in einer sicheren Zone.';
@@ -651,7 +648,7 @@
     switch (d.t) {
       case 'hi': {
         const p = S.peers.get(von) || { idx: von, x: d.x, y: d.y, tx: d.x, ty: d.y };
-        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, ab: d.ab | 0, gest: '', gestT: 0 });
+        Object.assign(p, { idx: von, name: String(d.n || 'Spieler').slice(0, 16), col: d.c | 0, w: d.w | 0, l: d.l | 0, tx: d.x, ty: d.y, dir: d.d | 0, pt: d.pt === undefined ? -1 : d.pt, bs: d.bs, lv: d.lv | 0, ab: d.ab | 0, fg: d.fg | 0, gest: '', gestT: 0 });
         if (p.x === undefined) { p.x = d.x; p.y = d.y; }
         S.peers.set(von, p);
         if (!d.re) A.hallo(von, true);
@@ -659,7 +656,7 @@
       }
       case 'p': {
         const p = S.peers.get(von); if (!p) { A.hallo(von, true); return; }
-        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.ab = d.ab | 0; p.zeit = Date.now();
+        p.tx = d.x; p.ty = d.y; p.dir = d.d; p.pt = d.pt; p.bs = d.bs; p.lv = d.lv; p.ab = d.ab | 0; p.fg = d.fg | 0; p.zeit = Date.now();
         break;
       }
       case 'gest': { const p = S.peers.get(von); if (p) { p.gest = CAM.GESTEN[d.g] ? CAM.GESTEN[d.g][0] : ''; p.gestT = Date.now(); } break; }
@@ -751,13 +748,13 @@
 
   async function warteAuf(fn, ms) { const t0 = Date.now(); while (!fn()) { if (Date.now() - t0 > ms) return false; await sleep(80); } return true; }
 
-  // ---------- Duell (3 gegen 3, Stufe 30) ----------
+  // ---------- Duell (3 gegen 3): fairer Kampf = alle auf die vereinbarte Stufe, sonst und beim Überfall echte Stufen ----------
   const gewonnen0 = (b, seite) => b.over && b.winner === seite;
   A.duellStart = async function (d) {
     if (S.busy || !CAM.lebend()) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
     const andere = d.a === S.idx ? d.b : d.a, bid = 'd' + d.seed;
-    const o = d.o || null, lvl = o ? (o.fair | 0) : 30, ichBinA = d.a === S.idx;
+    const o = d.o || null, lvl = o ? (o.fair | 0) : 0, ichBinA = d.a === S.idx;
     const meinGold = o ? (ichBinA ? o.gm : o.gt) | 0 : 0, seinGold = o ? (ichBinA ? o.gt : o.gm) | 0 : 0, stake = o && (ichBinA ? o.mm : o.mt) ? S.save.team[0] : null, seinStake = !!(o && (ichBinA ? o.mt : o.mm));
     const mein = CAM.duellKopien(S.save.team, lvl), goldStart = S.save.gold;
     Netz.senden({ t: 'team', bid, idx: S.idx, team: mein, gold: goldStart });
@@ -868,7 +865,7 @@
       lines.push(...await xpVerteilen(b, la));
       const gold = 150 + lv * 25; S.save.gold += gold; lines.push('Beute: ' + ge(gold));
       CAM.itemAdd('siegel2', 2); lines.push('2 × Starke Fangkugel');
-      { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
+      { const uk = CAM.UPG[Math.floor(Math.random() * CAM.UPG.length)]; CAM.itemAdd(uk, 1); lines.push('<b style="color:#c9a6ff">' + CAM.Icons.item(uk, 20) + 'Veredler: ' + esc(CAM.ITEMS[uk].n) + '</b> <small>(' + esc(CAM.ITEMS[uk].info) + ')</small>'); }
       if (Math.random() < 0.3) { CAM.itemAdd('ei', 1); lines.push('<b style="color:#ffb36b">Ein Drachenei!</b> Trag es 600 Schritte mit dir, dann schlüpft etwas.'); }
       if (Math.random() < 0.12) { CAM.itemAdd('siegel3', 1); lines.push('<b>Meister-Fangkugel!</b>'); }
       if (Math.random() < 0.06) { CAM.itemAdd('rune', 1); lines.push('<b style="color:#ffb36b">Eine Attackenrune!</b> Sehr selten: Ein Mob lernt damit eine zusätzliche Attacke.'); }

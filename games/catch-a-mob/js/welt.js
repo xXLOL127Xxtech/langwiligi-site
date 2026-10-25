@@ -98,12 +98,12 @@
     let id = 0;
     for (const p of B) {
       let n = 0, tries = 0;
-      while (n < 11 && tries++ < 700) {
+      while (n < 6 && tries++ < 700) {
         const x = 12 + Math.floor(rnd() * (W - 24)), y = 12 + Math.floor(rnd() * (H - 24));
         const i = y * W + x;
         if (biome[i] !== p.id || (tiles[i] !== T.BODEN && tiles[i] !== T.GRAS)) continue;
         if (Welt.istSicher(x, y, 6)) continue;
-        if (Welt.trainer.some(t => Math.abs(t.x - x) < 12 && Math.abs(t.y - y) < 12)) continue;
+        if (Welt.trainer.some(t => Math.abs(t.x - x) < 16 && Math.abs(t.y - y) < 16)) continue;
         const lv = Math.min(48, Welt.wildLevel(x, y) + 1);
         const r2 = rnd();
         Welt.trainer.push({

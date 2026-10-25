@@ -49,7 +49,7 @@
       const btns = items.map((it, i) => {
         const b = document.createElement('button');
         b.className = 'it' + (it.disabled ? ' dis' : '');
-        b.innerHTML = '<span class="lb">' + (opt.numbers !== false && i < 9 && items.length <= 9 ? '<small style="color:#8e89a8">' + (i + 1) + '</small> ' : '') + it.label + '</span>' + (it.sub ? '<span class="sb">' + it.sub + '</span>' : '');
+        b.innerHTML = '<span class="lb">' + (opt.numbers !== false && i < 9 && items.length <= 9 ? '<small style="color:#8e89a8">' + (i + 1) + '</small> ' : '') + (it.ico === undefined ? (CAM.Icons ? CAM.Icons.fuerLabel(it.label) : '') : it.ico) + it.label + '</span>' + (it.sub ? '<span class="sb">' + it.sub + '</span>' : '');
         b.onclick = () => { if (!it.disabled) { UI.snd('klick'); done(i); } };
         b.onmouseenter = () => setSel(i);
         list.appendChild(b); return b;

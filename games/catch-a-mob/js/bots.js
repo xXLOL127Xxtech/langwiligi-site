@@ -5,7 +5,7 @@
   const CAM = G.CAM, UI = CAM.UI, $ = UI.$, esc = UI.esc, S = CAM.S, Welt = CAM.Welt, K = CAM.Kampf, A = CAM.A, Save = CAM.Save;
   const H = A.h, ge = H.ge, sleep = H.sleep;
   const Bots = CAM.Bots = { liste: [] };
-  const ANZAHL = 40, CHAMPIONS = 4, WEITE = 16, SUCHE = 32;
+  const ANZAHL = 22, CHAMPIONS = 4, WEITE = 16, SUCHE = 32;
 
   // ---------- Hilfen für faire Duelle ----------
   const lebende = team => team.filter(m => m.hp > 0);
@@ -68,7 +68,7 @@
     Bots.liste = [];
     const gespeichert = S.save && S.save.bots;
     if (gespeichert && gespeichert.length) {
-      Bots.liste = gespeichert.map(b => laufzeit({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, x: b.hx, y: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
+      Bots.liste = gespeichert.slice(0, ANZAHL).map(b => laufzeit({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, x: b.hx, y: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut }));
       Bots.liste.forEach(b => { while (b.team.length < CAM.TEAM_MAX) { const m = CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2)); b.team.push(m); } });   // alte Spielstände: auf 3 Mobs auffüllen
       return;
     }

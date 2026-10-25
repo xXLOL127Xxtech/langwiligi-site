@@ -96,7 +96,7 @@
   CAM.STATUS_KURZ = { gift: 'GIF', brand: 'BRA', schlaf: 'SCH', furcht: 'ANG', betaeubt: 'BET', laehmung: 'LÄH', blind: 'BLI', schwaeche: 'SCW', verwirrt: 'VER', bruch: 'ZER' };
   CAM.STATUS_COL = { gift: '#9a5cf0', brand: '#ff6a2e', schlaf: '#7fb8ff', furcht: '#b0aac0', betaeubt: '#ffd54a', laehmung: '#e8e04a', blind: '#fff3b0', schwaeche: '#8fa0b8', verwirrt: '#ff8ad8', bruch: '#7de0d0' };
   CAM.STATUS_NAME = { gift: 'Gift', brand: 'Brand', schlaf: 'Schlaf', furcht: 'Angst', betaeubt: 'Betäubung', laehmung: 'Lähmung', blind: 'Blendung', schwaeche: 'Schwäche', verwirrt: 'Verwirrung', bruch: 'Zerbrechlichkeit' };
-  CAM.fxText = mv => mv.st ? mv.p + ' % Chance auf ' + CAM.STATUS_NAME[mv.st] : '';
+  CAM.fxText = mv => mv.st ? (CAM.Icons ? CAM.Icons.st(mv.st, 14) : '') + mv.p + ' % Chance auf ' + CAM.STATUS_NAME[mv.st] : '';
 
   // ---------- Mobs ----------
   // el/el2: Elemente (el2 ab Stufe el2ab), base: LP/Angriff/Verteidigung/Tempo, rar: 0 gewöhnlich, 1 selten, 2 episch, 3 legendär
@@ -529,7 +529,7 @@
     if (mv.pow) t.push('Stärke ' + mv.pow); else if (mv.heal) t.push('Heilt ' + Math.round(mv.heal * 100) + ' %');
     if (!mv.self) t.push('Genauigkeit ' + mv.acc + ' %');
     if (mv.multi) t.push(mv.multi[0] + '–' + mv.multi[1] + ' Treffer');
-    if (mv.st) t.push(mv.p + ' % ' + CAM.STATUS_NAME[mv.st]);
+    if (mv.st) t.push((CAM.Icons ? CAM.Icons.st(mv.st, 14) : '') + mv.p + ' % ' + CAM.STATUS_NAME[mv.st]);
     // Genauigkeit: je Stufe 10 Prozentpunkte (90 % wird 80 %). Angriff und Verteidigung: je Stufe 20 %.
     (mv.stg || []).forEach(g => t.push((g.z === 'self' ? 'selbst ' : 'Gegner ') + STG_N[g.w] + ' ' + (g.n > 0 ? '+' : '−') + Math.abs(g.n) * (g.w === 'acc' ? 10 : 20) + ' %' + (g.p ? ' (' + g.p + ' % Chance)' : '')));
     if (mv.boost) t.push('Status-Chancen +' + mv.boost.add + ' % (' + mv.boost.n + ' Züge)');
