@@ -1,4 +1,11 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Lesbarere Attacken und Effekte", "tag": "Update", "p": [
+    "Attacken zeigen Stärke, Genauigkeit und Effekte als farbige Marken mit Pixel-Symbol (Schwert, Zielscheibe, Schild)",
+    "Rot sind Nachteile, grün Vorteile, jeweils mit Pfeil und Prozentzahl, z. B. Zielscheibe −20 %",
+    "Im Kampf stehen unter «Was soll … tun?» deine Stufe und LP sowie alle Effekte auf dir und dem Gegner",
+    "Mit dem Mauszeiger über eine Marke erscheint eine kurze Erklärung",
+    "Im Spiel steht jetzt auch deine höchste Stufe oben links"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Rangliste und Minikarte", "tag": "Update", "p": [
     "Rechts auf dem Bildschirm steht eine Rangliste mit Name, Abzeichen, höchster Stufe und gefangenen Mobs (Spieler und Bots)",
     "Unten rechts zeigt eine kleine Karte, wo du, die Online-Spieler, deine Party und die Dörfer sind",

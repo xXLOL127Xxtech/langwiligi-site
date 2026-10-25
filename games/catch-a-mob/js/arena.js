@@ -131,7 +131,7 @@
     const i = await UI.choose(alle.map(x => ({ label: H.mobZeile(x), sub: x.moves.length + ' Attacken' })), { title: 'Attackenrune: bei wem?', numbers: false, wide: true });
     if (i < 0) return;
     const m = alle[i], ids = CAM.runeAuswahl(m);
-    const j = await UI.choose(ids.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' <small>' + esc(mv.el) + '</small>', sub: CAM.moveText(mv) }; }), { title: 'Welche Attacke?', sub: esc(CAM.name(m)) + ' lernt sie für immer.', numbers: false, wide: true });
+    const j = await UI.choose(ids.map(id => { const mv = CAM.MOVES[id]; return { label: esc(mv.n) + ' <small>' + esc(mv.el) + '</small>', sub: CAM.moveChips(mv) }; }), { title: 'Welche Attacke?', sub: esc(CAM.name(m)) + ' lernt sie für immer.', numbers: false, wide: true });
     if (j < 0) return;
     m.extra = ids[j]; m.wahl = null; CAM.neuBerechnen(m); CAM.itemAdd('rune', -1); UI.snd('stufe'); Save.speichern();
     await UI.info(esc(CAM.name(m)) + ' kann jetzt ' + esc(CAM.MOVES[ids[j]].n) + '!', 'Attackenrune');

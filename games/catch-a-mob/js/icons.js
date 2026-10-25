@@ -3,7 +3,7 @@
 // Jedes Symbol ist ein Raster aus Buchstaben, die Farbe pro Buchstabe steht in PAL. Mit `a`/`A` bekommt ein Symbol seine Hauptfarbe (hell/dunkel).
 // Benutzung: CAM.Icons.html('sword', 20) gibt ein <img> zurück. Menüs (UI.choose) setzen das passende Symbol vor die Beschriftung selbst.
 (function (G) {
-  const CAM = G.CAM;
+  const CAM = G.CAM, esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const PAL = { k: '#1b1030', w: '#ffffff', g: '#a9a5bd', G: '#5d5877', r: '#e8444a', R: '#a82434', o: '#ff9a3c', O: '#c4601c', y: '#ffd54a', Y: '#b8901c',
     l: '#7ed957', d: '#3a8f45', b: '#4a9dff', B: '#2a5fb8', c: '#7fe3ff', p: '#a56bff', P: '#6a35c9', m: '#ff8ad8', n: '#8a5a34', t: '#e8c88a' };
   const S = (...rows) => rows;
@@ -113,6 +113,60 @@
     for (const [re, form, farbe] of REGELN) if (re.test(t)) return html(form, farbe, 20);
     return '';
   };
+
+  // ---------- Chips: kleine Marken mit Symbol, Zahl und Erklärung beim Darüberfahren (data-tip) ----------
+  SHAPES.target = S('...kkkk...', '..krrrrk..', '.krwwwwrk.', 'krwkkkkwrk', 'krwkrrkwrk', 'krwkrrkwrk', 'krwkkkkwrk', '.krwwwwrk.', '..krrrrk..', '...kkkk...');
+  CAM.STATUS_INFO = { gift: 'Verliert jede Runde 1/8 der LP.', brand: 'Verliert jede Runde 1/16 der LP und macht 20 % weniger Schaden.', schlaf: 'Schläft 1 bis 3 Züge und kann nichts tun.',
+    furcht: 'Verpasst mit 30 % Chance den Zug (3 Runden).', betaeubt: 'Verliert den nächsten Zug.', laehmung: 'Verpasst mit 40 % Chance den Zug (3 Runden).', blind: 'Trifft 40 % schlechter (3 Runden).',
+    schwaeche: 'Macht 30 % weniger Schaden (3 Runden).', verwirrt: 'Verletzt sich mit 35 % Chance selbst (3 Runden).', bruch: 'Erleidet 25 % mehr Schaden (3 Runden).' };
+  const STAT = { atk: ['Angriff', 'sword', null, 20], def: ['Verteidigung', 'shield', 'b', 20], acc: ['Genauigkeit', 'target', null, 10] };
+  const chip = (kl, ico, text, tip, farbe) => '<span class="chip ' + kl + '" data-tip="' + esc(tip) + '"' + (farbe ? ' style="color:' + farbe + '"' : '') + '>' + (ico || '') + text + '</span>';
+  const vz = n => (n > 0 ? '+' : '−') + Math.abs(n);
+  const stufeText = (w, n, wer) => {
+    const [name, , , pro] = STAT[w], p = Math.abs(n) * pro, s = n < 0 ? '−' : '+', best = Math.min(4, Math.abs(n)) * pro;
+    const wirkung = w === 'acc' ? (wer === 'ich' ? 'Deine Attacken treffen ' + p + ' Prozentpunkte ' + (n < 0 ? 'seltener' : 'öfter') + '.' : 'Seine Attacken treffen ' + p + ' Prozentpunkte ' + (n < 0 ? 'seltener' : 'öfter') + '.')
+      : w === 'atk' ? (wer === 'ich' ? 'Dein Schaden ist ' + p + ' % ' + (n < 0 ? 'niedriger' : 'höher') + '.' : 'Sein Schaden ist ' + p + ' % ' + (n < 0 ? 'niedriger' : 'höher') + '.')
+        : (wer === 'ich' ? 'Du erleidest ' + p + ' % ' + (n < 0 ? 'mehr' : 'weniger') + ' Schaden.' : 'Er erleidet ' + p + ' % ' + (n < 0 ? 'mehr' : 'weniger') + ' Schaden.');
+    void best; return (wer === 'ich' ? (w === 'atk' ? 'Dein ' : 'Deine ') : (w === 'atk' ? 'Sein ' : 'Seine ')) + name + ' ' + s + p + ' %: ' + wirkung + ' Hält bis zum Kampfende oder Wechsel.';
+  };
+  // Eine Attacke als Marken: Stärke, Genauigkeit, Effekte. fx = Bonus auf Status-Chancen (Vorbereitung)
+  CAM.moveChips = function (mv, bonus) {
+    const I = Icons.html, o = [];
+    if (mv.pow) o.push(chip('pow', I('sword', 14), mv.pow, 'Stärke ' + mv.pow + ': Grundschaden. Je höher, desto mehr Schaden.'));
+    else if (mv.heal) o.push(chip('gut', I('heart', 14), 'Heilt ' + Math.round(mv.heal * 100) + ' %', 'Heilt ' + Math.round(mv.heal * 100) + ' % der maximalen LP.'));
+    if (!mv.self) o.push(chip(mv.acc < 75 ? 'warn' : 'acc', I('target', 14), mv.acc + ' %', 'Genauigkeit ' + mv.acc + ' %: So oft trifft die Attacke.' + (mv.acc < 75 ? ' Sie geht oft daneben.' : '')));
+    if (mv.multi) o.push(chip('', '', mv.multi[0] + '–' + mv.multi[1] + '×', 'Trifft ' + mv.multi[0] + ' bis ' + mv.multi[1] + ' Mal hintereinander.'));
+    if (mv.st) o.push(chip('st', Icons.st(mv.st, 14), mv.p + ' %' + (bonus ? ' +' + bonus : ''), mv.p + ' % Chance auf ' + CAM.STATUS_NAME[mv.st] + ': ' + CAM.STATUS_INFO[mv.st]));
+    (mv.stg || []).forEach(g => {
+      const [name, form, farbe, pro] = STAT[g.w], wert = Math.abs(g.n) * pro, ich = g.z === 'self', gut = ich ? g.n > 0 : g.n < 0;
+      const tip = (ich ? 'Du selbst: ' : 'Gegner: ') + name + ' ' + (g.n > 0 ? '+' : '−') + wert + ' %. ' + (g.w === 'acc' ? (ich ? 'Deine Attacken treffen' : 'Seine Attacken treffen') + (g.n > 0 ? ' öfter.' : ' seltener.')
+        : g.w === 'atk' ? (ich ? 'Dein Schaden' : 'Sein Schaden') + (g.n > 0 ? ' steigt.' : ' sinkt.') : (ich ? 'Du erleidest' : 'Er erleidet') + (g.n > 0 ? ' weniger Schaden.' : ' mehr Schaden.')) + (g.p ? ' Nur mit ' + g.p + ' % Chance.' : ' Bis zu 4 Stufen möglich.');
+      o.push(chip(gut ? 'gut' : 'schlecht', (ich ? '' : '<small>Gegner</small> ') + Icons.html(form, 14, farbe) + Icons.html(g.n > 0 ? 'up' : 'down', 10, g.n > 0 ? 'l' : 'r'), (g.n > 0 ? '+' : '−') + wert + ' %' + (g.p ? ' <small>(' + g.p + ' %)</small>' : ''), tip));
+    });
+    if (mv.boost) o.push(chip('st', '', 'Status +' + mv.boost.add + ' %', 'Vorbereitung: Die Status-Chancen deiner Attacken steigen um ' + mv.boost.add + ' % für ' + mv.boost.n + ' Züge.'));
+    if (mv.wetter) o.push(chip('', Icons.html('cloud', 14), CAM.WETTER[mv.wetter], 'Ändert das Wetter auf ' + CAM.WETTER[mv.wetter] + '.'));
+    if (mv.schutz) o.push(chip('gut', Icons.html('shield', 14, 'b'), 'Schutz', 'Schützt vor dem nächsten Treffer.'));
+    if (mv.saug) o.push(chip('gut', Icons.html('heart', 14), Math.round(mv.saug * 100) + ' % Saug', 'Heilt ' + Math.round(mv.saug * 100) + ' % des angerichteten Schadens.'));
+    if (mv.rueck) o.push(chip('schlecht', '', 'Rückstoss ' + Math.round(mv.rueck * 100) + ' %', 'Du verlierst ' + Math.round(mv.rueck * 100) + ' % des angerichteten Schadens als LP.'));
+    if (mv.selbst) o.push(chip('schlecht', '', '−' + Math.round(mv.selbst * 100) + ' % LP', 'Kostet ' + Math.round(mv.selbst * 100) + ' % deiner maximalen LP.'));
+    if (mv.krit) o.push(chip('', '', 'oft kritisch', 'Trifft häufiger kritisch (doppelter Schaden).'));
+    if (mv.einmal) o.push(chip('warn', '', '1× pro Kampf', 'Kann nur einmal pro Kampf eingesetzt werden.'));
+    if (mv.erschoepft) o.push(chip('warn', '', 'danach Pause', 'Danach muss der Mob 1 Zug aussetzen.'));
+    if (mv.schlaf) o.push(chip('warn', Icons.st('schlaf', 14), 'schläft', 'Der Mob schläft danach ein.'));
+    return o.join('');
+  };
+  // Veränderungen und Zustände eines Mobs im Kampf. ich = true: dein Mob. Negatives ist rot, Positives grün.
+  CAM.stufenChips = function (b, m, ich) {
+    const o = [];
+    ['atk', 'def', 'acc'].forEach(w => {
+      const n = b.stufe(m, w); if (!n) return;
+      const [, form, farbe, pro] = STAT[w];
+      o.push(chip(n < 0 ? 'schlecht' : 'gut', Icons.html(form, 14, farbe) + Icons.html(n > 0 ? 'up' : 'down', 10, n > 0 ? 'l' : 'r'), (n > 0 ? '+' : '−') + Math.abs(n) * pro + ' %', stufeText(w, n, ich ? 'ich' : 'er')));
+    });
+    if (m.status) o.push(chip('st', Icons.st(m.status.t, 14), CAM.STATUS_NAME[m.status.t], (ich ? 'Dein Mob: ' : 'Gegner: ') + CAM.STATUS_NAME[m.status.t] + '. ' + CAM.STATUS_INFO[m.status.t], CAM.STATUS_COL[m.status.t]));
+    return o.join('');
+  };
+
   // Die zwei Knöpfe unten links (Beutel, Team)
   const knopf = (id, form, farbe, k) => { const b = document.getElementById(id); if (b) b.innerHTML = html(form, farbe, 24) + '<kbd>' + k + '</kbd>'; };
   knopf('qBeutel', 'bag', null, 'I'); knopf('qTeam', 'ball', 'r', 'T');

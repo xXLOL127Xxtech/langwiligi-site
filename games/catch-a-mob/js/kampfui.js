@@ -125,14 +125,13 @@
   // ---------- Abfrage der Aktion ----------
   function gegner(b, a) { return b.foes(a).find(f => f.team[f.active] && f.team[f.active].hp > 0) || b.foes(a)[0]; }
   function stufenInfo(b, me, tm) {
-    const N = { atk: 'Angriff', def: 'Verteidigung', acc: 'Genauigkeit' };
-    const f = (m, wer) => ['atk', 'def', 'acc'].filter(w => b.stufe(m, w)).map(w => N[w] + ' ' + (b.stufe(m, w) > 0 ? '+' : '') + b.stufe(m, w)).join(', ') && wer + ': ' + ['atk', 'def', 'acc'].filter(w => b.stufe(m, w)).map(w => N[w] + ' ' + (b.stufe(m, w) > 0 ? '+' : '') + b.stufe(m, w)).join(', ');
-    return [f(me, 'Du'), f(tm, 'Gegner')].filter(Boolean).join(' · ');
+    const a = CAM.stufenChips(b, me, true), g = CAM.stufenChips(b, tm, false);
+    return (a ? '<span class="eff"><b>Du</b>' + a + '</span> ' : '') + (g ? '<span class="eff"><b>Gegner</b>' + g + '</span>' : '');
   }
   function effText(mv, tm) {
     if (!mv.pow) return '';
     const e = CAM.effekt(mv.el, CAM.elemente(tm));
-    return e > 1 ? ' <b style="color:#5fd38a">sehr effektiv</b>' : e < 1 ? ' <span style="color:#ff6b5e">schwach</span>' : '';
+    return e > 1 ? '<span class="chip gut" data-tip="Das Element ist gegen den Gegner stark: mehr Schaden.">▲ sehr effektiv</span>' : e < 1 ? '<span class="chip schlecht" data-tip="Das Element ist gegen den Gegner schwach: weniger Schaden.">▼ schwach</span>' : '';
   }
   function tagEl(el) { return '<span class="tag" style="background:' + CAM.EL_FARBE[el] + '">' + (CAM.Icons ? CAM.Icons.el(el, 12) : '') + el + '</span>'; }
 
@@ -149,7 +148,7 @@
     let deadline = cfg.timer ? Date.now() + cfg.timer * 1000 : 0, iv = null;
     const zeigeLog = () => {
       const rest = deadline ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : 0;
-      UI.log('Was soll <b>' + esc(mobName(me)) + '</b> tun?' + (deadline ? ' <span id="timer">' + rest + ' s</span>' : ''), [tele, wet && 'Wetter: ' + esc(wet) + (b.wetterN ? ' (' + b.wetterN + ' Züge)' : ''), stufenInfo(b, me, tm)].filter(Boolean).join('<br>'));
+      UI.log('Was soll <b>' + esc(mobName(me)) + '</b> <span class="lvl">Lv ' + me.lv + ' · ' + Math.max(0, Math.ceil(me.hp)) + '/' + me.mhp + ' LP</span> tun?' + (deadline ? ' <span id="timer">' + rest + ' s</span>' : ''), [tele, wet && 'Wetter: ' + esc(wet) + (b.wetterN ? ' (' + b.wetterN + ' Züge)' : ''), stufenInfo(b, me, tm)].filter(Boolean).join('<br>'));
     };
     zeigeLog();
     if (deadline) iv = setInterval(() => { if (Date.now() >= deadline) { if (BS && BS.abbruch) BS.abbruch(); } else if (BS && !BS.sub) zeigeLog(); }, 500);
@@ -170,9 +169,9 @@
         BS.sub = true;
         if (lab === 'Attacke') {
           const bo = b.boost.get(me);
-          const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); const weg = mv.einmal && b.einmalGenutzt(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (weg ? 'schon benutzt' : CAM.moveText(mv).replace(/(\d+ % [A-Za-zäöü]+)/, '<span style="color:' + (mv.st ? CAM.STATUS_COL[mv.st] : '#fff') + '">$1</span>') + (bo && mv.st ? ' <b style="color:#ffd54a">+' + bo.add + ' %</b>' : '')) + effText(mv, tm), disabled: weg }; });
+          const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); const weg = mv.einmal && b.einmalGenutzt(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (weg ? '<span class="chip warn">schon benutzt</span>' : CAM.moveChips(mv, bo && (!bo.st || bo.st === mv.st) ? bo.add : 0)) + effText(mv, tm), disabled: weg }; });
           // Noch nicht gelernte Attacken stehen ausgegraut darunter (nicht wählbar)
-          if (CAM.alleAttacken) CAM.alleAttacken(me).filter(x => !x.ok).forEach(x => { const mv = CAM.moveFuer(me, x.id); mi.push({ label: esc(mv.n) + ' ' + tagEl(mv.el), sub: '<span style="color:#ff5c5c">ab Stufe ' + x.lv + '</span> · ' + CAM.moveText(mv), disabled: true }); });
+          if (CAM.alleAttacken) CAM.alleAttacken(me).filter(x => !x.ok).forEach(x => { const mv = CAM.moveFuer(me, x.id); mi.push({ label: esc(mv.n) + ' ' + tagEl(mv.el), sub: '<span class="chip schlecht">ab Stufe ' + x.lv + '</span>' + CAM.moveChips(mv), disabled: true }); });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;

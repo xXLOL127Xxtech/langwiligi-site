@@ -25,6 +25,18 @@
   document.addEventListener('keyup', e => { UI.keysDown[e.key.toLowerCase()] = false; });
   G.addEventListener('blur', () => { UI.keysDown = {}; });
 
+  // ---------- Erklärung beim Darüberfahren (Elemente mit data-tip) ----------
+  const tip = document.createElement('div'); tip.id = 'tip'; tip.className = 'hidden'; document.body.appendChild(tip);
+  document.addEventListener('mouseover', e => {
+    const t = e.target.closest && e.target.closest('[data-tip]');
+    if (!t) { tip.classList.add('hidden'); return; }
+    tip.textContent = t.getAttribute('data-tip'); tip.classList.remove('hidden');
+    const r = t.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(G.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+    tip.style.top = (r.top - h - 8 < 4 ? r.bottom + 8 : r.top - h - 8) + 'px';
+  });
+  document.addEventListener('mouseleave', () => tip.classList.add('hidden'));
+
   // ---------- Fenster ----------
   UI.openPanel = function (title, sub, wide) {
     const box = $('panel-box');

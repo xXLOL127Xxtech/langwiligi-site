@@ -69,7 +69,16 @@
   .list.two { display: grid; grid-template-columns: 1fr 1fr; }
   .it { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; cursor: pointer; font-size: 14px; }
-  .it .sb { color: var(--muted); font-size: 12px; text-align: right; }
+  .it .sb { color: #d9d4ea; font-size: 13px; text-align: right; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px; }
+  .it .lb { flex-shrink: 0; }
+  /* Marken: Symbol + Zahl, Farbe nach Bedeutung (nie nur Farbe: Symbole und Vorzeichen gibt es dazu) */
+  .chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 4px; background: #120b1d; box-shadow: 0 0 0 1px #07040e, inset 0 0 0 1px rgba(255,255,255,.12); font: 700 12px "Courier New", monospace; color: #f2efe8; white-space: nowrap; cursor: help; }
+  .chip .px { margin: 0; vertical-align: 0; } .chip small { font: 400 11px "Courier New", monospace; opacity: .85; }
+  .chip.pow { color: #ffb36b; } .chip.acc { color: #7fe3ff; } .chip.warn { color: #ffd54a; }
+  .chip.gut { color: #7ee08f; background: #10241a; } .chip.schlecht { color: #ff8a7a; background: #2a1216; } .chip.st { background: #1c1430; }
+  .eff { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-right: 12px; } .eff > b { color: #cfc9e0; font-size: 12px; }
+  .lvl { color: #c9a6ff; font-size: 12px; font-weight: 400; }
+  #tip { position: fixed; z-index: 70; max-width: 280px; padding: 6px 9px; background: #0e0817; color: #f2efe8; font: 12px/1.35 "Courier New", monospace; pointer-events: none; box-shadow: 0 0 0 2px #07040e, inset 0 0 0 2px #6a35c9; }
   .it.sel { background: rgba(138, 63, 252, 0.4); border-color: var(--accent-2); }
   .it.dis { opacity: 0.45; cursor: default; }
   .foot { margin-top: 10px; color: var(--muted); font-size: 12px; }
