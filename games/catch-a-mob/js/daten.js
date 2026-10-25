@@ -171,8 +171,8 @@
     { tile: 'gras', herde: [2, 4], scheu: true }, { nah: 'wasser', tile: 'boden', herde: [1, 3] }, { nah: 'baum', herde: [2, 3], scheu: false }, { herde: [2, 3] }, { tile: 'boden' }, { nah: 'lava' }, { nah: 'kristall' }, { nah: 'grab', zeit: 'nacht' },
   ];
   F.forEach((f, i) => { if (!f.hab) f.hab = HAB[i] || {}; });
-  ['Tümpelchen', 'Quakling', 'Salzkrabbe'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) f.hab.lebt = 'beide'; });   // Land und Wasser
-['Molchling', 'Leuchtling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) { f.hab.lebt = 'wasser'; delete f.hab.nah; } });   // nur im Wasser
+  ['Tümpelchen', 'Quakling', 'Salzkrabbe', 'Leuchtling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) f.hab.lebt = 'beide'; });   // Land und Wasser
+['Molchling'].forEach(n => { const f = F.find(x => x.n[0] === n); if (f) { f.hab.lebt = 'wasser'; delete f.hab.nah; } });   // nur im Wasser
   F.forEach(f => { f.lebt = (f.hab && f.hab.lebt) || 'land'; });
   [9, 10, 29, 33, 35].forEach(i => { if (F[i] && F[i].hab) delete F[i].hab.herde; });   // Krabben, Pilze, Raupen, Frösche und Quallen leben allein: als Herde ergibt das keinen Sinn
   CAM.habText = function (f) {

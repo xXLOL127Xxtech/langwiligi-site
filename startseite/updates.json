@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-25", "t": "Catch a Mob: Leuchtling fliegt wieder über Land", "tag": "Update", "p": [
+    "Der Leuchtling schwebt über Land und Wasser und ist immer zu sehen, auch wenn du nicht schwimmst",
+    "Sichtbare Tiere tauchen nie vor deinen Augen auf, sondern erst am Bildrand",
+    "Reine Wassertiere blenden sanft ein, wenn du ins Wasser gehst"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Wassertiere korrigiert", "tag": "Update", "p": [
     "Leuchtling und Molchling leben jetzt nur im Wasser und können nicht mehr an Land",
     "Wassertiere sind schon im Wasser, bevor du schwimmst. Von Land aus siehst du sie nicht, sobald du schwimmst, sind sie da",

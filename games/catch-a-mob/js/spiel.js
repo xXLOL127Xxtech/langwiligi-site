@@ -61,6 +61,8 @@
     const frei = welt && !UI.stack.length && !S.busy && !K.aktiv;
     S.bewegt = false;
     S.schwimmt = welt && Welt.istWasser(S.x, S.y + 0.2);
+    if (S.schwimmt && !S.schwimmtVor) S.schwimmtSeit = Date.now();
+    S.schwimmtVor = S.schwimmt;
     if (frei) {
       const kd = UI.keysDown;
       let dx = (kd.d || kd.arrowright ? 1 : 0) - (kd.a || kd.arrowleft ? 1 : 0), dy = (kd.s || kd.arrowdown ? 1 : 0) - (kd.w || kd.arrowup ? 1 : 0);
@@ -215,8 +217,8 @@
     const ph = w.geht ? Math.floor(w.lauf !== undefined ? w.lauf : tick / 90) % 4 : -1;
     const schwebt = !!f.fliegt, schweb = schwebt ? TS * 0.34 + Math.sin(tick / 300 + w.id * 1.7) * TS * 0.07 : 0;
     const hop = (w.geht && !schwebt ? Math.abs(Math.sin((w.lauf || 0) * Math.PI / 2)) * TS * 0.04 : 0) + (w.huepf > 0 ? Math.sin((1 - w.huepf / 0.35) * Math.PI) * TS * 0.5 : 0) + schweb;
-    const imW = f.lebt !== 'land' && Welt.istWasser(w.x, w.y + 0.1), tief = imW && f.lebt === 'wasser';
-    const einblenden = Math.min(1, (now - (w.geboren || 0)) / 1500);
+    const imW = f.lebt !== 'land' && !f.fliegt && Welt.istWasser(w.x, w.y + 0.1), tief = imW && f.lebt === 'wasser';
+    const einblenden = Math.min(1, (now - (w.geboren || 0)) / 1500, tief ? (now - (S.schwimmtSeit || 0)) / 700 : 1);
     if (!imW) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.36 * (1 - schweb / TS * 0.4), gr * 0.08, 0, 0, 6.3); ctx.fill(); }
     if (boese && !tief) { ctx.fillStyle = 'rgba(255,50,40,' + (0.14 + 0.08 * Math.sin(tick / 200)) + ')'; ctx.beginPath(); ctx.ellipse(x, y, gr * 0.55, gr * 0.16, 0, 0, 6.3); ctx.fill(); }
     ctx.save(); ctx.imageSmoothingEnabled = false;
