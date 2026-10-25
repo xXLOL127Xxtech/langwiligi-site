@@ -47,6 +47,8 @@
   // Niederlage: 10 % der Erfahrung, die für die aktuelle Stufe nötig ist, gehen bei jedem Mob im Team verloren (nie unter 0, keine Stufe weniger)
   function verlierXp() { S.save.team.forEach(m => { m.xp = Math.max(0, (m.xp || 0) - Math.floor(CAM.xpBedarf(m.lv) * 0.1)); }); }
 
+  // Duelle laufen mit Kopien. Wer verliert, hat danach nur noch die Hälfte der LP.
+  A.duellVerloren = function () { S.save.team.forEach(m => { m.hp = Math.min(m.hp, Math.max(1, Math.ceil(m.mhp / 2))); }); };
   A.heileTeam = function () { S.save.team.forEach(m => { m.hp = m.mhp; m.status = null; m.wunden = []; delete m.faintDone; }); };
 
   // ---------- Heilhaus ----------
@@ -785,12 +787,13 @@
       if (stake && !gewonnen) { const i = S.save.team.indexOf(stake); if (i >= 0 && S.save.team.length > 1) { lines.push('<b style="color:#ff6b5e">' + esc(CAM.name(stake)) + ' geht an ' + esc(pn(andere)) + '.</b>'); anwenden.push(() => { const k = S.save.team.indexOf(stake); if (k >= 0 && S.save.team.length > 1) { S.save.team.splice(k, 1); Netz.senden({ t: 'prize', to: andere, mob: CAM.kopie(stake) }); } }); } }
       if (seinStake && gewonnen) lines.push('Als Preis bekommst du das Fabelwesen von ' + esc(pn(andere)) + '.');
       if (gewonnen) { lines.push('<b style="color:#5fd38a">Du hast gewonnen!</b>'); UI.snd('sieg'); }
-      else { lines.push('<b style="color:#ff6b5e">Du hast verloren.</b>'); UI.snd('niederlage'); }
+      else { lines.push('<b style="color:#ff6b5e">Du hast verloren.</b><br><small>Deine Mobs haben nur noch die Hälfte der LP.</small>'); UI.snd('niederlage'); }
       if (d.amb) {
         const angreifer = d.a === S.idx;
         if (angreifer && gewonnen) { const g = klau(gegnerTeam.gold); if (g > 0) { lines.push('Beute: Du klaust ' + ge(g) + '.'); anwenden.push(() => { S.save.gold += g; }); } }
         else if (!angreifer && !gewonnen) { const g = klau(goldStart); if (g > 0) { lines.push('Du wirst bestohlen: ' + ge(g) + ' sind weg.'); anwenden.push(() => { S.save.gold = Math.max(0, S.save.gold - g); }); } }
       }
+      if (!gewonnen) A.duellVerloren();
       if (!d.amb) { if (gewonnen) S.save.w++; else S.save.l++; Netz.senden({ t: 'st', w: S.save.w, l: S.save.l }); }
       else lines.push('<small>Überfälle zählen nicht für die Rangliste.</small>');
       if (d.amb && d.b === S.idx) lines.push('<small>Du bist jetzt 30 Minuten vor Überfällen geschützt.</small>');
