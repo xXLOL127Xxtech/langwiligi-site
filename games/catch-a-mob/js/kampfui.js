@@ -171,6 +171,8 @@
         if (lab === 'Attacke') {
           const bo = b.boost.get(me);
           const mi = me.moves.map(id => { const mv = CAM.moveFuer(me, id); const weg = mv.einmal && b.einmalGenutzt(me, id); return { label: esc(mv.n) + ' ' + tagEl(mv.el), sub: (weg ? 'schon benutzt' : CAM.moveText(mv).replace(/(\d+ % [A-Za-zäöü]+)/, '<span style="color:' + (mv.st ? CAM.STATUS_COL[mv.st] : '#fff') + '">$1</span>') + (bo && mv.st ? ' <b style="color:#ffd54a">+' + bo.add + ' %</b>' : '')) + effText(mv, tm), disabled: weg }; });
+          // Noch nicht gelernte Attacken stehen ausgegraut darunter (nicht wählbar)
+          if (CAM.alleAttacken) CAM.alleAttacken(me).filter(x => !x.ok).forEach(x => { const mv = CAM.moveFuer(me, x.id); mi.push({ label: esc(mv.n) + ' ' + tagEl(mv.el), sub: 'ab Stufe ' + x.lv + ' · ' + CAM.moveText(mv), disabled: true }); });
           mi.push({ label: '← Zurück' });
           const r = await UI.choose(mi, { into: $('bmenu'), abort: f => { BS.abbruch = f; } });
           BS.abbruch = null;
