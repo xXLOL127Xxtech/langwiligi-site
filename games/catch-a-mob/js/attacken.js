@@ -59,11 +59,13 @@
     if (m.extra && M[m.extra] && !got.includes(m.extra)) got.push(m.extra);
     return got.slice(0, 6);
   };
-  CAM.attackenFuer = function (fam, lv, m) {
-    const mm = m || { fam, lv, stufe: CAM.stufeFuer(fam, lv) };
-    const alle = CAM.gelernt(mm);
-    if (m && m.wahl) { const w = m.wahl.filter(id => alle.includes(id)); if (w.length) return w; }
-    return alle;
+  // Alle Attacken sind fix: Was ein Mob gelernt hat, setzt er im Kampf ein (keine Auswahl)
+  CAM.attackenFuer = function (fam, lv, m) { return CAM.gelernt(m || { fam, lv, stufe: CAM.stufeFuer(fam, lv) }); };
+  // Alle Attacken dieses Mobs für die Anzeige, auch die noch nicht gelernten: [{ id, lv, ok }]
+  CAM.alleAttacken = function (m) {
+    const l = F[m.fam].lern.map(([lv, id]) => ({ id, lv, ok: m.lv >= lv }));
+    if (m.extra && M[m.extra] && !l.some(x => x.id === m.extra)) l.push({ id: m.extra, lv: 0, ok: true });
+    return l;
   };
   // Nächste Attacke, die dieser Mob lernt: { lv, id } oder null
   CAM.naechsteAttacke = function (m) {
