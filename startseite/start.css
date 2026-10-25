@@ -398,13 +398,10 @@ dialog .row button:disabled { opacity: .5; cursor: default; }
 .vl-e p { margin: 0; font-size: 15px; color: #cfcce0; }
 .vl-e p b { color: var(--text); }
 .vl-z { font: 15px/1 var(--mono); color: var(--yellow); }
-.vl-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; font: 12px/1.3 var(--mono); letter-spacing: .04em; color: var(--muted); }
-.vl-meta a { color: var(--cyan); text-decoration: none; }
-.vl-meta a:hover { text-decoration: underline; }
-.vl-b { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vl-meta { justify-self: end; font: 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 4px 8px 3px; border: 1px solid var(--line-hi); white-space: nowrap; }
 @media (max-width: 640px) {
   .vl-e { grid-template-columns: 52px auto 1fr; }
   .vl-e p { grid-column: 1 / -1; }
-  .vl-meta { grid-column: 1 / -1; justify-content: flex-start; }
+  .vl-meta { grid-column: 1 / -1; justify-self: start; }
   .vl-day h2 { top: 112px; }
 }
