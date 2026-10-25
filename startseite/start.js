@@ -276,6 +276,39 @@
   }
 
   // ---------- Spiel empfehlen -> /api/empfehlung ----------
+  // ---------- Updates: Liste aus _start/updates.json, "neu"-Marke solange das neuste Datum noch nicht gesehen wurde ----------
+  (function () {
+    var dlg = $('upd'), list = $('upd-list'), mark = $('upd-new'), data = null, KEY = 'lw-upd-seen';
+    if (!dlg) return;
+    var MON = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    function fmt(d) { var p = d.split('-'); return +p[2] + '. ' + MON[+p[1] - 1] + ' ' + p[0]; }
+    function ago(d) {
+      var n = Math.round((new Date(new Date().toISOString().slice(0, 10)) - new Date(d)) / 864e5);
+      return n <= 0 ? 'heute' : n === 1 ? 'gestern' : 'vor ' + n + ' Tagen';
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function show() {
+      list.innerHTML = data.map(function (u) {
+        return '<article class="upd-e"><div class="upd-h"><span class="upd-d">' + esc(fmt(u.d)) + '</span><span class="upd-ago">' + esc(ago(u.d)) + '</span>' +
+          '<span class="upd-g ' + esc((u.tag || '').toLowerCase()) + '">' + esc(u.tag || 'Update') + '</span></div>' +
+          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
+      }).join('');
+    }
+    function laden() {
+      return data ? Promise.resolve(data) : fetch('_start/updates.json?v=' + VER, { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (j) { data = j; return j; });
+    }
+    var VER = (document.querySelector('script[src*="start.js"]').src.split('v=')[1] || '1');
+    function gesehen() { try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; } }
+    laden().then(function (j) { if (j.length && j[0].d > gesehen()) mark.hidden = false; }, function () {});
+    $('upd-open').addEventListener('click', function () {
+      dlg.showModal();
+      laden().then(function () { show(); if (data.length) { try { localStorage.setItem(KEY, data[0].d); } catch (e) {} mark.hidden = true; } },
+        function () { list.innerHTML = '<p class="upd-load">&gt; fehler: Updates konnten nicht geladen werden.</p>'; });
+    });
+    $('upd-close').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+  })();
+
   var tip = $('tip'), form = $('tip-form'), msg = $('tip-msg');
   var send = form.querySelector('[type="submit"]');
   function say(text, cls) { msg.textContent = text; msg.className = cls || ''; }
