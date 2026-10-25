@@ -157,6 +157,7 @@
       let tot = 0; const gew = kand.map(f => { let g = (RAR_FAKTOR[f.rar] || 1) * (f.lebt === 'wasser' ? 2 : 1); if (f.bos && CAM.tageslicht(now) > 0.6) g *= 0.6; tot += g; return g; });
       let q = Math.random() * tot, f = kand[0];
       for (let i = 0; i < kand.length; i++) { q -= gew[i]; if (q <= 0) { f = kand[i]; break; } }
+      if (f.lebt === 'beide' && imBild(x, y, 1.5)) continue;   // sichtbare Tiere tauchen nie vor deinen Augen auf
       if (!W.kannStehen(f, x, y)) continue;
       const m = W.wildMob(x, y, now, f.id, Welt.wildLevel(x, y, Math.random()));
       const e = neu(m, x, y, now, W.nextHerde++, true); e.scheu = false;
