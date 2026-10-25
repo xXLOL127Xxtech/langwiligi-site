@@ -1,6 +1,15 @@
 [
 {
 "d":"2026-10-25",
+"z":"12:30",
+"a":"Startseite",
+"t":"Beschriftung «Reihenfolge der Spiele» statt «der Karten»",
+"tag":"Update",
+"pr":null,
+"b":"intelligent-ptolemy-1m0l84"
+},
+{
+"d":"2026-10-25",
 "z":"12:01",
 "a":"Updates",
 "t":"Neue Seite /updates/ mit allen Änderungen samt Uhrzeit, Startseite zeigt die letzten 3 Tage",
