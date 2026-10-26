@@ -1,4 +1,8 @@
 [
+  { "d": "2026-10-26", "t": "Bessere Auffindbarkeit bei Google", "tag": "Intern", "p": [
+    "Jede Spielseite enthält jetzt eine Beschreibung und Links zu ähnlichen Spielen, die Suchmaschinen lesen können",
+    "Die Updates-Seite wird nicht mehr in Suchmaschinen angezeigt"
+  ] },
   { "d": "2026-10-25", "t": "Catch a Mob: Wassertiere stabil", "tag": "Update", "p": [
     "In der Gegend gibt es höchstens 3 reine Wassertiere und 1 Tier für Land und Wasser. Es kommen keine neuen dazu, wenn du ins Wasser gehst oder dich bewegst",
     "Tiere verschwinden nie mehr vor deinen Augen, sondern erst ausserhalb des Bildes",
