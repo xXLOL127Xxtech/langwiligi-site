@@ -165,6 +165,31 @@ for f in "$BUILD"/*/index.html; do
     }
     { print }
   ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+
+  # Lesbarer Text für Google: Die Spiele zeichnen fast alles per JavaScript, im HTML steht sonst kaum Text.
+  # Darum kommt vor </body> ein kurzer Infoblock (optisch ausgeblendet, kein Einfluss aufs Layout)
+  # mit Beschreibung, Spielmodi und Links zu verwandten Spielen. Die Links helfen auch, dass Google alle Spiele findet.
+  rel="" nrel=0
+  typ1="$(meta_raw spiel-typ "$src" | cut -d, -f1 | trim)"
+  for other in "$SRC"/*/index.html; do
+    oslug="$(basename "$(dirname "$other")")"
+    [ "$oslug" = "$slug" ] && continue
+    if [ -n "$typ1" ] && ! meta_raw spiel-typ "$other" | tr ',' '\n' | trim | grep -qxF "$typ1"; then continue; fi
+    rel+="<li><a href=\"../$oslug/\">$(title_raw "$other" | html_escape)</a></li>"
+    nrel=$((nrel + 1))
+    [ "$nrel" -ge 6 ] && break
+  done
+  info="<section class=\"lw-seo\" aria-label=\"Über dieses Spiel\" style=\"position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0\">"
+  info+="<h2>$(printf '%s' "$gname" | html_escape): $(printf '%s' "$wie" | html_escape)</h2>"
+  info+="<p>$d_html</p>"
+  info+="<p>$(printf '%s' "$name" | html_escape) läuft direkt im Browser auf Windows, Mac, Linux und Chromebook, gesteuert mit Tastatur und Touchpad. Kein Download, kein Login, keine Werbung.</p>"
+  [ -n "$rel" ] && info+="<h3>Ähnliche Spiele</h3><ul>$rel</ul>"
+  info+="<p><a href=\"../\">Alle Spiele auf KEI Langwiligi site</a></p></section>"
+  INFO="$info" awk '
+    { lines[NR] = $0 }
+    /<\/body>/ { last = NR }
+    END { for (i = 1; i <= NR; i++) { if (i == last) { j = index(lines[i], "</body>"); print substr(lines[i], 1, j - 1) ENVIRON["INFO"] substr(lines[i], j) } else print lines[i] } }
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
 done
 # Wann kam das Spiel dazu? (Unix-Zeit des ersten Commits; ohne Git bzw. noch nicht eingecheckt: jetzt)
 added() {
@@ -287,7 +312,6 @@ ticker+="<span>Kein Download</span><span>Kein Login</span><span>Keine Langeweile
   echo '<?xml version="1.0" encoding="UTF-8"?>'
   echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
   echo "  <url><loc>$SITE/</loc></url>"
-  echo "  <url><loc>$SITE/updates/</loc></url>"
   for dir in "$SRC"/*/; do
     [ -f "$dir/index.html" ] || continue
     slug="$(basename "$dir")"
