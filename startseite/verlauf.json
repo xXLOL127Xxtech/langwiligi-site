@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-27",
+"z":"12:30",
+"a":"Golf-Tour",
+"t":"Helle Texte auf Zählkarte und Lobby dunkler, damit sie lesbar sind",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"ccr-a1aee303-5xhfdb"
+},
+{
+"d":"2026-10-27",
 "z":"12:00",
 "a":"Golf-Tour",
 "t":"Weisse Schrift auf hellem Grund im Spiel behoben, Anzeigen wieder dunkel",
