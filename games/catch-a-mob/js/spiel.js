@@ -43,11 +43,18 @@
     c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x, y - u, 5.5 * u, 2 * u, 0, 0, 6.3); c.fill();
     CAM.zeichneMensch(c, x, y - 0.6 * u, ts, col, dir, gehen, tick, CAM.lookVon(extra && extra.look || name)); }
     if (extra && extra.lv) name = name + ' · Lv ' + extra.lv;
+    const botTag = name && extra && extra.tag;
+    if (botTag) name += '        ';
     if (name) {
       c.font = '700 ' + Math.max(11, Math.round(ts * 0.3)) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
       const tw = c.measureText(name).width + 8;
       c.fillStyle = 'rgba(8,6,16,.7)'; c.fillRect(x - tw / 2, y - 25 * u - ts * 0.22, tw, ts * 0.34);
       c.fillStyle = extra && extra.farbe || '#f2efe8'; c.fillText(name, x, y - 25 * u + ts * 0.03);
+      if (botTag) {
+        // Kennzeichnung "BOT" am rechten Rand des Namensschilds
+        const bw = c.measureText('BOT').width + 6, bx = x + tw / 2 - bw - 1, by = y - 25 * u - ts * 0.2;
+        c.fillStyle = '#ff6b5e'; c.fillRect(bx, by, bw, ts * 0.3); c.fillStyle = '#1a0a08'; c.fillText('BOT', bx + bw / 2, y - 25 * u + ts * 0.03);
+      }
     }
     if (extra && extra.blase) { c.font = Math.round(ts * 0.6) + 'px system-ui,"Segoe UI Emoji",sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(extra.blase, x, y - 30 * u - ts * 0.3); }
   }
@@ -160,7 +167,7 @@
       const tpx = tr.px === undefined ? tr.x + 0.5 : tr.px, tpy = tr.py === undefined ? tr.y + 0.5 : tr.py;
       if (tpx < vx - 2 || tpx > vx + W / TS + 2 || tpy < vy - 2 || tpy > vy + H / TS + 2) continue;
       const aus = S.trainerT[tr.id] && now - S.trainerT[tr.id] < 10 * 60 * 1000;
-      liste.push({ y: tpy + 0.5, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tpx), sy(tpy + 0.5), TS, tr.farbe, tr.dir, !!tr.geht, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', blase: tr.alarm || tr.z === 'prov' ? '❗' : '' }); ctx.globalAlpha = 1; } });
+      liste.push({ y: tpy + 0.5, f: () => { ctx.globalAlpha = aus ? 0.55 : 1; person(ctx, sx(tpx), sy(tpy + 0.5), TS, tr.farbe, tr.dir, !!tr.geht, aus ? '' : tr.name, tick, { farbe: '#ffb4a8', tag: 'Bot', blase: tr.alarm || tr.z === 'prov' ? '❗' : '' }); ctx.globalAlpha = 1; } });
     }
     for (const b of CAM.Bots.liste) {
       if (b.x < vx - 2 || b.x > vx + W / TS + 2 || b.y < vy - 2 || b.y > vy + H / TS + 2) continue;
@@ -271,10 +278,10 @@
     $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Catch a Mob<br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online';
     const z = S.ziel; let h = '';
     if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : z.z.meta === 6 ? 'Arena' : z.z.meta === 9 ? 'Wegweiser lesen' : z.z.meta === 10 ? 'Rangliste ansehen' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
-    else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
+    else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' (Bot) kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
-    else if (z && z.typ === 'bot') h = z.b.name + ' (Lv ' + z.b.lv + '): Duell oder Überfall';
+    else if (z && z.typ === 'bot') h = z.b.name + ' (Lv ' + z.b.lv + '): Duell, Freundschaftskampf oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>R</kbd> Rangliste · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
