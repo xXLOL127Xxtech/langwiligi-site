@@ -1,6 +1,36 @@
 [
 {
 "d":"2026-10-29",
+"z":"23:30",
+"a":"Catch a Mob",
+"t":"Spieler tauchen öfter in deiner Nähe auf",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"pensive-ptolemy-0jciwr"
+},
+{
+"d":"2026-10-29",
+"z":"23:30",
+"a":"Catch a Mob",
+"t":"Freundschaftskampf gegen Spieler ohne Einsatz",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"pensive-ptolemy-0jciwr"
+},
+{
+"d":"2026-10-29",
+"z":"23:30",
+"a":"Catch a Mob",
+"t":"Trainer sind mit «BOT» gekennzeichnet",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"pensive-ptolemy-0jciwr"
+},
+{
+"d":"2026-10-29",
 "z":"22:00",
 "a":"Catch a Mob",
 "t":"Bäume sind begehbar und blockieren nicht mehr",

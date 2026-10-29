@@ -1,4 +1,9 @@
 [
+  { "d": "2026-10-29", "t": "Catch a Mob: Spieler in der Nähe, Freundschaftskämpfe, Bot-Markierung", "tag": "Update", "p": [
+    "Andere «Spieler» (NPC) tauchen jetzt regelmässig in deiner Nähe auf, damit du öfter auf jemanden stösst",
+    "Neu: Freundschaftskampf gegen Spieler – gleiche Stufe, kein Einsatz, nichts geht verloren. Du kannst ihn anbieten oder annehmen, wenn dich jemand herausfordert",
+    "Trainer sind jetzt klar mit «BOT» gekennzeichnet (über dem Kopf, im Menü und im Hinweis)"
+  ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Bäume begehbar", "tag": "Update", "p": [
     "Bäume sind kein Hindernis mehr: man kann einfach durchlaufen"
   ] },

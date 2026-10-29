@@ -643,7 +643,7 @@
   A.trainerMenue = async function (tr) {
     const anz = Math.max(tr.anz, Math.min(CAM.TEAM_MAX, S.save.team.length)), gold = 30 + tr.lv * 10 * tr.anz;
     const r = await UI.choose([{ label: 'Zum Kampf herausfordern', sub: CAM.lebend() ? 'Belohnung bei Sieg ' + gold + ' Gold' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() }, { label: 'Zurück' }],
-      { title: tr.name, sub: 'Stufe ' + tr.lv + ' · ' + anz + ' Mobs · kein Einsatz', numbers: false });
+      { title: tr.name + ' (Bot)', sub: 'Computer-Trainer · Stufe ' + tr.lv + ' · ' + anz + ' Mobs · kein Einsatz', numbers: false });
     if (r === 0) await A.trainerKampf(tr);
   };
 
