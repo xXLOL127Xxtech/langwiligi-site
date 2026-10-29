@@ -6,7 +6,7 @@
 "t":"Chill-Lounge mit ruhigen Spielen, Typ «Chill» neu",
 "tag":"Neu",
 "k":"Startseite",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -16,7 +16,7 @@
 "t":"Spiele ohne Filter in zufälliger Reihenfolge",
 "tag":"Update",
 "k":"Startseite",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -26,7 +26,7 @@
 "t":"Bot-Modus (3 Stufen), Tastatursteuerung, grösseres Layout am Laptop, längere Runden",
 "tag":"Neu",
 "k":"Spielmechanik",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -36,7 +36,7 @@
 "t":"Bot-Modus (3 Stufen)",
 "tag":"Neu",
 "k":"Spielmechanik",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -46,7 +46,7 @@
 "t":"Bot-Modus (3 Stufen)",
 "tag":"Neu",
 "k":"Spielmechanik",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -56,7 +56,7 @@
 "t":"Bot-Stufen mit Suche, Schwer schlägt Mittel und Leicht",
 "tag":"Update",
 "k":"Balance",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -66,7 +66,7 @@
 "t":"Bot-Stufen mit Suche, Schwer schlägt Mittel und Leicht",
 "tag":"Update",
 "k":"Balance",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -76,7 +76,7 @@
 "t":"Stärke-Wahl, Bot passt sinnvoll",
 "tag":"Update",
 "k":"Spielmechanik",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -86,7 +86,7 @@
 "t":"Remis-Regel gegen endlose Partien",
 "tag":"Update",
 "k":"Spielmechanik",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -96,7 +96,7 @@
 "t":"Bot «Schwer» braucht nur noch Bruchteile einer Sekunde",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -106,7 +106,7 @@
 "t":"Bot «Schwer» erkennt Gewinnzüge des Gegners",
 "tag":"Update",
 "k":"Balance",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -116,7 +116,7 @@
 "t":"Komplett auf Deutsch übersetzt",
 "tag":"Update",
 "k":"Oberfläche",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -126,7 +126,7 @@
 "t":"Hinweis zum Handy entfernt",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
@@ -136,7 +136,7 @@
 "t":"Falsches Wort in der Brettgrösse korrigiert",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":97,
 "b":"trusting-hamilton-o4s7fy"
 },
 {
