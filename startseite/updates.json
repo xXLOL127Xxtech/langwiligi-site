@@ -1,4 +1,7 @@
 [
+  { "d": "2026-10-29", "t": "Catch a Mob: Bäume begehbar", "tag": "Update", "p": [
+    "Bäume sind kein Hindernis mehr: man kann einfach durchlaufen"
+  ] },
   { "d": "2026-10-29", "t": "Chill-Lounge und zufällige Reihenfolge", "tag": "Neu", "p": [
     "Neuer Knopf «Chill-Lounge» auf der Startseite: zeigt nur ruhige Spiele ohne Zeitdruck und ohne Action (Schach, Dame, Go, Mancala, Reversi, 2048, Golf-Tour, Strassenbaron und mehr)",
     "Ohne Filter werden die Spiele jetzt bei jedem Besuch zufällig gemischt, damit alle mal oben stehen. «Neueste zuerst» und «Beste Bewertung» gibt es weiterhin"
