@@ -73,6 +73,7 @@
       aktual(); luftIv = setInterval(aktual, 250);
     }
     UI.snd('kampf');
+    if (CAM.Musik) CAM.Musik.kampf(cfg.kind === 'raid', cfg.biome);
     UI.log(esc(cfg.intro || ''));
     await sleep(1000);
     if (cfg.intro) await UI.say(cfg.intro, 1400);
@@ -106,6 +107,7 @@
       if (luftIv) { clearInterval(luftIv); luftEl().classList.add('hidden'); }
       $('bbar').classList.add('hidden'); $('bmenu').innerHTML = '';
       K.aktiv = null;
+      if (CAM.Musik) CAM.Musik.kampfEnde();
     }
     const res = { b, abgebrochen: BS.ende && !b.over, ertrunken: !!BS.ertrunken };
     BS = null;

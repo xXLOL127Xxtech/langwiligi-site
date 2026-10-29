@@ -1,4 +1,11 @@
 [
+  { "d": "2026-10-29", "t": "Catch a Mob: Musik und neue Level-Zonen", "tag": "Update", "p": [
+    "Neue Musik: jedes Gebiet hat seinen eigenen Song, von klassisch (Wiesen, Wald) über Retro (Eis, Vulkan) bis Arcade (Kristallschlucht)",
+    "Im Kampf wird die Musik schneller und härter, bei Bosskämpfen spielt eine Orgel-Toccata. Im Menü läuft das Titellied",
+    "Neue Level-Zonen: in den ersten 20 Feldern um den Start sind die wilden Mobs Stufe 3 bis 5, danach geht es ab Stufe 6 ganz langsam nach oben. Stufe 100 gibt es erst ganz aussen",
+    "Rund um den Start hat es mehr wilde Mobs, die du schlagen und fangen kannst",
+    "Deine Mobs können jetzt bis Stufe 100 wachsen"
+  ] },
   { "d": "2026-10-27", "t": "Golf-Tour: Texte wieder lesbar", "tag": "Update", "p": [
     "Zählkarte und Lobby: Birdie, Eagle, Bogey, aktuelle Bahn und Fehlermeldungen sind auf dem hellen Grund jetzt gut lesbar",
     "Die Anzeigen im Spiel (Bahn, Wind, Schläger, Hinweise) sind wieder dunkel hinterlegt, damit die weisse Schrift lesbar ist"

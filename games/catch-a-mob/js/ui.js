@@ -153,7 +153,7 @@
 
   // ---------- Ton ----------
   let ac = null;
-  UI.entsperrenTon = function () { if (!ac) { try { ac = new (G.AudioContext || G.webkitAudioContext)(); } catch (e) { ac = false; } } else if (ac && ac.state === 'suspended') ac.resume(); };
+  UI.entsperrenTon = function () { if (CAM.Musik) CAM.Musik.entsperren(); if (!ac) { try { ac = new (G.AudioContext || G.webkitAudioContext)(); } catch (e) { ac = false; } } else if (ac && ac.state === 'suspended') ac.resume(); };
   function ton(f, d, typ, vol, delay, glide) {
     if (!ac || UI.muted) return;
     const t0 = ac.currentTime + (delay || 0), o = ac.createOscillator(), g = ac.createGain();
