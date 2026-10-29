@@ -8,6 +8,10 @@
     "Die Weltkarte kannst du zoomen (Plus, Minus oder Klick) und zeigt nur, was du schon gesehen hast",
     "Alte Spielstände ziehen automatisch mit um und bleiben im bekannten Gebiet"
   ] },
+  { "d": "2026-10-29", "t": "Catch a Mob: Trainer ansprechen", "tag": "Update", "p": [
+    "Sprichst du einen Trainer an (Taste E), siehst du zuerst seine Stufe, die Anzahl Mobs und die Belohnung und kannst den Kampf bewusst starten oder zurückgehen",
+    "Angriffslustige Trainer überfallen dich weiterhin, wenn sie dich erreichen"
+  ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Musik und neue Level-Zonen", "tag": "Update", "p": [
     "Neue Musik: jedes Gebiet hat seinen eigenen Song, von klassisch (Wiesen, Wald) über Retro (Eis, Vulkan) bis Arcade (Kristallschlucht)",
     "Im Kampf wird die Musik schneller und härter, bei Bosskämpfen spielt eine Orgel-Toccata. Im Menü läuft das Titellied",

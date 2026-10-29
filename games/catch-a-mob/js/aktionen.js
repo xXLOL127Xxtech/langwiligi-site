@@ -639,6 +639,14 @@
     if (r === 0) { await A.wildKampf(m, { entity: w, intro: 'Du forderst ' + mobNameFull(m) + ' (Lv ' + m.lv + ') heraus!' }); }
   };
 
+  // Ansprechen eines Trainers (E): erst anschauen, dann entscheiden. Überfälle durch angriffslustige Trainer laufen weiter direkt ohne Menü.
+  A.trainerMenue = async function (tr) {
+    const anz = Math.max(tr.anz, Math.min(CAM.TEAM_MAX, S.save.team.length)), gold = 30 + tr.lv * 10 * tr.anz;
+    const r = await UI.choose([{ label: 'Zum Kampf herausfordern', sub: CAM.lebend() ? 'Belohnung bei Sieg ' + gold + ' Gold' : 'Dein Team ist erschöpft', disabled: !CAM.lebend() }, { label: 'Zurück' }],
+      { title: tr.name, sub: 'Stufe ' + tr.lv + ' · ' + anz + ' Mobs · kein Einsatz', numbers: false });
+    if (r === 0) await A.trainerKampf(tr);
+  };
+
   A.trainerKampf = async function (tr, opt) {
     opt = opt || {};
     if (S.busy || !CAM.lebend()) return false;

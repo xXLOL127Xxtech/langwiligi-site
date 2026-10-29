@@ -320,7 +320,7 @@
       if (z.typ === 'bau') {
         const m = z.z.meta;
         if (m === 1) await A.heilhaus(); else if (m === 2) await A.laden(); else if (m === 3) await A.haendler(); else if (m === 4) await A.wegstein(); else if (m === 5) await A.runeMenue(z.z); else if (m === 6) await A.arena(z.z); else if (m === 9) await A.wegweiser(z.z); else if (m === 10) await A.rangliste();
-      } else if (z.typ === 'trainer') { menueOffen = false; await A.trainerKampf(z.tr); }
+      } else if (z.typ === 'trainer') { await A.trainerMenue(z.tr); }
       else if (z.typ === 'mob') await A.wildMenue(z.w);
       else if (z.typ === 'spieler') await A.spielerMenue(z.p);
       else if (z.typ === 'bot') await A.botMenue(z.b);
