@@ -166,7 +166,7 @@ label.lab{font-size:13px;color:var(--dim);display:block;margin-bottom:4px}
       <li><b>Held:</b> Tippe auf den Helden (oder sein Bild unten links), dann auf ein Ziel, um ihn zu bewegen. Er steigt im Kampf bis Stufe 10 auf.</li>
       <li><b>Zauber:</b> Feuerregen und Verstärkung unten links: Zauber antippen, dann Ziel antippen.</li>
       <li><b>Wellen:</b> Rufst du eine Welle mit dem Totenkopf-Symbol früher, gibt es Bonus-Münzen und kürzere Zauber-Abklingzeiten.</li>
-      <li><b>Karte:</b> Ziehen verschiebt, Mausrad oder zwei Finger zoomen.</li>
+      <li><b>Karte:</b> Ziehen verschiebt, Mausrad, Tasten + / – oder zwei Finger zoomen.</li>
     </ul>
     <h3>Tastatur</h3>
     <ul><li><b>Leertaste</b> nächste Welle · <b>H</b> Held · <b>1 / 2</b> Zauber · <b>F</b> Tempo · <b>P / Esc</b> Pause</li></ul>
@@ -3321,6 +3321,8 @@ window.addEventListener('keydown', e => {
   else if (k === 'h') { sel = sel && sel.t === 'hero' ? null : { t: 'hero' }; armed = null; }
   else if (k === '1' || k === '2') { hudAction({ k: k === '1' ? 'sp_feuer' : 'sp_verst' }, 'mouse'); }
   else if (k === 'f') cmd({ c: 'speed' });
+  else if (k === '+' || k === '=') zoomAt(innerWidth / 2, innerHeight / 2, 1.12);
+  else if (k === '-' || k === '_') zoomAt(innerWidth / 2, innerHeight / 2, 1 / 1.12);
   else if (k === 'p' || k === 'escape') { if (sel && k === 'escape') { sel = null; armed = null; } else if (net) cmd({ c: 'pause' }); else togglePause(); }
 });
 // ================================================================

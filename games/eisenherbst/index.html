@@ -2239,7 +2239,7 @@ function fxLocalSwing(e) { sfx('swing'); }
 
 /* ---------- Ton ---------- */
 let AC = null, muted = false;
-function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = false; } } return AC; }
+function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = false; } } if (AC && AC.state === 'suspended') AC.resume().catch(() => {}); return AC; }
 function tone(f, d, type, vol, slide) { const a = audio(); if (!a || muted) return; const o = a.createOscillator(), g = a.createGain(); o.type = type || 'square'; o.frequency.value = f; if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * slide), a.currentTime + d); g.gain.value = vol || 0.05; g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + d); o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + d); }
 function noiseB(d, vol, hp) { const a = audio(); if (!a || muted) return; const n = a.sampleRate * d, b = a.createBuffer(1, n, a.sampleRate), ch = b.getChannelData(0); for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / n); const s = a.createBufferSource(); s.buffer = b; const g = a.createGain(); g.gain.value = vol || 0.08; const f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp || 600; s.connect(f); f.connect(g); g.connect(a.destination); s.start(); }
 let sfxLast = {};
@@ -2375,18 +2375,18 @@ function drawLootItem(c, l, t) {
   else { px(c, sx - 2, sy - 3, 4, 3, col); }
   const gl = (Math.sin(t * 4 + l.x) + 1) * 0.5; px(c, sx + 3, sy - 6 - (gl * 2 | 0), 1, 1, '#fff6c0');
 }
-const SW = 144, SCR = document.createElement('canvas'); SCR.width = SW; SCR.height = SW; const SC = SCR.getContext('2d', { willReadFrequently: true });
+const SW = 144, SCR = document.createElement('canvas'); SCR.width = SW; SCR.height = SW; const SC = SCR.getContext('2d');
+const OCV = document.createElement('canvas'); OCV.width = SW; OCV.height = SW; const OC = OCV.getContext('2d');
+// Dunkler Rand um die Figur: vier verschobene Kopien einfärben, ohne Pixel auszulesen (getImageData wäre pro Bild und Figur zu teuer)
 function outlined(c, sx, sy, fn) {
   SC.clearRect(0, 0, SW, SW);
   fn(SC, 72, 104);
   c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(sx, sy + 1, 7, 2.4, 0, 0, 6.3); c.fill();
-  const id = SC.getImageData(0, 0, SW, SW), d = id.data, o = new Uint8ClampedArray(d), R4 = SW * 4;
-  for (let y = 1; y < SW - 1; y++) for (let x = 1; x < SW - 1; x++) {
-    const i = (y * SW + x) * 4; if (d[i + 3] > 40) continue;
-    if (d[i + 7] > 200 || d[i - 1] > 200 || d[i + R4 + 3] > 200 || d[i - R4 + 3] > 200) { o[i] = 28; o[i + 1] = 18; o[i + 2] = 12; o[i + 3] = 255; }
-  }
-  id.data.set(o); SC.putImageData(id, 0, 0);
-  c.drawImage(SCR, sx - 36, sy - 52, 72, 72);
+  OC.globalCompositeOperation = 'source-over'; OC.clearRect(0, 0, SW, SW);
+  OC.drawImage(SCR, 1, 0); OC.drawImage(SCR, -1, 0); OC.drawImage(SCR, 0, 1); OC.drawImage(SCR, 0, -1);
+  OC.globalCompositeOperation = 'source-in'; OC.fillStyle = 'rgb(28,18,12)'; OC.fillRect(0, 0, SW, SW);
+  OC.globalCompositeOperation = 'source-over'; OC.drawImage(SCR, 0, 0);
+  c.drawImage(OCV, sx - 36, sy - 52, 72, 72);
 }
 function drawEnt(c, e, t) {
   const sx = Math.round(e.x - cam.x), sy = Math.round(e.y - cam.y);
@@ -3296,6 +3296,8 @@ setInterval(() => {
   if (!document.hidden || G.phase !== 'play' || !G.host || !G.room) return;
   for (let t = 0; t < el; t += 0.1) { hostStep(0.1); hostBroadcast(0.1); }
 }, 250);
+// Allein spielen: beim Tab-Wechsel Pause (online läuft die Welt weiter)
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.phase === 'play' && !G.room && !UI.cur) pauseMenu(); });
 addEventListener('beforeunload', () => { try { saveGame(); } catch (e) { /* egal */ } });
 addEventListener('resize', resize);
 

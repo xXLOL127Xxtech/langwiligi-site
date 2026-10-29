@@ -1420,6 +1420,7 @@ function pump() {
   const now = performance.now();
   let dt = Math.min(1, (now - simLast) / 1000); simLast = now;
   if (!S || mode === 'guest' || mode === 'joining' && !S) return;
+  if (document.hidden && (mode === 'solo' || mode === 'demo')) return;   // allein im Hintergrund-Tab: Spiel steht still
   const n = Math.max(1, Math.ceil(dt / 0.02));
   for (let i = 0; i < n; i++) step(dt / n);
 }

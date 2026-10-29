@@ -702,7 +702,7 @@ function startGame() {
 
 function startBuild(p) {
   hideOverlay();
-  S.phase = 'build'; S.builder = p; S.tool = 'stone';
+  S.phase = 'build'; S.builder = p; S.tool = 'stone'; S.erase = false;
   bar.style.setProperty('--accent', TEAM[p]);
   bannerMsg(`${TEAM_NAME[p]} baut!`, TEAM[p]);
   renderTop(); renderBuildBar();
@@ -2026,8 +2026,9 @@ function renderBuildBar() {
   });
   const req = tools().filter(t => MATS[t].unit).map(t => { const n = countType(S.builder, t), q = need(t); return `${MATS[t].name} <span class="${n === q ? 'ok' : 'bad'}">${n}/${q}</span>`; }).join(' · ');
   h += `</div><div class="info"><b>${MATS[S.tool].icon} ${MATS[S.tool].name}:</b> ${MATS[S.tool].desc}<br>
-    <span class="req">${req} · <span class="muted">Rechtsklick = abreissen</span></span></div>`;
+    <span class="req">${req} · <span class="muted">Abreissen: Rechtsklick, Shift+Klick oder Taste E</span></span></div>`;
   h += `<div class="pts"><b>${P.points}</b> Punkte</div>
+    <button class="btn ${S.erase ? 'primary' : ''}" data-act="erase" title="Abreissen ein/aus (Taste E)">🧱 Abreissen${S.erase ? ' ✔' : ''}</button>
     <button class="btn" data-act="random" title="Zufälliges Schloss">🎲 Zufall</button>
     <button class="btn" data-act="clear">🗑️ Leeren</button>
     <button class="btn primary" data-act="done" ${buildOk(S.builder) ? '' : 'disabled'}>Fertig ✔</button>`;
@@ -2074,12 +2075,13 @@ function renderBattleBar() {
 
 bar.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return;
-  if (b.dataset.tool) { S.tool = b.dataset.tool; sfx('tick'); renderBuildBar(); }
+  if (b.dataset.tool) { S.tool = b.dataset.tool; S.erase = false; sfx('tick'); renderBuildBar(); }
   if ((b.dataset.ammo || b.dataset.buy) && (isNpcTurn() || !myTurn())) return;
   if (b.dataset.ammo) { S.players[S.turn].cur = b.dataset.ammo; sfx('tick'); renderBattleBar(); }
   if (b.dataset.buy) { if (NET.lock) netIssue('buy', {tp: b.dataset.buy}); else buyTroop(b.dataset.buy); }
   const a = b.dataset.act;
   if (a === 'random') { randomBuild(S.builder); renderBuildBar(); }
+  if (a === 'erase') { S.erase = !S.erase; sfx('tick'); renderBuildBar(); }
   if (a === 'clear') { clearZone(S.builder); sfx('remove'); renderBuildBar(); }
   if (a === 'done') finishBuild();
 });
@@ -2157,7 +2159,7 @@ cv.addEventListener('pointerdown', e => {
   const r = Math.floor(y / CS), c = Math.floor(x / CS);
   cv.setPointerCapture(e.pointerId);
   if (S.phase === 'build') {
-    painting = e.button === 2 ? 2 : 1; lastCell = r * COLS + c;
+    painting = (e.button === 2 || e.shiftKey || S.erase) ? 2 : 1; lastCell = r * COLS + c;
     if (painting === 1) placeAt(r, c, true); else removeAt(r, c);
   } else if (S.phase === 'battle' && !isNpcTurn() && myTurn()) {
     if (S.bs === 'flying') { if (NET.lock) netIssue('split'); else S.proj.filter(p => p.type === 'cluster' && !p.dead).forEach(splitCluster); return; }
@@ -2192,7 +2194,8 @@ window.addEventListener('keydown', e => {
   if (e.key === 'm' || e.key === 'M') { $('muteBtn').click(); return; }
   if (ov.classList.contains('show')) return;
   const n = parseInt(e.key);
-  if (S.phase === 'build' && n >= 1 && n <= tools().length) { S.tool = tools()[n - 1]; sfx('tick'); renderBuildBar(); }
+  if (S.phase === 'build' && n >= 1 && n <= tools().length) { S.tool = tools()[n - 1]; S.erase = false; sfx('tick'); renderBuildBar(); }
+  if (S.phase === 'build' && (e.key === 'e' || e.key === 'E')) { S.erase = !S.erase; sfx('tick'); renderBuildBar(); }
   if (S.phase === 'battle' && !isNpcTurn() && myTurn()) {
     if (n >= 1 && n <= 6 && S.bs === 'aim') {
       const a = AMMO_KEYS[n - 1];
@@ -2708,7 +2711,7 @@ function drawBuildOverlay() {
   ctx.fillText(`Hier baut ${TEAM_NAME[1 - S.builder]} – nicht spicken!`, fx + fw / 2, fh / 2 + 34);
   // Vorschau
   const h = S.hover;
-  if (h && !painting) {
+  if (h && !painting && !S.erase) {
     const tr = buildTarget(h.r, h.c, true);
     if (tr != null) {
       const ok = canAfford(S.tool);

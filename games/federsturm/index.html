@@ -744,7 +744,7 @@ const Sfx = (() => {
   let ac = null, master = null, noise = null;
   const last = {};
   function init() {
-    if (ac) return;
+    if (ac) { if (ac.state === 'suspended') ac.resume().catch(() => {}); return; }
     try {
       ac = new (window.AudioContext || window.webkitAudioContext)();
       master = ac.createGain(); master.gain.value = save.mute ? 0 : 0.5; master.connect(ac.destination);

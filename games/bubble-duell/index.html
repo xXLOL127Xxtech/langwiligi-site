@@ -1302,7 +1302,17 @@ rafId = requestAnimationFrame(frame);
 // Sicherheitsnetz: falls der Browser Frames verschluckt, Schleife neu anstossen
 setInterval(() => { if (!document.hidden && performance.now() - last > 1000) { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(frame); } }, 1000);
 // Im Hintergrund-Tab läuft requestAnimationFrame nicht -> Start, Druck & Snapshots trotzdem weiter
-setInterval(() => { if (G.state === 'count' && now() >= G.playAt) beginPlay(); if (isPlaying()) timers(); }, 250);
+setInterval(() => { if (document.hidden && !G.online) return; if (G.state === 'count' && now() >= G.playAt) beginPlay(); if (isPlaying()) timers(); }, 250);
+// Allein im Hintergrund-Tab: Zeit steht still (Druck, Items und Ereignisse verschieben sich um die Abwesenheit)
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (G.online) return;
+  if (document.hidden) { hiddenAt = now(); return; }
+  if (!hiddenAt) return;
+  const d = now() - hiddenAt; hiddenAt = 0;
+  G.startT += d; G.playAt += d; G.nextItem += d; G.nextEvent += d; if (G.windUntil) G.windUntil += d;
+  last = performance.now();
+});
 setInterval(() => { if (G.online && isPlaying() && G.atk) sendSnap(); }, 3000);
 
 // =====================================================================

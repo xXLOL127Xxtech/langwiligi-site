@@ -1,4 +1,11 @@
 [
+  { "d": "2026-10-29", "t": "Laptop-Steuerung und Tab-Wechsel", "tag": "Update", "p": [
+    "Katapult-Krieg: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
+    "Weltenbrand und Kronenwacht: Zoomen auch mit den Tasten + und –",
+    "Eisenherbst und Schlangen-Arena: Allein im Hintergrund-Tab steht das Spiel still, Eisenherbst läuft flüssiger (Figuren-Umrisse ohne Pixel-Auslesen)",
+    "Bubble-Duell: Allein im Hintergrund-Tab läuft keine Zeit mehr weiter",
+    "Eisenherbst und Federsturm: Ton startet zuverlässig nach der ersten Eingabe"
+  ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Spieler in der Nähe, Freundschaftskämpfe, Bot-Markierung", "tag": "Update", "p": [
     "Andere «Spieler» (NPC) tauchen jetzt regelmässig in deiner Nähe auf, damit du öfter auf jemanden stösst",
     "Neu: Freundschaftskampf gegen Spieler – gleiche Stufe, kein Einsatz, nichts geht verloren. Du kannst ihn anbieten oder annehmen, wenn dich jemand herausfordert",
