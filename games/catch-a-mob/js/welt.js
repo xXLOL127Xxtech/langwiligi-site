@@ -13,7 +13,7 @@
   const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' }, 6: { n: 'Arena', wand: '#ddd0f4', dach: '#6a2fc4' } };
 
   CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
-  const Welt = CAM.Welt = { W: WB, H: WB, T, OFF, NR, RG, START, INNEN_R: 20, LV_DIST: 1800, BOT_R: 470, bereit: false, dorf: [], dorfLoad: [], trainer: [], boss: [], arena: [], schilder: new Map(), sicher: [], seed: 1 };
+  const Welt = CAM.Welt = { W: WB, H: WB, T, OFF, NR, RG, START, INNEN_R: 20, LV_DIST: 1800, bereit: false, dorf: [], dorfLoad: [], trainer: [], boss: [], arena: [], schilder: new Map(), sicher: [], seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function vn(x, y, sc, seed) {
@@ -323,6 +323,13 @@
     return R.dorf || Welt.dorf[0];
   };
   Welt.alleDoerfer = () => Welt.dorf.concat(Welt.dorfLoad);
+  const imRechteck = (d, x, y) => x >= d.rect.x1 && x <= d.rect.x2 && y >= d.rect.y1 && y <= d.rect.y2;
+  Welt.dorfAnPos = function (x, y) {   // wie dorfBei, aber auch für Gegenden, die gerade nicht geladen sind
+    const k = Welt.dorf.find(d => imRechteck(d, x, y));
+    if (k) return k;
+    const R = region(Math.floor(x / RG), Math.floor(y / RG));
+    return R.dorf && imRechteck(R.dorf, x, y) ? R.dorf : null;
+  };
   Welt.dorfMax = 8 + NR * NR;
 
   // ---------- Chunks (64 x 64) ----------
@@ -342,7 +349,8 @@
     const rx = Math.floor(px / RG), ry = Math.floor(py / RG);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) regionLaden(region(rx + dx, ry + dy));
     for (const R of regionen.values()) if (R.geladen && (Math.abs(R.rx - rx) > 2 || Math.abs(R.ry - ry) > 2)) regionEntladen(R);
-    const pcx = Math.floor(px / CHS), pcy = Math.floor(py / CHS);
+    pcx = Math.floor(px / CHS); pcy = Math.floor(py / CHS);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = chunks.get((pcy + dy) * 64 + pcx + dx); if (c && !c.gemalt) kartenFleck(c); }
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {   // höchstens ein neues Stück pro Takt, damit es nicht ruckelt
       const x = pcx + dx, y = pcy + dy;
       if (x >= 0 && y >= 0 && x < 64 && y < 64 && !chunks.has(y * 64 + x) && !(x * CHS >= OFF && x * CHS < OFF + W && y * CHS >= OFF && y * CHS < OFF + H)) { baueChunk(x, y); dy = 2; break; }
@@ -604,8 +612,10 @@
     }
     return img;
   }
+  let pcx = -99, pcy = -99;
   function kartenFleck(ch) {
-    if (!Welt.karte) return;
+    if (!Welt.karte || ch.gemalt || Math.abs(ch.cx - pcx) > 1 || Math.abs(ch.cy - pcy) > 1) return;   // nur wo du warst (nicht, wo NPC-Spieler Gelände erzeugen)
+    ch.gemalt = true;
     const n = CHS / KS, gx0 = ch.cx * CHS, gy0 = ch.cy * CHS;
     Welt.karte.getContext('2d').putImageData(punkte(Welt.karte.getContext('2d'), gx0, gy0, n, (x, y) => { const k = (y - gy0) * CHS + (x - gx0); return Welt.farbe(ch.t[k], ch.b[k]); }), gx0 / KS, gy0 / KS);
   }

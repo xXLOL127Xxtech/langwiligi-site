@@ -3,7 +3,8 @@
     "Die Welt ist über 25 Mal so gross: 4096 mal 4096 Felder. Das bisherige Gebiet mit den 8 Dörfern liegt jetzt in der Mitte",
     "Rundherum entstehen beim Laufen immer neue Gegenden mit vielen neuen Dörfern (mit Heilhaus, Laden und Wegstein), Trainern und Riesen-Arenen",
     "Je weiter du vom Start weg bist, desto stärker sind Mobs, Trainer und Riesen. Stufe 100 gibt es erst ganz aussen",
-    "Weit draussen gibt es keine NPC-Spieler mehr",
+    "NPC-Spieler sind jetzt über die ganze Welt verteilt (auch weit draussen), die Zahl der Spieler online pendelt zwischen etwa 20 und 40: einzelne gehen, neue kommen",
+    "Die Anzeige zählt NPC-Spieler und echte Mitspieler zusammen, und die NPC-Spieler tragen kein «Bot» mehr hinter dem Namen",
     "Die Weltkarte kannst du zoomen (Plus, Minus oder Klick) und zeigt nur, was du schon gesehen hast",
     "Alte Spielstände ziehen automatisch mit um und bleiben im bekannten Gebiet"
   ] },

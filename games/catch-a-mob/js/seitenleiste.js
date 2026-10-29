@@ -33,7 +33,7 @@
     l.sort((a, b) => b.abz - a.abz || b.lv - a.lv || b.fg - a.fg || (b.ich ? 1 : 0) - (a.ich ? 1 : 0));
     return l;
   }
-  const zeile = (e, i) => '<tr' + (e.ich ? ' class="ich"' : '') + '><td>' + (i + 1) + '</td><td class="nm"><i style="background:' + (CAM.FARBEN[e.col] || '#999') + '"></i>' + esc(e.name) + (e.bot ? '<small> Bot</small>' : '') + '</td><td>' + e.abz + '</td><td>' + e.lv + '</td><td>' + e.fg + '</td></tr>';
+  const zeile = (e, i) => '<tr' + (e.ich ? ' class="ich"' : '') + '><td>' + (i + 1) + '</td><td class="nm"><i style="background:' + (CAM.FARBEN[e.col] || '#999') + '"></i>' + esc(e.name) + '' + '</td><td>' + e.abz + '</td><td>' + e.lv + '</td><td>' + e.fg + '</td></tr>';
   function rangZeichnen() {
     const l = eintraege(), ich = l.findIndex(e => e.ich), top = l.slice(0, ZEILEN);
     let h = '<b class="ti">Rangliste</b><button class="x" title="Schliessen (R)">✕</button><table><tr><th>#</th><th>Name</th><th>' + Icons.html('badge', 14) + '</th><th>Lv</th><th>' + Icons.html('ball', 14, 'r') + '</th></tr>' + top.map(zeile).join('');

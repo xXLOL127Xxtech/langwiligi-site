@@ -268,13 +268,13 @@
       esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Stufe ' + CAM.maxLv() + ' · Fangstufe ' + CAM.fangStufe(S.save.team, S.save.fangXp).toFixed(1) + ' · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
       (S.online && S.pt >= 0 ? '<div class="party">Party: ' + A.partyListe().map(p => '<span><i style="background:' + (CAM.FARBEN[p.col] || '#999') + '"></i>' + esc(p.name) + '</span>').join(' ') + (A.partyListe().length ? '' : 'nur du') + '</div>' : '');
     const prot = (S.prot[S.idx] || 0) - now;
-    $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';
+    $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Catch a Mob<br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online';
     const z = S.ziel; let h = '';
     if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : z.z.meta === 6 ? 'Arena' : z.z.meta === 9 ? 'Wegweiser lesen' : z.z.meta === 10 ? 'Rangliste ansehen' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
-    else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell oder Überfall';
+    else if (z && z.typ === 'bot') h = z.b.name + ' (Lv ' + z.b.lv + '): Duell oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>R</kbd> Rangliste · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
@@ -344,7 +344,7 @@
   async function anleitung() {
     await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Beutel:</b> I · <b>Team:</b> T · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
       '<p><b>Ziel:</b> Fang Mobs im hohen Gras, gewinne die 8 Abzeichen in den Arenen und besiege die Riesen. Mit Veredlern verbesserst du deine Mobs. Dein Team hat 3 Plätze.</p>' +
-      '<p><b>Duelle:</b> Mit Bots und Mitspielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
+      '<p><b>Duelle:</b> Mit anderen Spielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
   }
 
   async function starterWahl() {
@@ -439,7 +439,7 @@
       if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
     }
     if (!CAM.lebend()) UI.toast('Dein Team ist erschöpft. Im Heilhaus werden alle Mobs geheilt.', 4000);
-    UI.toast(S.online ? 'Willkommen in der Welt ' + Netz.code() + '!' : 'Viel Spass im Bots-Modus!', 2500);
+    UI.toast(S.online ? 'Willkommen in der Welt ' + Netz.code() + '!' : 'Viel Spass in der Welt!', 2500);
   }
 
   A.beenden = function () {
