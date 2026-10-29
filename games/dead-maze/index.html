@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -65,7 +65,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 .bbtn{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:8px;align-items:center;text-align:left;padding:6px 8px 6px 6px;background:var(--panel-2);border:1px solid var(--line);border-radius:3px;color:var(--fg);cursor:pointer;font-family:var(--f-ui)}
 .bbtn:hover{border-color:var(--muted)}
 .bbtn canvas{grid-row:span 2;width:36px;height:36px}
-.bbtn .nm{font-weight:600;font-size:13.5px;line-height:1.15;overflow-wrap:break-word;padding-right:16px}
+.bbtn .nm{font-weight:600;line-height:1.15;overflow-wrap:break-word;hyphens:auto;padding-right:16px;font-size:12.5px}
 .bbtn .ct{font-family:var(--f-mono);font-size:12px;color:var(--hazard)}
 .bbtn kbd{position:absolute;top:5px;right:5px}
 .bbtn:last-child:nth-child(odd){grid-column:1/-1}
@@ -152,32 +152,32 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
   <header class="hud">
     <div class="brand">DEAD<span>MAZE</span></div>
     <div class="chips">
-      <div class="chip"><span class="lbl">Base</span><span class="val" id="hLives">20</span><span class="lifebar" id="hLifeWrap"><i id="hLifeBar"></i></span></div>
-      <div class="chip"><span class="lbl">Points</span><span class="val amber" id="hPoints">200</span></div>
-      <div class="chip"><span class="lbl">Wave</span><span class="val" id="hWave">0</span></div>
-      <div class="chip"><span class="lbl">Kills</span><span class="val" id="hKills">0</span></div>
+      <div class="chip"><span class="lbl">Basis</span><span class="val" id="hLives">20</span><span class="lifebar" id="hLifeWrap"><i id="hLifeBar"></i></span></div>
+      <div class="chip"><span class="lbl">Punkte</span><span class="val amber" id="hPoints">200</span></div>
+      <div class="chip"><span class="lbl">Welle</span><span class="val" id="hWave">0</span></div>
+      <div class="chip"><span class="lbl">Abschüsse</span><span class="val" id="hKills">0</span></div>
       <div class="chip"><span class="lbl">Combo</span><span class="val toxic" id="hCombo">–</span></div>
     </div>
     <div class="controls">
-      <button class="btn btn-go" id="btnWave" type="button"><span id="waveLbl">Start wave 1</span><kbd>Space</kbd></button>
-      <button class="btn" id="btnSpeed" type="button" title="Game speed (C)">1×</button>
+      <button class="btn btn-go" id="btnWave" type="button"><span id="waveLbl">Welle 1 starten</span><kbd>Leertaste</kbd></button>
+      <button class="btn" id="btnSpeed" type="button" title="Spieltempo (C)">1×</button>
       <button class="btn" id="btnPause" type="button" title="Pause (P)">Pause</button>
-      <button class="btn" id="btnMute" type="button">Sound on</button>
-      <button class="btn" id="btnMenu" type="button">Menu</button>
+      <button class="btn" id="btnMute" type="button">Ton an</button>
+      <button class="btn" id="btnMenu" type="button">Menü</button>
     </div>
   </header>
   <main class="stage">
     <div class="board-wrap">
-      <div class="board"><canvas id="game" aria-label="Game board: a maze the zombie horde walks through"></canvas></div>
+      <div class="board"><canvas id="game" aria-label="Spielfeld: ein Labyrinth, durch das die Zombie-Horde läuft"></canvas></div>
       <p class="hint" id="hint"></p>
     </div>
     <aside class="side">
-      <section class="panel"><h2>Defenses</h2><div class="build-grid" id="buildGrid"></div></section>
-      <section class="panel"><h2>Support</h2>
+      <section class="panel"><h2>Verteidigung</h2><div class="build-grid" id="buildGrid"></div></section>
+      <section class="panel"><h2>Unterstützung</h2>
         <div class="abil-row">
-          <button class="abtn" id="abAir" type="button"><b>Airstrike</b><span id="abAirS">Ready</span><kbd>Z</kbd></button>
-          <button class="abtn" id="abFrz" type="button"><b>Cryo bomb</b><span id="abFrzS">Ready</span><kbd>X</kbd></button>
-          <button class="abtn" id="abFix" type="button"><b>Reinforce</b><span id="abFixS">+3 · 120</span><kbd>R</kbd></button>
+          <button class="abtn" id="abAir" type="button"><b>Luftschlag</b><span id="abAirS">Bereit</span><kbd>Z</kbd></button>
+          <button class="abtn" id="abFrz" type="button"><b>Frostbombe</b><span id="abFrzS">Bereit</span><kbd>X</kbd></button>
+          <button class="abtn" id="abFix" type="button"><b>Verstärken</b><span id="abFixS">+3 · 120</span><kbd>R</kbd></button>
         </div>
       </section>
       <section class="panel" id="incoming"></section>
@@ -208,57 +208,57 @@ const hexRgb = h => { const n = parseInt(h.slice(1), 16); return `${n >> 16 & 25
 
 /* ---------------- Data ---------------- */
 const TOWERS = {
-  mg:     { name:'Machine Gun',  key:'1', cost:50,  up:[60,130],  color:'#d9a63b', desc:'Cheap and fast. Shreds walkers and runners, struggles against armor.', range:[2.6,2.9,3.3], dmg:[7,12,20], rate:[5,6,8],
-    spec:[{ name:'Minigun', cost:220, desc:'Spins up to 14 shots per second.', set:{ dmg:20, rate:14, range:3.4 } },
-          { name:'AP Rounds', cost:220, desc:'Heavy bullets that ignore armor completely.', set:{ dmg:38, rate:7, range:3.4, pierce:true } }] },
-  sniper: { name:'Sniper',       key:'2', cost:110, up:[110,220], color:'#5c9ee0', desc:'Huge range, ignores armor and lands a double-damage headshot 15% of the time.', range:[5.5,6.5,8], dmg:[55,110,220], rate:[0.7,0.8,1], pierce:true,
-    spec:[{ name:'Deadeye', cost:360, desc:'40% headshot chance for triple damage.', set:{ dmg:240, rate:1.1, range:9, crit:0.4, critX:3 } },
-          { name:'Railgun', cost:360, desc:'Each slug punches through every zombie in a line.', set:{ dmg:300, rate:0.8, range:9, rail:true } }] },
-  flame:  { name:'Flamethrower', key:'3', cost:100, up:[90,190],  color:'#ef6a2a', desc:'Short cone that hits everything in front of it and sets it on fire. Ignores armor.', range:[1.9,2.1,2.4], dmg:[24,40,70], burn:[6,11,20],
-    spec:[{ name:'Napalm', cost:300, desc:'Sticky fire that burns for 5 seconds and much hotter.', set:{ dmg:80, burn:50, burnT:5, range:2.4 } },
-          { name:'Inferno', cost:300, desc:'A wide, long cone of fire.', set:{ dmg:130, burn:22, range:3.2, cone:0.8 } }] },
-  mortar: { name:'Mortar',       key:'4', cost:140, up:[130,270], color:'#b3b071', desc:'Lobs shells with splash damage over long range. Cannot hit zombies right next to it.', range:[4.5,5.2,6], dmg:[45,85,160], rate:[0.45,0.55,0.7], splash:[1,1.2,1.5],
-    spec:[{ name:'Cluster', cost:420, desc:'Each shell bursts into five extra bomblets.', set:{ dmg:150, rate:0.7, range:6.5, splash:1.4, cluster:5 } },
-          { name:'Heavy Shell', cost:420, desc:'A huge blast that stuns everything it does not kill.', set:{ dmg:340, rate:0.55, range:6.5, splash:1.9, stun:0.7 } }] },
-  tesla:  { name:'Tesla Coil',   key:'5', cost:170, up:[150,310], color:'#a873ff', desc:'Lightning jumps from zombie to zombie and can stun them.', range:[2.6,2.9,3.3], dmg:[28,48,85], rate:[0.9,1.1,1.4], chain:[3,4,6],
-    spec:[{ name:'Storm', cost:480, desc:'Lightning jumps between up to 10 zombies.', set:{ dmg:95, rate:1.5, range:3.5, chain:10 } },
-          { name:'Overload', cost:480, desc:'Bolts stun their targets for almost a second.', set:{ dmg:120, rate:1.3, range:3.5, chain:5, stunP:0.75, stunT:0.9 } }] },
-  cryo:   { name:'Cryo Tower',   key:'6', cost:90,  up:[80,170],  color:'#66d1f2', desc:'A freezing pulse slows every zombie in range.', range:[2.2,2.5,2.9], dmg:[3,6,12], rate:[1,1,1.2], slow:[0.4,0.5,0.6],
-    spec:[{ name:'Deep Freeze', cost:260, desc:'Slows zombies by 75% across a wider area.', set:{ dmg:16, rate:1.3, range:3.4, slow:0.75 } },
-          { name:'Shatter', cost:260, desc:'Chilled zombies take 35% more damage from every source.', set:{ dmg:20, rate:1.3, range:3, slow:0.55, shatter:0.35 } }] },
-  depot:  { name:'Supply Depot', key:'7', cost:120, up:[120,250], color:'#7fc65c', desc:'Does not shoot. Earns points at the start of every wave.', income:[25,55,100],
-    spec:[{ name:'Bank', cost:380, desc:'Earns 190 points every wave.', set:{ income:190 } },
-          { name:'Field Workshop', cost:380, desc:'Earns 80 per wave, slowly repairs walls and towers within 3 tiles and adds 1 base health every wave.', set:{ income:80, workshop:true } }] },
+  mg:     { name:'MG-Turm',  key:'1', cost:50,  up:[60,130],  color:'#d9a63b', desc:'Billig und schnell. Mäht Läufer und Renner nieder, tut sich gegen Panzerung schwer.', range:[2.6,2.9,3.3], dmg:[7,12,20], rate:[5,6,8],
+    spec:[{ name:'Minigun', cost:220, desc:'Feuert bis zu 14 Schuss pro Sekunde.', set:{ dmg:20, rate:14, range:3.4 } },
+          { name:'Panzerbrecher', cost:220, desc:'Schwere Kugeln, die Panzerung komplett ignorieren.', set:{ dmg:38, rate:7, range:3.4, pierce:true } }] },
+  sniper: { name:'Sniper', key:'2', cost:110, up:[110,220], color:'#5c9ee0', desc:'Riesige Reichweite, ignoriert Panzerung und trifft in 15% der Fälle mit doppeltem Schaden am Kopf.', range:[5.5,6.5,8], dmg:[55,110,220], rate:[0.7,0.8,1], pierce:true,
+    spec:[{ name:'Adlerauge', cost:360, desc:'40% Kopfschuss-Chance für dreifachen Schaden.', set:{ dmg:240, rate:1.1, range:9, crit:0.4, critX:3 } },
+          { name:'Schienenkanone', cost:360, desc:'Jedes Geschoss durchschlägt alle Zombies in einer Reihe.', set:{ dmg:300, rate:0.8, range:9, rail:true } }] },
+  flame:  { name:'Flammenwerfer', key:'3', cost:100, up:[90,190],  color:'#ef6a2a', desc:'Kurzer Kegel, der alles vor ihm trifft und in Brand setzt. Ignoriert Panzerung.', range:[1.9,2.1,2.4], dmg:[24,40,70], burn:[6,11,20],
+    spec:[{ name:'Napalm', cost:300, desc:'Klebriges Feuer, das 5 Sekunden lang und viel heisser brennt.', set:{ dmg:80, burn:50, burnT:5, range:2.4 } },
+          { name:'Inferno', cost:300, desc:'Ein breiter, langer Feuerkegel.', set:{ dmg:130, burn:22, range:3.2, cone:0.8 } }] },
+  mortar: { name:'Mörser',       key:'4', cost:140, up:[130,270], color:'#b3b071', desc:'Wirft Granaten mit Flächenschaden über weite Strecken. Trifft keine Zombies direkt neben sich.', range:[4.5,5.2,6], dmg:[45,85,160], rate:[0.45,0.55,0.7], splash:[1,1.2,1.5],
+    spec:[{ name:'Streubombe', cost:420, desc:'Jede Granate zerplatzt in fünf Mini-Bomben.', set:{ dmg:150, rate:0.7, range:6.5, splash:1.4, cluster:5 } },
+          { name:'Schwere Granate', cost:420, desc:'Eine riesige Explosion, die alles betäubt, was sie nicht tötet.', set:{ dmg:340, rate:0.55, range:6.5, splash:1.9, stun:0.7 } }] },
+  tesla:  { name:'Teslaspule',   key:'5', cost:170, up:[150,310], color:'#a873ff', desc:'Blitze springen von Zombie zu Zombie und können sie betäuben.', range:[2.6,2.9,3.3], dmg:[28,48,85], rate:[0.9,1.1,1.4], chain:[3,4,6],
+    spec:[{ name:'Sturm', cost:480, desc:'Blitze springen zwischen bis zu 10 Zombies.', set:{ dmg:95, rate:1.5, range:3.5, chain:10 } },
+          { name:'Überlast', cost:480, desc:'Blitze betäuben ihre Ziele fast eine Sekunde lang.', set:{ dmg:120, rate:1.3, range:3.5, chain:5, stunP:0.75, stunT:0.9 } }] },
+  cryo:   { name:'Frostturm',   key:'6', cost:90,  up:[80,170],  color:'#66d1f2', desc:'Ein eisiger Impuls verlangsamt alle Zombies in Reichweite.', range:[2.2,2.5,2.9], dmg:[3,6,12], rate:[1,1,1.2], slow:[0.4,0.5,0.6],
+    spec:[{ name:'Tiefkühlung', cost:260, desc:'Verlangsamt Zombies um 75% in einem grösseren Gebiet.', set:{ dmg:16, rate:1.3, range:3.4, slow:0.75 } },
+          { name:'Zerspringen', cost:260, desc:'Gekühlte Zombies erleiden 35% mehr Schaden aus jeder Quelle.', set:{ dmg:20, rate:1.3, range:3, slow:0.55, shatter:0.35 } }] },
+  depot:  { name:'Nachschub', key:'7', cost:120, up:[120,250], color:'#7fc65c', desc:'Schiesst nicht. Bringt zu Beginn jeder Welle Punkte.', income:[25,55,100],
+    spec:[{ name:'Bank', cost:380, desc:'Bringt 190 Punkte pro Welle.', set:{ income:190 } },
+          { name:'Feldwerkstatt', cost:380, desc:'Bringt 80 pro Welle, repariert langsam Mauern und Türme im Umkreis von 3 Feldern und gibt jede Welle 1 Basis-Leben dazu.', set:{ income:80, workshop:true } }] },
 };
 const ITEMS = {
-  barricade: { name:'Barricade', key:'B', cost:10, up:[30,80], hp:[150,450,1200], levels:['Wooden barricade','Steel barricade','Concrete wall'], desc:'Blocks a corridor. Zombies walk around it if the detour is short enough, otherwise they smash through. Upgrade it to steel or concrete.' },
-  mine:      { name:'Landmine',  key:'M', cost:30, desc:'Buried in the road. Explodes when a zombie steps on it. Does not block.' },
+  barricade: { name:'Barrikade', key:'B', cost:10, up:[30,80], hp:[150,450,1200], levels:['Holzbarrikade','Stahlbarrikade','Betonmauer'], desc:'Versperrt einen Gang. Zombies laufen drumherum, wenn der Umweg kurz genug ist, sonst brechen sie durch. Ausbaubar zu Stahl oder Beton.' },
+  mine:      { name:'Landmine',  key:'M', cost:30, desc:'Im Weg vergraben. Explodiert, wenn ein Zombie drauftritt. Versperrt den Weg nicht.' },
 };
 const BUILD_ORDER = ['mg','sniper','flame','mortar','tesla','cryo','depot','barricade','mine'];
 const costOf = t => (TOWERS[t] || ITEMS[t]).cost;
 
 const ZOMBIES = {
-  walker:   { name:'Walker',      hp:30,   speed:0.9,  armor:0, reward:3,   r:7,   color:'#6dbb39', dark:'#2d5716', eye:'#ffd75a', dmg:1, atk:8 },
-  runner:   { name:'Runner',      hp:18,   speed:1.9,  armor:0, reward:3,   r:6,   color:'#a8e34f', dark:'#4b7a1b', eye:'#fff07a', dmg:1, atk:5 },
-  armored:  { name:'Riot',        hp:55,   speed:0.8,  armor:5, reward:6,   r:8,   color:'#7d9f5c', dark:'#36472a', eye:'#ffd75a', dmg:1, atk:10 },
-  brute:    { name:'Brute',       hp:170,  speed:0.55, armor:2, reward:11,  r:11,  color:'#3f8829', dark:'#1a3c10', eye:'#ff5a3a', dmg:3, atk:35 },
-  bloater:  { name:'Bloater',     hp:70,   speed:0.65, armor:0, reward:7,   r:10,  color:'#b8cf3b', dark:'#5d6a16', eye:'#ffb13a', dmg:2, split:3, atk:12 },
-  crawler:  { name:'Crawler',     hp:12,   speed:1.6,  armor:0, reward:1,   r:4.5, color:'#cbe56c', dark:'#5d6a16', eye:'#ffd75a', dmg:1, atk:4 },
-  screamer: { name:'Screamer',    hp:45,   speed:1.0,  armor:0, reward:9,   r:8,   color:'#a1d46b', dark:'#4c2c5c', eye:'#ff6ad5', dmg:1, aura:true, atk:6 },
-  boss:     { name:'Abomination', hp:1350, speed:0.4,  armor:7, reward:150, r:17,  color:'#2e6a1e', dark:'#0e2808', eye:'#ff3b2a', dmg:7, regen:0.004, atk:150 },
+  walker:   { name:'Schlurfer',    hp:30,   speed:0.9,  armor:0, reward:3,   r:7,   color:'#6dbb39', dark:'#2d5716', eye:'#ffd75a', dmg:1, atk:8 },
+  runner:   { name:'Renner',       hp:18,   speed:1.9,  armor:0, reward:3,   r:6,   color:'#a8e34f', dark:'#4b7a1b', eye:'#fff07a', dmg:1, atk:5 },
+  armored:  { name:'Krawall',      hp:55,   speed:0.8,  armor:5, reward:6,   r:8,   color:'#7d9f5c', dark:'#36472a', eye:'#ffd75a', dmg:1, atk:10 },
+  brute:    { name:'Koloss',       hp:170,  speed:0.55, armor:2, reward:11,  r:11,  color:'#3f8829', dark:'#1a3c10', eye:'#ff5a3a', dmg:3, atk:35 },
+  bloater:  { name:'Aufgedunsener', hp:70,   speed:0.65, armor:0, reward:7,   r:10,  color:'#b8cf3b', dark:'#5d6a16', eye:'#ffb13a', dmg:2, split:3, atk:12 },
+  crawler:  { name:'Kriecher',     hp:12,   speed:1.6,  armor:0, reward:1,   r:4.5, color:'#cbe56c', dark:'#5d6a16', eye:'#ffd75a', dmg:1, atk:4 },
+  screamer: { name:'Schreier',     hp:45,   speed:1.0,  armor:0, reward:9,   r:8,   color:'#a1d46b', dark:'#4c2c5c', eye:'#ff6ad5', dmg:1, aura:true, atk:6 },
+  boss:     { name:'Gräuel',       hp:1350, speed:0.4,  armor:7, reward:150, r:17,  color:'#2e6a1e', dark:'#0e2808', eye:'#ff3b2a', dmg:7, regen:0.004, atk:150 },
 };
 for (const k in ZOMBIES) ZOMBIES[k].eyeRgb = hexRgb(ZOMBIES[k].eye);
 
 const DIFFS = {
-  easy:   { name:'Recruit',   hp:0.75, points:260, lives:30 },
-  normal: { name:'Survivor',  hp:1,    points:200, lives:20 },
-  hard:   { name:'Nightmare', hp:1.35, points:160, lives:10 },
+  easy:   { name:'Rekrut',    hp:0.75, points:260, lives:30 },
+  normal: { name:'Überlebender', hp:1,    points:200, lives:20 },
+  hard:   { name:'Albtraum', hp:1.35, points:160, lives:10 },
 };
 const MODES = ['first','last','strong','close'];
-const MODE_NAMES = { first:'First', last:'Last', strong:'Strongest', close:'Closest' };
+const MODE_NAMES = { first:'Erster', last:'Letzter', strong:'Stärkster', close:'Nächster' };
 const ABIL = {
-  air: { name:'Airstrike', cd:45, radius:1.3, desc:'Five bombs carpet the target area a moment after you click.' },
-  frz: { name:'Cryo bomb', cd:35, radius:2.8, desc:'Freezes every zombie in a wide area solid for 2.5 seconds.' },
+  air: { name:'Luftschlag', cd:45, radius:1.3, desc:'Fünf Bomben decken das Zielgebiet kurz nach dem Klick ein.' },
+  frz: { name:'Frostbombe', cd:35, radius:2.8, desc:'Friert alle Zombies in einem grossen Gebiet 2,5 Sekunden lang ein.' },
 };
 const hpMul = w => (1 + (w - 1) * 0.22 + Math.pow(w - 1, 2) * 0.018) * Math.pow(1.045, w - 1);
 const ATK_CAP = 4;                               // zombies that can hit one wall at the same time
@@ -685,13 +685,13 @@ function startWave(){
   if (inc) { S.points += inc; S.earned += inc; }
   S.nextList = buildWave(w + 1);
   const subs = [];
-  if (WV.boss) subs.push('The Abomination is coming');
-  if (WV.rush) subs.push('Rush wave · runners only');
-  if (WV.blood) subs.push('Blood moon · faster zombies, double points');
-  if (w === 8) subs.push('A second breach has opened');
-  if (WV.mood === 'calm') subs.push('Calm wave · time to build');
-  if (WV.mood === 'heavy') subs.push('Heavy wave · brace yourself');
-  banner('WAVE ' + w, subs.join('  ·  ') || `${WV.list.length} zombies`, WV.boss || WV.blood ? '#ff6b5a' : '#e9a72a');
+  if (WV.boss) subs.push('Das Gräuel kommt');
+  if (WV.rush) subs.push('Ansturm · nur Renner');
+  if (WV.blood) subs.push('Blutmond · schnellere Zombies, doppelte Punkte');
+  if (w === 8) subs.push('Ein zweiter Durchbruch hat sich geöffnet');
+  if (WV.mood === 'calm') subs.push('Ruhige Welle · Zeit zum Bauen');
+  if (WV.mood === 'heavy') subs.push('Schwere Welle · mach dich bereit');
+  banner('WELLE ' + w, subs.join('  ·  ') || `${WV.list.length} Zombies`, WV.boss || WV.blood ? '#ff6b5a' : '#e9a72a');
   computeRoutes();
   Sound.play('horn');
 }
@@ -699,7 +699,7 @@ function waveCleared(){
   const bonus = Math.round((20 + 3 * S.wave) * (S.curMood === 'heavy' ? 1.5 : 1));
   S.points += bonus; S.earned += bonus;
   S.phase = 'build'; S.countdown = 25; S.bloodMoon = false;
-  banner(`WAVE ${S.wave} CLEARED`, `+${bonus} points · next wave in 25s`, '#8ad845');
+  banner(`WELLE ${S.wave} GESCHAFFT`, `+${bonus} Punkte · nächste Welle in 25 s`, '#8ad845');
   computeRoutes();
   Sound.play('coin');
 }
@@ -709,12 +709,12 @@ function callWave(){
   if (S.phase === 'build') {
     const bonus = S.countdown > 0 ? Math.ceil(S.countdown) : 0;
     startWave();
-    if (bonus) { S.points += bonus; S.earned += bonus; addText(W / 2, H * .44, `Early call +${bonus}`, '#e9a72a', 14); }
+    if (bonus) { S.points += bonus; S.earned += bonus; addText(W / 2, H * .44, `Früh gerufen +${bonus}`, '#e9a72a', 14); }
   } else if (!S.spawnQ.length) {
     const bonus = 10 + S.wave * 2;
     S.points += bonus; S.earned += bonus;
     startWave();
-    addText(W / 2, H * .44, `Brave call +${bonus}`, '#e9a72a', 14);
+    addText(W / 2, H * .44, `Mutig gerufen +${bonus}`, '#e9a72a', 14);
   } else Sound.play('err');
 }
 function banner(title, sub, color){ S.banner = { title, sub, color, life:3.2, max:3.2 }; }
@@ -839,7 +839,7 @@ function kill(z, src){
     }
     for (let i = 0; i < 10; i++) addPart({ kind:'gas', x:z.x, y:z.y, vx:rand(-30, 30), vy:rand(-30, 30), life:rand(.6, 1), max:1, size:rand(4, 7), grow:10, drag:2 });
   }
-  if (z.type === 'boss') { boomFx(z.x, z.y, TS * 2.2); banner('ABOMINATION DOWN', `+${gain} points`, '#8ad845'); S.shake = 14; }
+  if (z.type === 'boss') { boomFx(z.x, z.y, TS * 2.2); banner('GRÄUEL BESIEGT', `+${gain} Punkte`, '#8ad845'); S.shake = 14; }
 }
 function bloodFx(x, y, r){
   for (let i = 0; i < 6 + r; i++) { const a = Math.random() * TAU, s = rand(30, 120); addPart({ kind:'blood', x, y, vx:Math.cos(a) * s, vy:Math.sin(a) * s, life:rand(.3, .6), max:.6, size:rand(1.2, 2.6), grow:0, drag:5, c:['95,168,46','61,122,29','143,209,74'][i % 3] }); }
@@ -927,7 +927,7 @@ function updTower(tw, dt){
         hurt(tg, shot, { src:tw, pierce:true });
         S.tracers.push({ x0:mx, y0:my, x1:tg.x, y1:tg.y, life:.18, max:.18, rgb:'200,230,255', w:2.2 });
       }
-      if (crit) addText(tg.x, tg.y - tg.r - 14, 'HEADSHOT', '#ffffff', 11);
+      if (crit) addText(tg.x, tg.y - tg.r - 14, 'KOPFSCHUSS', '#ffffff', 11);
       S.flashes.push({ x:mx, y:my, r:26, life:.08, max:.08, rgb:'200,230,255' });
       Sound.play('sniper'); break;
     }
@@ -1001,7 +1001,7 @@ function destroyObj(o){
   for (let i = 0; i < 8; i++) addPart({ kind:'smoke', x:o.cx + rand(-8, 8), y:o.cy + rand(-8, 8), vx:rand(-20, 20), vy:rand(-20, 20), life:rand(.8, 1.2), max:1.2, size:rand(4, 7), grow:12, drag:2 });
   if (o.kind === 'tower') S.flashes.push({ x:o.cx, y:o.cy, r:40, life:.25, max:.25, rgb:'255,170,70' });
   decalScorch(o.cx, o.cy, 14);
-  addText(o.cx, o.cy - 14, o.kind === 'tower' ? TOWERS[o.type].name + ' destroyed' : 'Broken through', '#ff6b5a', 12);
+  addText(o.cx, o.cy - 14, o.kind === 'tower' ? TOWERS[o.type].name + ' zerstört' : 'Durchgebrochen', '#ff6b5a', 12);
   S.shake = Math.min(12, S.shake + 4);
   Sound.play('crash');
   removeObj(o);
@@ -1016,15 +1016,15 @@ function canPlace(type, x, y){
   testDist = null;
   if (!inB(x, y)) return 'out';
   const i = idx(x, y);
-  if (S.occ[i]) return 'Tile taken';
-  if (S.spawns.some(s => s.x === x && s.y === y) || (S.base.x === x && S.base.y === y)) return 'Keep the breach and base clear';
+  if (S.occ[i]) return 'Feld besetzt';
+  if (S.spawns.some(s => s.x === x && s.y === y) || (S.base.x === x && S.base.y === y)) return 'Durchbruch und Basis freihalten';
   const road = !!S.grid[i];
-  if ((type === 'barricade' || type === 'mine') && !road) return 'Roads only';
-  if (S.points < costOf(type)) return 'Not enough points';
+  if ((type === 'barricade' || type === 'mine') && !road) return 'Nur auf dem Weg';
+  if (S.points < costOf(type)) return 'Zu wenig Punkte';
   if (road && type !== 'mine') {
     for (const z of S.zombies) {
       if (z.dead) continue;
-      if ((z.tx === x && z.ty === y) || (Math.floor(z.x / TS) === x && Math.floor(z.y / TS) === y)) return 'Zombies in the way';
+      if ((z.tx === x && z.ty === y) || (Math.floor(z.x / TS) === x && Math.floor(z.y / TS) === y)) return 'Zombies im Weg';
     }
     // sealing the maze is allowed now: the horde just smashes through
     const mh = type === 'barricade' ? ITEMS.barricade.hp[0] : towerHp(costOf(type));
@@ -1083,7 +1083,7 @@ function upgrade(o){
   if (o.lvl >= 2 || S.points < ups[o.lvl]) { Sound.play('err'); return; }
   S.points -= ups[o.lvl]; o.invested += ups[o.lvl]; o.lvl++;
   refit(o); sparkle(o);
-  addText(o.cx, o.cy - 18, o.kind === 'tower' ? 'LEVEL ' + (o.lvl + 1) : ITEMS.barricade.levels[o.lvl].toUpperCase(), '#8ad845', 11);
+  addText(o.cx, o.cy - 18, o.kind === 'tower' ? 'STUFE ' + (o.lvl + 1) : ITEMS.barricade.levels[o.lvl].toUpperCase(), '#8ad845', 11);
   Sound.play('up'); renderInfo(); updateHint();
 }
 function specialize(tw, k){
@@ -1101,7 +1101,7 @@ function repair(o){
   const c = repairCost(o);
   if (S.points < c) { Sound.play('err'); return; }
   S.points -= c; o.hp = o.maxHp; sparkle(o);
-  addText(o.cx, o.cy - 16, 'REPAIRED', '#8ad845', 11);
+  addText(o.cx, o.cy - 16, 'REPARIERT', '#8ad845', 11);
   Sound.play('build'); renderInfo();
 }
 function cycleMode(tw){ if (!tw || tw.kind !== 'tower' || tw.type === 'depot' || tw.type === 'cryo') return; tw.mode = MODES[(MODES.indexOf(tw.mode) + 1) % MODES.length]; renderInfo(); }
@@ -1539,8 +1539,8 @@ function render(){
       if (reason && reason !== 'out') label(g, reason, cx, y - 9, '#ff7a6a', 12);
       else if (previewDist) {
         const now = routeInfo(S.dist), next = routeInfo(previewDist, idx(h.x, h.y));
-        if (next.hitsExtra) label(g, 'They will smash through', cx, y - 9, '#ff9a6a', 12);
-        else if (next.len > now.len) label(g, `+${next.len - now.len} tiles`, cx, y - 9, '#f2c25a', 13);
+        if (next.hitsExtra) label(g, 'Sie brechen durch', cx, y - 9, '#ff9a6a', 12);
+        else if (next.len > now.len) label(g, `+${next.len - now.len} Felder`, cx, y - 9, '#f2c25a', 13);
       }
     } else if (!ui.build && !ui.abil && h && inB(h.x, h.y)) {
       const o = S.occ[idx(h.x, h.y)];
@@ -1573,11 +1573,11 @@ function render(){
     label(g, b.sub, W / 2, H * .3 + 34, '#e2e5d4', 16);
     g.globalAlpha = 1;
   }
-  if (S.combo >= 10 && S.comboT > 0) label(g, `COMBO x${S.combo}`, W - 14, 18, '#f6d04d', 15, 'right');
+  if (S.combo >= 10 && S.comboT > 0) label(g, `SERIE x${S.combo}`, W - 14, 18, '#f6d04d', 15, 'right');
   if (running && paused && !modalOpen) {
     g.fillStyle = 'rgba(5,7,4,.55)'; g.fillRect(0, 0, W, H);
-    g.font = '52px "Black Ops One", Impact, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#e2e5d4'; g.fillText('PAUSED', W / 2, H / 2);
-    label(g, 'Press P or the Resume button', W / 2, H / 2 + 38, '#939c84', 15);
+    g.font = '52px "Black Ops One", Impact, sans-serif'; g.textAlign = 'center'; g.fillStyle = '#e2e5d4'; g.fillText('PAUSE', W / 2, H / 2);
+    label(g, 'Drücke P oder den Weiter-Knopf', W / 2, H / 2 + 38, '#939c84', 15);
   }
 }
 function rangeCircle(g, x, y, r, strong){
@@ -1609,14 +1609,14 @@ const buildBtns = {};
 function statRows(type, lvl, spec){
   const cur = { type, lvl, spec }, nxt = lvl < 2 && spec == null ? { type, lvl:lvl + 1, spec:null } : null, rows = [];
   const add = (label, k, fmt) => { const v = st(cur, k); if (v === undefined) return; rows.push([label, fmt(v), nxt ? fmt(st(nxt, k)) : null]); };
-  add(type === 'flame' ? 'Damage/s' : type === 'cryo' ? 'Pulse dmg' : 'Damage', 'dmg', String);
-  add('Fire rate', 'rate', v => v + '/s');
-  add('Range', 'range', v => v + ' tiles');
-  add('Blast', 'splash', v => v + ' tiles');
-  add('Chain', 'chain', v => v + ' targets');
-  add('Slow', 'slow', v => Math.round(v * 100) + '%');
-  add('Burn', 'burn', v => v + '/s');
-  add('Per wave', 'income', v => '+' + v);
+  add(type === 'flame' ? 'Schaden/s' : type === 'cryo' ? 'Impulsschaden' : 'Schaden', 'dmg', String);
+  add('Feuerrate', 'rate', v => v + '/s');
+  add('Reichweite', 'range', v => v + ' Felder');
+  add('Explosion', 'splash', v => v + ' Felder');
+  add('Kette', 'chain', v => v + ' Ziele');
+  add('Bremse', 'slow', v => Math.round(v * 100) + '%');
+  add('Brand', 'burn', v => v + '/s');
+  add('Pro Welle', 'income', v => '+' + v);
   return rows;
 }
 function wireDamage(o){
@@ -1631,20 +1631,20 @@ function renderInfo(){
   if (o && o.kind === 'tower') {
     const D = TOWERS[o.type], SP = o.spec != null ? D.spec[o.spec] : null;
     const rows = statRows(o.type, o.lvl, o.spec);
-    if (o.road) rows.push(['Health', `<span id="iHp">${Math.ceil(o.hp)}</span> / ${o.maxHp}`, null], ['Detour limit', o.pen + ' tiles', null]);
+    if (o.road) rows.push(['Leben', `<span id="iHp">${Math.ceil(o.hp)}</span> / ${o.maxHp}`, null], ['Umweg-Grenze', o.pen + ' Felder', null]);
     const specs = o.lvl === 2 && !SP
-      ? `<p>Level 3 reached. Pick one specialization for level 4:</p><div class="specs">${D.spec.map((s, k) => `<button class="spec" type="button" data-k="${k}"><span class="spec-top"><b>${s.name}</b><span class="sc">${s.cost}</span></span><span>${s.desc}</span></button>`).join('')}</div>`
+      ? `<p>Stufe 3 erreicht. Wähle eine Spezialisierung für Stufe 4:</p><div class="specs">${D.spec.map((s, k) => `<button class="spec" type="button" data-k="${k}"><span class="spec-top"><b>${s.name}</b><span class="sc">${s.cost}</span></span><span>${s.desc}</span></button>`).join('')}</div>`
       : '';
-    el.innerHTML = `<h2>Selected</h2>
-      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">${SP ? 'Level 4 · ' + SP.name : `Level ${o.lvl + 1} of 4`} · <span id="iKills">${o.kills}</span> kills</div></div></div>
+    el.innerHTML = `<h2>Ausgewählt</h2>
+      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">${SP ? 'Stufe 4 · ' + SP.name : `Stufe ${o.lvl + 1} von 4`} · <span id="iKills">${o.kills}</span> Abschüsse</div></div></div>
       ${statsHtml(rows, true)}
-      ${o.road ? '<p>Standing on the road. Zombies attack it when going around takes too long.</p>' : ''}
+      ${o.road ? '<p>Steht auf dem Weg. Zombies greifen es an, wenn der Umweg zu lang ist.</p>' : ''}
       ${specs}
       <div class="sel-actions">
-        ${o.lvl < 2 ? `<button class="btn btn-go" id="iUp" type="button">Upgrade · ${D.up[o.lvl]} <kbd>U</kbd></button>` : ''}
-        ${o.type !== 'depot' && o.type !== 'cryo' ? `<button class="btn" id="iMode" type="button">Target: ${MODE_NAMES[o.mode]} <kbd>T</kbd></button>` : ''}
-        ${o.road ? `<button class="btn" id="iFix" type="button"><span>Repair · <span id="iFixC">–</span></span> <kbd>F</kbd></button>` : ''}
-        <button class="btn btn-danger" id="iSell" type="button"><span>Sell · +<span id="iSellV">${sellValue(o)}</span></span> <kbd>S</kbd></button>
+        ${o.lvl < 2 ? `<button class="btn btn-go" id="iUp" type="button">Ausbauen · ${D.up[o.lvl]} <kbd>U</kbd></button>` : ''}
+        ${o.type !== 'depot' && o.type !== 'cryo' ? `<button class="btn" id="iMode" type="button">Ziel: ${MODE_NAMES[o.mode]} <kbd>T</kbd></button>` : ''}
+        ${o.road ? `<button class="btn" id="iFix" type="button"><span>Reparieren · <span id="iFixC">–</span></span> <kbd>F</kbd></button>` : ''}
+        <button class="btn btn-danger" id="iSell" type="button"><span>Verkaufen · +<span id="iSellV">${sellValue(o)}</span></span> <kbd>S</kbd></button>
       </div>`;
     drawIcon($('#selIcon'), o.type, o.lvl, o.spec);
     infoRefs.kills = $('#iKills'); infoRefs.up = $('#iUp'); infoRefs.upCost = o.lvl < 2 ? D.up[o.lvl] : 0;
@@ -1655,14 +1655,14 @@ function renderInfo(){
     $('#iSell').addEventListener('click', () => sell(o));
   } else if (o && o.kind === 'barricade') {
     const B = ITEMS.barricade, nx = o.lvl < 2;
-    el.innerHTML = `<h2>Selected</h2>
-      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${B.levels[o.lvl]}</div><div class="sel-sub">Level ${o.lvl + 1} of 3 · blocking this corridor</div></div></div>
-      ${statsHtml([['Health', `<span id="iHp">${Math.ceil(o.hp)}</span> / ${o.maxHp}`, null], ['Max health', String(o.maxHp), nx ? String(B.hp[o.lvl + 1]) : null], ['Detour limit', o.pen + ' tiles', nx ? penOf(B.hp[o.lvl + 1]) + ' tiles' : null]], true)}
-      <p>Zombies walk around it if the detour is shorter than the limit. Otherwise they smash through.</p>
+    el.innerHTML = `<h2>Ausgewählt</h2>
+      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${B.levels[o.lvl]}</div><div class="sel-sub">Stufe ${o.lvl + 1} von 3 · versperrt diesen Gang</div></div></div>
+      ${statsHtml([['Leben', `<span id="iHp">${Math.ceil(o.hp)}</span> / ${o.maxHp}`, null], ['Max. Leben', String(o.maxHp), nx ? String(B.hp[o.lvl + 1]) : null], ['Umweg-Grenze', o.pen + ' Felder', nx ? penOf(B.hp[o.lvl + 1]) + ' Felder' : null]], true)}
+      <p>Zombies laufen drumherum, wenn der Umweg kürzer als die Grenze ist. Sonst brechen sie durch.</p>
       <div class="sel-actions">
-        ${nx ? `<button class="btn btn-go" id="iUp" type="button">${o.lvl === 0 ? 'Steel' : 'Concrete'} · ${B.up[o.lvl]} <kbd>U</kbd></button>` : ''}
-        <button class="btn" id="iFix" type="button"><span>Repair · <span id="iFixC">–</span></span> <kbd>F</kbd></button>
-        <button class="btn btn-danger" id="iSell" type="button"><span>Remove · +<span id="iSellV">${sellValue(o)}</span></span> <kbd>S</kbd></button>
+        ${nx ? `<button class="btn btn-go" id="iUp" type="button">${o.lvl === 0 ? 'Stahl' : 'Beton'} · ${B.up[o.lvl]} <kbd>U</kbd></button>` : ''}
+        <button class="btn" id="iFix" type="button"><span>Reparieren · <span id="iFixC">–</span></span> <kbd>F</kbd></button>
+        <button class="btn btn-danger" id="iSell" type="button"><span>Abbauen · +<span id="iSellV">${sellValue(o)}</span></span> <kbd>S</kbd></button>
       </div>`;
     drawIcon($('#selIcon'), 'barricade', o.lvl);
     infoRefs.up = $('#iUp'); infoRefs.upCost = nx ? B.up[o.lvl] : 0;
@@ -1671,31 +1671,31 @@ function renderInfo(){
     $('#iSell').addEventListener('click', () => sell(o));
   } else if (o) {
     const D = ITEMS[o.kind];
-    el.innerHTML = `<h2>Selected</h2>
-      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">Armed</div></div></div>
+    el.innerHTML = `<h2>Ausgewählt</h2>
+      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">Scharf</div></div></div>
       <p>${D.desc}</p>
-      <div class="sel-actions"><button class="btn btn-danger" id="iSell" type="button">Remove · +${sellValue(o)} <kbd>S</kbd></button></div>`;
+      <div class="sel-actions"><button class="btn btn-danger" id="iSell" type="button">Abbauen · +${sellValue(o)} <kbd>S</kbd></button></div>`;
     drawIcon($('#selIcon'), o.kind, 0);
     $('#iSell').addEventListener('click', () => sell(o));
   } else if (ui.build) {
     const D = TOWERS[ui.build] || ITEMS[ui.build];
     const extra = TOWERS[ui.build]
-      ? `<p>Upgrades to level 3, then specializes as <b>${D.spec[0].name}</b> or <b>${D.spec[1].name}</b>. Built on the road it blocks the way, but zombies can destroy it.</p>${statsHtml(statRows(ui.build, 0, null), false)}`
-      : ui.build === 'barricade' ? statsHtml([['Health', String(D.hp[0]), null], ['Detour limit', penOf(D.hp[0]) + ' tiles', null]], false) : '';
-    el.innerHTML = `<h2>Building</h2>
-      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">${D.cost} points · key ${D.key}</div></div></div>
+      ? `<p>Wird bis Stufe 3 ausgebaut und spezialisiert sich dann zu <b>${D.spec[0].name}</b> oder <b>${D.spec[1].name}</b>. Auf dem Weg gebaut versperrt er ihn, aber Zombies können ihn zerstören.</p>${statsHtml(statRows(ui.build, 0, null), false)}`
+      : ui.build === 'barricade' ? statsHtml([['Leben', String(D.hp[0]), null], ['Umweg-Grenze', penOf(D.hp[0]) + ' Felder', null]], false) : '';
+    el.innerHTML = `<h2>Bauen</h2>
+      <div class="sel-head"><canvas width="88" height="88" id="selIcon"></canvas><div><div class="sel-name">${D.name}</div><div class="sel-sub">${D.cost} Punkte · Taste ${D.key}</div></div></div>
       <p>${D.desc}</p>${extra}`;
     drawIcon($('#selIcon'), ui.build, 0);
   } else if (ui.abil) {
     const A = ABIL[ui.abil];
-    el.innerHTML = `<h2>Support</h2><div class="sel-name">${A.name}</div><p>${A.desc}</p><p>Click the map to aim. Esc cancels.</p>`;
+    el.innerHTML = `<h2>Unterstützung</h2><div class="sel-name">${A.name}</div><p>${A.desc}</p><p>Klicke auf die Karte zum Zielen. Esc bricht ab.</p>`;
   } else {
-    el.innerHTML = `<h2>Field manual</h2><ul class="tips">
-      <li><b>Build</b> on the rubble or right on the road. Anything on the road blocks it.</li>
-      <li><b>Zombies</b> walk around blocks when the detour is short. Otherwise they smash through. Walls marked red are about to be attacked.</li>
-      <li><b>Upgrade</b> by clicking a tower. An arrow shows what you can afford. At level 3 you choose one of two specializations.</li>
-      <li><b>Every kill</b> pays points. Ten quick kills in a row start a combo bonus. Calm waves give you time to build.</li>
-      <li><b>Keys:</b> 1–7 towers · B barricade · M mine · Space wave · U upgrade · F repair · C speed</li>
+    el.innerHTML = `<h2>Feldhandbuch</h2><ul class="tips">
+      <li><b>Bauen</b> kannst du auf dem Schutt oder direkt auf dem Weg. Alles auf dem Weg versperrt ihn.</li>
+      <li><b>Zombies</b> umgehen Hindernisse, wenn der Umweg kurz ist. Sonst brechen sie durch. Rot markierte Mauern werden gleich angegriffen.</li>
+      <li><b>Ausbauen</b> durch Klick auf einen Turm. Ein Pfeil zeigt, was du dir leisten kannst. Auf Stufe 3 wählst du eine von zwei Spezialisierungen.</li>
+      <li><b>Jeder Abschuss</b> bringt Punkte. Zehn schnelle Abschüsse in Folge geben einen Serien-Bonus. In ruhigen Wellen hast du Zeit zum Bauen.</li>
+      <li><b>Tasten:</b> 1–7 Türme · B Barrikade · M Mine · Leertaste Welle · U Ausbauen · F Reparieren · C Tempo</li>
     </ul>`;
   }
   syncBuildButtons();
@@ -1709,20 +1709,20 @@ function renderIncoming(){
   const counts = {}; for (const k of WV.list) counts[k] = (counts[k] || 0) + 1;
   const tags = [];
   if (WV.boss) tags.push('<span class="tag t-red">Boss</span>');
-  if (WV.rush) tags.push('<span class="tag t-amber">Rush</span>');
-  if (WV.blood) tags.push('<span class="tag t-red">Blood moon</span>');
-  if (wn === 8) tags.push('<span class="tag t-amber">New breach</span>');
-  if (WV.mood === 'calm') tags.push('<span class="tag t-green">Calm</span>');
-  if (WV.mood === 'heavy') tags.push('<span class="tag t-red">Heavy</span>');
-  tags.push(`<span class="tag t-green">${WV.list.length} zombies</span>`);
+  if (WV.rush) tags.push('<span class="tag t-amber">Ansturm</span>');
+  if (WV.blood) tags.push('<span class="tag t-red">Blutmond</span>');
+  if (wn === 8) tags.push('<span class="tag t-amber">Neuer Durchbruch</span>');
+  if (WV.mood === 'calm') tags.push('<span class="tag t-green">Ruhig</span>');
+  if (WV.mood === 'heavy') tags.push('<span class="tag t-red">Schwer</span>');
+  tags.push(`<span class="tag t-green">${WV.list.length} Zombies</span>`);
   const comp = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<span><i class="dot" style="background:${ZOMBIES[k].color}"></i>${n} ${ZOMBIES[k].name}</span>`).join('');
   const routes = S.spawns.map((sp, i) => {
-    const name = i === 0 ? 'West breach' : sp.y === 0 ? 'North breach' : 'South breach';
-    let val = 'opens on wave 8';
-    if (!(i === 1 && wn < 8 && S.wave < 8)) { const r = routeFrom(S.dist, sp), br = routeBlockers(r).length; val = r ? `${r.length - 2} tiles${br ? ` · smashes ${br}` : ''}` : '–'; }
+    const name = i === 0 ? 'Durchbruch West' : sp.y === 0 ? 'Durchbruch Nord' : 'Durchbruch Süd';
+    let val = 'öffnet sich in Welle 8';
+    if (!(i === 1 && wn < 8 && S.wave < 8)) { const r = routeFrom(S.dist, sp), br = routeBlockers(r).length; val = r ? `${r.length - 2} Felder${br ? ` · bricht ${br} durch` : ''}` : '–'; }
     return `<div class="route"><span>${name}</span><span>${val}</span></div>`;
   }).join('');
-  $('#incoming').innerHTML = `<h2>Next: wave ${wn}</h2><div class="tags">${tags.join('')}</div><div class="comp">${comp}</div>${routes}`;
+  $('#incoming').innerHTML = `<h2>Als Nächstes: Welle ${wn}</h2><div class="tags">${tags.join('')}</div><div class="comp">${comp}</div>${routes}`;
 }
 const hud = { lives:$('#hLives'), bar:$('#hLifeBar'), barWrap:$('#hLifeWrap'), points:$('#hPoints'), wave:$('#hWave'), kills:$('#hKills'), combo:$('#hCombo'), waveLbl:$('#waveLbl'), btnWave:$('#btnWave'), speed:$('#btnSpeed'), pause:$('#btnPause'), mute:$('#btnMute'), air:$('#abAir'), airS:$('#abAirS'), frz:$('#abFrz'), frzS:$('#abFrzS'), fix:$('#abFix'), fixS:$('#abFixS') };
 function setText(el, v){ v = String(v); if (el._v !== v) { el._v = v; el.textContent = v; } }
@@ -1733,21 +1733,21 @@ function refreshHUD(){
   setText(hud.points, S.points); setText(hud.wave, S.wave); setText(hud.kills, S.kills);
   setText(hud.combo, S.combo >= 3 ? 'x' + S.combo : '–');
   let lbl, dis = false;
-  if (!running || S.over) { lbl = 'Start wave 1'; dis = true; }
-  else if (S.phase === 'build') lbl = S.countdown > 0 ? `Next wave in ${Math.ceil(S.countdown)}s · +${Math.ceil(S.countdown)}` : `Start wave ${S.wave + 1}`;
-  else if (S.spawnQ.length) { lbl = `Wave ${S.wave} incoming`; dis = true; }
-  else lbl = `Call wave ${S.wave + 1} · +${10 + S.wave * 2}`;
+  if (!running || S.over) { lbl = 'Welle 1 starten'; dis = true; }
+  else if (S.phase === 'build') lbl = S.countdown > 0 ? `Nächste Welle in ${Math.ceil(S.countdown)} s · +${Math.ceil(S.countdown)}` : `Welle ${S.wave + 1} starten`;
+  else if (S.spawnQ.length) { lbl = `Welle ${S.wave} läuft`; dis = true; }
+  else lbl = `Welle ${S.wave + 1} rufen · +${10 + S.wave * 2}`;
   setText(hud.waveLbl, lbl); if (hud.btnWave.disabled !== dis) hud.btnWave.disabled = dis;
-  setText(hud.speed, speed + '×'); setText(hud.pause, paused ? 'Resume' : 'Pause'); setText(hud.mute, Sound.muted ? 'Sound off' : 'Sound on');
+  setText(hud.speed, speed + '×'); setText(hud.pause, paused ? 'Weiter' : 'Pause'); setText(hud.mute, Sound.muted ? 'Ton aus' : 'Ton an');
   for (const k in buildBtns) buildBtns[k].classList.toggle('poor', S.points < costOf(k));
-  hud.air.style.setProperty('--cd', S.cdAir / ABIL.air.cd); setText(hud.airS, S.cdAir > 0 ? Math.ceil(S.cdAir) + 's' : 'Ready'); hud.air.classList.toggle('on', ui.abil === 'air');
-  hud.frz.style.setProperty('--cd', S.cdFrz / ABIL.frz.cd); setText(hud.frzS, S.cdFrz > 0 ? Math.ceil(S.cdFrz) + 's' : 'Ready'); hud.frz.classList.toggle('on', ui.abil === 'frz');
-  setText(hud.fixS, S.lives >= S.maxLives + 10 ? 'Base full' : `+3 · ${S.repairCost}`); hud.fix.classList.toggle('poor', S.points < S.repairCost);
+  hud.air.style.setProperty('--cd', S.cdAir / ABIL.air.cd); setText(hud.airS, S.cdAir > 0 ? Math.ceil(S.cdAir) + ' s' : 'Bereit'); hud.air.classList.toggle('on', ui.abil === 'air');
+  hud.frz.style.setProperty('--cd', S.cdFrz / ABIL.frz.cd); setText(hud.frzS, S.cdFrz > 0 ? Math.ceil(S.cdFrz) + ' s' : 'Bereit'); hud.frz.classList.toggle('on', ui.abil === 'frz');
+  setText(hud.fixS, S.lives >= S.maxLives + 10 ? 'Basis voll' : `+3 · ${S.repairCost}`); hud.fix.classList.toggle('poor', S.points < S.repairCost);
   if (infoRefs.kills && ui.sel) setText(infoRefs.kills, ui.sel.kills);
   if (infoRefs.up) { const d = S.points < infoRefs.upCost; if (infoRefs.up.disabled !== d) infoRefs.up.disabled = d; }
   const o = ui.sel;
   if (o && infoRefs.hp) setText(infoRefs.hp, Math.ceil(o.hp));
-  if (o && infoRefs.fix) { const dmg = o.hp < o.maxHp, c = dmg ? repairCost(o) : 0; setText(infoRefs.fixC, dmg ? c : 'full'); const d = !dmg || S.points < c; if (infoRefs.fix.disabled !== d) infoRefs.fix.disabled = d; }
+  if (o && infoRefs.fix) { const dmg = o.hp < o.maxHp, c = dmg ? repairCost(o) : 0; setText(infoRefs.fixC, dmg ? c : 'voll'); const d = !dmg || S.points < c; if (infoRefs.fix.disabled !== d) infoRefs.fix.disabled = d; }
   if (o && infoRefs.sellV) setText(infoRefs.sellV, sellValue(o));
   if (infoRefs.specs) for (const [b, c] of infoRefs.specs) { const d = S.points < c; if (b.disabled !== d) b.disabled = d; }
   renderIncoming();
@@ -1757,16 +1757,16 @@ function updateHint(){
   const el = $('#hint');
   let h;
   if (!S) return;
-  if (ui.build) { const D = TOWERS[ui.build] || ITEMS[ui.build]; h = `<b>${D.name}</b> · ${D.cost} points. ${isTouch ? 'Tap a tile to aim, tap again to build.' : 'Click a tile to build. Right-click or Esc to stop.'}`; }
-  else if (ui.abil) h = `<b>${ABIL[ui.abil].name}</b> armed. ${isTouch ? 'Tap' : 'Click'} the map to aim. Esc cancels.`;
+  if (ui.build) { const D = TOWERS[ui.build] || ITEMS[ui.build]; h = `<b>${D.name}</b> · ${D.cost} Punkte. ${isTouch ? 'Feld antippen zum Zielen, nochmal antippen zum Bauen.' : 'Klicke auf ein Feld zum Bauen. Esc bricht ab.'}`; }
+  else if (ui.abil) h = `<b>${ABIL[ui.abil].name}</b> ist scharf. ${isTouch ? 'Tippe' : 'Klicke'} auf die Karte zum Zielen. Esc bricht ab.`;
   else if (ui.sel) {
     const o = ui.sel;
-    if (o.kind === 'tower') h = (o.lvl === 2 && o.spec == null ? 'Level 3 reached: <b>pick a specialization</b> in the panel.' : 'U upgrades, T changes the target, S sells.') + (o.road ? ' F repairs.' : '');
-    else if (o.kind === 'barricade') h = 'U upgrades the wall, F repairs it, S removes it.';
-    else h = 'S removes it for 75% of the cost.';
+    if (o.kind === 'tower') h = (o.lvl === 2 && o.spec == null ? 'Stufe 3 erreicht: <b>wähle eine Spezialisierung</b> im Feld rechts.' : 'U baut aus, T wechselt das Ziel, S verkauft.') + (o.road ? ' F repariert.' : '');
+    else if (o.kind === 'barricade') h = 'U baut die Mauer aus, F repariert sie, S baut sie ab.';
+    else h = 'S baut es ab und gibt 75% der Kosten zurück.';
   }
-  else if (S.wave === 0) h = 'Place a few <b>Machine Guns</b> along the red route, then start wave 1.';
-  else h = 'Arrows mark what you can upgrade. Walls stretch the route, but weak ones get smashed.';
+  else if (S.wave === 0) h = 'Stelle ein paar <b>Maschinengewehre</b> entlang der roten Route auf und starte dann Welle 1.';
+  else h = 'Pfeile zeigen, was du ausbauen kannst. Mauern verlängern die Route, aber schwache werden zertrümmert.';
   if (el._h !== h) { el._h = h; el.innerHTML = h; }
 }
 
@@ -1839,25 +1839,25 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && run
 const modal = $('#modal'), card = $('#card');
 const newSeed = () => (Math.random() * 90000 | 0) + 10000;
 let menuSeed = newSeed();
-function bestLine(dk){ const b = store.get('deadmaze.best', {})[dk]; return b ? `Best on ${DIFFS[dk].name}: wave ${b.wave} · ${b.kills} kills` : `No record on ${DIFFS[dk].name} yet`; }
+function bestLine(dk){ const b = store.get('deadmaze.best', {})[dk]; return b ? `Bestwert bei ${DIFFS[dk].name}: Welle ${b.wave} · ${b.kills} Abschüsse` : `Noch kein Rekord bei ${DIFFS[dk].name}`; }
 function showModal(kind){
   modalOpen = true; modal.hidden = false;
   if (kind === 'start' || kind === 'menu') {
     const inGame = kind === 'menu';
     card.innerHTML = `<div class="tape"></div><div class="card-body">
       <h1 class="title">DEAD <span>MAZE</span></h1>
-      <p class="lede">The horde is coming through the maze. Build turrets on the rubble, block corridors to force a longer route, and spend every kill on a stronger defense.</p>
-      ${inGame ? `<button class="btn btn-go big" id="mResume" type="button">Resume wave ${S.wave}</button>` : ''}
-      <div class="diffs" role="group" aria-label="Difficulty">
-        ${Object.entries(DIFFS).map(([k, d]) => `<button class="dbtn" type="button" data-d="${k}" aria-pressed="${k === menuDiff}"><b>${d.name}</b><small>${d.lives} base · ${d.points} points${d.hp !== 1 ? ` · ${d.hp > 1 ? '+' : ''}${Math.round((d.hp - 1) * 100)}% HP` : ''}</small></button>`).join('')}
+      <p class="lede">Die Horde kommt durch das Labyrinth. Baue Türme auf den Schutt, versperre Gänge für einen längeren Weg und stecke jeden Abschuss in eine stärkere Verteidigung.</p>
+      ${inGame ? `<button class="btn btn-go big" id="mResume" type="button">Weiter in Welle ${S.wave}</button>` : ''}
+      <div class="diffs" role="group" aria-label="Schwierigkeit">
+        ${Object.entries(DIFFS).map(([k, d]) => `<button class="dbtn" type="button" data-d="${k}" aria-pressed="${k === menuDiff}"><b>${d.name}</b><small>${d.lives} Leben · ${d.points} Punkte${d.hp !== 1 ? ` · ${d.hp > 1 ? '+' : ''}${Math.round((d.hp - 1) * 100)}% Zombie-Leben` : ''}</small></button>`).join('')}
       </div>
-      <div class="seed"><span>Map <b id="mSeed">#${inGame ? S.seed : menuSeed}</b> · every map is a new random maze</span><button class="btn" id="mReroll" type="button">New map</button></div>
-      <button class="btn ${inGame ? '' : 'btn-go'} big" id="mStart" type="button">${inGame ? 'Restart on this map' : 'Start defense'}</button>
+      <div class="seed"><span>Karte <b id="mSeed">#${inGame ? S.seed : menuSeed}</b> · jede Karte ist ein neues Zufalls-Labyrinth</span><button class="btn" id="mReroll" type="button">Neue Karte</button></div>
+      <button class="btn ${inGame ? '' : 'btn-go'} big" id="mStart" type="button">${inGame ? 'Neustart auf dieser Karte' : 'Verteidigung starten'}</button>
       <ul class="howto">
-        <li><b>Zombies</b> follow the shortest way to your base.</li>
-        <li><b>Barricades</b> reroute them, until they smash through.</li>
-        <li><b>Kills</b> pay points. Spend them on towers and upgrades.</li>
-        <li><b>Airstrike</b> and <b>cryo bomb</b> save you in a pinch.</li>
+        <li><b>Zombies</b> nehmen den kürzesten Weg zu deiner Basis.</li>
+        <li><b>Barrikaden</b> leiten sie um, bis sie durchbrechen.</li>
+        <li><b>Abschüsse</b> bringen Punkte. Gib sie für Türme und Ausbauten aus.</li>
+        <li><b>Luftschlag</b> und <b>Frostbombe</b> retten dich in der Not.</li>
       </ul>
       <p class="best" id="mBest">${bestLine(menuDiff)}</p>
     </div>`;
@@ -1870,7 +1870,7 @@ function showModal(kind){
     $('#mReroll').addEventListener('click', () => {
       seed = menuSeed = newSeed(); $('#mSeed').textContent = '#' + seed;
       running = false; newGame(seed, menuDiff);
-      const st = $('#mStart'); st.textContent = 'Start defense'; st.classList.add('btn-go');
+      const st = $('#mStart'); st.textContent = 'Verteidigung starten'; st.classList.add('btn-go');
       const r = $('#mResume'); if (r) r.remove();
     });
     $('#mStart').addEventListener('click', () => startGame(seed));
@@ -1879,16 +1879,16 @@ function showModal(kind){
   } else if (kind === 'over') {
     const prev = S.prevBest;
     card.innerHTML = `<div class="tape red"></div><div class="card-body">
-      <h1 class="title red">BASE OVERRUN</h1>
-      <p class="lede">The horde broke through on wave ${S.wave}, map #${S.seed}, ${S.diff.name}.</p>
+      <h1 class="title red">BASIS ÜBERRANNT</h1>
+      <p class="lede">Die Horde ist in Welle ${S.wave} durchgebrochen (Karte #${S.seed}, ${S.diff.name}).</p>
       <div class="ostats">
-        <div><span class="lbl">Wave</span><span class="val">${S.wave}</span></div>
-        <div><span class="lbl">Kills</span><span class="val">${S.kills}</span></div>
-        <div><span class="lbl">Best combo</span><span class="val">x${S.maxCombo}</span></div>
-        <div><span class="lbl">Points earned</span><span class="val amber">${S.earned}</span></div>
+        <div><span class="lbl">Welle</span><span class="val">${S.wave}</span></div>
+        <div><span class="lbl">Abschüsse</span><span class="val">${S.kills}</span></div>
+        <div><span class="lbl">Beste Serie</span><span class="val">x${S.maxCombo}</span></div>
+        <div><span class="lbl">Punkte verdient</span><span class="val amber">${S.earned}</span></div>
       </div>
-      <p class="best">${S.record ? (prev ? `New record. Previous best: wave ${prev.wave}.` : 'First record on this difficulty.') : `Best on ${S.diff.name}: wave ${prev.wave} · ${prev.kills} kills`}</p>
-      <div class="row"><button class="btn btn-go big" id="mRetry" type="button">Retry this map</button><button class="btn big" id="mNew" type="button">New map</button></div>
+      <p class="best">${S.record ? (prev ? `Neuer Rekord. Bisher: Welle ${prev.wave}.` : 'Erster Rekord auf dieser Stufe.') : `Bestwert bei ${S.diff.name}: Welle ${prev.wave} · ${prev.kills} Abschüsse`}</p>
+      <div class="row"><button class="btn btn-go big" id="mRetry" type="button">Karte nochmal</button><button class="btn big" id="mNew" type="button">Neue Karte</button></div>
     </div>`;
     $('#mRetry').addEventListener('click', () => startGame(S.seed));
     $('#mNew').addEventListener('click', () => { menuSeed = newSeed(); running = false; newGame(menuSeed, menuDiff); showModal('start'); });
@@ -1900,7 +1900,7 @@ function startGame(seed){
   Sound.init();
   newGame(seed, menuDiff);
   running = true; paused = false; closeMenu();
-  banner('HOLD THE LINE', 'Build your defense, then start wave 1', '#e9a72a');
+  banner('HALTET DIE LINIE', 'Baue deine Verteidigung und starte dann Welle 1', '#e9a72a');
   refreshHUD();
 }
 

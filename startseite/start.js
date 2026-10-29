@@ -37,9 +37,9 @@
 
   // ---------- Filtern & Sortieren: ein Knopf, darin Modus, Typ und Reihenfolge ----------
   // Typen: gleiche Liste wie in tools/spiel-pruefen.js. Schlüssel = Name klein geschrieben.
-  var TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau'];
+  var TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau', 'Chill'];
   var MODI = { alle: 'Alle', lokal: 'Lokal', online: 'Online', bots: 'Gegen Bots', solo: 'Solo' };
-  var filter = load('lw-filter', 'alle'), typ = load('lw-typ', 'alle'), sort = load('lw-sort', 'neu');
+  var filter = load('lw-filter', 'alle'), typ = load('lw-typ', 'alle'), sort = load('lw-sort', 'zufall');
   var fp = $('fp'), fpBtn = $('fp-btn'), fpPanel = $('fp-panel');
   var chMode = fpPanel.querySelector('[data-key="f"]'), chTyp = fpPanel.querySelector('[data-key="t"]'), chSort = fpPanel.querySelector('[data-key="s"]');
   function typesOf(c) { return (c.dataset.typ || '').split(' ').filter(Boolean); }
@@ -56,7 +56,7 @@
   function typName(k) { for (var i = 0; i < TYPEN.length; i++) if (TYPEN[i].toLowerCase() === k) return TYPEN[i]; return 'Alle'; }
   if (!MODI[filter]) filter = 'alle';
   if (typ !== 'alle' && !chTyp.querySelector('[data-v="' + typ + '"]')) typ = 'alle';
-  if (sort !== 'neu' && sort !== 'top') sort = 'neu';
+  if (sort !== 'neu' && sort !== 'top' && sort !== 'zufall') sort = 'zufall';
 
   function openFp(open) {
     fpBtn.setAttribute('aria-expanded', open);
@@ -70,13 +70,17 @@
   chMode.addEventListener('click', function (e) { var b = e.target.closest('button[data-v]'); if (!b) return; filter = b.dataset.v; save('lw-filter', filter); apply(true); });
   chTyp.addEventListener('click', function (e) { var b = e.target.closest('button[data-v]'); if (!b) return; typ = b.dataset.v; save('lw-typ', typ); apply(true); });
   chSort.addEventListener('click', function (e) { var b = e.target.closest('button[data-s]'); if (!b || sort === b.dataset.s) return; sort = b.dataset.s; save('lw-sort', sort); apply(true); });
-  $('reset').addEventListener('click', function () { filter = 'alle'; typ = 'alle'; sort = 'neu'; save('lw-filter', filter); save('lw-typ', typ); save('lw-sort', sort); apply(true); });
+  $('reset').addEventListener('click', function () { filter = 'alle'; typ = 'alle'; sort = 'zufall'; save('lw-filter', filter); save('lw-typ', typ); save('lw-sort', sort); apply(true); });
   // Aktive Auswahl als Marken neben dem Knopf, ein Klick entfernt sie wieder
   $('fp-active').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-x]'); if (!b) return;
     if (b.dataset.x === 'f') { filter = 'alle'; save('lw-filter', filter); } else { typ = 'alle'; save('lw-typ', typ); }
     apply(true);
   });
+
+  // Chill-Lounge: ein Klick zeigt nur die ruhigen Spiele, ein zweiter alle
+  $('lounge-btn').addEventListener('click', function () { typ = typ === 'chill' ? 'alle' : 'chill'; if (typ === 'chill') filter = 'alle'; save('lw-typ', typ); save('lw-filter', filter); apply(true); });
+  $('lounge-close').addEventListener('click', function () { typ = 'alle'; save('lw-typ', typ); apply(true); });
 
   // Markierung, Anzahl pro Eintrag und Zusammenfassung
   function updateMenus() {
@@ -94,7 +98,8 @@
     fp.classList.toggle('set', n > 0);
     $('fp-active').innerHTML = (filter !== 'alle' ? '<button type="button" data-x="f" aria-label="Filter ' + MODI[filter] + ' entfernen">' + MODI[filter] + ' ✕</button>' : '') +
       (typ !== 'alle' ? '<button type="button" data-x="t" aria-label="Filter ' + typName(typ) + ' entfernen">' + typName(typ) + ' ✕</button>' : '');
-    $('reset').disabled = filter === 'alle' && typ === 'alle' && sort === 'neu';
+    $('reset').disabled = filter === 'alle' && typ === 'alle' && sort === 'zufall';
+    var lb = $('lounge-btn'); lb.setAttribute('aria-pressed', typ === 'chill'); $('lounge').hidden = typ !== 'chill';
   }
 
   function score(slug) {
@@ -104,6 +109,10 @@
     return (s.avg * s.count + 3.5 * 3) / (s.count + 3);
   }
   function byNew(a, b) { return (+b.dataset.added || 0) - (+a.dataset.added || 0) || a.dataset.title.localeCompare(b.dataset.title, 'de'); }
+  // Zufällige Reihenfolge: einmal pro Seitenaufruf gemischt, damit bei jedem Besuch andere Spiele oben stehen
+  var rnd = {};
+  cards.forEach(function (c) { rnd[c.dataset.slug] = Math.random(); });
+  function byRandom(a, b) { return rnd[a.dataset.slug] - rnd[b.dataset.slug]; }
   function byTop(a, b) { return score(b.dataset.slug) - score(a.dataset.slug) || byNew(a, b); }
 
   function apply(animate) {
@@ -115,10 +124,10 @@
       c.hidden = !modeOk(c, filter) || !typOk(c, typ);
       if (!c.hidden) shown++;
     });
-    cards.slice().sort(sort === 'top' ? byTop : byNew).forEach(function (c) { grid.appendChild(c); });
+    cards.slice().sort(sort === 'top' ? byTop : sort === 'neu' ? byNew : byRandom).forEach(function (c) { grid.appendChild(c); });
     $('count').textContent = '// ' + shown + (shown === 1 ? ' Spiel' : ' Spiele') +
       (filter !== 'alle' ? ' · ' + MODI[filter] : '') + (typ !== 'alle' ? ' · ' + typName(typ) : '') +
-      (sort === 'top' ? ' · nach Bewertung' : ' · neueste zuerst');
+      (sort === 'top' ? ' · nach Bewertung' : sort === 'neu' ? ' · neueste zuerst' : ' · zufällig gemischt');
     if (!before || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     cards.forEach(function (c, i) {
       var r0 = before[i];

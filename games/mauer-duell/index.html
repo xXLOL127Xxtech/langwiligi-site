@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ff8a50">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Labyrinth">
-<meta name="spiel-typ" content="Strategie,Klassiker">
+<meta name="spiel-typ" content="Strategie,Klassiker,Chill">
 <meta name="spiel-suche" content="Mauer-Brettspiel, Weg verbauen">
 <!--
   Mauerbauer (früher Mauer-Duell) – angepasst für langwiligi.site.
@@ -988,13 +988,18 @@ window.Sound = (function () {
       
       return (dOpp - dMe) * 10 + (wallsLeft[me] - wallsLeft[opp]);
     }
-    function genAiMoves(player) {
+    function genAiMoves(player, near) {
       const opp = 1 - player;
+      // near: nur Mauern direkt vor dem Gegner prüfen (sonst dauert "Schwer" mehrere Sekunden).
+      // Der Gegner stellt Mauern nur in der Nähe deiner Figur, du in der Nähe seiner.
+      const target = pawns[opp], rad = near === 2 ? 2 : 1;
+      const close = (r, c) => !near || (Math.abs(target.r - r) <= rad && Math.abs(target.c - c) <= rad);
       const list = [];
       legalPawnMoves(pawns[player], pawns[opp]).forEach(([r, c]) => list.push({ t: "move", r, c }));
       if (wallsLeft[player] > 0) {
         for (let r = 0; r < WALL_SLOTS; r++) {
           for (let c = 0; c < WALL_SLOTS; c++) {
+            if (!close(r, c)) continue;
             if (wallLegal("h", r, c)) list.push({ t: "wall", o: "h", r, c });
             if (wallLegal("v", r, c)) list.push({ t: "wall", o: "v", r, c });
           }
@@ -1005,7 +1010,7 @@ window.Sound = (function () {
     function aiMove(level) {
       if (over) return null;
       const me = turn, opp = 1 - me;
-      const moves = genAiMoves(me);
+      const moves = genAiMoves(me, level === "hard" ? 2 : 0);
       if (!moves.length) return null;
       
       if (level === "easy" && Math.random() < 0.4) {
@@ -1020,7 +1025,7 @@ window.Sound = (function () {
         if (!depth2) {
           sc = evalFor(me);
         } else {
-          const oppMoves = genAiMoves(opp);
+          const oppMoves = genAiMoves(opp, 1);
           let worst = Infinity;
           for (const om of oppMoves) {
             const u2 = doSim(om, opp);
@@ -1059,7 +1064,7 @@ window.Sound = (function () {
       {
         id: "size", label: "Brettgrösse", default: 9,
         choices: [
-          { value: 5, label: "5×5 (nhanh)" },
+          { value: 5, label: "5×5 (schnell)" },
           { value: 7, label: "7×7" },
           { value: 9, label: "9×9 (Standard)" },
         ],
@@ -1067,7 +1072,7 @@ window.Sound = (function () {
       {
         id: "Mauern", label: "Mauern pro Spieler", default: 10,
         choices: [
-          { value: 6, label: "6 (nhanh)" },
+          { value: 6, label: "6 (schnell)" },
           { value: 10, label: "10 (Standard)" },
           { value: 14, label: "14 (viele)" },
         ],

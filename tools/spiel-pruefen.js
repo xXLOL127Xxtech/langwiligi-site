@@ -14,7 +14,7 @@ const ROOT = path.resolve(__dirname, '..');
 const GAMES = path.join(ROOT, 'games');
 const MODI = ['Lokal', 'Online', 'Bots', 'Solo'];
 // Spiel-Typen für den Typ-Filter auf der Startseite (gleiche Liste in startseite/start.js)
-const TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau'];
+const TYPEN = ['3D', 'Pixel-Art', 'Action', 'Strategie', 'Klassiker', 'Denkspiel', 'Geschick', 'Physik', 'Rennen', 'Party', 'Aufbau', 'Chill'];
 const ALLOWED_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'langwiligi.site'];
 // Dateien, die nur der Besitzer der Webseite ändern sollte
 const PROTECTED = [/^\.github\//, /^games\/_shared\//, /^server\//, /^tools\//, /^startseite\//, /^deploy\.sh$/, /^hochladen\./, /^einrichten\./, /^server-aktualisieren\./];

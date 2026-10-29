@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#9575ff">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Knobeln">
-<meta name="spiel-typ" content="Denkspiel,Strategie">
+<meta name="spiel-typ" content="Denkspiel,Strategie,Chill">
 <meta name="spiel-suche" content="Ultimate Tic Tac Toe, Super Tic Tac Toe">
 <!--
   Tic-Tac-Turbo (früher Ultimate Tic-Tac-Toe) – angepasst für langwiligi.site.
@@ -784,12 +784,60 @@ window.Sound = (function () {
       boards[b][c] = null;
       return score;
     }
+    // Suche (Alpha-Beta) auf Kopien von Brett und Feldstand
+    function simMoves(sb, sw, sf) {
+      const out = [];
+      for (let b = 0; b < 9; b++) {
+        if (sw[b] !== null || (sf !== -1 && b !== sf)) continue;
+        for (let c = 0; c < 9; c++) if (sb[b][c] === null) out.push([b, c]);
+      }
+      return out;
+    }
+    function simBig(sw) { return winnerOf(sw.map((x) => (x === 0 || x === 1) ? x : null)); }
+    function simEval(sb, sw, me) {
+      let sc = 0;
+      for (let b = 0; b < 9; b++) {
+        if (sw[b] === me) sc += 14 + (b === 4 ? 6 : 0);
+        else if (sw[b] === 1 - me) sc -= 14 + (b === 4 ? 6 : 0);
+        else if (sw[b] === null) sc += subThreatScore(sb[b], me) - subThreatScore(sb[b], 1 - me);
+      }
+      for (const [x, y, z] of LINES) {
+        const t = [sw[x], sw[y], sw[z]];
+        const m = t.filter((v) => v === me).length, o = t.filter((v) => v === 1 - me).length;
+        if (o === 0 && m === 2) sc += 40; else if (o === 0 && m === 1) sc += 6;
+        if (m === 0 && o === 2) sc -= 40; else if (m === 0 && o === 1) sc -= 6;
+      }
+      return sc;
+    }
+    function simSearch(sb, sw, sf, p, me, depth, alpha, beta) {
+      const moves = simMoves(sb, sw, sf);
+      if (!moves.length) {
+        const c0 = sw.filter((x) => x === 0).length, c1 = sw.filter((x) => x === 1).length;
+        const d = me === 0 ? c0 - c1 : c1 - c0;
+        return d === 0 ? 0 : d > 0 ? 50000 : -50000;
+      }
+      if (depth <= 0) return simEval(sb, sw, me);
+      let v = p === me ? -Infinity : Infinity;
+      for (const [b, c] of moves) {
+        sb[b][c] = p;
+        const oldW = sw[b];
+        const w = winnerOf(sb[b]);
+        if (w !== null) sw[b] = w; else if (isFull(sb[b])) sw[b] = "draw";
+        const bw = simBig(sw);
+        let sc;
+        if (bw !== null) sc = (bw === me ? 100000 : -100000) + (bw === me ? depth : -depth);
+        else sc = simSearch(sb, sw, sw[c] === null ? c : -1, 1 - p, me, depth - 1, alpha, beta);
+        sb[b][c] = null; sw[b] = oldW;
+        if (p === me) { v = Math.max(v, sc); alpha = Math.max(alpha, v); } else { v = Math.min(v, sc); beta = Math.min(beta, v); }
+        if (alpha >= beta) break;
+      }
+      return v;
+    }
     function aiMove(level) {
       if (over) return null;
       const me = turn;
       const moves = legalMoves();
       if (!moves.length) return null;
-      
       for (const mv of moves) {
         boards[mv.b][mv.c] = me;
         const w = winnerOf(boards[mv.b]);
@@ -800,14 +848,30 @@ window.Sound = (function () {
           if (winnerOf(bigCells) === me) return mv;
         }
       }
-      if (level === "easy" && Math.random() < 0.5) {
-        return moves[Math.floor(Math.random() * moves.length)];
+      if (level === "easy") {
+        if (Math.random() < 0.5) return moves[Math.floor(Math.random() * moves.length)];
+        let best = -Infinity, pick = moves[0];
+        for (const mv of moves) {
+          const s = evalMove(mv, me) + Math.random() * 6;
+          if (s > best) { best = s; pick = mv; }
+        }
+        return pick;
       }
+      let depth = level === "hard" ? 5 : 3;
+      if (moves.length > 30) depth--;
+      const sb = boards.map((x) => x.slice()), sw = bWin.slice();
       let best = -Infinity, pick = moves[0];
-      const jitter = level === "hard" ? 0 : (level === "normal" ? 2 : 6);
       for (const mv of moves) {
-        const s = evalMove(mv, me) + (jitter ? (Math.random() * jitter) : 0);
-        if (s > best) { best = s; pick = mv; }
+        const { b, c } = mv;
+        sb[b][c] = me;
+        const oldW = sw[b];
+        const w = winnerOf(sb[b]);
+        if (w !== null) sw[b] = w; else if (isFull(sb[b])) sw[b] = "draw";
+        const bw = simBig(sw);
+        let sc = bw === me ? 100000 : simSearch(sb, sw, sw[c] === null ? c : -1, 1 - me, me, depth - 1, -Infinity, Infinity);
+        sb[b][c] = null; sw[b] = oldW;
+        sc += Math.random() * (level === "hard" ? 0.5 : 8);
+        if (sc > best) { best = sc; pick = mv; }
       }
       return pick;
     }

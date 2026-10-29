@@ -109,6 +109,7 @@
           <section><h3>Typ <small>Welche Art Spiel?</small></h3><div class="chips" data-key="t"></div></section>
           <section><h3>Sortieren <small>Reihenfolge der Spiele</small></h3>
             <div class="chips sort" data-key="s">
+              <button type="button" data-s="zufall">Zufällig gemischt</button>
               <button type="button" data-s="neu">Neueste zuerst</button>
               <button type="button" data-s="top">Beste Bewertung</button>
             </div></section>
@@ -117,10 +118,19 @@
       </div>
       <div class="fp-active" id="fp-active" aria-live="polite"></div>
       <div class="tb-actions">
+        <button type="button" class="lounge-btn" id="lounge-btn" aria-pressed="false" title="Ruhige Spiele ohne Zeitdruck"><span aria-hidden="true">🛋️</span> Chill-Lounge</button>
         <button type="button" class="upd-btn" id="upd-open" aria-haspopup="dialog"><span class="upd-led" aria-hidden="true"></span>Updates<i class="upd-new" id="upd-new" hidden>neu</i></button>
         <button type="button" class="tip-btn" id="tip-open"><span aria-hidden="true">+</span> Spiel vorschlagen</button>
       </div>
     </div>
+    <section class="lounge" id="lounge" aria-labelledby="lounge-h" hidden>
+      <div>
+        <p class="kicker">// Chill-Lounge</p>
+        <h2 id="lounge-h">Gemütlich spielen, ohne Hektik</h2>
+        <p>Ruhige Spiele ohne Zeitdruck und ohne Action: Brettspiele, Knobeleien und Aufbauspiele. Alles mit Tastatur oder Touchpad, ganz in deinem Tempo – allein gegen den Computer oder mit einer zweiten Person am selben Laptop.</p>
+      </div>
+      <button type="button" class="lounge-close" id="lounge-close">Alle Spiele zeigen</button>
+    </section>
     <p class="count" id="count" aria-live="polite"></p>
 
     <div class="grid" id="grid">
@@ -137,7 +147,7 @@
           <b>Online mit Freunden:</b> Raum erstellen, Link oder Code schicken, los geht's. <b>Gegen Bots:</b> Wer allein ist, spielt gegen den Computer.</p>
         <p><b>Brettspiel-Klassiker online:</b> Schach, Dame, Go, Backgammon, Mancala (Kalaha), Reversi, Vier gewinnt, Käsekästchen (Dots and Boxes),
           Ultimate Tic Tac Toe und das 4500 Jahre alte Königliche Spiel von Ur. <b>Action:</b> Kartrennen, Billard, Bogenschiessen, Snake,
-          Tower Defense und Strategie in Echtzeit.</p>
+          Tower Defense und Strategie in Echtzeit. <b>Chill-Lounge:</b> Wer es ruhig mag, findet dort Brettspiele, Knobeleien und Aufbauspiele ohne Zeitdruck.</p>
       </div>
       <div class="faq">
         <details><summary>Sind die Spiele wirklich gratis?</summary>

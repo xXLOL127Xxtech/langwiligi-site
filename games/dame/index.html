@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#ff7043">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Brettspiel">
-<meta name="spiel-typ" content="Klassiker,Strategie">
+<meta name="spiel-typ" content="Klassiker,Strategie,Chill">
 <meta name="spiel-suche" content="Dame Brettspiel, Dame online">
 <!--
   Dame – angepasst für langwiligi.site.
@@ -599,6 +599,7 @@ window.Sound = (function () {
     }
     let turn = 0;
     let selected = null;
+    let quiet = 0; // Halbzüge nur mit Damen ohne Schlag, 40 davon = Remis
     let mustContinue = null;
     let over = false;
     let lastMove = null;     // {from:[r,c], to:[r,c]}
@@ -743,8 +744,16 @@ window.Sound = (function () {
 
       mustContinue = null;
       selected = null;
+      quiet = (cap || !piece.king || promoted) ? 0 : quiet + 1;
       turn = 1 - turn;
       render();
+
+      if (quiet >= 40) {
+        over = true;
+        ctx.setTurn(-1);
+        ctx.setStatus((`🤝 Unentschieden – 20 Züge lang wurde nur mit Damen gezogen, ohne zu schlagen.`));
+        return;
+      }
 
       if (!playerHasAnyMove(turn)) {
         over = true;
@@ -976,6 +985,7 @@ window.Sound = (function () {
       "Erreicht ein Stein die letzte Reihe, wird er zur Dame ♔ (zieht und schlägt in alle vier Schrägrichtungen).",
       "Bei der 'fliegenden Dame' zieht und schlägt die Dame beliebig WEIT schräg (wie bei der internationalen Dame) – viel stärker und spannender.",
       "Oben siehst du die verbleibenden Steine und Damen und die geschlagenen Steine. Du gewinnst, wenn der Gegner keine Steine oder keinen Zug mehr hat.",
+      "Remis: Wird 20 Züge lang nur mit Damen gezogen und nicht geschlagen, endet die Partie unentschieden.",
     ],
     create,
   });

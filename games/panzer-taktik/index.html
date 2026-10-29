@@ -6,7 +6,7 @@
 <title>Panzer-Duell</title>
 <meta name="description" content="Rundenbasiertes Panzer-Duell: fahren, schiessen, Minen legen und Raketen zünden – mit Aktionspunkten.">
 <meta name="theme-color" content="#9ccc65">
-<meta name="spiel-modi" content="Lokal,Online">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Rundenbasiert,Taktik">
 <meta name="spiel-typ" content="Strategie">
 <meta name="spiel-suche" content="Panzerspiel, Panzer-Spiel zu zweit">
@@ -1642,6 +1642,92 @@ window.Sound = (function () {
       return true;
     }
 
+    // ---------- Computer-Gegner (Spieler 2, oben rechts) ----------
+    // Leicht: fährt oft ziellos und schiesst nur bei freier Linie. Mittel/Schwer: suchen Schusslinien,
+    // sammeln Items, nutzen Durchschuss und Raketen. Schwer weicht zusätzlich gegnerischen Schusslinien aus.
+    let botBusy = false, botTimer = null;
+    function botReach(maxCost) {
+      const me = players[1];
+      const out = new Map([[me.r + "," + me.c, 0]]);
+      const q = [{ r: me.r, c: me.c, d: 0 }];
+      while (q.length) {
+        const cur = q.shift();
+        if (cur.d >= maxCost) continue;
+        for (const [dr, dc] of DIRS) {
+          const r = cur.r + dr, c = cur.c + dc, key = r + "," + c;
+          if (!passable(r, c) || out.has(key)) continue;
+          if (mines[r][c] && mines[r][c].owner === 0) continue;
+          out.set(key, cur.d + 1);
+          q.push({ r, c, d: cur.d + 1 });
+        }
+      }
+      return out;
+    }
+    function clearLine(fr, fc, tr, tc) {
+      const dir = lineDir(fr, fc, tr, tc);
+      if (!dir) return false;
+      const hit = traceShot(fr, fc, tr, tc, dir);
+      return hit.type === "tank";
+    }
+    function botPlan(level) {
+      const me = players[1], foe = players[0];
+      const easy = level === "easy", hard = level === "hard";
+      const dist = Math.abs(me.r - foe.r) + Math.abs(me.c - foe.c);
+      if (ap >= 2 && clearLine(me.r, me.c, foe.r, foe.c)) {
+        if (!easy && me.rockets > 0 && ap >= 3 && dist <= ROCKET_RANGE && (hard || foe.hp <= 48)) return { t: "rocket", r: foe.r, c: foe.c };
+        return { t: "shoot", r: foe.r, c: foe.c };
+      }
+      if (!easy && ap >= 3 && lineDir(me.r, me.c, foe.r, foe.c) && pierceRay(me).some((x) => x.hit)) return { t: "pierce", r: foe.r, c: foe.c };
+      if (!easy && me.rockets > 0 && ap >= 3 && dist <= ROCKET_RANGE && (hard || ctx.rng() < 0.5)) return { t: "rocket", r: foe.r, c: foe.c };
+      if (ap < 1) return null;
+      const reach = botReach(ap);
+      let best = null, bestScore = -Infinity;
+      const scoreCell = (r, c, cost) => {
+        const d = Math.abs(r - foe.r) + Math.abs(c - foe.c);
+        let sc = -d * (hard ? 0.7 : 1);
+        const left = ap - cost;
+        const line = clearLine(r, c, foe.r, foe.c);
+        if (line && left >= 2) sc += 20;
+        else if (line && hard) sc -= 9;
+        else if (line && !easy) sc -= 3;
+        const it = items[r][c];
+        if (it) sc += it === "repair" ? (me.hp < MAX_HP - 25 ? 9 : 2) : it === "rocket" ? 6 : it === "armor" ? 5 : 3;
+        if (hard && terrain[r][c].type === "forest") sc += 1.5;
+        if (me.hp < 40 && hard) sc += d * 0.5;
+        return sc;
+      };
+      const here = scoreCell(me.r, me.c, 0);
+      reach.forEach((cost, key) => {
+        if (cost === 0) return;
+        const [r, c] = key.split(",").map(Number);
+        const sc = scoreCell(r, c, cost) + (easy ? ctx.rng() * 10 : ctx.rng() * 0.4);
+        if (sc > bestScore) { bestScore = sc; best = { r, c }; }
+      });
+      if (best && bestScore > here + 0.2) return { t: "move", r: best.r, c: best.c };
+      // nichts Besseres: Mine auf ein freies Nachbarfeld, sonst Zug beenden
+      if (hard && me.mines > 0 && ap >= 1) {
+        for (const [dr, dc] of DIRS) {
+          const r = me.r + dr, c = me.c + dc;
+          if (passable(r, c) && !mines[r][c] && !items[r][c] && Math.abs(r - foe.r) + Math.abs(c - foe.c) < dist) return { t: "mine", r, c };
+        }
+      }
+      return null;
+    }
+    function aiMove(level) {
+      if (over || botBusy || turn !== 1 || !ctx.vsAI) return null;
+      botBusy = true;
+      const step = () => {
+        botTimer = null;
+        if (over || turn !== 1 || !root.isConnected) { botBusy = false; return; }
+        const mv = botPlan(level) || { t: "end" };
+        applyMove(mv, true);
+        if (over || turn !== 1) { botBusy = false; return; }
+        botTimer = setTimeout(step, 620);
+      };
+      botTimer = setTimeout(step, 200);
+      return null;
+    }
+
     function breakCrate(r, c) {
       const cell = terrain[r][c];
       if (cell.type !== "crate") return;
@@ -1894,7 +1980,7 @@ window.Sound = (function () {
     ctx.setTurn(0);
     render();
     updateStatus();
-    return { applyMove };
+    return { applyMove, aiMove, destroy() { clearTimeout(botTimer); botBusy = false; } };
   }
 
   window.GameRegistry.register({
@@ -1909,7 +1995,7 @@ window.Sound = (function () {
         label: "Kartengrösse",
         default: 11,
         choices: [
-          { value: 9, label: "9×9 (nhanh)" },
+          { value: 9, label: "9×9 (schnell)" },
           { value: 11, label: "11×11 (Standard)" },
           { value: 13, label: "13×13 (gross)" },
         ],
@@ -1946,7 +2032,7 @@ window.Sound = (function () {
       },
     ],
     howTo: [
-      "Jeder steuert einen Panzer auf einem Raster-Schlachtfeld – zu zweit an einem Gerät oder online.",
+      "Jeder steuert einen Panzer auf einem Raster-Schlachtfeld – gegen den Bot, zu zweit an einem Gerät oder online.",
       "Pro Zug hast du Aktionspunkte (AP). Fahren kostet 1 AP pro Feld, ein Schuss 2 AP, eine Rakete 3 AP, eine Mine 1 AP.",
       "Normale Schüsse fliegen nur waagrecht oder senkrecht und stoppen an Panzern, Kisten oder Mauern.",
       "Durchschuss (3 AP): geht durch Büsche, zerstört Kisten und trifft jeden Panzer auf der Linie – nur Mauern halten ihn auf.",
@@ -1955,6 +2041,7 @@ window.Sound = (function () {
       "Panzerung verringert den Schaden des nächsten Treffers. Minen legst du auf ein Nachbarfeld – sie explodieren, wenn der Gegner drauffährt.",
       "Mit „Ende“ beendest du deinen Zug vorzeitig. Bring die Leben des gegnerischen Panzers auf 0, um zu gewinnen.",
     ],
+    supportsAI: true,
     create,
   });
 })();

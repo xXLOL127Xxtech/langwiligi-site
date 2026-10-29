@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#43d17a">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Strategie">
-<meta name="spiel-typ" content="Klassiker,Strategie">
+<meta name="spiel-typ" content="Klassiker,Strategie,Chill">
 <meta name="spiel-suche" content="Reversi online, Reversi zu zweit">
 <!--
   Reversi – angepasst für langwiligi.site.
@@ -877,10 +877,63 @@ window.Sound = (function () {
     function posWeight(r, c) {
       const edgeR = (r === 0 || r === N - 1);
       const edgeC = (c === 0 || c === N - 1);
-      if (edgeR && edgeC) return 100;            
-      if ((r === 1 || r === N - 2) && (c === 1 || c === N - 2)) return -30; 
-      if (edgeR || edgeC) return 12;             
+      if (edgeR && edgeC) return 100;
+      if ((r === 1 || r === N - 2) && (c === 1 || c === N - 2)) return -30;
+      if (edgeR || edgeC) return 12;
       return 1;
+    }
+    // Suche auf einer Kopie des Brettes (Alpha-Beta mit Ecken, Beweglichkeit und Endspiel-Zählung)
+    const DIRS8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+    function simFlips(b, r, c, p) {
+      const out = [];
+      if (b[r][c] !== null) return out;
+      for (const [dr, dc] of DIRS8) {
+        const line = [];
+        let rr = r + dr, cc = c + dc;
+        while (rr >= 0 && rr < N && cc >= 0 && cc < N && b[rr][cc] === 1 - p) { line.push([rr, cc]); rr += dr; cc += dc; }
+        if (line.length && rr >= 0 && rr < N && cc >= 0 && cc < N && b[rr][cc] === p) for (const x of line) out.push(x);
+      }
+      return out;
+    }
+    function simMoves(b, p) {
+      const out = [];
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (b[r][c] === null && simFlips(b, r, c, p).length) out.push([r, c]);
+      return out;
+    }
+    function simEval(b, me) {
+      let pos = 0, mine = 0, theirs = 0;
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        const v = b[r][c];
+        if (v === null) continue;
+        const w = posWeight(r, c);
+        if (v === me) { pos += w; mine++; } else { pos -= w; theirs++; }
+      }
+      const mob = simMoves(b, me).length - simMoves(b, 1 - me).length;
+      const empty = N * N - mine - theirs;
+      return pos * 3 + mob * 6 + (empty < 10 ? (mine - theirs) * 4 : 0);
+    }
+    function simSearch(b, p, me, depth, alpha, beta) {
+      const moves = simMoves(b, p);
+      if (!moves.length) {
+        if (!simMoves(b, 1 - p).length) {
+          let d = 0;
+          for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { if (b[r][c] === me) d++; else if (b[r][c] !== null) d--; }
+          return d * 1000;
+        }
+        return simSearch(b, 1 - p, me, depth, alpha, beta);
+      }
+      if (depth <= 0) return simEval(b, me);
+      moves.sort((x, y) => posWeight(y[0], y[1]) - posWeight(x[0], x[1]));
+      let v = p === me ? -Infinity : Infinity;
+      for (const [r, c] of moves) {
+        const fl = simFlips(b, r, c, p);
+        b[r][c] = p; for (const [fr, fc] of fl) b[fr][fc] = p;
+        const sc = simSearch(b, 1 - p, me, depth - 1, alpha, beta);
+        b[r][c] = null; for (const [fr, fc] of fl) b[fr][fc] = 1 - p;
+        if (p === me) { v = Math.max(v, sc); alpha = Math.max(alpha, v); } else { v = Math.min(v, sc); beta = Math.min(beta, v); }
+        if (alpha >= beta) break;
+      }
+      return v;
     }
     function aiMove(level) {
       if (over) return null;
@@ -891,11 +944,14 @@ window.Sound = (function () {
         const m = moves[Math.floor(Math.random() * moves.length)];
         return { r: m[0], c: m[1] };
       }
-      const cornerW = level === "hard" ? 9 : 6;
+      const depth = level === "easy" ? 1 : level === "hard" ? 5 : 3;
+      const b = board.map((row) => row.slice());
       let best = -Infinity, pick = moves[0];
       for (const [r, c] of moves) {
-        const flips = flipsFor(r, c, me).length;
-        const sc = posWeight(r, c) * cornerW + flips;
+        const fl = simFlips(b, r, c, me);
+        b[r][c] = me; for (const [fr, fc] of fl) b[fr][fc] = me;
+        const sc = simSearch(b, 1 - me, me, depth - 1, -Infinity, Infinity) + Math.random() * (level === "medium" ? 12 : 0.5);
+        b[r][c] = null; for (const [fr, fc] of fl) b[fr][fc] = 1 - me;
         if (sc > best) { best = sc; pick = [r, c]; }
       }
       return { r: pick[0], c: pick[1] };

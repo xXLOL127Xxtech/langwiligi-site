@@ -6,7 +6,7 @@
 <title>Festungssturm</title>
 <meta name="description" content="Schick 11 Truppenarten über drei Bahnen, bau Türme und reiss die gegnerische Festung ein – in Echtzeit.">
 <meta name="theme-color" content="#ffb74d">
-<meta name="spiel-modi" content="Online">
+<meta name="spiel-modi" content="Online,Bots">
 <meta name="spiel-tags" content="Echtzeit,Türme">
 <meta name="spiel-typ" content="Strategie">
 <meta name="spiel-suche" content="Festungskrieg, Tower War">
@@ -1176,6 +1176,19 @@ body { background-color:#26221d; background-image:linear-gradient(rgba(0,0,0,.35
 #menuView .code-big { display:inline-block; padding:8px 28px 8px 38px; background:#e8d8b0; color:#8a1f10; border:3px solid #15120e; box-shadow:inset 0 0 0 3px #c9b484,4px 4px 0 #000; letter-spacing:.35em; font-family:Georgia,serif; }
 #menuView .howto { background:#3f3a33; }
 /* ---- Lobby-Optik (Ende) ---- */
+.bd-action { position: relative; }
+.bd-key { position: absolute; top: 3px; right: 4px; font: 700 10px/1 ui-monospace, monospace; opacity: .75; border: 1px solid currentColor; border-radius: 3px; padding: 1px 3px; }
+/* Laptop (ab 1100 px Breite): Truppen links, Spielfeld in der Mitte, Verteidigung rechts. So bleibt alles gross genug. */
+@media (min-width: 1100px) {
+  .bd-arena { grid-template-columns: 214px minmax(0, 1fr) 214px !important; grid-template-areas: "attack center defense" !important; width: 100% !important; max-width: 1360px !important; }
+  .bd-action-group { grid-template-columns: 1fr !important; gap: 5px; }
+  .bd-action { min-height: 44px; padding: 4px 8px; }
+  .bd-action span { min-width: 32px; height: 32px; font-size: 1.1rem; grid-row: 1 / 3; }
+  .bd-action small { display: none; }
+  .bd-action b { font-size: 0.8rem; }
+  .bd-command-panel { padding: 8px; gap: 6px; }
+  .bd-hud, .bd-root { max-width: 1360px; }
+}
 </style>
 </head>
 <body>
@@ -1629,7 +1642,7 @@ window.Sound = (function () {
 
   function create(ctx) {
     const o = ctx.options || {};
-    const BASE_HP = o.hp || 560;
+    const BASE_HP = o.hp || 800;
     
     const UNIT_LABEL_EN = { grunt: "Rekrut", runner: "Späher", shield: "Wächter", archer: "Bogenschütze", brute: "Krieger", bomber: "Sprengmeister", warlock: "Magier", golem: "Steingolem", lancer: "Reiter", siege: "Kanone", medic: "Sanitäter" };
     const UNIT_HINT_EN = { grunt: "cheap, pushes lane", runner: "fast", shield: "tanks hits", archer: "long range", brute: "high HP", bomber: "splash", warlock: "ranged", golem: "super tanky", lancer: "very fast charge", siege: "long range, anti-base", medic: "heals allies" };
@@ -1734,7 +1747,7 @@ window.Sound = (function () {
     const defenseActions = [
       { id: "tower", label: ("Turm bauen"), icon: "🗼", hint: ("gewählte Bahn") },
       { id: "upTower", label: ("Turm verbessern"), icon: "⬆️", hint: ("max. 4") },
-      { id: "repair", label: ("Festung reparieren"), icon: "🔧", hint: ("+90 Leben") },
+      { id: "repair", label: ("Festung reparieren"), icon: "🔧", hint: ("+160 Leben") },
     ];
     const upgradeActions = [
       { id: "econ", label: ("Wirtschaft"), icon: "💰", hint: ("+Gold/Sek.") },
@@ -1744,9 +1757,27 @@ window.Sound = (function () {
       { id: "arsenal", label: ("Arsenal"), icon: "📡", hint: ("+Turm-Reichweite & Schaden") },
     ];
 
+    // Tastatur: 1-3 Bahn, Buchstaben für Truppen, Türme und Upgrades (steht auf den Knöpfen)
+    const ACTION_KEYS = [...UNIT_ORDER.map((id, i) => ["qwertyuiopa"[i], id]), ["z", "tower"], ["x", "upTower"], ["c", "repair"], ["v", "econ"], ["b", "armory"], ["n", "fortify"], ["m", "march"], ["k", "arsenal"]];
+    function onKey(e) {
+      if (over || e.ctrlKey || e.metaKey || e.altKey || !root.isConnected) return;
+      if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      const side = ctx.isOnline ? ctx.mySeat : controlSide;
+      if (k >= "1" && k <= "3") { selectedLane[side] = Number(k) - 1; syncControls(); draw(); return; }
+      const hit = ACTION_KEYS.find(([key]) => key === k);
+      if (hit) { e.preventDefault(); submitAction(hit[1]); }
+    }
+    document.addEventListener("keydown", onKey);
+
     function renderStaticControls() {
       sideBox.innerHTML = "";
-      if (ctx.isOnline) {
+      if (ctx.vsAI) {
+        const label = document.createElement("div");
+        label.className = "bd-online-side";
+        label.innerHTML = `<b>Du: Spieler 1</b><span>Du steuerst die rote Seite, der Bot die blaue</span>`;
+        sideBox.appendChild(label);
+      } else if (ctx.isOnline) {
         const label = document.createElement("div");
         label.className = "bd-online-side";
         label.innerHTML = `<b>${(`Du: Spieler ${ctx.mySeat + 1}`)}</b><span>${(`Du steuerst die ${ctx.mySeat === 0 ? "rote" : "blaue"} Seite`)}</span>`;
@@ -1780,12 +1811,14 @@ window.Sound = (function () {
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "btn small bd-action";
+          btn.title = a.def ? unitHint(a.id) : a.hint;
           btn.dataset.action = a.id;
           const label = a.def ? unitLabel(a.id) : a.label;
           const icon = a.def ? a.def.icon : a.icon;
           const hint = a.def ? unitHint(a.id) : a.hint;
           if (a.def && a.def.color) btn.style.setProperty("--ac", a.def.color);
-          btn.innerHTML = `<span>${icon}</span><b>${label}</b><small>${hint}</small><em></em>`;
+          const key = ACTION_KEYS.find(([, id]) => id === a.id);
+          btn.innerHTML = `<span>${icon}</span><b>${label}</b><small>${hint}</small><em></em>${key ? `<kbd class="bd-key">${key[0].toUpperCase()}</kbd>` : ""}`;
           btn.addEventListener("click", () => submitAction(a.id));
           box.appendChild(btn);
         });
@@ -1797,7 +1830,7 @@ window.Sound = (function () {
       const p = pointerPos(e);
       const lane = nearestLane(p.y);
       if (lane !== -1) selectedLane[controlSide] = lane;
-      if (!ctx.isOnline) {
+      if (!ctx.isOnline && !ctx.vsAI) {
         controlSide = p.x < W / 2 ? 0 : 1;
         ctx.setTurn(controlSide);
       }
@@ -1926,7 +1959,7 @@ window.Sound = (function () {
       const cost = repairCost(side);
       if (baseHp[side] >= BASE_HP) return false;
       if (!spend(side, cost, force)) return false;
-      baseHp[side] = Math.min(BASE_HP, baseHp[side] + 90);
+      baseHp[side] = Math.min(BASE_HP, baseHp[side] + 160);
       last = (`Spieler ${side + 1} repariert die Festung.`);
       ctx.sound("select");
       return true;
@@ -1961,10 +1994,86 @@ window.Sound = (function () {
       pops.push({ x: SPAWN_X[owner], y, text: "+" + def.label, color: def.color, t: 46 });
     }
 
+    // ---------- Computer-Gegner (Seite 2) ----------
+    // Stufen: Leicht schickt wenig und ziellos, Mittel baut Wirtschaft und Türme, Schwer reagiert auf Druck pro Bahn.
+    const botNext = [0, 1.2];
+    function botAct(me, level) {
+      const foe = 1 - me;
+      const cap = level === "hard" ? { econ: 4, up: 3, tw: 3 } : level === "easy" ? { econ: 1, up: 1, tw: 1 } : { econ: 3, up: 2, tw: 2 };
+      const threat = [0, 0, 0], mine = [0, 0, 0], foeLane = [0, 0, 0];
+      for (const u of units) {
+        const past = me === 1 ? u.x > W * 0.5 : u.x < W * 0.5;
+        if (u.owner === foe) { foeLane[u.lane] += u.hp; if (past) threat[u.lane] += u.hp; }
+        else mine[u.lane] += u.hp;
+      }
+      const worst = threat.indexOf(Math.max(...threat));
+      const pick = (arr) => arr[Math.floor(ctx.rng() * arr.length)];
+      const act = (a, lane) => {
+        if (a === "tower") return buildTower(me, lane, false);
+        if (a === "upTower") return upgradeTower(me, lane, false);
+        if (a === "econ") return upgradeEconomy(me, false);
+        if (a === "armory") return upgradeArmory(me, false);
+        if (a === "fortify") return upgradeTrack(me, false, fortifyLvl, fortifyCost, "Rüstung");
+        if (a === "march") return upgradeTrack(me, false, marchLvl, marchCost, "Marsch");
+        if (a === "arsenal") return upgradeTrack(me, false, arsenalLvl, arsenalCost, "Arsenal");
+        if (a === "repair") return repairBase(me, false);
+        return buyUnit(me, lane, a, false);
+      };
+      const g = gold[me];
+      // 1) Festung reparieren, wenn sie angeschlagen ist
+      if (level !== "easy" && baseHp[me] < BASE_HP * 0.5 && g >= repairCost(me) + 20) { if (act("repair", 0)) return; }
+      // 2) Bahn unter Druck: Turm bauen oder verbessern, sonst zähe Truppen
+      if (level !== "easy" && threat[worst] > (level === "hard" ? 110 : 220)) {
+        const tw = towers[me][worst];
+        if (!tw && g >= towerBuildCost(me)) { if (act("tower", worst)) return; }
+        if (tw && tw.lvl < MAX_TOWER_LVL && tw.lvl < cap.up + 1 && g >= towerUpgradeCost(tw)) { if (act("upTower", worst)) return; }
+        const tank = g >= 112 && level === "hard" ? "golem" : g >= 64 ? "brute" : g >= 46 ? "shield" : "grunt";
+        if (g >= UNIT_DEFS[tank].cost) { if (act(tank, worst)) return; }
+      }
+      // 3) Wirtschaft zuerst
+      if (incomeLvl[me] < cap.econ && g >= econCost(me) && (level !== "easy" || ctx.rng() < 0.4)) { if (act("econ", 0)) return; }
+      // 4) Ein Turm pro Bahn, dann Verbesserungen
+      if (level !== "easy" && g > 150) {
+        const free = [0, 1, 2].filter((l) => !towers[me][l]);
+        if (free.length && towers[me].filter(Boolean).length < cap.tw && g >= towerBuildCost(me) + 30) { if (act("tower", pick(free))) return; }
+        const ups = [];
+        if (armoryLvl[me] < cap.up) ups.push("armory");
+        if (fortifyLvl[me] < cap.up) ups.push("fortify");
+        if (marchLvl[me] < cap.up - 1) ups.push("march");
+        if (arsenalLvl[me] < cap.up - 1 && towers[me].some(Boolean)) ups.push("arsenal");
+        const cheapest = ups.filter((a) => g >= actionCost(me, a, 0) + 30);
+        if (cheapest.length && ctx.rng() < 0.6) { if (act(pick(cheapest), 0)) return; }
+      }
+      // 5) Angriff: Truppen schicken
+      let pool;
+      if (level === "easy") pool = ["grunt", "grunt", "runner", "shield", "archer"];
+      else if (level === "medium") pool = ["grunt", "runner", "shield", "archer", "brute", "lancer", "bomber", "warlock"];
+      else pool = ["brute", "lancer", "archer", "shield", "warlock", "bomber", "siege", "golem", "medic", "grunt"];
+      const lane = level === "hard"
+        ? ([0, 1, 2].sort((a, b) => (mine[b] - foeLane[b] * 0.5) - (mine[a] - foeLane[a] * 0.5))[ctx.rng() < 0.7 ? 0 : 1])
+        : Math.floor(ctx.rng() * 3);
+      const ok = pool.filter((id) => {
+        if (id === "medic" && mine[lane] < 200) return false;
+        return UNIT_DEFS[id].cost <= g - (level === "hard" ? 0 : 8);
+      });
+      if (!ok.length) return;
+      const best = level === "hard" ? ok.sort((a, b) => UNIT_DEFS[b].cost - UNIT_DEFS[a].cost).slice(0, 3) : ok;
+      act(pick(best), lane);
+    }
+    function botStep(dt) {
+      if (!ctx.vsAI || over) return;
+      botNext[1] -= dt;
+      if (botNext[1] > 0) return;
+      const level = ctx.aiLevel || "medium";
+      botNext[1] = (level === "easy" ? 3.4 : level === "hard" ? 0.9 : 1.8) * (0.8 + ctx.rng() * 0.4);
+      botAct(1, level);
+    }
+
     function update(dt) {
       if (over) return;
       elapsed += dt;
       for (let side = 0; side < 2; side++) gold[side] += incomeRate(side) * dt;
+      botStep(dt);
       updateUnits(dt);
       updateTowers(dt);
       updateEffects(dt);
@@ -2009,7 +2118,7 @@ window.Sound = (function () {
           }
         } else if (atBase) {
           if (u.cd <= 0) {
-            const dmg = Math.round(u.dmg * (def.vsBase || 1));
+            const dmg = Math.max(1, Math.round(u.dmg * (def.vsBase || 1) * 0.2)); // Festungen halten etwas aus, damit eine Runde 1 bis 2 Minuten dauert
             baseHp[1 - u.owner] = Math.max(0, baseHp[1 - u.owner] - dmg);
             pops.push({ x: enemyBaseX, y: LANES[u.lane] - 34, text: "-" + dmg, color: "#ff5d73", t: 44 });
             u.cd = def.cd;
@@ -2144,7 +2253,7 @@ window.Sound = (function () {
       hud.innerHTML = `
         ${playerHud(0)}
         <div class="bd-mid">
-          <b>${over ? ("Vorbei") : "Base Defense Duel"}</b>
+          <b>${over ? ("Vorbei") : "Festungssturm"}</b>
           <span>${timeText()} · ${(`Truppenstärke x${unitScale(0).toFixed(2)}`)}</span>
           <small>${last}</small>
         </div>
@@ -2188,6 +2297,8 @@ window.Sound = (function () {
       const side = ctx.isOnline ? ctx.mySeat : controlSide;
       if (ctx.isOnline) {
         ctx.setStatus((`Du bist Spieler ${ctx.mySeat + 1}. Tippe auf eine Bahn, dann schick Truppen, bau Türme und verbessere.`));
+      } else if (ctx.vsAI) {
+        ctx.setStatus(("Wähle eine Bahn (Tasten 1, 2, 3), dann schick Truppen, bau Türme und verbessere. Gewonnen hat, wer die gegnerische Festung zerstört."));
       } else {
         ctx.setStatus((`Du steuerst Spieler ${side + 1}. Tippe auf eine Bahn zum Auswählen – auf die andere Spielfeldhälfte, um die Seite zu wechseln.`));
       }
@@ -2846,6 +2957,7 @@ window.Sound = (function () {
     const observer = new MutationObserver(() => {
       if (!document.body.contains(root)) {
         cancelAnimationFrame(raf);
+        document.removeEventListener("keydown", onKey);
         observer.disconnect();
       }
     });
@@ -2867,17 +2979,18 @@ window.Sound = (function () {
     emoji: "🏰",
     description: "Verteidige deine Festung mit Türmen und schick 11 Truppenarten gegen den Gegner.",
     onlineReady: true,
-    // Echtzeit mit Klicks für beide Seiten: an einem Gerät mit einer Maus nicht sinnvoll spielbar
+    // Echtzeit mit Klicks für beide Seiten: zu zweit an einem Gerät nicht sinnvoll spielbar, dafür gibt es den Bot
     localReady: false,
+    supportsAI: true,
     options: [
       {
         id: "hp",
         label: "Leben der Festung",
-        default: 560,
+        default: 800,
         choices: [
-          { value: 460, label: "460 (schnell)" },
-          { value: 560, label: "560" },
-          { value: 760, label: "760 (lang)" },
+          { value: 600, label: "600 (kurz)" },
+          { value: 800, label: "800" },
+          { value: 1100, label: "1100 (lang)" },
         ],
       },
       {
