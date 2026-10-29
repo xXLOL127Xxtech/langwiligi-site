@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-29",
+"z":"21:03",
+"a":"Alle Spiele",
+"t":"Bogen-Duell, Bubble-Duell und Katapult-Krieg starten auch, wenn die Online-Bibliothek nicht lädt",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:03",
+"a":"Alle Spiele",
+"t":"Gespeicherte Einstellungen heissen jetzt einheitlich wie das Spiel (Blech-Duell, Bogen-Duell, Bubble-Duell, Katapult-Krieg, Schlangen-Arena, Flaschen-Flip)",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
 "z":"23:30",
 "a":"Catch a Mob",
 "t":"Spieler tauchen öfter in deiner Nähe auf",

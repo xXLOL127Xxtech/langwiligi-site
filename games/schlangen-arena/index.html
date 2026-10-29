@@ -1437,7 +1437,7 @@ function frame() {
 setInterval(() => { if (document.hidden || performance.now() - frameLast > 120) pump(); }, 50);
 
 // ---------- Buttons ----------
-$('bots').oninput = () => { $('bots-n').textContent = $('bots').value; try { localStorage.setItem('sa-bots', $('bots').value); } catch (e) {} };
+$('bots').oninput = () => { $('bots-n').textContent = $('bots').value; try { localStorage.setItem('schlangen-arena-bots', $('bots').value); } catch (e) {} };
 $('btn-solo').onclick = () => { readName(); startLocal('solo'); };
 $('btn-host').onclick = hostGame;
 $('btn-join').onclick = () => joinGame(HUB ? GameHub.cleanCode($('join-code').value) : '');
@@ -1454,7 +1454,7 @@ $('rb-copy').onclick = () => {
 
 // ---------- Start ----------
 try {
-  const b = localStorage.getItem('sa-bots'); if (b != null) { $('bots').value = b; $('bots-n').textContent = b; }
+  const b = localStorage.getItem('schlangen-arena-bots') ?? localStorage.getItem('sa-bots'); if (b != null) { $('bots').value = b; $('bots-n').textContent = b; }
 } catch (e) {}
 if (HUB) {
   const n = GameHub.getName(); if (n) $('name').value = n;

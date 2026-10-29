@@ -370,7 +370,7 @@ const CRATES = { ammo: { icon: '🎒', name: 'Munition!' }, hp: { icon: '❤️'
 // =====================================================================
 //  Sound
 // =====================================================================
-let soundOn = true; try { soundOn = localStorage.getItem('blech-sound') !== '0'; } catch (e) {}
+let soundOn = true; try { try { if (localStorage.getItem('blech-duell-sound') === null && localStorage.getItem('blech-sound') !== null) localStorage.setItem('blech-duell-sound', localStorage.getItem('blech-sound')); } catch (e) {} soundOn = localStorage.getItem('blech-duell-sound') !== '0'; } catch (e) {}
 let AC = null;
 function ac() { if (!soundOn) return null; if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } } if (AC.state === 'suspended') AC.resume(); return AC; }
 function tone(f0, f1, dur, type = 'sine', vol = 0.15, delay = 0) {
@@ -1775,7 +1775,7 @@ $('btn-copy').onclick = () => {
   (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => setStatus('host-status', 'Link kopiert! Warte auf Gegner …', true), () => setStatus('host-status', 'Link: ' + link, true));
 };
 document.querySelectorAll('[data-w]').forEach(b => b.onclick = () => { winsNeeded = +b.dataset.w; document.querySelectorAll('[data-w]').forEach(x => x.classList.toggle('sel', x === b)); sfx.click(); });
-$('btn-sound').onclick = () => { soundOn = !soundOn; try { localStorage.setItem('blech-sound', soundOn ? '1' : '0'); } catch (e) {} $('btn-sound').textContent = soundOn ? '🔊' : '🔇'; };
+$('btn-sound').onclick = () => { soundOn = !soundOn; try { localStorage.setItem('blech-duell-sound', soundOn ? '1' : '0'); } catch (e) {} $('btn-sound').textContent = soundOn ? '🔊' : '🔇'; };
 $('btn-pause').onclick = togglePause;
 $('p-resume').onclick = togglePause;
 $('p-quit').onclick = quitToMenu;

@@ -299,6 +299,8 @@ if (!window.THREE) window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <script src="../_shared/hub.js"></script>
+<script>/* Ersatz, falls hub.js nicht lädt: Spiel startet trotzdem, nur Online geht dann nicht */
+window.GameHub||(window.GameHub=(function(){var n='';var off=function(){return Promise.reject(new Error('Online gerade nicht verfügbar'))};return{SEITE:location.origin,getName:function(){return n},setName:function(v){n=String(v||'').trim().slice(0,16);return n},cleanCode:function(v){return String(v||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,4)},errorText:function(e){return e&&e.message?e.message:'Online gerade nicht verfügbar'},connect:function(){return{on:function(){},off:function(){},send:function(){},close:function(){},create:off,join:off}},loadBoard:function(){return Promise.resolve([])},renderBoard:function(){},renderScores:function(){},submitScore:function(){}}})());</script>
 <script>
 "use strict";
 // =====================================================================
@@ -1270,10 +1272,12 @@ $('btn-play').onclick = () => { ac(); lockPointer(); markReady(); };
 $('btn-rematch').onclick = () => { ac(); rematch(); };
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { location.href = location.href.split('#')[0]; });
 
-$('sens').oninput = e => { sens = +e.target.value; $('sens-v').textContent = sens.toFixed(2); try { localStorage.setItem('bogenduell-sens', sens); } catch (er) {} };
+$('sens').oninput = e => { sens = +e.target.value; $('sens-v').textContent = sens.toFixed(2); try { localStorage.setItem('bogen-duell-sens', sens); } catch (er) {} };
 try {
-  const n = GameHub.getName() || localStorage.getItem('bogenduell-name'); if (n) $('name').value = n;
-  const s = localStorage.getItem('bogenduell-sens'); if (s) { sens = +s; $('sens').value = s; $('sens-v').textContent = sens.toFixed(2); }
+  if (localStorage.getItem('bogen-duell-sens') === null && localStorage.getItem('bogenduell-sens') !== null) localStorage.setItem('bogen-duell-sens', localStorage.getItem('bogenduell-sens'));
+  localStorage.removeItem('bogenduell-name');
+  const n = GameHub.getName(); if (n) $('name').value = n;
+  const s = localStorage.getItem('bogen-duell-sens'); if (s) { sens = +s; $('sens').value = s; $('sens-v').textContent = sens.toFixed(2); }
 } catch (e) {}
 
 GameHub.loadBoard(GAME_ID, $('menu-board'), $('name').value);

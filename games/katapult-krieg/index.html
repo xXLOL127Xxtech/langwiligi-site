@@ -148,6 +148,8 @@ input[type=text] { border-radius:3px; background:#2a1808; border:3px solid #1f11
 })();
 </script>
 <script src="../_shared/hub.js"></script>
+<script>/* Ersatz, falls hub.js nicht lädt: Spiel startet trotzdem, nur Online geht dann nicht */
+window.GameHub||(window.GameHub=(function(){var n='';var off=function(){return Promise.reject(new Error('Online gerade nicht verfügbar'))};return{SEITE:location.origin,getName:function(){return n},setName:function(v){n=String(v||'').trim().slice(0,16);return n},cleanCode:function(v){return String(v||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,4)},errorText:function(e){return e&&e.message?e.message:'Online gerade nicht verfügbar'},connect:function(){return{on:function(){},off:function(){},send:function(){},close:function(){},create:off,join:off}},loadBoard:function(){return Promise.resolve([])},renderBoard:function(){},renderScores:function(){},submitScore:function(){}}})());</script>
 <script>
 // ============================================================
 //  KONSTANTEN
@@ -269,12 +271,12 @@ const EVFREQ = {
   chaos:  {name: 'Chaos',  icon: '🌪️', desc: 'Fast jede Runde etwas, bis zu 2 Besucher!', chance: .8, from: 2, gap: 1, vis: 2}
 };
 let CFG = {level: 'basic', mode: 'classic', map: 'hills', events: true, evFreq: 'normal', len: 'long', npc: 'off', merc: false, revolt: false, reload: false, combo: false, king: false, aim: 'full', timer: 0};
-try { const s = JSON.parse(localStorage.getItem('katapult-cfg') || 'null'); if (s) Object.assign(CFG, s); } catch (e) {}
+try { try { if (localStorage.getItem('katapult-krieg-cfg') === null && localStorage.getItem('katapult-cfg') !== null) localStorage.setItem('katapult-krieg-cfg', localStorage.getItem('katapult-cfg')); } catch (e) {} const s = JSON.parse(localStorage.getItem('katapult-krieg-cfg') || 'null'); if (s) Object.assign(CFG, s); } catch (e) {}
 if (!MAPS[CFG.map]) CFG.map = 'hills';
 if (!LENGTHS[CFG.len]) CFG.len = 'long';
 if (!NPCS[CFG.npc]) CFG.npc = 'off';
 if (!EVFREQ[CFG.evFreq]) CFG.evFreq = CFG.events === false ? 'off' : 'normal';
-function saveCfg() { try { localStorage.setItem('katapult-cfg', JSON.stringify(CFG)); } catch (e) {} }
+function saveCfg() { try { localStorage.setItem('katapult-krieg-cfg', JSON.stringify(CFG)); } catch (e) {} }
 
 // ---------- Söldner ----------
 const TROOPS = {
