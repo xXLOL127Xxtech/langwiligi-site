@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-29",
+"z":"19:02",
+"a":"Catch a Mob",
+"t":"Trainer: Menü vor dem Kampf mit Stufe, Mobs und Belohnung",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"catch-a-mob-trainer-menue"
+},
+{
+"d":"2026-10-29",
 "z":"18:37",
 "a":"Catch a Mob",
 "t":"Neue Musik für alle Gebiete, Kämpfe und das Menü",
