@@ -1,7 +1,6 @@
 # Hinweise für KI-Assistenten
 
 - Regeln für Spiele: [SPIEL-VORGABEN.md](SPIEL-VORGABEN.md). Gespielt wird am **Laptop mit Touchpad** (ohne Maus), Handys werden nicht unterstützt.
-- Qualität: Vor der Abgabe die [QUALITAET-CHECKLISTE.md](QUALITAET-CHECKLISTE.md) durchgehen (Spielgefühl, Touchpad, Online, Leistung usw.).
 - Prüfen vor jedem Commit: `node tools/spiel-pruefen.js games/<spiel-id>`. Bei ❌ nicht abgeben.
 - **Nach dem Bauen oder Ändern eines Spiels immer sofort committen, pushen und einen Pull Request erstellen**, ohne extra nachzufragen.
 - **Updates-Liste**: Bei jeder Änderung, die Spieler sehen, in `startseite/updates.json` oben einen Eintrag ergänzen oder den von heute erweitern (`d` Datum, `t` Titel, `tag` Neu/Update/Intern, `p` Stichpunkte). Die Startseite zeigt sie im Fenster «Updates».
