@@ -6,9 +6,9 @@
 <title>Billard</title>
 <meta name="description" content="Abwechselnd dieselbe Kugel stossen, versenken, punkten – mit Bomben-Kugel, Superkraft und grossen Löchern.">
 <meta name="theme-color" content="#00d26a">
-<meta name="spiel-modi" content="Lokal,Online">
+<meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Physik,Power-ups">
-<meta name="spiel-typ" content="Physik,Klassiker">
+<meta name="spiel-typ" content="Physik,Klassiker,Chill">
 <meta name="spiel-suche" content="Billard zu zweit, Pool Billard online">
 <!--
   Billard (früher Billard-Duell) – angepasst für langwiligi.site.
@@ -1224,7 +1224,7 @@ window.Sound = (function () {
 
     const players = [
       { angle: 0, power: 64, color: "#ff5d73", name: "Rot" },
-      { angle: 180, power: 64, color: "#4dd0e1", name: "Xanh" },
+      { angle: 180, power: 64, color: "#4dd0e1", name: "Blau" },
     ];
     const scores = [0, 0];
     const inventory = [
@@ -1366,6 +1366,118 @@ window.Sound = (function () {
     canvas.addEventListener("pointercancel", () => { aimingPointer = false; pullPoint = null; draw(); });
 
     
+    // ---------- Computer-Gegner: probiert Winkel und Kraft in einer eigenen Mini-Simulation aus ----------
+    // Leicht zielt ungenau und wählt unter wenigen Versuchen, Mittel zielt ordentlich, Schwer prüft sehr viele Winkel
+    // und setzt Power-ups ein. Danach wird der gewählte Stoss wie ein Stoss eines Menschen ausgeführt.
+    function simulateShot(angleDeg, power, mode) {
+      const sim = balls.map((b) => ({ kind: b.kind, x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r, active: b.active }));
+      const cue = sim.find((b) => b.kind === "cue");
+      if (!cue || !cue.active) return { score: -99, pocketed: 0, foul: true };
+      const rad = angleDeg * Math.PI / 180;
+      const speed = power * POWER_SCALE * (mode === "power" ? 1.7 : 1);
+      cue.vx += Math.cos(rad) * speed;
+      cue.vy += Math.sin(rad) * speed;
+      const bonus = mode === "widen" ? 16 : 0;
+      const SS = 2; // gröbere Schritte als im Spiel reichen für die Planung und sind doppelt so schnell
+      const f = Math.pow(friction, 1 / SS);
+      let pocketed = 0, foul = false, still = 0;
+      for (let frame = 0; frame < 600; frame++) {
+        for (let sub = 0; sub < SS; sub++) {
+          for (const b of sim) {
+            if (!b.active) continue;
+            b.x += b.vx / SS; b.y += b.vy / SS;
+            b.vx *= f; b.vy *= f;
+            if (Math.abs(b.vx) < STOP_SPEED && Math.abs(b.vy) < STOP_SPEED) { b.vx = 0; b.vy = 0; }
+          }
+          for (const b of sim) {
+            if (!b.active) continue;
+            if (POCKETS.some((pk) => dist(b.x, b.y, pk.x, pk.y) < POCKET_R + bonus)) {
+              b.active = false; b.vx = 0; b.vy = 0;
+              if (b.kind === "object") pocketed++; else foul = true;
+              continue;
+            }
+            if (b.x < LEFT + b.r) { b.x = LEFT + b.r; b.vx = Math.abs(b.vx) * CUSHION; }
+            else if (b.x > RIGHT - b.r) { b.x = RIGHT - b.r; b.vx = -Math.abs(b.vx) * CUSHION; }
+            if (b.y < TOP + b.r) { b.y = TOP + b.r; b.vy = Math.abs(b.vy) * CUSHION; }
+            else if (b.y > BOTTOM - b.r) { b.y = BOTTOM - b.r; b.vy = -Math.abs(b.vy) * CUSHION; }
+          }
+          for (let i = 0; i < sim.length; i++) {
+            const a = sim[i];
+            if (!a.active) continue;
+            for (let j = i + 1; j < sim.length; j++) {
+              const b = sim[j];
+              if (!b.active) continue;
+              const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), min = a.r + b.r;
+              if (d >= min || d <= 0) continue;
+              const nx = dx / d, ny = dy / d, ov = (min - d) / 2;
+              a.x -= nx * ov; a.y -= ny * ov; b.x += nx * ov; b.y += ny * ov;
+              const rel = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny;
+              if (rel > 0) { const imp = rel * 0.98; a.vx -= imp * nx; a.vy -= imp * ny; b.vx += imp * nx; b.vy += imp * ny; }
+            }
+          }
+        }
+        if (sim.every((b) => !b.active || (b.vx === 0 && b.vy === 0))) { if (++still > 3) break; } else still = 0;
+      }
+      // Tie-Breaker: Kugeln, die nach dem Stoss nah an einem Loch liegen, sind gut für den nächsten Zug
+      let near = 0;
+      for (const b of sim) if (b.active && b.kind === "object") near += Math.min(...POCKETS.map((pk) => dist(b.x, b.y, pk.x, pk.y)));
+      return { score: pocketed * 10 - (foul ? 14 : 0) - near * 0.0015, pocketed, foul };
+    }
+
+    function aiMove(level) {
+      if (over || busy || ctx.isOnline) return null;
+      const cue = cueBall();
+      if (!cue) return null;
+      const hard = level === "hard", easy = level === "easy";
+      if (ballInHand) {
+        // Freie Aufstellung: Schwer testet mehrere Plätze, sonst der Standardplatz
+        const spots = [[LEFT + 150, H / 2], [LEFT + 150, H / 2 - 60], [LEFT + 150, H / 2 + 60], [W / 2 - 150, H / 2 - 90], [W / 2 - 150, H / 2 + 90], [W / 2 - 110, H / 2]];
+        let pick = null, pickScore = -Infinity;
+        for (const [sx, sy] of (hard ? spots : spots.slice(0, 1))) {
+          const x = clamp(sx, LEFT + cue.r, RIGHT - cue.r), y = clamp(sy, TOP + cue.r, BOTTOM - cue.r);
+          if (POCKETS.some((pk) => dist(x, y, pk.x, pk.y) < POCKET_R + cue.r)) continue;
+          if (balls.some((b) => b !== cue && b.active && dist(x, y, b.x, b.y) < b.r + cue.r + 1)) continue;
+          const ox = cue.x, oy = cue.y, oa = cue.active; cue.x = x; cue.y = y; cue.active = true;
+          let sc = 0;
+          if (hard) for (let a = 0; a < 360; a += 12) sc = Math.max(sc, simulateShot(a, 70, "normal").score);
+          cue.x = ox; cue.y = oy; cue.active = oa;
+          if (sc > pickScore) { pickScore = sc; pick = { x, y }; }
+        }
+        if (!pick) { respawnCue(); } else { cue.x = pick.x; cue.y = pick.y; cue.vx = 0; cue.vy = 0; cue.active = true; }
+        ballInHand = false;
+      }
+      if (!cue.active) respawnCue();
+      const step = hard ? 5 : easy ? 12 : 10;
+      const powers = hard ? [50, 100] : easy ? [60, 85] : [55, 100];
+      const noise = hard ? 2 : easy ? 11 : 5;
+      const tries = [];
+      for (let a = 0; a < 360; a += step) for (const pw of powers) tries.push({ angle: a, power: pw, mode: "normal" });
+      let best = null, bestScore = -Infinity;
+      const consider = (t) => {
+        const r = simulateShot(t.angle, t.power, t.mode);
+        const sc = r.score + (easy ? Math.random() * 12 : Math.random() * 0.5);
+        if (sc > bestScore) { bestScore = sc; best = { ...t, r }; }
+      };
+      const pool = easy ? tries.sort(() => Math.random() - 0.5).slice(0, 18) : tries;
+      pool.forEach(consider);
+      if (hard && best) {
+        // Feinschliff um den besten groben Stoss
+        const base = best;
+        for (let d = -4; d <= 4; d++) for (const pw of [base.power - 15, base.power]) if (d && pw >= 25) consider({ angle: normalizeDeg(base.angle + d), power: pw, mode: base.mode });
+      }
+      if (!easy && bestScore < 9) {
+        const inv = inventory[turn];
+        const extra = [];
+        if (inv.widen > 0) extra.push("widen");
+        if (hard && inv.power > 0) extra.push("power");
+        for (const mode of extra) for (let a = 0; a < 360; a += step) for (const pw of powers) consider({ angle: a, power: pw, mode });
+      }
+      if (!best) return null;
+      // Kleiner Zielfehler wie bei einem Menschen
+      const off = (Math.random() * 2 - 1) * noise;
+      return { angle: normalizeDeg(best.angle + off), power: best.power, mode: best.mode };
+    }
+
     function placeCue(p) {
       const cue = cueBall();
       if (!cue) return;
@@ -2284,7 +2396,7 @@ window.Sound = (function () {
     updateStatus();
     draw();
     raf = requestAnimationFrame(loop);
-    return { applyMove };
+    return { aiMove, applyMove };
   }
 
   window.GameRegistry.register({
@@ -2293,6 +2405,7 @@ window.Sound = (function () {
     emoji: "🎱",
     description: "Billard im Duell: Beide stossen abwechselnd dieselbe weisse Kugel.",
     onlineReady: true,
+    supportsAI: true,
     options: [
       {
         id: "target",

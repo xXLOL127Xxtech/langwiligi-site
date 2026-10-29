@@ -1,6 +1,146 @@
 [
 {
 "d":"2026-10-29",
+"z":"21:30",
+"a":"Startseite",
+"t":"Chill-Lounge mit ruhigen Spielen, Typ «Chill» neu",
+"tag":"Neu",
+"k":"Startseite",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:30",
+"a":"Startseite",
+"t":"Spiele ohne Filter in zufälliger Reihenfolge",
+"tag":"Update",
+"k":"Startseite",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:25",
+"a":"Festungssturm",
+"t":"Bot-Modus (3 Stufen), Tastatursteuerung, grösseres Layout am Laptop, längere Runden",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:25",
+"a":"Billard",
+"t":"Bot-Modus (3 Stufen)",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:25",
+"a":"Panzer-Duell",
+"t":"Bot-Modus (3 Stufen)",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:20",
+"a":"Reversi",
+"t":"Bot-Stufen mit Suche, Schwer schlägt Mittel und Leicht",
+"tag":"Update",
+"k":"Balance",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:20",
+"a":"Ultimate Tic Tac Toe",
+"t":"Bot-Stufen mit Suche, Schwer schlägt Mittel und Leicht",
+"tag":"Update",
+"k":"Balance",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:20",
+"a":"Go",
+"t":"Stärke-Wahl, Bot passt sinnvoll",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:15",
+"a":"Dame",
+"t":"Remis-Regel gegen endlose Partien",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:15",
+"a":"Mauerbauer",
+"t":"Bot «Schwer» braucht nur noch Bruchteile einer Sekunde",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:15",
+"a":"Dreh-Duell",
+"t":"Bot «Schwer» erkennt Gewinnzüge des Gegners",
+"tag":"Update",
+"k":"Balance",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:10",
+"a":"Dead Maze",
+"t":"Komplett auf Deutsch übersetzt",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:10",
+"a":"2048",
+"t":"Hinweis zum Handy entfernt",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
+"z":"21:10",
+"a":"Fünf gewinnt",
+"t":"Falsches Wort in der Brettgrösse korrigiert",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":97,
+"b":"trusting-hamilton-o4s7fy"
+},
+{
+"d":"2026-10-29",
 "z":"19:12",
 "a":"Catch a Mob",
 "t":"Riesige Welt aus dem Seed, weiter aussen stärkere Gegner, neue Dörfer, Trainer und Riesen, NPC-Spieler in der ganzen Welt (20 bis 40, kommen und gehen)",

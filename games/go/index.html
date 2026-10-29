@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#e9c46a">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Klassiker,Strategie">
-<meta name="spiel-typ" content="Klassiker,Strategie">
+<meta name="spiel-typ" content="Klassiker,Strategie,Chill">
 <meta name="spiel-suche" content="Go Brettspiel, Weiqi, Baduk">
 <!--
   Go – angepasst für langwiligi.site.
@@ -449,6 +449,12 @@
     <button class="mode-btn" id="mode-on" onclick="setOnline()" style="display:none">Online</button>
   </div>
 
+  <div class="mode-selector" id="level-selector">
+    <button class="mode-btn" id="lvl-easy" onclick="setLevel('easy')">Leicht</button>
+    <button class="mode-btn active" id="lvl-medium" onclick="setLevel('medium')">Mittel</button>
+    <button class="mode-btn" id="lvl-hard" onclick="setLevel('hard')">Schwer</button>
+  </div>
+
   <div class="size-selector">
     <button class="size-btn active" id="size-9" onclick="setBoardSize(9)">9&times;9</button>
     <button class="size-btn" id="size-13" onclick="setBoardSize(13)">13&times;13</button>
@@ -762,6 +768,17 @@ window.OnlineKit = function (cfg) {
   // =============================================
   //  Mode & Size
   // =============================================
+  var goLevel = 'medium';
+  try { var savedLvl = localStorage.getItem('go-level'); if (savedLvl === 'easy' || savedLvl === 'hard') goLevel = savedLvl; } catch (e) {}
+  function showLevel() {
+    ['easy', 'medium', 'hard'].forEach(function(k) { document.getElementById('lvl-' + k).classList.toggle('active', k === goLevel); });
+    document.getElementById('level-selector').style.display = aiMode && !online ? '' : 'none';
+  }
+  function setLevel(k) {
+    goLevel = k;
+    try { localStorage.setItem('go-level', k); } catch (e) {}
+    showLevel();
+  }
   function setMode(isAi) {
     if (!online && aiMode === isAi) return;
     if (online) { kit.leave(); online = false; kit.show(false); }
@@ -772,6 +789,7 @@ window.OnlineKit = function (cfg) {
     document.getElementById('white-label').textContent = isAi ? 'Weiss (Bot)' : 'Weiss (S2)';
     document.getElementById('black-label').textContent = 'Schwarz (S1)';
     boardWrapper.style.transform = '';
+    showLevel();
     resetGame();
   }
 
@@ -793,6 +811,7 @@ window.OnlineKit = function (cfg) {
     document.getElementById('mode-on').classList.add('active');
     kit.show(true);
     onlineLabels();
+    showLevel();
     resetGame();
   }
 
@@ -1516,6 +1535,8 @@ window.OnlineKit = function (cfg) {
     if (!isAiTurn()) return;
 
     var move = findAiMove();
+    // Bot passt, wenn nichts Sinnvolles mehr zu tun ist (nur eigene Augen füllen) oder der Gegner gepasst hat und nichts mehr lohnt
+    if (move !== null && (move.score < -40 || (consecutivePasses >= 1 && move.score < 6))) move = null;
     if (move === null) {
       // Pass
       doPass(WHITE);
@@ -1562,6 +1583,33 @@ window.OnlineKit = function (cfg) {
 
     // Pick from top moves with some randomness
     var topScore = scored[0].score;
+    if (goLevel === 'easy') {
+      // Leicht: verwackelte Bewertung und manchmal ein ganz zufälliger Zug
+      for (var i = 0; i < scored.length; i++) scored[i].score += Math.random() * 16;
+      scored.sort(function(a, b) { return b.score - a.score; });
+      var okMoves = scored.filter(function(m) { return m.score > -50; });
+      if (okMoves.length && Math.random() < 0.2) return okMoves[Math.floor(Math.random() * okMoves.length)];
+      return scored[0];
+    }
+    if (goLevel === 'hard') {
+      // Schwer: die besten Züge zusätzlich auf Gefahren auf dem ganzen Brett prüfen
+      var top = scored.slice(0, 8);
+      for (var i = 0; i < top.length; i++) {
+        var res = tryMove(top[i].r, top[i].c, WHITE);
+        if (!res) continue;
+        var seen = {};
+        for (var rr = 0; rr < boardSize; rr++) for (var cc = 0; cc < boardSize; cc++) {
+          var col = res.board[rr][cc];
+          if (col === EMPTY || seen[rr + ',' + cc]) continue;
+          var g = getGroup(res.board, rr, cc);
+          for (var k = 0; k < g.stones.length; k++) seen[g.stones[k][0] + ',' + g.stones[k][1]] = true;
+          if (g.liberties === 1) top[i].score += (col === WHITE ? -14 : 9) * Math.min(g.stones.length, 6);
+          else if (g.liberties === 2 && col === BLACK) top[i].score += 1.5 * Math.min(g.stones.length, 6);
+        }
+      }
+      top.sort(function(a, b) { return b.score - a.score; });
+      return top[0];
+    }
     var candidates = [];
     for (var i = 0; i < scored.length; i++) {
       if (scored[i].score >= topScore - 2) {
@@ -1757,6 +1805,7 @@ window.OnlineKit = function (cfg) {
   // =============================================
   if (kit.available) document.getElementById('mode-on').style.display = '';
   else document.getElementById('mode-on').remove();
+  showLevel();
   resetGame();
   if (kit.invite) setOnline();
 </script>

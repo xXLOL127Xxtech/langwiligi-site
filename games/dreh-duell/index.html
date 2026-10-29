@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#26c6da">
 <meta name="spiel-modi" content="Lokal,Online,Bots">
 <meta name="spiel-tags" content="Strategie,Fünf in Reihe">
-<meta name="spiel-typ" content="Strategie,Denkspiel">
+<meta name="spiel-typ" content="Strategie,Denkspiel,Chill">
 <meta name="spiel-suche" content="Dreh-Brettspiel, Fünf in einer Reihe mit Drehen">
 <!--
   Dreh & Gewinn (früher Dreh-Duell) – angepasst für langwiligi.site.
@@ -795,13 +795,38 @@ window.Sound = (function () {
         if (win) return mv;
       }
       
-      let best = -Infinity, pick = moves[0];
+      const scored = [];
       for (const mv of moves) {
         const r = Math.floor(mv.cell / N), c = mv.cell % N;
         board[r][c] = me; rotateQuad(mv.quad, mv.dir);
-        const sc = ptgLongest(me) * 10 - ptgLongest(opp) * 8;
+        const sc = ptgLongest(me) * 10 - ptgLongest(opp) * 8 + (level === "medium" ? Math.random() * 6 : Math.random() * 0.5);
         restore();
-        if (sc > best) { best = sc; pick = mv; }
+        scored.push({ mv, sc });
+      }
+      scored.sort((a, b) => b.sc - a.sc);
+      if (level !== "hard") return scored[0].mv;
+      // Schwer: bei den besten Zügen prüfen, ob der Gegner danach sofort gewinnen kann
+      const emptiesAfter = (b) => { const o = []; for (let i = 0; i < N * N; i++) if (b[Math.floor(i / N)][i % N] === null) o.push(i); return o; };
+      let best = -Infinity, pick = scored[0].mv;
+      for (const { mv, sc } of scored.slice(0, 12)) {
+        const r = Math.floor(mv.cell / N), c = mv.cell % N;
+        board[r][c] = me; rotateQuad(mv.quad, mv.dir);
+        const after = board.map((row) => row.slice());
+        let danger = false;
+        if (ptgFiveFor(opp)) danger = true;
+        else {
+          const em = emptiesAfter(board);
+          outer: for (const cell of em) for (let q = 0; q < 4; q++) for (const d of dirs) {
+            const rr = Math.floor(cell / N), cc = cell % N;
+            board[rr][cc] = opp; rotateQuad(q, d);
+            const w = ptgFiveFor(opp);
+            for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) board[y][x] = after[y][x];
+            if (w) { danger = true; break outer; }
+          }
+        }
+        restore();
+        const total = sc - (danger ? 1000 : 0);
+        if (total > best) { best = total; pick = mv; }
       }
       return pick;
     }

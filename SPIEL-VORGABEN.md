@@ -46,7 +46,7 @@ Direkt nach `<title>` stehen diese Zeilen. Daraus baut die Startseite automatisc
   - `Bots`: gegen Computer-Gegner
   - `Solo`: allein spielen, z.B. auf Punkte oder Level
 - **`spiel-typ`**: 1–3 Typen für den Typ-Filter der Startseite, durch Komma getrennt. Erlaubt sind genau diese Wörter:
-  `3D`, `Pixel-Art`, `Action`, `Strategie`, `Klassiker`, `Denkspiel`, `Geschick`, `Physik`, `Rennen`, `Party`, `Aufbau`.
+  `3D`, `Pixel-Art`, `Action`, `Strategie`, `Klassiker`, `Denkspiel`, `Geschick`, `Physik`, `Rennen`, `Party`, `Aufbau`, `Chill`. `Chill` kommt in die «Chill-Lounge» der Startseite: ruhige Spiele ohne Zeitdruck und ohne Action (Brettspiele, Knobeln, Aufbau).
 - **`spiel-tags`**: Freie Schildchen auf dem Bild, höchstens 2–3 kurze Begriffe (z.B. `1 gegen 1`, `3D`, `Rangliste`, `Strategie`). Die Modi aus `spiel-modi` gehören hier **nicht** hinein.
 - **`spiel-suche`** (freiwillig, aber empfohlen): Wörter, die Leute bei Google eintippen, wenn sie so ein Spiel suchen, durch Komma getrennt, z.B. `<meta name="spiel-suche" content="Käsekästchen, Kästchenspiel">`. Das erste Wort kommt für Google in den Seitentitel (`Dots and Boxes (Käsekästchen) – online zu zweit spielen …`). Keine Markennamen anderer Spiele.
 

@@ -1,4 +1,19 @@
 [
+  { "d": "2026-10-29", "t": "Chill-Lounge und zufällige Reihenfolge", "tag": "Neu", "p": [
+    "Neuer Knopf «Chill-Lounge» auf der Startseite: zeigt nur ruhige Spiele ohne Zeitdruck und ohne Action (Schach, Dame, Go, Mancala, Reversi, 2048, Golf-Tour, Strassenbaron und mehr)",
+    "Ohne Filter werden die Spiele jetzt bei jedem Besuch zufällig gemischt, damit alle mal oben stehen. «Neueste zuerst» und «Beste Bewertung» gibt es weiterhin"
+  ] },
+  { "d": "2026-10-29", "t": "Neue Bot-Gegner und bessere Bot-Stufen", "tag": "Update", "p": [
+    "Festungssturm, Billard und Panzer-Duell können jetzt auch allein gegen den Bot gespielt werden (Leicht, Mittel, Schwer)",
+    "Festungssturm: Spielfeld und Knöpfe sind auf dem Laptop grösser, alle Truppen und Upgrades lassen sich mit der Tastatur auslösen (Bahn 1 bis 3, Buchstaben auf den Knöpfen), eine Runde dauert jetzt 1 bis 2 Minuten statt unter einer halben",
+    "Reversi und Ultimate Tic Tac Toe: Die Stufen unterscheiden sich jetzt klar, «Schwer» schlägt «Mittel» und «Leicht»",
+    "Go: neue Stärke-Wahl (Leicht, Mittel, Schwer), der Bot passt jetzt sinnvoll und füllt nicht mehr die eigenen Augen",
+    "Dame: Remis, wenn lange nur mit Damen gezogen und nicht geschlagen wird. Mauerbauer «Schwer» denkt nicht mehr mehrere Sekunden. Dreh-Duell «Schwer» sieht Gewinnzüge des Gegners voraus"
+  ] },
+  { "d": "2026-10-29", "t": "Dead Maze auf Deutsch", "tag": "Update", "p": [
+    "Alle Texte, Türme, Zombies, Menüs und Hilfen sind jetzt auf Deutsch",
+    "Kleine Textkorrekturen in 2048, Fünf gewinnt, Mauerbauer und Panzer-Duell"
+  ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Riesige Welt", "tag": "Neu", "p": [
     "Die Welt ist über 25 Mal so gross: 4096 mal 4096 Felder. Das bisherige Gebiet mit den 8 Dörfern liegt jetzt in der Mitte",
     "Rundherum entstehen beim Laufen immer neue Gegenden mit vielen neuen Dörfern (mit Heilhaus, Laden und Wegstein), Trainern und Riesen-Arenen",
