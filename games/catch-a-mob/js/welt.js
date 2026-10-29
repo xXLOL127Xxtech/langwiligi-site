@@ -3,14 +3,17 @@
 // Alle Spieler bauen aus demselben Seed dieselbe Karte, sie muss nicht übertragen werden.
 (function (G) {
   const CAM = G.CAM;
-  const W = 640, H = 640;          // grosse Welt: bis zum nächsten Dorf läuft man mehrere Minuten
+  const W = 640, H = 640;          // das alte Kerngebiet mit den 8 Dörfern (eigene, lokale Koordinaten)
+  // Die Welt ist jetzt riesig (4096 x 4096 Felder) und entsteht beim Laufen aus dem Seed: Der Kern liegt in der Mitte, rundherum werden
+  // Stücke (Chunks) und Gebiete (Regionen) erst erzeugt, wenn du in die Nähe kommst. Jeder Spieler bekommt aus demselben Seed dieselbe Welt.
+  const WB = 4096, OFF = 13 * 128, CHS = 64, RG = 128, NR = WB / RG;
   const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13, SCHILD: 14 };
   const BLOCK = new Uint8Array(16); [T.WASSER, T.BAUM, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH, T.SCHILD].forEach(i => BLOCK[i] = 1);
-  const START = { x: 320, y: 320 };
+  const START = { x: 320 + OFF, y: 320 + OFF };
   const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' }, 6: { n: 'Arena', wand: '#ddd0f4', dach: '#6a2fc4' } };
 
   CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
-  const Welt = CAM.Welt = { W, H, T, START, INNEN_R: 20, LV_DIST: 440, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], arena: [], schilder: new Map(), seed: 1 };
+  const Welt = CAM.Welt = { W: WB, H: WB, T, OFF, NR, RG, START, INNEN_R: 20, LV_DIST: 1800, BOT_R: 470, bereit: false, dorf: [], dorfLoad: [], trainer: [], boss: [], arena: [], schilder: new Map(), sicher: [], seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function vn(x, y, sc, seed) {
@@ -19,36 +22,73 @@
     return lerp(lerp(h(x0, y0, seed), h(x0 + 1, y0, seed), sx), lerp(h(x0, y0 + 1, seed), h(x0 + 1, y0 + 1, seed), sx), sy);
   }
 
+  // ---------- Gelände: jedes Feld ergibt sich allein aus Seed und Koordinaten ----------
+  let SEED = 1, ZB = 0, ZT = 0;
+  const aussen = new Map();
+  // Äussere Biom-Mittelpunkte: ein Punkt pro Rasterfeld (224 Felder), nie im Kerngebiet (lokale Koordinaten)
+  function aussenMitte(gx, gy) {
+    const key = (gx + 100) * 1000 + gy + 100;
+    let m = aussen.get(key);
+    if (m === undefined) {
+      const hs = CAM.hash2, cx = (gx + 0.2 + 0.6 * hs(gx, gy, SEED + 101)) * 224, cy = (gy + 0.2 + 0.6 * hs(gx, gy, SEED + 102)) * 224;
+      m = (cx > -90 && cx < W + 90 && cy > -90 && cy < H + 90) ? null : { cx, cy, id: Math.floor(hs(gx, gy, SEED + 103) * 8) };
+      aussen.set(key, m);
+    }
+    return m;
+  }
+  // Setzt ZB (Biom) und ZT (Feldart) für ein Feld in Weltkoordinaten
+  function zelle(gx, gy) {
+    const B = CAM.BIOME, x = gx - OFF, y = gy - OFF;
+    const wx = x + (vn(x, y, 26, SEED + 1) - 0.5) * 56, wy = y + (vn(x, y, 26, SEED + 2) - 0.5) * 56;
+    let bi = 0, bd = 1e12;
+    for (let i = 0; i < B.length; i++) { const dx = wx - B[i].cx, dy = wy - B[i].cy, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }
+    const ax = Math.floor(x / 224), ay = Math.floor(y / 224);
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+      const m = aussenMitte(ax + i, ay + j);
+      if (m) { const dx = wx - m.cx, dy = wy - m.cy, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = m.id; } }
+    }
+    const p = B[bi], hs = CAM.hash2, edge = Math.min(gx, gy, WB - 1 - gx, WB - 1 - gy);
+    let t = T.BODEN;
+    if (edge < 4 + vn(x, y, 7, SEED + 3) * 6) t = T.WASSER;
+    else if (p.lava && vn(x, y, 11, SEED + 11) > p.lava) t = T.LAVA;
+    else if (vn(x, y, 20, SEED + 4) < p.lake) t = T.WASSER;
+    else {
+      const tn = vn(x, y, 7, SEED + 6) * 0.6 + vn(x, y, 3, SEED + 7) * 0.4;
+      if (tn > (p.tree || 0.74)) {
+        const r = hs(x, y, SEED + 21);
+        t = p.obst === 'fels' ? T.FELS : p.obst === 'grab' ? (r > 0.45 ? T.GRAB : T.BAUM) : p.obst === 'kristall' ? (r > 0.4 ? T.KRISTALL : T.FELS) : (p.obst === 'tanne' && r > 0.88) ? T.FELS : T.BAUM;
+      } else {
+        const gn = vn(x, y, 9, SEED + 8) * 0.7 + vn(x, y, 4, SEED + 9) * 0.3;
+        if (gn > p.grass + 0.04) t = T.GRAS;
+      }
+    }
+    ZB = bi; ZT = t;
+  }
+
+  // Dorf an eine Stelle setzen (set = Schreibfunktion des Kerns oder eines Chunks)
+  function stampDorf(set, cx, cy) {
+    for (let y = cy - 8; y <= cy + 6; y++) for (let x = cx - 9; x <= cx + 9; x++) set(x, y, T.BODEN, 0);
+    for (let y = cy - 3; y <= cy + 4; y++) for (let x = cx - 7; x <= cx + 7; x++) set(x, y, T.WEG, 0);
+    const haus = (x0, art) => {   // 3 breit, 3 hoch, Tür unten Mitte
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) set(x0 + i, cy - 6 + j, j === 0 ? T.DACH : (j === 2 && i === 1) ? T.TUER : T.WAND, art);
+      set(x0 + 1, cy - 4, T.TUER, art);
+    };
+    haus(cx - 6, 1); haus(cx - 1, 2); haus(cx + 4, 3);
+    set(cx, cy + 1, T.STEIN, 4);
+    set(cx - 4, cy + 1, T.SCHILD, 10);   // Ranglistentafel
+  }
+
   Welt.erzeugen = function (seed) {
-    seed = (seed | 0) || 1; Welt.seed = seed;
+    seed = (seed | 0) || 1; Welt.seed = seed; SEED = seed; aussen.clear(); regionen.clear(); chunks.clear(); lc = null; lck = -1;
     const tiles = new Uint8Array(W * H), biome = new Uint8Array(W * H), meta = new Uint8Array(W * H);
     const B = CAM.BIOME;
     const hs = CAM.hash2;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const wx = x + (vn(x, y, 26, seed + 1) - 0.5) * 56, wy = y + (vn(x, y, 26, seed + 2) - 0.5) * 56;
-      let bi = 0, bd = 1e9;
-      for (let i = 0; i < B.length; i++) { const dx = wx - B[i].cx, dy = wy - B[i].cy, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }
-      const idx = y * W + x; biome[idx] = bi;
-      const p = B[bi];
-      const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
-      let t = T.BODEN;
-      if (edge < 4 + vn(x, y, 7, seed + 3) * 6) t = T.WASSER;
-      else if (p.lava && vn(x, y, 11, seed + 11) > p.lava) t = T.LAVA;
-      else if (vn(x, y, 20, seed + 4) < p.lake) t = T.WASSER;
-      else {
-        const tn = vn(x, y, 7, seed + 6) * 0.6 + vn(x, y, 3, seed + 7) * 0.4;
-        if (tn > (p.tree || 0.74)) {
-          const r = hs(x, y, seed + 21);
-          t = p.obst === 'fels' ? T.FELS : p.obst === 'grab' ? (r > 0.45 ? T.GRAB : T.BAUM) : p.obst === 'kristall' ? (r > 0.4 ? T.KRISTALL : T.FELS) : (p.obst === 'tanne' && r > 0.88) ? T.FELS : T.BAUM;
-        } else {
-          const gn = vn(x, y, 9, seed + 8) * 0.7 + vn(x, y, 4, seed + 9) * 0.3;
-          if (gn > p.grass + 0.04) t = T.GRAS;
-        }
-      }
-      tiles[idx] = t;
+      zelle(x + OFF, y + OFF);
+      const idx = y * W + x; biome[idx] = ZB; tiles[idx] = ZT;
     }
-    Welt.tiles = tiles; Welt.biome = biome; Welt.meta = meta;
-    Welt.dorf = []; Welt.trainer = []; Welt.boss = []; Welt.sicher = []; Welt.arena = []; Welt.schilder = new Map();
+    alt = { tiles, biome, meta };
+    Welt.dorf = []; Welt.dorfLoad = []; Welt.trainer = []; Welt.boss = []; Welt.sicher = []; Welt.arena = []; Welt.schilder = new Map();
 
     const set = (x, y, t, m) => { if (x < 0 || y < 0 || x >= W || y >= H) return; const i = y * W + x; tiles[i] = t; if (m !== undefined) meta[i] = m; };
     const fest = t => t === T.WAND || t === T.TUER || t === T.DACH || t === T.STEIN || t === T.RUNE || t === T.SCHILD;
@@ -62,17 +102,9 @@
     // Dörfer
     for (const p of B) {
       const cx = p.cx, cy = p.cy;
-      const d = { x: cx, y: cy, biome: p.id, name: p.dorf, rect: { x1: cx - 9, y1: cy - 8, x2: cx + 9, y2: cy + 6 } };
+      const d = { x: cx, y: cy, biome: p.id, nr: p.id, name: p.dorf, rect: { x1: cx - 9, y1: cy - 8, x2: cx + 9, y2: cy + 6 } };
       Welt.dorf.push(d); Welt.sicher.push(d.rect);
-      for (let y = d.rect.y1; y <= d.rect.y2; y++) for (let x = d.rect.x1; x <= d.rect.x2; x++) { set(x, y, T.BODEN, 0); }
-      for (let y = cy - 3; y <= cy + 4; y++) for (let x = cx - 7; x <= cx + 7; x++) set(x, y, T.WEG, 0);
-      const haus = (x0, art) => {   // 3 breit, 3 hoch, Tür unten Mitte
-        for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) set(x0 + i, cy - 6 + j, j === 0 ? T.DACH : (j === 2 && i === 1) ? T.TUER : T.WAND, art);
-        set(x0 + 1, cy - 4, T.TUER, art);
-      };
-      haus(cx - 6, 1); haus(cx - 1, 2); haus(cx + 4, 3);
-      set(cx, cy + 1, T.STEIN, 4);
-      set(cx - 4, cy + 1, T.SCHILD, 10);   // Ranglistentafel
+      stampDorf(set, cx, cy);
       // Gras und Blumen am Rand für etwas Leben bleiben aus dem Rechteck heraus
     }
     // Wege zum Startdorf
@@ -89,8 +121,8 @@
       for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 30) set(ax + x, ay + y, (x * x + y * y > 18) ? T.WEG : T.BODEN, 0);
       set(ax, ay, T.RUNE, 5);
       strasse(ax, ay + 6, d.x + 8, d.y + 6 > H ? d.y : d.y + 3);
-      const lv = Math.min(100, Welt.wildLevel(ax, ay) + 10);
-      Welt.boss.push({ x: ax, y: ay, biome: p.id, idx: p.boss, lv });
+      const lv = Math.min(100, Welt.wildLevel(ax + OFF, ay + OFF) + 10);
+      Welt.boss.push({ x: ax, y: ay, biome: p.id, idx: p.boss, lv, key: p.boss });
       Welt.sicher.push({ x1: ax - 1, y1: ay - 1, x2: ax + 1, y2: ay + 1, nurSicherRand: true });
     }
     // Trainer
@@ -104,7 +136,7 @@
         if (biome[i] !== p.id || (tiles[i] !== T.BODEN && tiles[i] !== T.GRAS)) continue;
         if (Welt.istSicher(x, y, 6)) continue;
         if (Welt.trainer.some(t => Math.abs(t.x - x) < 16 && Math.abs(t.y - y) < 16)) continue;
-        const lv = Math.min(98, Welt.wildLevel(x, y) + 1);
+        const lv = Math.min(98, Welt.wildLevel(x + OFF, y + OFF) + 1);
         const r2 = rnd();
         Welt.trainer.push({
           id: id++, x, y, biome: p.id, lv, dir: Math.floor(rnd() * 4), anz: lv < 8 ? 1 + (r2 > 0.6 ? 1 : 0) : lv < 16 ? 2 : 3,
@@ -121,7 +153,7 @@
     CAM.ARENEN.forEach((def, i) => {
       for (let tries = 0; tries < 3000; tries++) {
         const ang = baseA + i * 2.4 + (ra() - 0.5) * (tries > 1000 ? 6.3 : 0.9), dist = 55 + i * 33 + (ra() - 0.5) * (tries > 1500 ? 90 : 24);
-        const cx = Math.round(START.x + Math.cos(ang) * dist), cy = Math.round(START.y + Math.sin(ang) * dist);
+        const cx = Math.round(START.x - OFF + Math.cos(ang) * dist), cy = Math.round(START.y - OFF + Math.sin(ang) * dist);
         if (cx < 16 || cy < 16 || cx > W - 17 || cy > H - 17) continue;
         if (Welt.dorf.some(d => Math.hypot(d.x - cx, d.y - cy) < 28) || Welt.boss.some(b => Math.hypot(b.x - cx, b.y - cy) < 22) || Welt.arena.some(a => Math.hypot(a.cx - cx, a.cy - cy) < 45)) continue;
         let nass = 0; for (let y = -4; y <= 5; y++) for (let x = -5; x <= 5; x++) { const t = tiles[(cy + y) * W + cx + x]; if (t === T.WASSER || t === T.LAVA) nass++; }
@@ -159,14 +191,165 @@
       const nah = Welt.dorf.slice().sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
       set(x, y, T.SCHILD, 9); Welt.schilder.set(y * W + x, Math.atan2(nah.y - y, nah.x - x));
     }
+    // Kerngebiet in Weltkoordinaten umrechnen (alles bisher war lokal)
+    Welt.dorf.forEach(d => { d.x += OFF; d.y += OFF; d.rect.x1 += OFF; d.rect.x2 += OFF; d.rect.y1 += OFF; d.rect.y2 += OFF; });
+    Welt.sicher.forEach(r => { r.x1 += OFF; r.x2 += OFF; r.y1 += OFF; r.y2 += OFF; });
+    Welt.trainer.forEach(t => { t.x += OFF; t.y += OFF; });
+    Welt.boss.forEach(b => { b.x += OFF; b.y += OFF; });
+    Welt.arena.forEach(a => { a.x += OFF; a.y += OFF; a.cx += OFF; a.cy += OFF; });
+    const sm = new Map(); Welt.schilder.forEach((v, k) => sm.set((Math.floor(k / W) + OFF) * WB + (k % W) + OFF, v)); Welt.schilder = sm;
+    Welt.bereit = true;
     Welt.karteBauen();
   };
 
-  Welt.get = function (x, y) { x |= 0; y |= 0; return (x < 0 || y < 0 || x >= W || y >= H) ? T.WASSER : Welt.tiles[y * W + x]; };
-  // schwimm = true: Wasser ist begehbar (nur für dich, andere Wesen bleiben an Land)
+  // ---------- Zugriff auf Felder: Kern (feste Tabelle) oder Chunk (wird bei Bedarf erzeugt) ----------
+  let alt = null, lc = null, lck = -1;
+  const chunks = new Map();
+  function chunkAt(x, y) {
+    const key = (y >> 6) * 64 + (x >> 6);
+    if (key === lck) return lc;
+    let c = chunks.get(key);
+    if (!c) c = baueChunk(x >> 6, y >> 6);
+    lck = key; lc = c;
+    return c;
+  }
+  Welt.get = function (x, y) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (x < 0 || y < 0 || x >= WB || y >= WB) return T.WASSER;
+    const lx = x - OFF, ly = y - OFF;
+    if (lx >= 0 && ly >= 0 && lx < W && ly < H) return alt.tiles[ly * W + lx];
+    return chunkAt(x, y).t[((y & 63) << 6) | (x & 63)];
+  };
+  Welt.metaAt = function (x, y) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (x < 0 || y < 0 || x >= WB || y >= WB) return 0;
+    const lx = x - OFF, ly = y - OFF;
+    if (lx >= 0 && ly >= 0 && lx < W && ly < H) return alt.meta[ly * W + lx];
+    return chunkAt(x, y).m[((y & 63) << 6) | (x & 63)];
+  };
+  Welt.biomeAt = function (x, y) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (x < 0 || y < 0 || x >= WB || y >= WB) return 0;
+    const lx = x - OFF, ly = y - OFF;
+    if (lx >= 0 && ly >= 0 && lx < W && ly < H) return alt.biome[ly * W + lx];
+    return chunkAt(x, y).b[((y & 63) << 6) | (x & 63)];
+  };
   Welt.blockiert = (x, y, schwimm) => { const t = Welt.get(Math.floor(x), Math.floor(y)); return BLOCK[t] === 1 && !(schwimm && t === T.WASSER); };
   Welt.istWasser = (x, y) => Welt.get(Math.floor(x), Math.floor(y)) === T.WASSER;
-  Welt.biomeAt = function (x, y) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= W || y >= H) return 0; return Welt.biome[y * W + x]; };
+
+  // ---------- Gebiete (Regionen, 128 x 128): Dörfer, Trainer und Riesen-Arenen weit draussen ----------
+  const regionen = new Map();
+  const D_VOR = ['Birken', 'Eichen', 'Stein', 'Nebel', 'Rabe', 'Silber', 'Moos', 'Falken', 'Wolfs', 'Bären', 'Salz', 'Rauch', 'Dorn', 'Licht', 'Eisen', 'Mond', 'Sturm', 'Fuchs', 'Kupfer', 'Distel'];
+  const D_NACH = ['hain', 'furt', 'bach', 'stein', 'heim', 'dorf', 'brück', 'tal', 'rast', 'wacht', 'feld', 'hof', 'sprung', 'winkel', 'ruh'];
+  function region(rx, ry) {
+    if (rx < 0 || ry < 0 || rx >= NR || ry >= NR) return { rx, ry, dorf: null, trainer: [], boss: null, sicher: [], stempel: [], geladen: false, leer: true };
+    const key = ry * NR + rx;
+    let R = regionen.get(key);
+    if (R) return R;
+    R = { rx, ry, key, dorf: null, trainer: [], boss: null, sicher: [], stempel: [], geladen: false };
+    regionen.set(key, R);
+    const x0 = rx * RG, y0 = ry * RG;
+    if (x0 >= OFF && x0 < OFF + W && y0 >= OFF && y0 < OFF + H) return R;   // das ist das Kerngebiet
+    const rnd = CAM.mulberry32(SEED * 131 + key * 7919 + 17);
+    const land = () => ZT === T.BODEN || ZT === T.GRAS || ZT === T.WEG;
+    const frei = (x, y) => { zelle(x, y); return land(); };
+    // Dorf
+    if (rnd() < 0.42) {
+      for (let v = 0; v < 14; v++) {
+        const cx = x0 + 30 + Math.floor(rnd() * (RG - 60)), cy = y0 + 30 + Math.floor(rnd() * (RG - 60));
+        zelle(cx, cy);
+        if (ZT === T.WASSER || ZT === T.LAVA) continue;
+        const n = Math.floor(rnd() * D_VOR.length), m = Math.floor(rnd() * D_NACH.length);
+        R.dorf = { x: cx, y: cy, biome: ZB, nr: 8 + key, aussen: true, name: D_VOR[n] + D_NACH[m], rect: { x1: cx - 9, y1: cy - 8, x2: cx + 9, y2: cy + 6 } };
+        R.sicher.push(R.dorf.rect); R.stempel.push(set => stampDorf(set, cx, cy));
+        break;
+      }
+    }
+    // Riesen-Arena (selten, stark)
+    if (rnd() < 0.16) {
+      for (let v = 0; v < 14; v++) {
+        const ax = x0 + 24 + Math.floor(rnd() * (RG - 48)), ay = y0 + 24 + Math.floor(rnd() * (RG - 48));
+        if (R.dorf && Math.hypot(R.dorf.x - ax, R.dorf.y - ay) < 40) continue;
+        if (!frei(ax, ay)) continue;
+        const bi = ZB;
+        R.boss = { x: ax, y: ay, biome: bi, idx: bi, lv: Math.min(100, Welt.wildLevel(ax, ay) + 10), key: 'o' + key };
+        R.sicher.push({ x1: ax - 1, y1: ay - 1, x2: ax + 1, y2: ay + 1, nurSicherRand: true });
+        R.stempel.push(set => {
+          for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 30) set(ax + x, ay + y, (x * x + y * y > 18) ? T.WEG : T.BODEN, 0);
+          set(ax, ay, T.RUNE, 5);
+        });
+        break;
+      }
+    }
+    // Trainer: mehr als im Kern
+    const ziel = 3 + Math.floor(rnd() * 4);
+    for (let v = 0, n = 0; n < ziel && v < 80; v++) {
+      const x = x0 + 12 + Math.floor(rnd() * (RG - 24)), y = y0 + 12 + Math.floor(rnd() * (RG - 24));
+      if (!frei(x, y) || ZT === T.WEG) continue;
+      const bi = ZB;
+      if (R.dorf && x > R.dorf.rect.x1 - 8 && x < R.dorf.rect.x2 + 8 && y > R.dorf.rect.y1 - 8 && y < R.dorf.rect.y2 + 8) continue;
+      if (R.boss && Math.hypot(R.boss.x - x, R.boss.y - y) < 12) continue;
+      if (R.trainer.some(t => Math.abs(t.x - x) < 16 && Math.abs(t.y - y) < 16)) continue;
+      const lv = Math.min(98, Welt.wildLevel(x, y) + 1), r2 = rnd();
+      R.trainer.push({
+        id: 1000 + key * 8 + n, x, y, biome: bi, lv, dir: Math.floor(rnd() * 4), anz: lv < 8 ? 1 + (r2 > 0.6 ? 1 : 0) : lv < 16 ? 2 : 3,
+        name: CAM.TRAINER_VORNAMEN[Math.floor(rnd() * CAM.TRAINER_VORNAMEN.length)] + ' der ' + CAM.TRAINER_TITEL[Math.floor(rnd() * CAM.TRAINER_TITEL.length)],
+        farbe: CAM.FARBEN[Math.floor(rnd() * CAM.FARBEN.length)], seed: Math.floor(rnd() * 1e9),
+      });
+      R.stempel.push(set => set(x, y, T.BODEN));
+      n++;
+    }
+    return R;
+  }
+  function regionLaden(R) {
+    if (R.geladen || R.leer) return; R.geladen = true;
+    R.trainer.forEach(t => Welt.trainer.push(t));
+    if (R.boss) Welt.boss.push(R.boss);
+    R.sicher.forEach(r => Welt.sicher.push(r));
+    if (R.dorf) Welt.dorfLoad.push(R.dorf);
+  }
+  function regionEntladen(R) {
+    R.geladen = false;
+    const ts = new Set(R.trainer), ss = new Set(R.sicher);
+    Welt.trainer = Welt.trainer.filter(t => !ts.has(t));
+    if (R.boss) Welt.boss = Welt.boss.filter(b => b !== R.boss);
+    Welt.sicher = Welt.sicher.filter(r => !ss.has(r));
+    if (R.dorf) Welt.dorfLoad = Welt.dorfLoad.filter(d => d !== R.dorf);
+  }
+  // Dorf mit dieser Nummer (0 bis 7 = Kern, danach die äusseren Dörfer); gibt es keines, das Startdorf
+  Welt.dorfNr = function (nr) {
+    if (nr < 8) return Welt.dorf[nr] || Welt.dorf[0];
+    const k = nr - 8, R = region(k % NR, Math.floor(k / NR));
+    return R.dorf || Welt.dorf[0];
+  };
+  Welt.alleDoerfer = () => Welt.dorf.concat(Welt.dorfLoad);
+  Welt.dorfMax = 8 + NR * NR;
+
+  // ---------- Chunks (64 x 64) ----------
+  function baueChunk(cx, cy) {
+    const c = { t: new Uint8Array(CHS * CHS), b: new Uint8Array(CHS * CHS), m: new Uint8Array(CHS * CHS), cx, cy };
+    const gx0 = cx * CHS, gy0 = cy * CHS;
+    for (let j = 0; j < CHS; j++) for (let i = 0; i < CHS; i++) { zelle(gx0 + i, gy0 + j); c.t[j * CHS + i] = ZT; c.b[j * CHS + i] = ZB; }
+    const R = region(cx >> 1, cy >> 1);
+    const set = (x, y, t, m) => { const i = x - gx0, j = y - gy0; if (i < 0 || j < 0 || i >= CHS || j >= CHS) return; c.t[j * CHS + i] = t; if (m !== undefined) c.m[j * CHS + i] = m; };
+    R.stempel.forEach(st => st(set));
+    chunks.set(cy * 64 + cx, c);
+    kartenFleck(c);
+    return c;
+  }
+  // Wird jeden Takt aufgerufen: nahe Gebiete laden, ferne wieder vergessen (die Welt ist ja aus dem Seed jederzeit neu erzeugbar)
+  Welt.aktualisieren = function (px, py) {
+    const rx = Math.floor(px / RG), ry = Math.floor(py / RG);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) regionLaden(region(rx + dx, ry + dy));
+    for (const R of regionen.values()) if (R.geladen && (Math.abs(R.rx - rx) > 2 || Math.abs(R.ry - ry) > 2)) regionEntladen(R);
+    const pcx = Math.floor(px / CHS), pcy = Math.floor(py / CHS);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {   // höchstens ein neues Stück pro Takt, damit es nicht ruckelt
+      const x = pcx + dx, y = pcy + dy;
+      if (x >= 0 && y >= 0 && x < 64 && y < 64 && !chunks.has(y * 64 + x) && !(x * CHS >= OFF && x * CHS < OFF + W && y * CHS >= OFF && y * CHS < OFF + H)) { baueChunk(x, y); dy = 2; break; }
+    }
+    if (chunks.size > 120) for (const [k, c] of chunks) if (Math.abs(c.cx - pcx) > 4 || Math.abs(c.cy - pcy) > 4) { chunks.delete(k); if (k === lck) { lc = null; lck = -1; } }
+  };
+
   Welt.istSicher = function (x, y, rand) {
     rand = rand || 0;
     return Welt.sicher.some(r => !r.nurSicherRand && x >= r.x1 - rand && x <= r.x2 + rand && y >= r.y1 - rand && y <= r.y2 + rand);
@@ -175,10 +358,10 @@
     const d = Math.hypot(x - START.x, y - START.y);
     const n = r !== undefined ? r : CAM.hash2(Math.floor(x), Math.floor(y), 9);
     // Innen (bis 20 Felder um den Start) Stufe 3 bis 5, damit du am Anfang gewinnen kannst. Danach ab Stufe 6 und ganz langsam mehr:
-    // nach 100 Feldern etwa Stufe 17, nach 200 etwa Stufe 36, nach 300 etwa Stufe 60. Stufe 100 gibt es erst ganz aussen (ab etwa 440 Feldern).
+    // nach 100 Feldern etwa Stufe 8, nach 500 etwa Stufe 22, nach 1000 etwa Stufe 48, nach 1500 etwa Stufe 79. Stufe 100 gibt es erst ganz aussen (ab 1800 Feldern).
     if (d <= Welt.INNEN_R) return 3 + Math.min(2, Math.floor(n * 3));
     const t = Math.min(1, (d - Welt.INNEN_R) / (Welt.LV_DIST - Welt.INNEN_R));
-    return Math.max(6, Math.min(100, Math.round(6 + 94 * Math.pow(t, 1.6) + (n - 0.5) * 2)));
+    return Math.max(6, Math.min(100, Math.round(6 + 94 * Math.pow(t, 1.35) + (n - 0.5) * 2)));
   };
 
   // Was steht neben dem Feld? Gibt { x, y, meta, t } für Dinge zum Ansprechen zurück (Türen, Wegstein, Rune)
@@ -190,11 +373,11 @@
     cand.push([fx + 1, fy + 1], [fx - 1, fy + 1], [fx + 1, fy - 1], [fx - 1, fy - 1]);
     for (const [x, y] of cand) {
       const t = Welt.get(x, y);
-      if (t === T.TUER || t === T.STEIN || t === T.RUNE || t === T.SCHILD) return { x, y, t, meta: Welt.meta[y * W + x] };
+      if (t === T.TUER || t === T.STEIN || t === T.RUNE || t === T.SCHILD) return { x, y, t, meta: Welt.metaAt(x, y) };
     }
     return null;
   };
-  Welt.dorfBei = function (x, y) { return Welt.dorf.find(d => x >= d.rect.x1 && x <= d.rect.x2 && y >= d.rect.y1 && y <= d.rect.y2) || null; };
+  Welt.dorfBei = function (x, y) { return Welt.alleDoerfer().find(d => x >= d.rect.x1 && x <= d.rect.x2 && y >= d.rect.y1 && y <= d.rect.y2) || null; };
 
   // ---------- Wetter, Tag und Nacht, Jahreszeit (alles aus der Uhr berechnet) ----------
   CAM.wetterBei = function (biome, now) {
@@ -342,7 +525,7 @@
         break;
       }
       case T.SCHILD: {
-        const id = ty * W + tx, rangliste = pm === 10;
+        const id = ty * WB + tx, rangliste = pm === 10;
         c.fillStyle = rangliste ? p.path : bodenFarbe(p, h); c.fillRect(sx, sy, S + 1, S + 1);
         c.fillStyle = 'rgba(0,0,0,0.15)'; c.fillRect(sx + 3 * u, sy + 14 * u, 10 * u, 2 * u);
         c.fillStyle = '#6a4424'; c.fillRect(sx + 7 * u, sy + 6 * u, 2 * u, 9 * u);
@@ -376,18 +559,19 @@
     const labels = [];
     for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
       const tx = x0 + i, ty = y0 + j, sx = Math.round(offx + i * S), sy = Math.round(offy + j * S);
-      if (tx < 0 || ty < 0 || tx >= W || ty >= H) { c.fillStyle = '#10243a'; c.fillRect(sx, sy, S + 1, S + 1); continue; }
-      const idx = ty * W + tx, t = Welt.tiles[idx], p = CAM.BIOME[Welt.biome[idx]].P;
-      zeichneFeld(c, tx, ty, sx, sy, S, t, p, tick, (t === T.DACH || t === T.WAND || t === T.TUER || t === T.SCHILD) ? Welt.meta[idx] : Welt.biome[idx]);
+      if (tx < 0 || ty < 0 || tx >= WB || ty >= WB) { c.fillStyle = '#10243a'; c.fillRect(sx, sy, S + 1, S + 1); continue; }
+      const t = Welt.get(tx, ty), bi = Welt.biomeAt(tx, ty), mt = Welt.metaAt(tx, ty), p = CAM.BIOME[bi].P;
+      zeichneFeld(c, tx, ty, sx, sy, S, t, p, tick, (t === T.DACH || t === T.WAND || t === T.TUER || t === T.SCHILD) ? mt : bi);
       // Ufer: dunkle Kante am Land, heller Schaum am Wasser
-      if (ty > 0 && (t === T.WASSER) !== (Welt.tiles[idx - W] === T.WASSER) && t !== T.LAVA && Welt.tiles[idx - W] !== T.LAVA) {
+      const tu = ty > 0 ? Welt.get(tx, ty - 1) : t;
+      if (ty > 0 && (t === T.WASSER) !== (tu === T.WASSER) && t !== T.LAVA && tu !== T.LAVA) {
         if (t === T.WASSER) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(sx, sy, S + 1, Math.max(2, S * 0.1)); }
         else { c.fillStyle = 'rgba(0,0,0,0.22)'; c.fillRect(sx, sy, S + 1, Math.max(2, S * 0.12)); }
       }
-      if (t === T.TUER) labels.push([sx, sy, Welt.meta[idx]]);
+      if (t === T.TUER) labels.push([sx, sy, mt]);
       else if (t === T.STEIN) labels.push([sx, sy, 4]);
       else if (t === T.RUNE) labels.push([sx, sy, 5]);
-      else if (t === T.SCHILD && Welt.meta[idx] === 10) labels.push([sx, sy, 10]);
+      else if (t === T.SCHILD && mt === 10) labels.push([sx, sy, 10]);
     }
     c.font = '700 ' + Math.round(S * 0.34) + 'px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     for (const [sx, sy, m] of labels) {
@@ -399,21 +583,39 @@
     }
   };
 
-  // ---------- Karte als Bild (für die Übersicht) ----------
-  Welt.karteBauen = function () {
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-    const c = cv.getContext('2d'), img = c.createImageData(W, H), d = img.data;
-    const hex = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
-    const pc = CAM.BIOME.map(p => ({ g: hex(p.pal.g1), gr: hex(p.pal.gr), t: hex(p.pal.tr), w: hex(p.pal.w), path: hex(p.pal.path) }));
-    for (let i = 0; i < W * H; i++) {
-      const t = Welt.tiles[i], q = pc[Welt.biome[i]];
-      let col = q.g;
-      if (t === T.WASSER || t === T.LAVA) col = q.w; else if (t === T.GRAS) col = q.gr; else if (t === T.BAUM || t === T.KRISTALL || t === T.GRAB) col = q.t;
-      else if (t === T.WEG) col = q.path; else if (t === T.FELS) col = [92, 90, 96]; else if (t === T.WAND || t === T.DACH || t === T.TUER || t === T.STEIN) col = [240, 230, 200]; else if (t === T.RUNE) col = [255, 80, 70];
-      d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255;
+  // ---------- Karte als Bild (für die Übersicht und die Minikarte) ----------
+  // 1 Bildpunkt = 2 Felder. Der Kern ist von Anfang an sichtbar, alles andere zeichnet sich ein, sobald du dort warst.
+  const KS = 2, KW = WB / KS;
+  const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+  let pcol = null;
+  Welt.farbe = function (t, bi) {
+    if (!pcol) pcol = CAM.BIOME.map(p => ({ g: hex(p.pal.g1), gr: hex(p.pal.gr), t: hex(p.pal.tr), w: hex(p.pal.w), path: hex(p.pal.path) }));
+    const q = pcol[bi];
+    if (t === T.WASSER || t === T.LAVA) return q.w; if (t === T.GRAS) return q.gr; if (t === T.BAUM || t === T.KRISTALL || t === T.GRAB) return q.t;
+    if (t === T.WEG) return q.path; if (t === T.FELS) return [92, 90, 96];
+    if (t === T.WAND || t === T.DACH || t === T.TUER || t === T.STEIN) return [240, 230, 200]; if (t === T.RUNE) return [255, 80, 70];
+    return q.g;
+  };
+  function punkte(c, x0, y0, n, get) {   // n x n Bildpunkte ab Welt-Feld (x0, y0)
+    const img = c.createImageData(n, n), d = img.data;
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const col = get(x0 + i * KS, y0 + j * KS), k = (j * n + i) * 4;
+      d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2]; d[k + 3] = 255;
     }
-    c.putImageData(img, 0, 0);
+    return img;
+  }
+  function kartenFleck(ch) {
+    if (!Welt.karte) return;
+    const n = CHS / KS, gx0 = ch.cx * CHS, gy0 = ch.cy * CHS;
+    Welt.karte.getContext('2d').putImageData(punkte(Welt.karte.getContext('2d'), gx0, gy0, n, (x, y) => { const k = (y - gy0) * CHS + (x - gx0); return Welt.farbe(ch.t[k], ch.b[k]); }), gx0 / KS, gy0 / KS);
+  }
+  Welt.karteBauen = function () {
+    const cv = document.createElement('canvas'); cv.width = KW; cv.height = KW;
+    const c = cv.getContext('2d'); c.fillStyle = '#0b0a14'; c.fillRect(0, 0, KW, KW);
     Welt.karte = cv;
+    c.putImageData(punkte(c, OFF, OFF, W / KS, (x, y) => { const k = (y - OFF) * W + (x - OFF); return Welt.farbe(alt.tiles[k], alt.biome[k]); }), OFF / KS, OFF / KS);
+    // Die Karte merkt sich nur den Kern. Bereits erzeugte Stücke zeichnen sich nachträglich ein.
+    for (const ch of chunks.values()) kartenFleck(ch);
   };
 
   // ---------- Wetter-Partikel ----------

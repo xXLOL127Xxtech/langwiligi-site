@@ -1,4 +1,12 @@
 [
+  { "d": "2026-10-29", "t": "Catch a Mob: Riesige Welt", "tag": "Neu", "p": [
+    "Die Welt ist über 25 Mal so gross: 4096 mal 4096 Felder. Das bisherige Gebiet mit den 8 Dörfern liegt jetzt in der Mitte",
+    "Rundherum entstehen beim Laufen immer neue Gegenden mit vielen neuen Dörfern (mit Heilhaus, Laden und Wegstein), Trainern und Riesen-Arenen",
+    "Je weiter du vom Start weg bist, desto stärker sind Mobs, Trainer und Riesen. Stufe 100 gibt es erst ganz aussen",
+    "Weit draussen gibt es keine NPC-Spieler mehr",
+    "Die Weltkarte kannst du zoomen (Plus, Minus oder Klick) und zeigt nur, was du schon gesehen hast",
+    "Alte Spielstände ziehen automatisch mit um und bleiben im bekannten Gebiet"
+  ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Musik und neue Level-Zonen", "tag": "Update", "p": [
     "Neue Musik: jedes Gebiet hat seinen eigenen Song, von klassisch (Wiesen, Wald) über Retro (Eis, Vulkan) bis Arcade (Kristallschlucht)",
     "Im Kampf wird die Musik schneller und härter, bei Bosskämpfen spielt eine Orgel-Toccata. Im Menü läuft das Titellied",

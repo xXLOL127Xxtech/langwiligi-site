@@ -102,7 +102,7 @@
       if (c.x === tx && c.y === ty) { best = c; break; }
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const x = c.x + dx, y = c.y + dy, k = key(x, y);
-        if (Math.abs(x - sx) > lim || Math.abs(y - sy) > lim || x < 1 || y < 1 || x >= Welt.W - 1 || y >= Welt.H - 1) continue;
+        if (Math.abs(x - sx) > lim || Math.abs(y - sy) > lim || !imBotGebiet(x, y)) continue;
         if (!(x === tx && y === ty) && !feldFrei(x, y, trainer)) continue;
         const g = c.g + 1, alt = zu.get(k);
         if (alt && alt.g <= g) continue;
@@ -121,6 +121,9 @@
     return [(wp[0] - x) / dd, (wp[1] - y) / dd];
   }
   // Nur ein Jäger auf einmal, danach eine Pause
+  // Weit draussen gibt es keine NPC-Spieler mehr: Bots bleiben im Umkreis BOT_R um den Start
+  const imBotGebiet = (x, y) => Math.hypot(x - Welt.START.x, y - Welt.START.y) < Welt.BOT_R;
+  const imKreis = (x, y) => { const dx = x - Welt.START.x, dy = y - Welt.START.y, d = Math.hypot(dx, dy), r = Welt.BOT_R - 10; return d <= r ? [x, y] : [Welt.START.x + dx / d * r, Welt.START.y + dy / d * r]; };
   const jagdFrei = now => now > (Bots.jagdPause || 0) && !(Bots.jaeger && Bots.jaeger.z === 'prov');
   function jagdStart(n, now) { Bots.jaeger = n; n.pfad = null; }
   function jagdEnde(now, pause) { Bots.jaeger = null; Bots.jagdPause = now + (pause || 25000) + Math.random() * 15000; }
@@ -151,10 +154,10 @@
             const dorf = Welt.dorf[Math.floor(Math.random() * Welt.dorf.length)];
             const nah = Math.random() < 0.4 && d < 90;
             const cx = nah ? S.x : dorf.x, cy = nah ? S.y : dorf.y, rr = 8 + Math.random() * 20;
-            b.hx = Math.max(12, Math.min(Welt.W - 12, cx + Math.cos(a) * rr)); b.hy = Math.max(12, Math.min(Welt.H - 12, cy + Math.sin(a) * rr));
+            [b.hx, b.hy] = imKreis(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
             b.tx = b.hx; b.ty = b.hy; b.z = 'geht'; b.t = 40;
           } else {
-            b.tx = Math.max(2, Math.min(Welt.W - 2, b.hx + (Math.random() - 0.5) * 2 * WEITE + Math.cos(a) * r * 0.3)); b.ty = Math.max(2, Math.min(Welt.H - 2, b.hy + (Math.random() - 0.5) * 2 * WEITE + Math.sin(a) * r * 0.3));
+            [b.tx, b.ty] = imKreis(b.hx + (Math.random() - 0.5) * 2 * WEITE + Math.cos(a) * r * 0.3, b.hy + (Math.random() - 0.5) * 2 * WEITE + Math.sin(a) * r * 0.3);
             b.z = 'geht'; b.t = 5 + Math.random() * 6;
           }
         } else if (b.z === 'geht') {

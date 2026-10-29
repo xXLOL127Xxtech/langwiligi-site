@@ -57,6 +57,7 @@
 
   function update(dt, now, tick) {
     const welt = S.modus === 'welt';
+    if (welt) Welt.aktualisieren(S.x, S.y);
     S.anim += dt;
     const frei = welt && !UI.stack.length && !S.busy && !K.aktiv;
     S.bewegt = false;
@@ -89,7 +90,7 @@
       }
       // Dorf betreten
       const d = Welt.dorfBei(S.x, S.y);
-      if (d && S.imDorf !== d.biome) { S.imDorf = d.biome; A.dorfBesucht(d); UI.toast(d.name + ' – hier bist du sicher.', 2500); }
+      if (d && S.imDorf !== d.nr) { S.imDorf = d.nr; A.dorfBesucht(d); UI.toast(d.name + ' – hier bist du sicher.', 2500); }
       else if (!d) S.imDorf = null;
       // Trainer
       for (const tr of Welt.trainer) {
@@ -142,7 +143,7 @@
     }
     if (welt && now - (S.pflegeT || 0) > 2000) {
       S.pflegeT = now;
-      for (const e of (S.save.pflege || [])) if (e.ende <= now && !e.gemeldet) { e.gemeldet = true; UI.snd('heil'); UI.toast(A.mobNameFull(e.m) + ' ist fertig gepflegt (Heilhaus ' + Welt.dorf[e.dorf].name + ').', 3500); }
+      for (const e of (S.save.pflege || [])) if (e.ende <= now && !e.gemeldet) { e.gemeldet = true; UI.snd('heil'); UI.toast(A.mobNameFull(e.m) + ' ist fertig gepflegt (Heilhaus ' + Welt.dorfNr(e.dorf).name + ').', 3500); }
     }
     if (welt && now - (S.speicherT || 0) > 20000) { S.speicherT = now; Save.speichern(); }
   }
@@ -283,7 +284,7 @@
     const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
     if (document.hidden && !S.online) return;
     const now = Date.now();
-    if (!Welt.tiles) return;
+    if (!Welt.bereit) return;
     S.sicht = { w: W / TS, h: H / TS };
     update(dt, now, ts);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
@@ -420,7 +421,10 @@
   function betreten() {
     CAM.Musik.titel(false); S.modus = 'welt'; S.idx = S.online ? Netz.idx : 0; S.pt = -1; S.peers.clear(); S.prot = {}; S.busy = false; S.trainerT = {}; S.teams = {};
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];
-    if (S.save.welt !== 2) { S.save.welt = 2; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
+    if (S.save.welt === 2) {   // die Welt wurde riesig: das alte Gebiet liegt jetzt in der Mitte
+      S.save.welt = 3; S.save.x += Welt.OFF; S.save.y += Welt.OFF; delete S.save.bots;
+      UI.toast('Die Welt ist riesig geworden! Je weiter du hinauslaufst, desto stärker werden die Gegner.', 5500);
+    } else if (S.save.welt !== 3) { S.save.welt = 3; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y, true)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
