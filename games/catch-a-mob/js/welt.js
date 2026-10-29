@@ -10,7 +10,7 @@
   const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' }, 6: { n: 'Arena', wand: '#ddd0f4', dach: '#6a2fc4' } };
 
   CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
-  const Welt = CAM.Welt = { W, H, T, START, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], arena: [], schilder: new Map(), seed: 1 };
+  const Welt = CAM.Welt = { W, H, T, START, INNEN_R: 20, LV_DIST: 440, tiles: null, biome: null, meta: null, dorf: [], trainer: [], boss: [], arena: [], schilder: new Map(), seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function vn(x, y, sc, seed) {
@@ -89,7 +89,7 @@
       for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) if (x * x + y * y <= 30) set(ax + x, ay + y, (x * x + y * y > 18) ? T.WEG : T.BODEN, 0);
       set(ax, ay, T.RUNE, 5);
       strasse(ax, ay + 6, d.x + 8, d.y + 6 > H ? d.y : d.y + 3);
-      const lv = Math.min(50, Welt.wildLevel(ax, ay) + 6);
+      const lv = Math.min(100, Welt.wildLevel(ax, ay) + 10);
       Welt.boss.push({ x: ax, y: ay, biome: p.id, idx: p.boss, lv });
       Welt.sicher.push({ x1: ax - 1, y1: ay - 1, x2: ax + 1, y2: ay + 1, nurSicherRand: true });
     }
@@ -104,7 +104,7 @@
         if (biome[i] !== p.id || (tiles[i] !== T.BODEN && tiles[i] !== T.GRAS)) continue;
         if (Welt.istSicher(x, y, 6)) continue;
         if (Welt.trainer.some(t => Math.abs(t.x - x) < 16 && Math.abs(t.y - y) < 16)) continue;
-        const lv = Math.min(48, Welt.wildLevel(x, y) + 1);
+        const lv = Math.min(98, Welt.wildLevel(x, y) + 1);
         const r2 = rnd();
         Welt.trainer.push({
           id: id++, x, y, biome: p.id, lv, dir: Math.floor(rnd() * 4), anz: lv < 8 ? 1 + (r2 > 0.6 ? 1 : 0) : lv < 16 ? 2 : 3,
@@ -174,8 +174,11 @@
   Welt.wildLevel = function (x, y, r) {
     const d = Math.hypot(x - START.x, y - START.y);
     const n = r !== undefined ? r : CAM.hash2(Math.floor(x), Math.floor(y), 9);
-    // Rund um den Startpunkt Stufe 5 (so stark wie dein Starter), pro 13 Felder Entfernung etwa eine Stufe mehr (nach 100 Feldern Stufe 13, nach 300 Feldern Stufe 28)
-    return Math.max(5, Math.min(50, Math.round(5 + d / 13 + (n - 0.5) * 2)));
+    // Innen (bis 20 Felder um den Start) Stufe 3 bis 5, damit du am Anfang gewinnen kannst. Danach ab Stufe 6 und ganz langsam mehr:
+    // nach 100 Feldern etwa Stufe 17, nach 200 etwa Stufe 36, nach 300 etwa Stufe 60. Stufe 100 gibt es erst ganz aussen (ab etwa 440 Feldern).
+    if (d <= Welt.INNEN_R) return 3 + Math.min(2, Math.floor(n * 3));
+    const t = Math.min(1, (d - Welt.INNEN_R) / (Welt.LV_DIST - Welt.INNEN_R));
+    return Math.max(6, Math.min(100, Math.round(6 + 94 * Math.pow(t, 1.6) + (n - 0.5) * 2)));
   };
 
   // Was steht neben dem Feld? Gibt { x, y, meta, t } für Dinge zum Ansprechen zurück (Türen, Wegstein, Rune)

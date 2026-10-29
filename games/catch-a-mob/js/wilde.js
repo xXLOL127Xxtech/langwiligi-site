@@ -6,7 +6,10 @@
 (function (G) {
   const CAM = G.CAM, S = CAM.S, Welt = CAM.Welt, T = Welt.T;
   const W = CAM.Wilde = { liste: [], sp: null, nextId: 1, nextHerde: 1, spawnT: 4, fuell: 0 };
-  const MAX_WASSER = 3, MAX_BEIDE = 1, MAX_SICHT = 2, MAX_GRUPPEN = 3, MAX_TIERE = 4, LEBEN = 300000;   // sehr wenige: höchstens 3 im Bild, 6 in der Umgebung (4 Bildschirme)
+  const MAX_WASSER = 3, MAX_BEIDE = 1, LEBEN = 300000;
+  // Sehr wenige Tiere: höchstens 2 im Bild, 4 in der Umgebung (4 Bildschirme). Im Startgebiet (Stufe 3 bis 5) sind es mehr, damit du am Anfang genug Gegner zum Üben und Fangen findest.
+  const innen = () => Math.hypot(S.x - Welt.START.x, S.y - Welt.START.y) <= Welt.INNEN_R + 6;
+  const maxSicht = () => innen() ? 4 : 2, maxGruppen = () => innen() ? 5 : 3, maxTiere = () => innen() ? 9 : 4;
   const RAR_FAKTOR = [1, 0.45, 0.14, 0.04];   // seltene Mobs tauchen entsprechend seltener auf
 
   function gehbar(x, y) {
@@ -100,8 +103,8 @@
   // Neue Mobs tauchen nur ausserhalb des Bildes auf (im Ring knapp daneben), nie vor deinen Augen
   W.spawnen = function (now) {
     const v = sicht();
-    if (W.liste.filter(w => imLand(w) && imBild(w.x, w.y)).length >= MAX_SICHT) return false;
-    const frei = MAX_TIERE - W.liste.filter(w => imLand(w) && umgebung(w.x, w.y)).length;
+    if (W.liste.filter(w => imLand(w) && imBild(w.x, w.y)).length >= maxSicht()) return false;
+    const frei = maxTiere() - W.liste.filter(w => imLand(w) && umgebung(w.x, w.y)).length;
     if (frei <= 0) return false;
     for (let versuch = 0; versuch < 40; versuch++) {
       const a = Math.random() * 6.283, rmin = Math.hypot(v.w / 2, v.h / 2) + 1.5, r = rmin + Math.random() * 9;
@@ -178,9 +181,9 @@
     if (W.fuell > 0 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) { W.fuell--; W.spawnen(now); }
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
-      W.spawnT = 6 + Math.random() * 8;
+      W.spawnT = innen() ? 3 + Math.random() * 4 : 6 + Math.random() * 8;
       const gruppen = new Set(W.liste.filter(imLand).map(w => w.herde)).size;
-      if (gruppen < MAX_GRUPPEN && Math.random() < 0.65 && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
+      if (gruppen < maxGruppen() && Math.random() < (innen() ? 0.9 : 0.65) && S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) W.spawnen(now);
     }
     // Wassertiere: Die Gegend ist von Anfang an gefüllt (auch wenn man sie von Land aus nicht sieht) und füllt sich nach einem Fang langsam wieder
     if (S.modus === 'welt' && !Welt.dorfBei(S.x, S.y)) {

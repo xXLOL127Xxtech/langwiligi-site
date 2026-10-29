@@ -112,6 +112,7 @@
     CAM.Bots.trainerUpdate(dt, now, frei);
     // Biome, Wetter
     S.biome = Welt.biomeAt(S.x, S.y);
+    CAM.Musik.update(dt, S.biome);
     S.wetter = CAM.wetterBei(S.biome, now);
     CAM.WetterAnzeige.aktualisieren(dt, S.wetter);
     // Ziel zum Ansprechen
@@ -357,7 +358,7 @@
   let titelLaeuft = false;
   async function titel() {
     if (titelLaeuft) return; titelLaeuft = true;
-    S.modus = 'titel'; $('start').classList.remove('hidden'); $('bbar').classList.add('hidden');
+    S.modus = 'titel'; $('start').classList.remove('hidden'); $('bbar').classList.add('hidden'); CAM.Musik.titel(true);
     const hashCode = G.GameHub ? G.GameHub.cleanCode(location.hash) : '';
     S.save = S.save || Save.laden() || Save.neu();
     let name = (G.GameHub ? G.GameHub.getName() : '') || S.save.name || '';   // der Benutzername gilt in allen Spielen
@@ -417,7 +418,7 @@
   }
 
   function betreten() {
-    S.modus = 'welt'; S.idx = S.online ? Netz.idx : 0; S.pt = -1; S.peers.clear(); S.prot = {}; S.busy = false; S.trainerT = {}; S.teams = {};
+    CAM.Musik.titel(false); S.modus = 'welt'; S.idx = S.online ? Netz.idx : 0; S.pt = -1; S.peers.clear(); S.prot = {}; S.busy = false; S.trainerT = {}; S.teams = {};
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];
     if (S.save.welt !== 2) { S.save.welt = 2; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
     S.x = S.save.x; S.y = S.save.y;
@@ -438,7 +439,7 @@
   }
 
   A.beenden = function () {
-    Save.speichern(); S.modus = 'titel'; S.busy = false;
+    Save.speichern(); S.modus = 'titel'; CAM.Musik.titel(true); S.busy = false;
     if (Netz.online || Netz.room) Netz.schliessen();
     S.online = false; S.peers.clear(); S.pt = -1;
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];

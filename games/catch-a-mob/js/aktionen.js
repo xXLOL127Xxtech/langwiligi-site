@@ -530,7 +530,7 @@
     for (const m of nutzer) {
       lines.push(esc(mobNameFull(m)) + ' erhält ' + teil + ' Erfahrung.');
       m.xp += teil;
-      while (m.xp >= CAM.xpBedarf(m.lv) && m.lv < 50) {
+      while (m.xp >= CAM.xpBedarf(m.lv) && m.lv < 100) {
         m.xp -= CAM.xpBedarf(m.lv);
         const altS = m.stufe, altMhp = m.mhp, altAtk = m.atk, altDef = m.def, altSpd = m.spd, altN = CAM.name(m), altMoves = m.moves.slice(), altGel = CAM.gelernt(m);
         m.lv++; CAM.neuBerechnen(m);

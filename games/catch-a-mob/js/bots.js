@@ -41,7 +41,7 @@
   function teamFuer(rnd, hx, hy, champ) {
     const bi = Welt.biomeAt(hx, hy), B = CAM.BIOME[bi], lv = Welt.wildLevel(hx, hy, rnd());
     const n = CAM.TEAM_MAX, team = [];   // so viele Mobs wie du (Team-Maximum)
-    if (champ) team.push(CAM.neuerMob(27, Math.min(50, lv + 4)));
+    if (champ) team.push(CAM.neuerMob(27, Math.min(100, lv + 4)));
     while (team.length < n) {
       let tot = 0; B.spawn.forEach(s => tot += s[1]);
       let r = rnd() * tot, fam = B.spawn[0][0];

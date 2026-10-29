@@ -1,5 +1,25 @@
 [
 {
+"d":"2026-10-29",
+"z":"18:37",
+"a":"Catch a Mob",
+"t":"Neue Musik für alle Gebiete, Kämpfe und das Menü",
+"tag":"Neu",
+"k":"Sound",
+"pr":null,
+"b":"catch-a-mob-musik-zonen"
+},
+{
+"d":"2026-10-29",
+"z":"18:37",
+"a":"Catch a Mob",
+"t":"Level-Zonen: innen Stufe 3 bis 5, nach aussen langsam bis Stufe 100, mehr Mobs im Startgebiet",
+"tag":"Update",
+"k":"Balance",
+"pr":null,
+"b":"catch-a-mob-musik-zonen"
+},
+{
 "d":"2026-10-27",
 "z":"12:30",
 "a":"Golf-Tour",
