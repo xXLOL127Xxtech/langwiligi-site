@@ -25,7 +25,7 @@
     const zeige = eintraege.slice(0, 14), ich = eintraege.findIndex(e => e.ich);
     if (ich >= 14) zeige.push(eintraege[ich]);
     const kopf = '<tr><th>#</th><th>Name</th><th>' + CAM.ARENEN.map(d => d.sym).join(' ') + '</th><th>Anz.</th></tr>';
-    const zeilen = zeige.map(e => '<tr' + (e.ich ? ' style="background:rgba(138,63,252,.3)"' : '') + '><td>' + (eintraege.indexOf(e) + 1) + '</td><td>' + esc(e.name) + (e.bot ? ' <small style="color:#a9a59b">Bot</small>' : '') + '</td><td style="white-space:nowrap">' +
+    const zeilen = zeige.map(e => '<tr' + (e.ich ? ' style="background:rgba(138,63,252,.3)"' : '') + '><td>' + (eintraege.indexOf(e) + 1) + '</td><td>' + esc(e.name) + '' + '</td><td style="white-space:nowrap">' +
       CAM.ARENEN.map((d, i) => '<span title="' + esc(d.abz) + '" style="opacity:' + ((e.maske & (1 << i)) ? 1 : 0.18) + '">' + d.sym + '</span>').join(' ') + '</td><td><b>' + e.n + '</b></td></tr>').join('');
     await UI.info('<table>' + kopf + zeilen + '</table>', 'Rangliste der Abzeichen');
   };

@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-10-29",
+"z":"19:12",
+"a":"Catch a Mob",
+"t":"Riesige Welt aus dem Seed, weiter aussen stärkere Gegner, neue Dörfer, Trainer und Riesen, NPC-Spieler in der ganzen Welt (20 bis 40, kommen und gehen)",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":null,
+"b":"catch-a-mob-grosse-welt"
+},
+{
+"d":"2026-10-29",
 "z":"19:02",
 "a":"Catch a Mob",
 "t":"Trainer: Menü vor dem Kampf mit Stufe, Mobs und Belohnung",

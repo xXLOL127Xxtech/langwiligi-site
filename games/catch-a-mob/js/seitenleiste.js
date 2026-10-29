@@ -33,7 +33,7 @@
     l.sort((a, b) => b.abz - a.abz || b.lv - a.lv || b.fg - a.fg || (b.ich ? 1 : 0) - (a.ich ? 1 : 0));
     return l;
   }
-  const zeile = (e, i) => '<tr' + (e.ich ? ' class="ich"' : '') + '><td>' + (i + 1) + '</td><td class="nm"><i style="background:' + (CAM.FARBEN[e.col] || '#999') + '"></i>' + esc(e.name) + (e.bot ? '<small> Bot</small>' : '') + '</td><td>' + e.abz + '</td><td>' + e.lv + '</td><td>' + e.fg + '</td></tr>';
+  const zeile = (e, i) => '<tr' + (e.ich ? ' class="ich"' : '') + '><td>' + (i + 1) + '</td><td class="nm"><i style="background:' + (CAM.FARBEN[e.col] || '#999') + '"></i>' + esc(e.name) + '' + '</td><td>' + e.abz + '</td><td>' + e.lv + '</td><td>' + e.fg + '</td></tr>';
   function rangZeichnen() {
     const l = eintraege(), ich = l.findIndex(e => e.ich), top = l.slice(0, ZEILEN);
     let h = '<b class="ti">Rangliste</b><button class="x" title="Schliessen (R)">✕</button><table><tr><th>#</th><th>Name</th><th>' + Icons.html('badge', 14) + '</th><th>Lv</th><th>' + Icons.html('ball', 14, 'r') + '</th></tr>' + top.map(zeile).join('');
@@ -42,14 +42,20 @@
   }
 
   // Karte
+  const miniBild = document.createElement('canvas'); miniBild.width = miniBild.height = RADIUS * 2;
   function miniZeichnen() {
-    const K = Welt.karte; if (!K) return;
-    const sc = MINI / (RADIUS * 2), kw = K.width / Welt.W;
-    let x0 = Math.max(0, Math.min(Welt.W - RADIUS * 2, S.x - RADIUS)), y0 = Math.max(0, Math.min(Welt.H - RADIUS * 2, S.y - RADIUS));
+    if (!Welt.bereit) return;
+    const sc = MINI / (RADIUS * 2), x0 = Math.floor(S.x) - RADIUS, y0 = Math.floor(S.y) - RADIUS;
+    const mc = miniBild.getContext('2d'), img = mc.createImageData(RADIUS * 2, RADIUS * 2), dd = img.data;
+    for (let j = 0; j < RADIUS * 2; j++) for (let i = 0; i < RADIUS * 2; i++) {
+      const col = Welt.farbe(Welt.get(x0 + i, y0 + j), Welt.biomeAt(x0 + i, y0 + j)), k = (j * RADIUS * 2 + i) * 4;
+      dd[k] = col[0]; dd[k + 1] = col[1]; dd[k + 2] = col[2]; dd[k + 3] = 255;
+    }
+    mc.putImageData(img, 0, 0);
     c.imageSmoothingEnabled = false;
-    c.drawImage(K, x0 * kw, y0 * kw, RADIUS * 2 * kw, RADIUS * 2 * kw, 0, 0, MINI, MINI);
+    c.drawImage(miniBild, 0, 0, MINI, MINI);
     const px = x => (x - x0) * sc, py = y => (y - y0) * sc, drin = (x, y) => x >= x0 && y >= y0 && x < x0 + RADIUS * 2 && y < y0 + RADIUS * 2;
-    for (const d of Welt.dorf) if (drin(d.x, d.y)) { c.fillStyle = '#ff9f1c'; c.fillRect(px(d.x) - 3, py(d.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(d.x) - 3, py(d.y) - 3, 6, 6); }
+    for (const d of Welt.alleDoerfer()) if (drin(d.x, d.y)) { c.fillStyle = '#ff9f1c'; c.fillRect(px(d.x) - 3, py(d.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(d.x) - 3, py(d.y) - 3, 6, 6); }
     for (const p of S.peers.values()) if (drin(p.x, p.y)) { c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#5fd38a'; c.fillRect(px(p.x) - 3, py(p.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(p.x) - 3, py(p.y) - 3, 6, 6); }
     c.fillStyle = '#fff'; c.fillRect(px(S.x) - 3, py(S.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(S.x) - 3, py(S.y) - 3, 6, 6);
   }

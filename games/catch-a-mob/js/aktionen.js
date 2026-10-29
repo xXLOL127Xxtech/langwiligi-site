@@ -56,9 +56,9 @@
   // Fertige Mobs holst du im selben Dorf gratis ab oder in einem anderen Dorf gegen eine Transportgebühr (sie werden dorthin geschickt).
   // Dauer: Stufe 5 etwa 1 Sekunde, Stufe 100 etwa 3 Minuten.
   const dauerText = sek => sek >= 60 ? Math.floor(sek / 60) + ' Min ' + (sek % 60 ? (sek % 60) + ' s' : '') : sek + ' s';
-  const hierDorf = () => { const d = Welt.dorfBei(S.x, S.y); if (d) return Welt.dorf.indexOf(d); let best = 0, bd = 1e9; Welt.dorf.forEach((d2, i) => { const dd = Math.hypot(d2.x - S.x, d2.y - S.y); if (dd < bd) { bd = dd; best = i; } }); return best; };
+  const hierDorf = () => { const d = Welt.dorfBei(S.x, S.y); if (d) return d.nr; let best = 0, bd = 1e9; Welt.alleDoerfer().forEach(d2 => { const dd = Math.hypot(d2.x - S.x, d2.y - S.y); if (dd < bd) { bd = dd; best = d2.nr; } }); return best; };
   const pflegeListe = () => S.save.pflege || (S.save.pflege = []);
-  const transportGebuehr = (e, hier) => { if (e.dorf === hier) return 0; const a = Welt.dorf[e.dorf], b = Welt.dorf[hier]; return Math.max(5, Math.round(5 + Math.hypot(a.x - b.x, a.y - b.y) / 8 + e.m.lv * 1.5)); };
+  const transportGebuehr = (e, hier) => { if (e.dorf === hier) return 0; const a = Welt.dorfNr(e.dorf), b = Welt.dorfNr(hier); return Math.max(5, Math.round(5 + Math.hypot(a.x - b.x, a.y - b.y) / 8 + e.m.lv * 1.5)); };
   A.pflegeFertig = () => pflegeListe().filter(e => e.ende <= Date.now()).length;
   A.heilhaus = async function () {
     let start = 0;
@@ -72,7 +72,7 @@
         { label: 'Mob zur Pflege geben', sub: verletzt ? verletzt + ' brauchen Pflege' : 'alle gesund' },
         { label: 'Mobs abholen', sub: abholText(pf, jetzt), disabled: !pf.length },
         { label: 'Zwinger öffnen', sub: S.save.box.length + ' / 100' }, { label: 'Tschüss' }],
-        { title: 'Heilhaus ' + Welt.dorf[hier].name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start,
+        { title: 'Heilhaus ' + Welt.dorfNr(hier).name, sub: 'Du hast ' + S.save.gold + ' Gold.\nAbholen: hier gratis, in einem anderen Dorf gegen Gebühr.', start,
           live: () => { const p2 = pflegeListe(); return [null, null, { sub: abholText(p2, Date.now()), disabled: !p2.length }]; } });
       if (r === 0) { start = 0; A.alleHeilen(hier, plan); }
       else if (r === 1) { start = 1; await A.mobHeilen(hier); }
@@ -145,7 +145,7 @@
       const pf = pflegeListe(), jetzt = Date.now();
       if (!pf.length) { await UI.info('Niemand ist in Pflege.', 'Heilhaus'); return; }
       const info = e => {
-        const jetzt2 = Date.now(), rest = Math.ceil((e.ende - jetzt2) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorf[e.dorf].name;
+        const jetzt2 = Date.now(), rest = Math.ceil((e.ende - jetzt2) / 1000), fee = transportGebuehr(e, hier), ort = Welt.dorfNr(e.dorf).name;
         const sub = rest > 0 ? '<span class="chip warn">noch ' + dauerText(rest) + '</span> Heilhaus ' + ort : e.dorf === hier ? '<span class="chip gut">fertig</span> gratis entnehmen' : '<span class="chip gut">fertig</span> in ' + ort + ' · Transport ' + ge(fee);
         return { sub, disabled: rest > 0 || S.save.gold < fee };
       };
@@ -240,7 +240,7 @@
 
   // ---------- Wegstein ----------
   A.wegstein = async function () {
-    const dorfs = S.save.besucht.map(i => Welt.dorf[i]);
+    const dorfs = S.save.besucht.map(i => Welt.dorfNr(i));
     const items = dorfs.map(d => ({ label: d.name, sub: CAM.BIOME[d.biome].n }));
     const r = await UI.choose(items, { title: 'Wegstein', sub: 'Reise zu einem Dorf, das du schon besucht hast.' });
     if (r < 0) return;
@@ -249,7 +249,7 @@
     UI.snd('ruf');
   };
   A.dorfBesucht = function (d) {
-    if (!S.save.besucht.includes(d.biome)) { S.save.besucht.push(d.biome); UI.toast('Neues Dorf entdeckt: ' + d.name + '. Der Wegstein dort führt jetzt hierher.', 4000); Save.speichern(); }
+    if (!S.save.besucht.includes(d.nr)) { S.save.besucht.push(d.nr); UI.toast('Neues Dorf entdeckt: ' + d.name + '. Der Wegstein dort führt jetzt hierher.', 4000); Save.speichern(); }
   };
 
   // ---------- Team, Zwinger, Beutel, Buch, Karte ----------
@@ -401,28 +401,42 @@
   };
   A.karte = function () {
     return new Promise(res => {
-      const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Weiss = du', true);
-      host.innerHTML = '<canvas id="kc" width="560" height="560" style="position:static;width:min(560px,60vh);height:min(560px,60vh);border-radius:8px;image-rendering:pixelated;display:block;margin:auto"></canvas><div class="foot">Schliessen mit M, Esc oder Enter</div>';
-      const c = $('kc').getContext('2d');
-      const sc = 560 / Welt.W;
-      let alive = true;
+      const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Gelb = besuchtes Dorf, Weiss = du', true);
+      host.innerHTML = '<canvas id="kc" width="560" height="560" style="position:static;width:min(560px,60vh);height:min(560px,60vh);border-radius:8px;image-rendering:pixelated;display:block;margin:auto"></canvas><div class="foot">Plus / Minus oder Klick = Zoom · Schliessen mit M, Esc oder Enter<br>Nur was du schon gesehen hast, ist eingezeichnet.</div>';
+      const cv = $('kc'), c = cv.getContext('2d');
+      const SPANNEN = [1024, 2048, Welt.W];
+      let si = 0, alive = true;
       const draw = () => {
         if (!alive) return;
-        c.imageSmoothingEnabled = false; c.drawImage(Welt.karte, 0, 0, 560, 560);
+        const span = SPANNEN[si], sc = 560 / span, k = Welt.karte.width / Welt.W;
+        const x0 = Math.max(0, Math.min(Welt.W - span, S.x - span / 2)), y0 = Math.max(0, Math.min(Welt.H - span, S.y - span / 2));
+        const px = x => (x - x0) * sc, py = y => (y - y0) * sc, drin = (x, y) => x >= x0 - 8 && y >= y0 - 8 && x < x0 + span + 8 && y < y0 + span + 8;
+        c.fillStyle = '#0b0a14'; c.fillRect(0, 0, 560, 560);
+        c.imageSmoothingEnabled = false; c.drawImage(Welt.karte, x0 * k, y0 * k, span * k, span * k, 0, 0, 560, 560);
         c.font = '700 11px system-ui'; c.textAlign = 'center';
-        for (const d of Welt.dorf) {
-          const kn = S.save.besucht.includes(d.biome);
-          c.fillStyle = kn ? '#ffd54a' : 'rgba(255,255,255,.35)'; c.fillRect(d.x * sc - 4, d.y * sc - 4, 8, 8);
-          if (kn) { c.fillStyle = '#000'; c.fillText(d.name, d.x * sc + 1, d.y * sc - 8); c.fillStyle = '#fff'; c.fillText(d.name, d.x * sc, d.y * sc - 9); }
+        const doerfer = new Map(); Welt.alleDoerfer().forEach(d => doerfer.set(d.nr, d)); S.save.besucht.forEach(i => doerfer.set(i, Welt.dorfNr(i)));
+        for (const d of doerfer.values()) {
+          if (!drin(d.x, d.y)) continue;
+          const kn = S.save.besucht.includes(d.nr), g = span > 2500 ? 3 : 4;
+          if (!kn && d.aussen) continue;
+          c.fillStyle = kn ? '#ffd54a' : 'rgba(255,255,255,.35)'; c.fillRect(px(d.x) - g, py(d.y) - g, g * 2, g * 2);
+          if (kn && span < 2500) { c.fillStyle = '#000'; c.fillText(d.name, px(d.x) + 1, py(d.y) - 8); c.fillStyle = '#fff'; c.fillText(d.name, px(d.x), py(d.y) - 9); }
         }
-        c.fillStyle = '#ff6a5e'; for (const b of Welt.boss) c.fillRect(b.x * sc - 3, b.y * sc - 3, 6, 6);
-        for (const a of Welt.arena) { c.fillStyle = (S.save.abz || []).includes(a.idx) ? '#5fd38a' : '#ff9f1c'; c.fillRect(a.cx * sc - 4, a.cy * sc - 4, 8, 8); c.strokeStyle = '#000'; c.strokeRect(a.cx * sc - 4, a.cy * sc - 4, 8, 8); }
-        for (const p of S.peers.values()) { c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#9a96a8'; c.beginPath(); c.arc(p.x * sc, p.y * sc, 4, 0, 6.3); c.fill(); if (S.pt >= 0 && p.pt === S.pt) { c.fillStyle = '#fff'; c.fillText(p.name, p.x * sc, p.y * sc - 7); } }
-        c.fillStyle = '#fff'; c.beginPath(); c.arc(S.x * sc, S.y * sc, 5, 0, 6.3); c.fill(); c.strokeStyle = '#000'; c.stroke();
+        c.fillStyle = '#ff6a5e'; for (const b of Welt.boss) if (drin(b.x, b.y)) c.fillRect(px(b.x) - 3, py(b.y) - 3, 6, 6);
+        for (const a of Welt.arena) { if (!drin(a.cx, a.cy)) continue; c.fillStyle = (S.save.abz || []).includes(a.idx) ? '#5fd38a' : '#ff9f1c'; c.fillRect(px(a.cx) - 4, py(a.cy) - 4, 8, 8); c.strokeStyle = '#000'; c.strokeRect(px(a.cx) - 4, py(a.cy) - 4, 8, 8); }
+        for (const p of S.peers.values()) { if (!drin(p.x, p.y)) continue; c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#9a96a8'; c.beginPath(); c.arc(px(p.x), py(p.y), 4, 0, 6.3); c.fill(); if (S.pt >= 0 && p.pt === S.pt) { c.fillStyle = '#fff'; c.fillText(p.name, px(p.x), py(p.y) - 7); } }
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(px(S.x), py(S.y), 5, 0, 6.3); c.fill(); c.strokeStyle = '#000'; c.stroke();
+        c.fillStyle = 'rgba(8,6,16,.7)'; c.fillRect(6, 6, 120, 20); c.fillStyle = '#f2efe8'; c.textAlign = 'left'; c.fillText('Ausschnitt ' + span + ' Felder', 12, 20); c.textAlign = 'center';
         requestAnimationFrame(draw);
       };
       draw();
-      const h = e => { if (['m', 'M', 'Escape', 'Enter', ' ', 'q'].includes(e.key)) { alive = false; UI.popKeys(h); UI.closePanel(); res(); } return true; };
+      cv.addEventListener('click', () => { si = (si + 1) % SPANNEN.length; });
+      const h = e => {
+        if (['m', 'M', 'Escape', 'Enter', ' ', 'q'].includes(e.key)) { alive = false; UI.popKeys(h); UI.closePanel(); res(); }
+        else if (e.key === '+' || e.key === '=') si = Math.max(0, si - 1);
+        else if (e.key === '-' || e.key === '_') si = Math.min(SPANNEN.length - 1, si + 1);
+        return true;
+      };
       UI.pushKeys(h);
     });
   };
@@ -557,7 +571,7 @@
     const v = verlierGold(); verlierXp();
     // zum nächsten Dorf, Mobs heilen
     let best = null, bd = 1e9;
-    for (const d of Welt.dorf) { const dd = Math.hypot(d.x - S.x, d.y - S.y); if (dd < bd) { bd = dd; best = d; } }
+    for (const d of Welt.alleDoerfer()) { const dd = Math.hypot(d.x - S.x, d.y - S.y); if (dd < bd) { bd = dd; best = d; } }
     A.heileTeam(); S.x = best.x + 0.5; S.y = best.y + 3.5; S.schritte = 0; Save.speichern();
     UI.snd('niederlage');
     await UI.info((titelText || 'Dein Team ist erschöpft.') + '<br>Du verlierst ' + ge(v) + ' (80 %) und 10 % Erfahrung und wachst im Heilhaus von <b>' + esc(best.name) + '</b> auf. Alle Mobs sind geheilt.', 'Niederlage');
@@ -890,13 +904,13 @@
   A.runeMenue = async function (rune) {
     const bs = Welt.boss.find(b => b.x === rune.x && b.y === rune.y); if (!bs) return;
     const boss = CAM.BOSS[bs.idx], f = CAM.FAMILIEN[boss.fam];
-    const rest = (S.save.bossT[bs.idx] || 0) + BOSS_PAUSE_MS - Date.now();
+    const rest = (S.save.bossT[bs.key] || 0) + BOSS_PAUSE_MS - Date.now();
     const party = A.partyListe().filter(p => !p.bs && Math.hypot(p.x - S.x, p.y - S.y) < 30);
     const sub = 'Stufe ' + bs.lv + ' · ' + f.el + (f.el2 ? '/' + f.el2 : '') + '' + (rest > 0 ? '\nDer Riese erholt sich noch ' + Math.ceil(rest / 60000) + ' Min.' : '');
     const items = [{ label: 'Raid starten', sub: party.length ? 'mit ' + party.length + ' aus der Party' : 'allein (schwer!)', disabled: rest > 0 || !CAM.lebend() }, { label: 'Abbrechen' }];
     const r = await UI.choose(items, { title: '⚠ ' + boss.n, sub, before: '<div class="row">' + spriteImg({ fam: boss.fam, stufe: 1 }, 96) + '</div>' });
     if (r !== 0) return;
-    if (party.length) await A.raidAnfrage(bs, party); else await A.raidStart({ bid: 'r' + ((Math.random() * 2 ** 31) | 0), boss: bs.idx, members: [S.idx], seed: (Math.random() * 2 ** 31) | 0, w: aktuellesWetter(), lv: bs.lv });
+    if (party.length) await A.raidAnfrage(bs, party); else await A.raidStart({ bid: 'r' + ((Math.random() * 2 ** 31) | 0), boss: bs.idx, bk: bs.key, bm: bs.biome, members: [S.idx], seed: (Math.random() * 2 ** 31) | 0, w: aktuellesWetter(), lv: bs.lv });
   };
   A.raidAnfrage = async function (bs, party) {
     const bid = 'r' + ((Math.random() * 2 ** 31) | 0);
@@ -908,15 +922,15 @@
     S.busy = false;
     const members = [S.idx].concat(party.filter(p => A.raidSammler.antworten[p.idx]).map(p => p.idx)).sort((x, y) => x - y);
     A.raidSammler = null;
-    const m = { t: 'raidgo', bid, boss: bs.idx, members, seed: (Math.random() * 2 ** 31) | 0, w: aktuellesWetter(), lv: bs.lv };
+    const m = { t: 'raidgo', bid, boss: bs.idx, bk: bs.key, bm: bs.biome, members, seed: (Math.random() * 2 ** 31) | 0, w: aktuellesWetter(), lv: bs.lv };
     members.forEach(i => { if (i !== S.idx) Netz.senden(Object.assign({ to: i }, m)); });
     await A.raidStart(m);
   };
   A.raidStart = async function (d) {
     if (K.aktiv) return;
     S.busy = true; Netz.senden({ t: 'p', ...A.praesenz() });
-    const bs = Welt.boss.find(b => b.idx === d.boss), bossDef = CAM.BOSS[d.boss], f = CAM.FAMILIEN[bossDef.fam];
-    const lv = d.lv || bs.lv;
+    const bs = Welt.boss.find(b => b.key === d.bk) || null, bossDef = CAM.BOSS[d.boss], f = CAM.FAMILIEN[bossDef.fam];
+    const lv = d.lv || (bs && bs.lv) || 10;
     vorbereiten(S.save.team);
     const members = d.members.slice().sort((a, b) => a - b);
     let teams = { [S.idx]: S.save.team };
@@ -937,7 +951,7 @@
     const actors = members.map(i => ({ id: 'p' + i, name: pn(i), side: 0, ctrl: i === S.idx ? 'local' : 'remote', team: teams[i] }));
     actors.push({ id: 'boss', name: bossDef.n, side: 1, ctrl: 'ai', team: [boss], boss: true });
     const res = await K.starten({
-      kind: 'raid', actors, localId: 'p' + S.idx, seed: d.seed, weather: d.w || 'klar', biome: bs.biome, bid: d.bid, timer: 40,
+      kind: 'raid', actors, localId: 'p' + S.idx, seed: d.seed, weather: d.w || 'klar', biome: d.bm !== undefined ? d.bm : (bs ? bs.biome : 0), bid: d.bid, timer: 40,
       senden: m => Netz.senden(m), beutel, verbrauch: k => CAM.itemAdd(k, -1),
       intro: bossDef.n + ' (Stufe ' + lv + ') erhebt sich!',
     });
@@ -945,7 +959,7 @@
     const lines = [];
     if (b.over && b.winner === 0) {
       UI.snd('sieg');
-      S.save.bossT[d.boss] = Date.now();
+      S.save.bossT[d.bk !== undefined ? d.bk : d.boss] = Date.now();
       const la = b.actor('p' + S.idx);
       lines.push('<b style="color:#ffd54a">' + esc(bossDef.n) + ' ist besiegt!</b>');
       lines.push(...await xpVerteilen(b, la));

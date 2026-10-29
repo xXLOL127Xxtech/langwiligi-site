@@ -57,6 +57,7 @@
 
   function update(dt, now, tick) {
     const welt = S.modus === 'welt';
+    if (welt) Welt.aktualisieren(S.x, S.y);
     S.anim += dt;
     const frei = welt && !UI.stack.length && !S.busy && !K.aktiv;
     S.bewegt = false;
@@ -89,7 +90,7 @@
       }
       // Dorf betreten
       const d = Welt.dorfBei(S.x, S.y);
-      if (d && S.imDorf !== d.biome) { S.imDorf = d.biome; A.dorfBesucht(d); UI.toast(d.name + ' – hier bist du sicher.', 2500); }
+      if (d && S.imDorf !== d.nr) { S.imDorf = d.nr; A.dorfBesucht(d); UI.toast(d.name + ' – hier bist du sicher.', 2500); }
       else if (!d) S.imDorf = null;
       // Trainer
       for (const tr of Welt.trainer) {
@@ -142,7 +143,7 @@
     }
     if (welt && now - (S.pflegeT || 0) > 2000) {
       S.pflegeT = now;
-      for (const e of (S.save.pflege || [])) if (e.ende <= now && !e.gemeldet) { e.gemeldet = true; UI.snd('heil'); UI.toast(A.mobNameFull(e.m) + ' ist fertig gepflegt (Heilhaus ' + Welt.dorf[e.dorf].name + ').', 3500); }
+      for (const e of (S.save.pflege || [])) if (e.ende <= now && !e.gemeldet) { e.gemeldet = true; UI.snd('heil'); UI.toast(A.mobNameFull(e.m) + ' ist fertig gepflegt (Heilhaus ' + Welt.dorfNr(e.dorf).name + ').', 3500); }
     }
     if (welt && now - (S.speicherT || 0) > 20000) { S.speicherT = now; Save.speichern(); }
   }
@@ -267,13 +268,13 @@
       esc(CAM.WETTER[S.wetter]) + ' · ' + uhr + ' · ' + sais + '<br><span class="gold">' + S.save.gold + ' Gold</span> · Stufe ' + CAM.maxLv() + ' · Fangstufe ' + CAM.fangStufe(S.save.team, S.save.fangXp).toFixed(1) + ' · Team ' + S.save.team.filter(m => m.hp > 0).length + '/' + S.save.team.length +
       (S.online && S.pt >= 0 ? '<div class="party">Party: ' + A.partyListe().map(p => '<span><i style="background:' + (CAM.FARBEN[p.col] || '#999') + '"></i>' + esc(p.name) + '</span>').join(' ') + (A.partyListe().length ? '' : 'nur du') + '</div>' : '');
     const prot = (S.prot[S.idx] || 0) - now;
-    $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br>' + (S.peers.size + 1) + ' von ' + Netz.max + ' Spielern' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Bots-Modus<br><small>allein in der Welt</small>';
+    $('hudR').innerHTML = S.online ? 'Welt <b>' + esc(Netz.code()) + '</b><br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online' + (prot > 0 ? '<br>🛡 Geschützt ' + Math.floor(prot / 60000) + ':' + String(Math.floor(prot / 1000) % 60).padStart(2, '0') : '') : 'Catch a Mob<br><b>' + CAM.Bots.anzahlOnline() + '</b> Spieler online';
     const z = S.ziel; let h = '';
     if (z && z.typ === 'bau') h = z.z.meta === 4 ? 'Wegstein' : z.z.meta === 5 ? 'Riesen-Gegner herausfordern' : z.z.meta === 6 ? 'Arena' : z.z.meta === 9 ? 'Wegweiser lesen' : z.z.meta === 10 ? 'Rangliste ansehen' : ['', 'Heilhaus', 'Fangkugel-Laden', 'Mob-Händler'][z.z.meta];
     else if (z && z.typ === 'trainer') h = 'Mit ' + z.tr.name + ' kämpfen';
     else if (z && z.typ === 'mob') h = CAM.name(z.w.mob) + ' ansprechen' + (CAM.Wilde.boese(z.w.mob) ? ' (bösartig!)' : '');
     else if (z && z.typ === 'spieler') h = z.p.name + ': Duell, Überfall, Party';
-    else if (z && z.typ === 'bot') h = z.b.name + ' (Bot, Lv ' + z.b.lv + '): Duell oder Überfall';
+    else if (z && z.typ === 'bot') h = z.b.name + ' (Lv ' + z.b.lv + '): Duell oder Überfall';
     if (h) { $('hint').classList.remove('hidden'); $('hint').innerHTML = '<div class="hbox"><b>E</b> · ' + esc(h) + '</div>'; } else $('hint').classList.add('hidden');
     $('keys').innerHTML = '<kbd>W A S D</kbd> laufen · <kbd>E</kbd> ansprechen · <kbd>I</kbd> Beutel · <kbd>T</kbd> Team · <kbd>M</kbd> Karte · <kbd>R</kbd> Rangliste · <kbd>Esc</kbd> Menü' + (S.online ? ' · <kbd>1</kbd>–<kbd>4</kbd> Gesten' : '');
   }
@@ -283,7 +284,7 @@
     const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts;
     if (document.hidden && !S.online) return;
     const now = Date.now();
-    if (!Welt.tiles) return;
+    if (!Welt.bereit) return;
     S.sicht = { w: W / TS, h: H / TS };
     update(dt, now, ts);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
@@ -343,7 +344,7 @@
   async function anleitung() {
     await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Beutel:</b> I · <b>Team:</b> T · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
       '<p><b>Ziel:</b> Fang Mobs im hohen Gras, gewinne die 8 Abzeichen in den Arenen und besiege die Riesen. Mit Veredlern verbesserst du deine Mobs. Dein Team hat 3 Plätze.</p>' +
-      '<p><b>Duelle:</b> Mit Bots und Mitspielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
+      '<p><b>Duelle:</b> Mit anderen Spielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
   }
 
   async function starterWahl() {
@@ -420,7 +421,10 @@
   function betreten() {
     CAM.Musik.titel(false); S.modus = 'welt'; S.idx = S.online ? Netz.idx : 0; S.pt = -1; S.peers.clear(); S.prot = {}; S.busy = false; S.trainerT = {}; S.teams = {};
     UI.cards.forEach(c => { c.done = true; c.el.remove(); }); UI.cards = [];
-    if (S.save.welt !== 2) { S.save.welt = 2; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
+    if (S.save.welt === 2) {   // die Welt wurde riesig: das alte Gebiet liegt jetzt in der Mitte
+      S.save.welt = 3; S.save.x += Welt.OFF; S.save.y += Welt.OFF; delete S.save.bots;
+      UI.toast('Die Welt ist riesig geworden! Je weiter du hinauslaufst, desto stärker werden die Gegner.', 5500);
+    } else if (S.save.welt !== 3) { S.save.welt = 3; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
     S.x = S.save.x; S.y = S.save.y;
     if (Welt.blockiert(S.x, S.y, true)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
@@ -435,7 +439,7 @@
       if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
     }
     if (!CAM.lebend()) UI.toast('Dein Team ist erschöpft. Im Heilhaus werden alle Mobs geheilt.', 4000);
-    UI.toast(S.online ? 'Willkommen in der Welt ' + Netz.code() + '!' : 'Viel Spass im Bots-Modus!', 2500);
+    UI.toast(S.online ? 'Willkommen in der Welt ' + Netz.code() + '!' : 'Viel Spass in der Welt!', 2500);
   }
 
   A.beenden = function () {
