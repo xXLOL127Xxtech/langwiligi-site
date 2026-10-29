@@ -1200,6 +1200,7 @@ function update(dt){
 }
 function gameOver(){
   S.over = true; S.overT = 0;
+  if (window.LW) LW.rundeFertig();
   S.booms = [0, .25, .5, .8, 1.1].map(t => ({ t, done:false }));
   ui.build = ui.abil = ui.sel = null; renderInfo(); updateHint();
   const best = store.get('deadmaze.best', {}), prev = best[S.diffKey];
