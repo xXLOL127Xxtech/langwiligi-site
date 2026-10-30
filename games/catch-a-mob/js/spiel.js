@@ -351,7 +351,9 @@
   async function anleitung() {
     await UI.info('<p><b>Laufen:</b> W A S D oder Pfeiltasten · <b>Ansprechen:</b> E · <b>Beutel:</b> I · <b>Team:</b> T · <b>Karte:</b> M · <b>Menü:</b> Esc</p>' +
       '<p><b>Ziel:</b> Fang Mobs im hohen Gras, gewinne die 8 Abzeichen in den Arenen und besiege die Riesen. Mit Veredlern verbesserst du deine Mobs. Dein Team hat 3 Plätze.</p>' +
-      '<p><b>Duelle:</b> Mit anderen Spielern im Handelsfenster: Beide setzen Gold oder Fabelwesen, beide müssen zusagen.</p>', 'Anleitung');
+      '<p><b>Andere Spieler:</b> In der Welt sind immer Spieler unterwegs (grüne Punkte auf der Minikarte). Stell dich neben jemanden und drück E: Duell mit Einsatz, Freundschaftskampf ohne Risiko oder Überfall. Manche fordern dich auch selbst heraus.</p>' +
+      '<p><b>Duelle:</b> Im Handelsfenster setzen beide Gold oder Fabelwesen, beide müssen zusagen. Jede Seite kämpft mit gleich vielen Mobs.</p>' +
+      '<p><b>Niederlage:</b> Gegen wilde Mobs und Riesen verlierst du Gold und wachst im Heilhaus auf. Bis Stufe 10 gilt ein Anfängerschutz (nur 20 % Gold).</p>', 'Anleitung');
   }
 
   async function starterWahl() {

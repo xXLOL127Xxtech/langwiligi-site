@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="UTF-8"><title>Chill-Lounge Bild</title>
+<style>body { margin: 0; background: #111; } canvas { image-rendering: pixelated; width: 960px; height: 600px; }</style></head>
+<body>
+<canvas id="c" width="320" height="200"></canvas>
+<script>
+// Pixel-Art für die Chill-Lounge der Startseite: eine ältere Dame spielt am Abend gemütlich Schach (gegen eine Katze).
+// 320 × 200 Bildpunkte, jede Fläche von Hand gesetzt. Gebaut mit tools/lounge-bild/bauen.js.
+'use strict';
+const c = document.getElementById('c').getContext('2d');
+const R = (x, y, w, h, f) => { c.fillStyle = f; c.fillRect(x, y, w, h); };
+const P = (x, y, f) => R(x, y, 1, 1, f);
+// Zufall mit festem Startwert: gleiches Bild bei jedem Bauen
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+// ---------- Wand mit Tapete ----------
+R(0, 0, 320, 146, '#2b1d36');
+for (let x = 0; x < 320; x += 12) { R(x, 0, 2, 146, '#33233f'); for (let y = 6; y < 146; y += 14) R(x + 6, y, 1, 3, '#3d2a4a'); }
+R(0, 138, 320, 8, '#3a2716'); R(0, 138, 320, 1, '#5a3d22');   // Sockelleiste
+
+// ---------- Fenster mit Nachthimmel ----------
+R(18, 16, 78, 78, '#4a2e1c');
+for (let y = 20; y < 90; y++) { const t = (y - 20) / 70; c.fillStyle = 'rgb(' + Math.round(22 + t * 40) + ',' + Math.round(30 + t * 26) + ',' + Math.round(78 + t * 30) + ')'; c.fillRect(22, y, 70, 1); }
+for (let i = 0; i < 26; i++) P(23 + Math.floor(rnd() * 68), 21 + Math.floor(rnd() * 46), rnd() > 0.7 ? '#fff7c8' : '#b9c4f0');
+c.fillStyle = '#f7e9a8'; c.beginPath(); c.arc(74, 36, 7, 0, 7); c.fill();
+c.fillStyle = '#2a3366'; c.beginPath(); c.arc(78, 33, 6, 0, 7); c.fill();   // Mondsichel
+// Dächer der Stadt vor dem Fenster
+[[22, 76, 14, 14], [36, 70, 12, 20], [48, 78, 18, 12], [66, 72, 10, 18], [76, 80, 16, 10]].forEach(([x, y, w, h]) => { R(x, y, w, h, '#151230'); });
+[[40, 74], [44, 74], [70, 76], [26, 80], [54, 82]].forEach(([x, y]) => R(x, y, 2, 2, '#ffcf6a'));
+R(56, 20, 2, 70, '#4a2e1c'); R(22, 54, 70, 2, '#4a2e1c');   // Fensterkreuz
+R(14, 92, 86, 5, '#6a4428'); R(14, 92, 86, 1, '#8a5e3a');   // Fensterbank
+// Vorhänge
+for (const [x0, dir] of [[10, 1], [90, -1]]) for (let y = 10; y < 112; y++) { const w = 14 + Math.round(Math.sin(y / 9) * 2) + (y > 90 ? (y - 90) / 4 : 0); R(dir > 0 ? x0 : x0 + 20 - w, y, w, 1, y % 2 ? '#7d2639' : '#8c2e43'); R(dir > 0 ? x0 + 4 : x0 + 14, y, 1, 1, '#a8435a'); }
+R(8, 8, 108, 4, '#5a3a22');   // Stange
+// Pflanze auf der Fensterbank
+R(26, 84, 10, 8, '#b5562e'); R(26, 84, 10, 2, '#cf6d40');
+[[30, 72, 3, 12], [26, 76, 4, 3], [33, 74, 5, 3], [24, 70, 4, 3], [34, 69, 4, 3], [29, 66, 3, 4]].forEach(([x, y, w, h]) => R(x, y, w, h, '#4f9a4a'));
+[[31, 70], [25, 71], [35, 70]].forEach(([x, y]) => P(x, y, '#7fcf6a'));
+
+// ---------- Bücherregal ----------
+R(244, 18, 64, 122, '#4a2e1c'); R(248, 22, 56, 114, '#2a1a10');
+const buch = ['#c0392b', '#2d5fa8', '#e0a02e', '#3f8f6a', '#8a3ffc', '#d9d0c0', '#a8431e', '#4a7ab8'];
+for (const sy of [22, 50, 78, 106]) {
+  R(246, sy + 26, 60, 3, '#5f3c22');
+  let x = 249; while (x < 302) { const w = 3 + Math.floor(rnd() * 3), h = 16 + Math.floor(rnd() * 8); if (x + w > 302) break; R(x, sy + 26 - h, w, h, buch[Math.floor(rnd() * buch.length)]); R(x, sy + 26 - h + 3, w, 1, 'rgba(255,255,255,.35)'); x += w + (rnd() > 0.85 ? 3 : 0); }
+}
+
+// ---------- Stehlampe mit warmem Licht ----------
+const glow = c.createRadialGradient(214, 46, 4, 214, 60, 120);
+glow.addColorStop(0, 'rgba(255,200,110,.38)'); glow.addColorStop(1, 'rgba(255,200,110,0)');
+c.fillStyle = glow; c.fillRect(90, 0, 230, 200);
+R(213, 46, 2, 94, '#2a2020'); R(206, 138, 16, 3, '#2a2020');
+c.fillStyle = '#f2c46b'; c.beginPath(); c.moveTo(204, 46); c.lineTo(224, 46); c.lineTo(219, 30); c.lineTo(209, 30); c.fill();
+R(209, 30, 10, 2, '#ffe39a'); R(205, 45, 18, 1, '#c99a44');
+
+// ---------- Boden und Teppich ----------
+for (let y = 146; y < 200; y++) R(0, y, 320, 1, y % 9 === 0 ? '#3d2716' : '#4d321c');
+for (let x = 0; x < 320; x += 37) R(x + (Math.floor((x / 37)) % 2) * 9, 146, 1, 54, '#3a2414');
+c.fillStyle = '#6e2a3c'; c.beginPath(); c.ellipse(170, 182, 120, 16, 0, 0, 7); c.fill();
+c.strokeStyle = '#d9a35a'; c.lineWidth = 1; c.beginPath(); c.ellipse(170, 182, 112, 13, 0, 0, 7); c.stroke();
+
+// ---------- Sessel der Dame ----------
+R(32, 92, 46, 56, '#8a3a4a'); R(32, 92, 46, 3, '#a54a5c'); R(28, 112, 8, 36, '#7a3040'); R(74, 112, 8, 36, '#7a3040');
+R(34, 148, 4, 10, '#3a2414'); R(72, 148, 4, 10, '#3a2414');
+
+// ---------- Die Dame ----------
+const haut = '#f1c7a5', hautS = '#d9a585', haar = '#d6d2dc', haarS = '#a9a3b6', jacke = '#3f8f86', jackeS = '#2f6f68', bluse = '#f3e4d0';
+// Oberkörper (Strickjacke)
+R(42, 104, 32, 40, jacke); R(42, 104, 4, 40, jackeS); R(54, 106, 8, 22, bluse); R(57, 110, 2, 2, '#c9a24a'); R(57, 116, 2, 2, '#c9a24a'); R(57, 122, 2, 2, '#c9a24a');
+for (let y = 108; y < 144; y += 3) R(66, y, 6, 1, jackeS);   // Strickmuster
+// Schal
+R(50, 100, 16, 6, '#d9a35a'); R(52, 104, 4, 10, '#c98a3a');
+// Hals und Kopf
+R(54, 96, 8, 6, hautS);
+R(48, 74, 22, 24, haut); R(48, 92, 22, 6, haut); R(50, 98, 18, 1, hautS);
+// Haare mit Dutt
+R(46, 70, 26, 8, haar); R(46, 70, 6, 22, haar); R(44, 74, 4, 14, haarS); R(68, 72, 4, 6, haar);
+c.fillStyle = haar; c.beginPath(); c.arc(50, 66, 7, 0, 7); c.fill(); c.fillStyle = haarS; c.beginPath(); c.arc(48, 68, 3, 0, 7); c.fill();
+R(52, 70, 18, 2, '#ece8f0'); R(56, 71, 10, 1, '#fff');
+// Gesicht (schaut nach rechts unten aufs Brett)
+R(56, 82, 6, 1, '#6a4a3a'); R(64, 82, 5, 1, '#6a4a3a');   // Augenbrauen
+c.strokeStyle = '#3a3040'; c.lineWidth = 1; c.strokeRect(55.5, 84.5, 6, 5); c.strokeRect(63.5, 84.5, 6, 5); R(61, 86, 3, 1, '#3a3040');   // Brille
+R(57, 87, 3, 2, '#3a2a30'); R(65, 87, 3, 2, '#3a2a30'); P(57, 86, '#cfe6ff'); P(65, 86, '#cfe6ff');
+R(68, 88, 3, 4, hautS); R(56, 91, 4, 2, '#e79a8a'); R(66, 92, 4, 2, '#e79a8a');   // Nase, Wangen
+R(60, 94, 7, 1, '#9a4a4a'); P(59, 93, '#9a4a4a'); P(67, 93, '#9a4a4a');   // Lächeln
+R(48, 84, 2, 6, hautS); P(47, 88, '#ffd54a');   // Ohr mit Ohrring
+// ---------- Tisch ----------
+R(84, 108, 170, 28, '#7a4a28'); R(84, 108, 170, 2, '#9a6436'); for (let x = 90; x < 250; x += 23) R(x, 112 + (x % 3) * 6, 9, 1, '#6e4222'); R(84, 136, 170, 6, '#5a361c'); R(84, 136, 170, 1, '#3e2410');
+R(92, 142, 6, 44, '#5a361c'); R(240, 142, 6, 44, '#5a361c'); R(92, 142, 2, 44, '#6e4424'); R(240, 142, 2, 44, '#6e4424');
+// Teetasse mit Dampf (rechts neben dem Brett)
+R(224, 110, 10, 9, '#e8e0f0'); R(224, 110, 10, 2, '#c9a24a'); R(234, 112, 3, 4, '#e8e0f0'); R(222, 118, 14, 2, '#d0c8dc');
+c.strokeStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.moveTo(227, 108); c.quadraticCurveTo(224, 103, 228, 99); c.quadraticCurveTo(231, 95, 228, 91); c.stroke();
+c.beginPath(); c.moveTo(231, 108); c.quadraticCurveTo(234, 103, 231, 99); c.stroke();
+
+// Arme der Dame (über dem Tisch)
+// Arm zum Brett: hält einen Springer
+R(66, 112, 30, 9, jacke); R(66, 118, 30, 3, jackeS); R(94, 110, 22, 8, jacke); R(94, 115, 22, 3, jackeS); R(114, 109, 4, 9, bluse);
+R(118, 108, 8, 8, haut); R(124, 106, 3, 5, haut); R(118, 115, 7, 1, hautS);
+// gehaltener Springer
+R(122, 98, 6, 9, '#f4ecd8'); R(126, 96, 3, 5, '#f4ecd8'); R(121, 105, 8, 2, '#f4ecd8'); P(127, 98, '#3a3040'); R(121, 98, 1, 9, '#cfc4ac');
+// anderer Arm auf dem Tisch
+R(70, 128, 24, 7, jacke); R(70, 133, 24, 2, jackeS); R(92, 128, 8, 6, haut);
+
+
+// ---------- Schachbrett (leicht von oben gesehen) ----------
+const bx0 = 132, bw = 80, by0 = 110, bh = 24, n = 8;
+R(bx0 - 3, by0 - 2, bw + 6, bh + 5, '#3a2414'); R(bx0 - 3, by0 + bh + 1, bw + 6, 2, '#2a180c');
+for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) R(bx0 + i * bw / n, by0 + j * bh / n, bw / n + 0.5, bh / n + 0.5, (i + j) % 2 ? '#7a4f2e' : '#ead2a6');
+// Figuren: weiss (Dame) unten, schwarz (Katze) oben. Jede Figur ist ein kleines Pixelbild.
+function figur(x, y, typ, weiss) {
+  const f = weiss ? '#f4ecd8' : '#2a2230', k = weiss ? '#a89a80' : '#000', l = weiss ? '#fffaf0' : '#5a4a6a';
+  const h = { b: 5, t: 7, l: 8, s: 8, d: 10, k: 11 }[typ];
+  R(x - 3, y - 1, 7, 2, k); R(x - 2, y - h, 5, h, f); R(x - 2, y - h, 1, h, l); R(x - 3, y - 2, 7, 1, f);
+  if (typ === 'b') { R(x - 2, y - h - 2, 5, 3, f); }
+  if (typ === 't') { R(x - 3, y - h - 1, 7, 2, f); P(x - 2, y - h - 2, f); P(x, y - h - 2, f); P(x + 2, y - h - 2, f); }
+  if (typ === 'l') { R(x - 1, y - h - 3, 3, 4, f); P(x, y - h - 4, f); P(x + 1, y - h - 2, k); }
+  if (typ === 's') { R(x - 2, y - h - 2, 5, 3, f); R(x + 1, y - h - 4, 2, 3, f); P(x + 1, y - h - 1, k); }
+  if (typ === 'd') { R(x - 3, y - h - 2, 7, 2, f); P(x - 3, y - h - 3, f); P(x, y - h - 4, f); P(x + 3, y - h - 3, f); }
+  if (typ === 'k') { R(x - 2, y - h - 2, 5, 2, f); R(x, y - h - 6, 1, 4, f); R(x - 1, y - h - 5, 3, 1, f); }
+}
+const cx = i => bx0 + (i + 0.5) * bw / n, cy = j => by0 + (j + 0.85) * bh / n;
+// schwarze Figuren (hinten), dann weisse (vorne), damit vordere hintere überdecken
+[[0, 0, 't'], [2, 0, 'l'], [4, 0, 'k'], [7, 0, 't'], [3, 1, 'd'], [0, 1, 'b'], [1, 1, 'b'], [5, 1, 'b'], [6, 2, 'b'], [2, 2, 's'], [4, 3, 'b']].forEach(([i, j, t]) => figur(cx(i), cy(j), t, false));
+[[3, 4, 'b'], [5, 4, 'l'], [2, 5, 'b'], [0, 6, 'b'], [1, 6, 'b'], [6, 6, 'b'], [7, 6, 'b'], [3, 6, 'd'], [0, 7, 't'], [4, 7, 'k'], [7, 7, 't']].forEach(([i, j, t]) => figur(cx(i), cy(j), t, true));
+// geschlagene Figuren neben dem Brett
+figur(108, 132, 'b', false); figur(116, 133, 's', false); figur(232, 131, 'b', true);
+
+// ---------- Die Katze als Gegnerin (auf einem Hocker rechts) ----------
+R(254, 136, 30, 6, '#6e4424'); R(256, 142, 4, 44, '#5a361c'); R(278, 142, 4, 44, '#5a361c');
+const fell = '#e08a3c', fellS = '#b8662a', fellH = '#f2b06a';
+c.fillStyle = fell; c.beginPath(); c.ellipse(268, 124, 13, 13, 0, 0, 7); c.fill();       // Körper
+c.fillStyle = fellS; c.beginPath(); c.ellipse(272, 128, 8, 9, 0, 0, 7); c.fill();
+R(256, 132, 7, 5, fell); R(262, 132, 6, 5, fell);                                           // Pfoten
+c.fillStyle = fell; c.beginPath(); c.arc(260, 104, 10, 0, 7); c.fill();                     // Kopf
+c.beginPath(); c.moveTo(251, 99); c.lineTo(252, 88); c.lineTo(258, 96); c.fill(); c.beginPath(); c.moveTo(262, 95); c.lineTo(268, 88); c.lineTo(269, 99); c.fill();
+R(253, 92, 2, 4, '#f7b8b0'); R(265, 92, 2, 4, '#f7b8b0');
+for (const x of [255, 263]) { R(x, 102, 3, 3, '#7fcf6a'); R(x + 1, 102, 1, 3, '#1a1210'); }   // Augen (schauen aufs Brett)
+P(259, 107, '#f08a9a'); R(257, 108, 5, 1, '#5a2a1a');
+R(246, 106, 6, 1, '#fff2e0'); R(246, 109, 6, 1, '#fff2e0'); R(268, 106, 6, 1, '#fff2e0');      // Schnurrhaare
+R(254, 98, 1, 3, fellS); R(258, 96, 1, 3, fellS); R(262, 97, 1, 3, fellS);                     // Streifen
+R(258, 110, 6, 4, fellH);
+c.strokeStyle = fell; c.lineWidth = 3; c.beginPath(); c.moveTo(280, 130); c.quadraticCurveTo(294, 128, 290, 112); c.stroke();   // Schwanz
+c.strokeStyle = fellS; c.lineWidth = 1; c.beginPath(); c.moveTo(289, 116); c.lineTo(292, 116); c.stroke();
+
+// ---------- Kleine Funken im Licht (gemütlich) ----------
+for (let i = 0; i < 14; i++) P(150 + Math.floor(rnd() * 120), 20 + Math.floor(rnd() * 70), 'rgba(255,230,160,.6)');
+// leichte Vignette
+const v = c.createRadialGradient(170, 110, 80, 170, 110, 220); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(8,4,14,.45)'); c.fillStyle = v; c.fillRect(0, 0, 320, 200);
+document.title = 'fertig';
+</script>
+</body>
+</html>

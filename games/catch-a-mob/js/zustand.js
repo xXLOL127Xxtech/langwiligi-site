@@ -19,7 +19,7 @@
       return { v: 1, gold: 300, items: { siegel1: 5, trank: 3 }, team: [], box: [], dex: {}, besucht: [0], x: d.x, y: d.y + 3, w: 0, l: 0, bossT: {}, verkauft: [], pflege: [], abz: [], col: 0, name: '', start: false, ton: true, quali: 1, welt: 3 };
     },
     laden() { try { const j = G.localStorage.getItem(KEY); return j ? JSON.parse(j) : null; } catch (e) { return null; } },
-    speichern() { try { if (S.save) { S.save.x = S.x; S.save.y = S.y; if (CAM.Bots && CAM.Bots.pool.length && !S.online) S.save.bots = CAM.Bots.speichern(); G.localStorage.setItem(KEY, JSON.stringify(S.save)); } } catch (e) {} },
+    speichern() { try { if (S.save) { S.save.x = S.x; S.save.y = S.y; if (CAM.Bots && CAM.Bots.pool.length && !S.online) { S.save.bots = CAM.Bots.speichern(); S.save.botsV = 2; } G.localStorage.setItem(KEY, JSON.stringify(S.save)); } } catch (e) {} },
     export() { return btoa(unescape(encodeURIComponent(JSON.stringify(S.save)))); },
     import(code) {
       try {

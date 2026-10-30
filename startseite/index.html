@@ -92,6 +92,17 @@
       </aside>
     </header>
 
+    <!-- Eingang zur Chill-Lounge: grosses Bild oben, ein Klick zeigt nur die ruhigen Spiele (Bild: tools/lounge-bild/) -->
+    <button type="button" class="lounge-tuer" id="lounge-btn" aria-pressed="false" aria-controls="grid">
+      <span class="lt-bild"><img src="_start/lounge.png?v=<!--VERSION-->" alt="Eine ältere Dame spielt am Abend gemütlich Schach gegen ihre Katze" width="320" height="200" decoding="async"></span>
+      <span class="lt-text">
+        <span class="lt-k">🛋️ Chill-Lounge</span>
+        <strong class="lt-h">Gemütlich spielen, ohne Hektik</strong>
+        <span class="lt-p">Schach, Go, Mancala, Knobeleien und Aufbauspiele: ohne Zeitdruck, ganz in deinem Tempo.</span>
+      </span>
+      <span class="lt-cta"><span class="lt-rein">Lounge betreten</span><span class="lt-raus">Alle Spiele zeigen</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-4-4 4 4-4 4"/></svg></span>
+    </button>
+
     <div class="toolbar">
       <div class="fp" id="fp">
         <button type="button" class="fp-btn" id="fp-btn" aria-haspopup="true" aria-expanded="false" aria-controls="fp-panel">
@@ -118,7 +129,6 @@
       </div>
       <div class="fp-active" id="fp-active" aria-live="polite"></div>
       <div class="tb-actions">
-        <button type="button" class="lounge-btn" id="lounge-btn" aria-pressed="false" title="Ruhige Spiele ohne Zeitdruck"><span aria-hidden="true">🛋️</span> Chill-Lounge</button>
         <button type="button" class="upd-btn" id="upd-open" aria-haspopup="dialog"><span class="upd-led" aria-hidden="true"></span>Updates<i class="upd-new" id="upd-new" hidden>neu</i></button>
         <button type="button" class="tip-btn" id="tip-open"><span aria-hidden="true">+</span> Spiel vorschlagen</button>
       </div>

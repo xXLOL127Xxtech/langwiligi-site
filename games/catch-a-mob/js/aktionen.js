@@ -41,7 +41,10 @@
     const r = await UI.choose(items, { title: titel, numbers: true, wide: false });
     return r;
   };
-  function verlierGold() { const v = Math.floor(S.save.gold * 0.8); S.save.gold -= v; return v; }
+  // Anfängerschutz: Bis Stufe 10 verlierst du bei einer Niederlage nur 20 % des Goldes und keine Erfahrung
+  const ANFAENGER = 10;
+  const anfaenger = () => CAM.maxLv() < ANFAENGER;
+  function verlierGold() { const v = Math.floor(S.save.gold * (anfaenger() ? 0.2 : 0.8)); S.save.gold -= v; return v; }
   // Überfall: Der Räuber nimmt 100 Gold (hat das Opfer unter 150 Gold, 70 % davon)
   const raub = g => g < 150 ? Math.floor(g * 0.7) : 100;
   // Niederlage: 10 % der Erfahrung, die für die aktuelle Stufe nötig ist, gehen bei jedem Mob im Team verloren (nie unter 0, keine Stufe weniger)
@@ -106,6 +109,8 @@
       if (o.ort === 'team') S.save.team.splice(S.save.team.indexOf(o.m), 1); else S.save.box.splice(S.save.box.indexOf(o.m), 1);
       pflegeListe().push({ m: o.m, dorf: hier, ende: jetzt + o.h.sek * 1000, preis: o.h.preis });
     }
+    // Das Team mit gesunden Mobs aus dem Zwinger auffüllen, damit du weiterziehen kannst
+    for (let i = 0; i < S.save.box.length && S.save.team.length < CAM.TEAM_MAX;) { if (S.save.box[i].hp > 0) S.save.team.push(S.save.box.splice(i, 1)[0]); else i++; }
     if (!S.save.team.length && S.save.box.length) S.save.team.push(S.save.box.shift());
     S.save.gold -= plan.preis; UI.snd('heil'); Save.speichern();
     UI.toast(plan.liste.length + ' Mobs in Pflege (' + dauerText(plan.sek) + ').', 2500);
@@ -227,8 +232,11 @@
     const r = await UI.choose(items, { title: 'Zurückkaufen', sub: 'Du hast ' + S.save.gold + ' Gold.' });
     if (r < 0) return;
     const o = S.save.verkauft[r];
+    if (S.save.gold < o.preis) { UI.toast('Nicht genug Gold.'); return; }
+    if (S.save.team.length >= CAM.TEAM_MAX && S.save.box.length >= 100) { await UI.info('Team und Zwinger sind voll.', 'Zurückkaufen'); return; }
     S.save.gold -= o.preis; S.save.verkauft.splice(r, 1);
-    A.mobDazu(o.m); UI.snd('geld'); Save.speichern();
+    const wo = A.mobDazu(o.m); UI.snd('geld'); Save.speichern();
+    UI.toast(mobNameFull(o.m) + (wo === 'box' ? ' wartet im Zwinger.' : ' ist wieder im Team.'), 2500);
   };
   // Neuen Mob ins Team oder in den Zwinger
   A.mobDazu = function (m) {
@@ -299,6 +307,7 @@
     return new Promise(res => {
       const MAX = CAM.TEAM_MAX; let host = UI.openPanel('Zwinger', '', true);
       let col = S.save.box.length ? 0 : 1, cur = [0, 0], pick = null, toast = '';
+      const t0 = performance.now();
       const box = () => S.save.box, team = () => S.save.team;
       const laenge = c => c === 0 ? box().length + 1 : MAX;   // links: Mobs + «Hier ablegen», rechts: feste Plätze
       const mobAt = (c, i) => c === 0 ? box()[i] : team()[i];
@@ -340,7 +349,7 @@
           '<div class="zt">' + (toast ? '<span class="chip schlecht">' + esc(toast) + '</span>' : (pick ? 'Jetzt in der <b>' + (pick.col === 0 ? 'Team-Spalte (rechts)' : 'Zwinger-Spalte (links)') + '</b> Enter drücken: ' + (pick.col === 0 ? 'in einen Platz oder mit einem Teammitglied tauschen' : 'mit einem Zwinger-Mob tauschen oder ablegen') + '.' : 'Mob mit <kbd>Enter</kbd> wählen, dann in der anderen Spalte <kbd>Enter</kbd> zum Tauschen. Zum Ablegen ein Teammitglied wählen und unten links «in den Zwinger legen» wählen.')) + '</div>' +
           '<div class="zt"><kbd>←</kbd><kbd>→</kbd> Spalte · <kbd>↑</kbd><kbd>↓</kbd> Mob · <kbd>I</kbd> Details · <kbd>U</kbd> Umbenennen · <kbd>Esc</kbd> Zurück</div>';
         host.querySelectorAll('.it').forEach(b => {
-          b.onmouseenter = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; markiere(); };
+          b.onmouseenter = b.onmousemove = () => { if (!UI.mausSeit(t0) || (col === +b.dataset.c && cur[col] === +b.dataset.i)) return; col = +b.dataset.c; cur[col] = +b.dataset.i; markiere(); };
           b.onclick = () => { col = +b.dataset.c; cur[col] = +b.dataset.i; UI.snd('klick'); aktion(); zeichne(); };
         });
         const s = host.querySelector('.it.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
@@ -401,7 +410,7 @@
   };
   A.karte = function () {
     return new Promise(res => {
-      const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Gelb = besuchtes Dorf, Weiss = du', true);
+      const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Gelb = besuchtes Dorf, grüne Punkte = Spieler in der Nähe, Weiss = du', true);
       host.innerHTML = '<canvas id="kc" width="560" height="560" style="position:static;width:min(560px,60vh);height:min(560px,60vh);border-radius:8px;image-rendering:pixelated;display:block;margin:auto"></canvas><div class="foot">Plus / Minus oder Klick = Zoom · Schliessen mit M, Esc oder Enter<br>Nur was du schon gesehen hast, ist eingezeichnet.</div>';
       const cv = $('kc'), c = cv.getContext('2d');
       const SPANNEN = [1024, 2048, Welt.W];
@@ -424,6 +433,7 @@
         }
         c.fillStyle = '#ff6a5e'; for (const b of Welt.boss) if (drin(b.x, b.y)) c.fillRect(px(b.x) - 3, py(b.y) - 3, 6, 6);
         for (const a of Welt.arena) { if (!drin(a.cx, a.cy)) continue; c.fillStyle = (S.save.abz || []).includes(a.idx) ? '#5fd38a' : '#ff9f1c'; c.fillRect(px(a.cx) - 4, py(a.cy) - 4, 8, 8); c.strokeStyle = '#000'; c.strokeRect(px(a.cx) - 4, py(a.cy) - 4, 8, 8); }
+        c.fillStyle = '#5fd38a'; for (const b of CAM.Bots.liste) if (drin(b.x, b.y) && Math.hypot(b.x - S.x, b.y - S.y) < 200) { c.beginPath(); c.arc(px(b.x), py(b.y), 3, 0, 6.3); c.fill(); }
         for (const p of S.peers.values()) { if (!drin(p.x, p.y)) continue; c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#9a96a8'; c.beginPath(); c.arc(px(p.x), py(p.y), 4, 0, 6.3); c.fill(); if (S.pt >= 0 && p.pt === S.pt) { c.fillStyle = '#fff'; c.fillText(p.name, px(p.x), py(p.y) - 7); } }
         c.fillStyle = '#fff'; c.beginPath(); c.arc(px(S.x), py(S.y), 5, 0, 6.3); c.fill(); c.strokeStyle = '#000'; c.stroke();
         c.fillStyle = 'rgba(8,6,16,.7)'; c.fillRect(6, 6, 120, 20); c.fillStyle = '#f2efe8'; c.textAlign = 'left'; c.fillText('Ausschnitt ' + span + ' Felder', 12, 20); c.textAlign = 'center';
@@ -467,7 +477,7 @@
       if (S.online) items.push({ label: 'Party' });
       items.push({ label: 'Spielstand-Code' }, { label: 'Optionen' }, { label: 'Zum Titelmenü' });
       const labels = items.map(i => i.label);
-      const r = await UI.choose(items, { title: 'Menü', sub: S.name + ' · ' + S.save.gold + ' Gold · ' + S.save.team.length + '/6 im Team', numbers: false });
+      const r = await UI.choose(items, { title: 'Menü', sub: S.name + ' · ' + S.save.gold + ' Gold · ' + S.save.team.length + '/' + CAM.TEAM_MAX + ' im Team', numbers: false });
       if (r < 0) return;
       const l = labels[r];
       if (l === 'Mob-Buch') await A.buch();
@@ -490,12 +500,6 @@
     const link = Netz.link(), code = Netz.code();
     const r = await UI.choose([{ label: 'Link kopieren' }, { label: 'Zurück' }], { title: 'Freunde einladen', before: '<p>Welt-Code: <b style="font-size:22px;letter-spacing:.15em">' + esc(code) + '</b></p><p style="font-size:12px;color:#a9a59b;word-break:break-all">' + esc(link) + '</p><p>Oder über den Knopf <b>Freunde</b> am linken Rand.</p>' });
     if (r === 0) { try { await navigator.clipboard.writeText(link); UI.toast('Link kopiert.'); } catch (e) { UI.toast('Kopieren hat nicht geklappt.'); } }
-  };
-  A.rangliste = async function () {
-    const rows = [{ n: S.name + ' (du)', w: S.save.w, l: S.save.l }].concat(Array.from(S.peers.values()).map(p => ({ n: p.name, w: p.w || 0, l: p.l || 0 })));
-    rows.sort((a, b) => b.w - a.w || a.l - b.l);
-    const html = '<table><tr><th>#</th><th>Name</th><th>Siege</th><th>Niederlagen</th></tr>' + rows.map((r, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(r.n) + '</td><td>' + r.w + '</td><td>' + r.l + '</td></tr>').join('') + '</table><p style="font-size:12px;color:#a9a59b">Zählt nur Duelle, zu denen beide zugestimmt haben. Überfälle zählen nicht.</p>';
-    await UI.info(html, 'Duell-Rangliste dieser Welt');
   };
   A.partyMenue = async function () {
     for (;;) {
@@ -556,7 +560,7 @@
     }
     return lines;
   }
-  // modus: 'voll' (Mobs, die du angreifst oder die dich angreifen, Riesen): 80 % Gold, 10 % Erfahrung, Heilhaus.
+  // modus: 'voll' (Mobs, die du angreifst oder die dich angreifen, Riesen): 80 % Gold (Anfänger 20 %), 10 % Erfahrung (Anfänger keine), Heilhaus.
   //         'mild' (Duell oder Kampf mit Einverständnis, Arena): nichts geht verloren, deine Mobs haben noch 5 LP.
   //         'raub' (Überfall durch NPC): nur die Beute geht verloren (höchstens 100 Gold), deine Mobs haben noch 5 LP.
   async function verloren(titelText, modus) {
@@ -568,13 +572,13 @@
       await UI.info(text + '<br><small>Deine Mobs haben noch 5 LP. Heile sie im Heilhaus.</small>', 'Niederlage');
       return;
     }
-    const v = verlierGold(); verlierXp();
+    const neu = anfaenger(), v = verlierGold(); if (!neu) verlierXp();
     // zum nächsten Dorf, Mobs heilen
     let best = null, bd = 1e9;
     for (const d of Welt.alleDoerfer()) { const dd = Math.hypot(d.x - S.x, d.y - S.y); if (dd < bd) { bd = dd; best = d; } }
     A.heileTeam(); S.x = best.x + 0.5; S.y = best.y + 3.5; S.schritte = 0; Save.speichern();
     UI.snd('niederlage');
-    await UI.info((titelText || 'Dein Team ist erschöpft.') + '<br>Du verlierst ' + ge(v) + ' (80 %) und 10 % Erfahrung und wachst im Heilhaus von <b>' + esc(best.name) + '</b> auf. Alle Mobs sind geheilt.', 'Niederlage');
+    await UI.info((titelText || 'Dein Team ist erschöpft.') + '<br>Du verlierst ' + ge(v) + (neu ? ' (20 %, Anfängerschutz bis Stufe ' + ANFAENGER + ')' : ' (80 %) und 10 % Erfahrung') + ' und wachst im Heilhaus von <b>' + esc(best.name) + '</b> auf. Alle Mobs sind geheilt.', 'Niederlage');
   }
   function dexSet(fam, w) { S.save.dex[fam] = Math.max(S.save.dex[fam] || 0, w); }
 

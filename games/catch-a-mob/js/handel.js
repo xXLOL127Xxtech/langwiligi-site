@@ -109,8 +109,8 @@
 
   // ---------- Handel mit einem Bot ----------
   A.botHandel = async function (b, start, text0) {
-    const eigen = S.save.team, mid = CAM.lvlMitte(eigen, b.team);
-    const pF = CAM.siegChance(eigen, b.team, mid), pE = CAM.siegChance(eigen, b.team, 0);
+    const eigen = S.save.team, seine = Bots.kampfTeam(b), mid = CAM.lvlMitte(eigen, seine);
+    const pF = CAM.siegChance(eigen, seine, mid), pE = CAM.siegChance(eigen, seine, 0);
     const pMe = modus => (modus === 'fair' ? pF : pE) / 100;
     const meine = S.save.team.map(m => ({ m, ort: 'Team' })).concat(S.save.box.map(m => ({ m, ort: 'Zwinger' })));
     meine.forEach(x => { x.ok = !(x.ort === 'Team' && S.save.team.filter(y => y !== x.m && y.hp > 0).length === 0); });

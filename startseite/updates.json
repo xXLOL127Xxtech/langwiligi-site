@@ -1,4 +1,15 @@
 [
+  { "d": "2026-10-30", "t": "Catch a Mob: Spieler in der Nähe und viele Korrekturen", "tag": "Update", "p": [
+    "Andere Spieler findest du jetzt wirklich: Die meisten sind rund um den Start unterwegs, und alle paar Sekunden kommt jemand mit ähnlicher Stufe in deine Nähe. Auf der Minikarte und der Weltkarte siehst du sie als grüne Punkte",
+    "Duelle sind fair: Ein Spieler kämpft mit so vielen Mobs wie du. Am Ende gibt es nur noch ein Fenster mit Ergebnis und Preis",
+    "Anfängerschutz: Bis Stufe 10 verlierst du bei einer Niederlage gegen wilde Mobs nur 20 % deines Goldes und keine Erfahrung",
+    "Menüs: Liegt der Mauszeiger still über einem Fenster, springt die Auswahl nicht mehr dorthin. Enter wählt immer, was markiert war (z. B. «Ablehnen» bei einer Herausforderung)",
+    "Kleinigkeiten: richtige Team-Grösse im Menü, Zurückkaufen nur mit genug Gold und Platz, Wegweiser kennt alle Dörfer, «Alle heilen» füllt dein Team aus dem Zwinger auf, die Anleitung erklärt Spieler und Freundschaftskämpfe"
+  ] },
+  { "d": "2026-10-30", "t": "Chill-Lounge gut sichtbar", "tag": "Update", "p": [
+    "Die Chill-Lounge hat oben auf der Startseite einen eigenen Eingang mit Bild: eine ältere Dame spielt am Abend gemütlich Schach gegen ihre Katze",
+    "Ein Klick auf «Lounge betreten» zeigt nur die ruhigen Spiele und springt gleich zu ihnen, «Alle Spiele zeigen» bringt dich zurück"
+  ] },
   { "d": "2026-10-29", "t": "Laptop-Steuerung und Tab-Wechsel", "tag": "Update", "p": [
     "Katapult-Krieg: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
     "Weltenbrand und Kronenwacht: Zoomen auch mit den Tasten + und –",
