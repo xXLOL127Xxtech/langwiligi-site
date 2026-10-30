@@ -1122,7 +1122,7 @@ function showScreen(id) {
 function playerName() { return $('name').value.trim().slice(0, 16); }
 function rememberName() {
   const n = playerName();
-  if (HUB) GameHub.setName(n); else try { localStorage.setItem('lw-name', n); } catch (e) {}
+  if (HUB) GameHub.setName(n); else try { localStorage.setItem('flaschen-flip-name', n); } catch (e) {}
 }
 const BOARD_OPTS = { cols: [['score', 'Punkte'], ['jumps', 'Sprünge']], empty: 'Noch keine Einträge – sei der Erste!' };
 function renderLocalBoard(el) {
@@ -1303,7 +1303,7 @@ $('btn-mute').textContent = save.mute ? '🔇' : '🔊';
 $('name').addEventListener('change', () => { rememberName(); loadBoard($('menu-board')); });
 
 // ---------- Start ----------
-try { $('name').value = HUB ? GameHub.getName() : (localStorage.getItem('lw-name') || ''); } catch (e) {}
+try { $('name').value = HUB ? GameHub.getName() : (localStorage.getItem('flaschen-flip-name') || ''); } catch (e) {}
 resize();
 newRun();
 showMenu();

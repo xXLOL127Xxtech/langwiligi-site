@@ -408,7 +408,7 @@ body { background-color:#161a14; background-image:radial-gradient(ellipse at 50%
       <summary>So geht's</summary>
       <ul>
         <li><b>Ziel:</b> Sammle Siegpunkte. Provinz = 1, Stadt = 3, Hauptstadt = 5. Wer das Siegziel erreicht oder als Letzter übrig ist, gewinnt.</li>
-        <li><b>Karte:</b> Ziehen zum Verschieben, Mausrad oder zwei Finger zum Zoomen. Tippe auf eine Provinz für Infos, Gebäude und Truppenbau.</li>
+        <li><b>Karte:</b> Ziehen zum Verschieben, Mausrad, Tasten + / – oder zwei Finger zum Zoomen. Tippe auf eine Provinz für Infos, Gebäude und Truppenbau.</li>
         <li><b>Armeen:</b> Armee antippen, dann auf das Ziel tippen (am PC auch Rechtsklick). Leere Feindprovinzen werden beim Betreten erobert.</li>
         <li><b>Wirtschaft:</b> Provinzen liefern Geld, Nahrung, Stahl, Öl und Arbeitskraft. Industrie erhöht die Produktion, besetzte Gebiete liefern weniger.</li>
         <li><b>Truppen:</b> Infanterie kommt als Trupp mit 5 Soldaten, Panzer, Artillerie, Flugzeuge und Schiffe einzeln. Panzer sind teuer, aber sehr stark.</li>
@@ -2315,6 +2315,13 @@ const keys = new Set();
 window.addEventListener('keydown', e => {
   if (!G || $('hud').classList.contains('hidden') || e.target.tagName === 'INPUT') return;
   if (e.code === 'Space') { e.preventDefault(); if (!NET) setSpeed(paused ? lastSpeed : 0); }
+  if (e.key === '+' || e.key === '=' || e.key === '-' || e.key === '_') {
+    const f = (e.key === '+' || e.key === '=') ? 1.15 : 1 / 1.15, cx = VW / 2, cy = VH / 2;
+    const [wx, wy] = toWorld(cx, cy);
+    cam.z = clamp(cam.z * f, minZoom(), 3);
+    cam.x = wx - cx / cam.z; cam.y = wy - cy / cam.z;
+    clampCam();
+  }
   if (e.code === 'Escape') { if (!$('modal').classList.contains('hidden')) closeModal(); else select(null); }
   keys.add(e.code);
 });

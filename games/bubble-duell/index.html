@@ -278,6 +278,8 @@ input[type=text], select { border-radius:999px; background:rgba(10,6,40,.55); bo
 })();
 </script>
 <script src="../_shared/hub.js"></script>
+<script>/* Ersatz, falls hub.js nicht lädt: Spiel startet trotzdem, nur Online geht dann nicht */
+window.GameHub||(window.GameHub=(function(){var n='';var off=function(){return Promise.reject(new Error('Online gerade nicht verfügbar'))};return{SEITE:location.origin,getName:function(){return n},setName:function(v){n=String(v||'').trim().slice(0,16);return n},cleanCode:function(v){return String(v||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,4)},errorText:function(e){return e&&e.message?e.message:'Online gerade nicht verfügbar'},connect:function(){return{on:function(){},off:function(){},send:function(){},close:function(){},create:off,join:off}},loadBoard:function(){return Promise.resolve([])},renderBoard:function(){},renderScores:function(){},submitScore:function(){}}})());</script>
 <script>
 'use strict';
 // =====================================================================
@@ -761,7 +763,7 @@ function bigText(ctx, txt, y, size, col, sub, subSize) {
 //  Ton
 // =====================================================================
 let AC = null, muted = false;
-try { muted = localStorage.getItem('bubbleduell-mute') === '1'; } catch (e) {}
+try { try { if (localStorage.getItem('bubble-duell-mute') === null && localStorage.getItem('bubbleduell-mute') !== null) localStorage.setItem('bubble-duell-mute', localStorage.getItem('bubbleduell-mute')); } catch (e) {} muted = localStorage.getItem('bubble-duell-mute') === '1'; } catch (e) {}
 function ac() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === 'suspended') AC.resume(); }
 function tone(f, d, type = 'sine', v = .1, f2 = 0, delay = 0) {
   if (!AC || muted) return;
@@ -1180,7 +1182,7 @@ function renderModes(el) {
     const b = document.createElement('button');
     b.className = 'mode' + (id === G.modeId ? ' sel' : '');
     b.innerHTML = `<div class="mt">${m.icon} ${m.name}</div><div class="md">${m.desc}</div>`;
-    b.onclick = () => { G.modeId = id; try { localStorage.setItem('bubbleduell-mode', id); } catch (e) {} renderModes(el); };
+    b.onclick = () => { G.modeId = id; try { localStorage.setItem('bubble-duell-mode', id); } catch (e) {} renderModes(el); };
     el.appendChild(b);
   }
 }
@@ -1300,7 +1302,17 @@ rafId = requestAnimationFrame(frame);
 // Sicherheitsnetz: falls der Browser Frames verschluckt, Schleife neu anstossen
 setInterval(() => { if (!document.hidden && performance.now() - last > 1000) { cancelAnimationFrame(rafId); rafId = requestAnimationFrame(frame); } }, 1000);
 // Im Hintergrund-Tab läuft requestAnimationFrame nicht -> Start, Druck & Snapshots trotzdem weiter
-setInterval(() => { if (G.state === 'count' && now() >= G.playAt) beginPlay(); if (isPlaying()) timers(); }, 250);
+setInterval(() => { if (document.hidden && !G.online) return; if (G.state === 'count' && now() >= G.playAt) beginPlay(); if (isPlaying()) timers(); }, 250);
+// Allein im Hintergrund-Tab: Zeit steht still (Druck, Items und Ereignisse verschieben sich um die Abwesenheit)
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (G.online) return;
+  if (document.hidden) { hiddenAt = now(); return; }
+  if (!hiddenAt) return;
+  const d = now() - hiddenAt; hiddenAt = 0;
+  G.startT += d; G.playAt += d; G.nextItem += d; G.nextEvent += d; if (G.windUntil) G.windUntil += d;
+  last = performance.now();
+});
 setInterval(() => { if (G.online && isPlaying() && G.atk) sendSnap(); }, 3000);
 
 // =====================================================================
@@ -1351,11 +1363,11 @@ $('btn-quit').onclick = () => {
   quitArmed = Date.now(); const b = $('btn-quit'), old = b.textContent;
   b.textContent = '❓'; b.title = 'Nochmal tippen zum Verlassen'; setTimeout(() => { b.textContent = old; }, 2500);
 };
-$('btn-mute').onclick = () => { muted = !muted; $('btn-mute').textContent = muted ? '🔇' : '🔊'; try { localStorage.setItem('bubbleduell-mute', muted ? '1' : '0'); } catch (e) {} };
+$('btn-mute').onclick = () => { muted = !muted; $('btn-mute').textContent = muted ? '🔇' : '🔊'; try { localStorage.setItem('bubble-duell-mute', muted ? '1' : '0'); } catch (e) {} };
 $('btn-mute').textContent = muted ? '🔇' : '🔊';
 document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => { location.href = location.href.split('#')[0]; });
 
-try { const m = localStorage.getItem('bubbleduell-mode'); if (MODES[m]) G.modeId = m; } catch (e) {}
+try { try { if (localStorage.getItem('bubble-duell-mode') === null && localStorage.getItem('bubbleduell-mode') !== null) localStorage.setItem('bubble-duell-mode', localStorage.getItem('bubbleduell-mode')); } catch (e) {} const m = localStorage.getItem('bubble-duell-mode'); if (MODES[m]) G.modeId = m; } catch (e) {}
 renderModes($('modes'));
 $('name').value = GameHub.getName();
 GameHub.loadBoard(GAME_ID, $('menu-board'), $('name').value);

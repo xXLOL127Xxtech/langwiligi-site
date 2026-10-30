@@ -1,6 +1,106 @@
 [
 {
 "d":"2026-10-29",
+"z":"21:12",
+"a":"Dead Maze",
+"t":"Bewertung erscheint sicher am Rundenende",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Federsturm",
+"t":"Ton startet zuverlässig nach der ersten Eingabe",
+"tag":"Intern",
+"k":"Sound",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Bubble-Duell",
+"t":"Allein im Hintergrund-Tab läuft keine Zeit weiter",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Schlangen-Arena",
+"t":"Allein im Hintergrund-Tab steht das Spiel still",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Eisenherbst",
+"t":"Pause beim Tab-Wechsel, Figuren-Umrisse ohne getImageData (läuft flüssiger), Ton startet zuverlässig",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Kronenwacht",
+"t":"Zoomen auch mit den Tasten + und –",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Weltenbrand",
+"t":"Zoomen auch mit den Tasten + und –",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:07",
+"a":"Katapult-Krieg",
+"t":"Abreissen auch ohne Rechtsklick (Taste E, Shift+Klick, Knopf)",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:03",
+"a":"Alle Spiele",
+"t":"Bogen-Duell, Bubble-Duell und Katapult-Krieg starten auch, wenn die Online-Bibliothek nicht lädt",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
+"z":"21:03",
+"a":"Alle Spiele",
+"t":"Gespeicherte Einstellungen heissen jetzt einheitlich wie das Spiel (Blech-Duell, Bogen-Duell, Bubble-Duell, Katapult-Krieg, Schlangen-Arena, Flaschen-Flip)",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"admiring-noether-p43clk"
+},
+{
+"d":"2026-10-29",
 "z":"23:30",
 "a":"Catch a Mob",
 "t":"Spieler tauchen öfter in deiner Nähe auf",
