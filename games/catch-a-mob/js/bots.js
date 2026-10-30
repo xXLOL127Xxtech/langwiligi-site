@@ -6,7 +6,7 @@
   const H = A.h, ge = H.ge, sleep = H.sleep;
   // pool: alle NPC-Spieler, liste: die, die gerade "online" sind. Es sind immer etwa 20 bis 40, einzelne gehen und neue kommen.
   const Bots = CAM.Bots = { liste: [], pool: [], ziel: 28, wechselT: 8 };
-  const POOL = 40, MIN_ON = 20, CHAMPIONS = 4, WEITE = 16, SUCHE = 32;
+  const POOL = 48, MIN_ON = 24, MAX_ON = 40, CHAMPIONS = 4, WEITE = 16, SUCHE = 32;
 
   // ---------- Hilfen für faire Duelle ----------
   const lebende = team => team.filter(m => m.hp > 0);
@@ -56,23 +56,30 @@
     }
     return team;
   }
-  // Wo wären echte Spieler unterwegs? Die meisten (Anfänger) in den ersten paar hundert Feldern um den Start, weniger weit draussen.
-  // Champions eher ganz draussen. Nie in einem Dorf und nie im Wasser.
-  function zufallsPlatz(rnd, champ, weg) {
-    let hx = Welt.START.x, hy = Welt.START.y;
-    for (let v = 0; v < 600; v++) {
-      if (champ || v > 300) { hx = 24 + rnd() * (Welt.W - 48); hy = 24 + rnd() * (Welt.H - 48); }
-      else {
-        const z = rnd(), r = z < 0.5 ? 25 + rnd() * 230 : z < 0.8 ? 250 + rnd() * 650 : 900 + rnd() * 1100, a = rnd() * 6.2832;
-        hx = Math.max(24, Math.min(Welt.W - 24, Welt.START.x + Math.cos(a) * r)); hy = Math.max(24, Math.min(Welt.H - 24, Welt.START.y + Math.sin(a) * r));
-      }
-      if (champ && Math.hypot(hx - Welt.START.x, hy - Welt.START.y) < 500) continue;
-      if (weg && Math.hypot(hx - S.x, hy - S.y) < weg) continue;
-      const t = Welt.get(hx, hy);
-      if (gehbar(hx, hy) && !Welt.dorfAnPos(hx, hy) && (t === Welt.T.BODEN || t === Welt.T.GRAS)) break;
-    }
-    return [hx, hy];
+  // Wo sind die Spieler unterwegs? Überall auf der Insel, jeder dort, wo die wilden Mobs etwa seine Stufe haben.
+  // Nach innen etwas dichter (dort sind die Anfänger), aber auch draussen trifft man nach ein, zwei Minuten Laufen jemanden.
+  // Nie in einem Dorf und nie im Wasser.
+  const START = () => Welt.START;
+  const landPlatz = (hx, hy) => { const t = Welt.get(hx, hy); return gehbar(hx, hy) && !Welt.dorfAnPos(hx, hy) && (t === Welt.T.BODEN || t === Welt.T.GRAS); };
+  // Wie weit vom Start haben die wilden Mobs diese Stufe? (Umkehrung von Welt.wildLevel)
+  function ringFuer(lv) {
+    if (lv <= 5) return 8 + Math.random() * 18;
+    const t = Math.pow(Math.min(1, Math.max(0, (lv - 6) / 94)), 1 / 1.35);
+    return Welt.INNEN_R + t * (Welt.LV_DIST - Welt.INNEN_R);
   }
+  // Platz in der Entfernung d (± Streuung) vom Start, in irgendeiner Richtung
+  function platzImRing(rnd, d, streu, weg) {
+    for (let v = 0; v < 400; v++) {
+      const r = Math.max(6, Math.min(Welt.LV_DIST + 20, d + (rnd() - 0.5) * 2 * streu)), a = rnd() * 6.2832;
+      const hx = START().x + Math.cos(a) * r, hy = START().y + Math.sin(a) * r;
+      if (weg && Math.hypot(hx - S.x, hy - S.y) < weg) continue;
+      if (landPlatz(hx, hy)) return [hx, hy];
+    }
+    return [START().x + 0.5, START().y + 6.5];
+  }
+  // Neuer Spieler: Entfernung vom Start zufällig (nach innen etwas dichter), Champions ganz aussen
+  const zufallsAbstand = (rnd, champ) => champ ? Welt.LV_DIST * (0.82 + rnd() * 0.16) : 12 + (Welt.LV_DIST - 12) * Math.pow(rnd(), 0.65);
+  function zufallsPlatz(rnd, champ) { return platzImRing(rnd, zufallsAbstand(rnd, champ), 0); }
   function neu(i, rnd, champ) {
     const [hx, hy] = zufallsPlatz(rnd, champ);
     const team = teamFuer(rnd, hx, hy, champ);
@@ -85,7 +92,7 @@
 
   Bots.erzeugen = function () {
     Bots.pool = []; Bots.liste = [];
-    const g = S.save && S.save.botsV === 2 && S.save.bots;   // ältere Spielstände: neu verteilen (vorher fast alle weit draussen)
+    const g = S.save && S.save.botsV === 3 && S.save.bots;   // ältere Spielstände: neu verteilen (die Welt ist jetzt eine Insel)
     const rnd = CAM.mulberry32(Welt.seed * 31 + 7);
     for (let i = 0; i < POOL; i++) {
       const sb = g && g.find(x => x.id === 'b' + i);
@@ -94,13 +101,13 @@
       while (b.team.length < CAM.TEAM_MAX) b.team.push(CAM.neuerMob(CAM.FAMILIEN[b.team[0] ? b.team[0].fam : 0].id, Math.max(5, b.lv - 2)));
       Bots.pool.push(b);
     }
-    if (!Bots.pool.some(b => b.on)) { Bots.ziel = 24 + Math.floor(Math.random() * 9); Bots.pool.slice().sort(() => Math.random() - 0.5).slice(0, Bots.ziel).forEach(b => { b.on = true; }); }
+    if (!Bots.pool.some(b => b.on)) { Bots.ziel = 28 + Math.floor(Math.random() * 9); Bots.pool.slice().sort(() => Math.random() - 0.5).slice(0, Bots.ziel).forEach(b => { b.on = true; }); }
     Bots.liste = Bots.pool.filter(b => b.on); Bots.ziel = Bots.liste.length; Bots.wechselT = 6 + Math.random() * 8;
   };
   Bots.speichern = () => Bots.pool.map(b => ({ id: b.id, name: b.name, col: b.col, champ: b.champ, hx: b.hx, hy: b.hy, team: b.team, gold: b.gold, ego: b.ego, mut: b.mut, on: b.on }));
   // Wie viele Spieler gerade "online" sind: die NPC-Spieler plus echte Mitspieler (und du)
   Bots.anzahlOnline = () => Bots.liste.length + (S.online ? S.peers.size + 1 : 1);
-  // Alle paar Sekunden geht jemand oder kommt jemand, die Zahl pendelt zwischen 20 und 40
+  // Alle paar Sekunden geht jemand oder kommt jemand, die Zahl pendelt zwischen 24 und 40
   function geheOffline() {
     const kand = Bots.liste.filter(b => !b.halt && b !== Bots.jaeger && b.z !== 'prov' && !b.champ && Math.hypot(b.x - S.x, b.y - S.y) > 70);   // nie vor deinen Augen und nicht, wer gerade in deiner Nähe ist
     if (!kand.length) return false;
@@ -108,12 +115,12 @@
   }
   function kommeOnline() {
     const frei = Bots.pool.filter(b => !b.on); if (!frei.length) return false;
-    const b = frei[Math.floor(Math.random() * frei.length)], [hx, hy] = zufallsPlatz(Math.random, b.champ, 40);   // taucht weit weg vom Bild auf
+    const b = frei[Math.floor(Math.random() * frei.length)], [hx, hy] = platzImRing(Math.random, ringFuer(b.lv), 30, 60);   // irgendwo, wo seine Stufe hinpasst, nie vor deinen Augen
     Object.assign(b, { on: true, hx, hy, x: hx, y: hy, tx: hx, ty: hy, z: 'ruhe', t: 1 + Math.random() * 3, halt: false, ruheBis: 0, provBis: Date.now() + 15000 + Math.random() * 30000 });
     auffuellen(b); Bots.liste = Bots.pool.filter(x => x.on); return true;
   }
   function wechsel() {
-    Bots.ziel = Math.max(MIN_ON, Math.min(POOL, Bots.ziel + Math.floor(Math.random() * 7) - 3));
+    Bots.ziel = Math.max(MIN_ON, Math.min(MAX_ON, Bots.ziel + Math.floor(Math.random() * 7) - 3));
     const n = Bots.liste.length;
     if (n > Bots.ziel) geheOffline();
     else if (n < Bots.ziel) kommeOnline();
@@ -167,53 +174,24 @@
   // NPC-Spieler sind in der ganzen Welt unterwegs
   const imBotGebiet = (x, y) => x >= 1 && y >= 1 && x < Welt.W - 1 && y < Welt.H - 1;
   const imKreis = (x, y) => [Math.max(12, Math.min(Welt.W - 12, x)), Math.max(12, Math.min(Welt.H - 12, y))];
+  // Neues Zuhause in der Nähe, aber im Ring seiner Stufe (sonst wäre er bald in einer Gegend, die nicht zu ihm passt)
+  function imRing(b, x, y) {
+    const r = ringFuer(b.lv), dx = x - START().x, dy = y - START().y, d = Math.hypot(dx, dy) || 1, z = Math.max(r - 50, Math.min(r + 50, d));
+    return imKreis(START().x + dx / d * z, START().y + dy / d * z);
+  }
   const jagdFrei = now => now > (Bots.jagdPause || 0) && !(Bots.jaeger && Bots.jaeger.z === 'prov');
   function jagdStart(n, now) { Bots.jaeger = n; n.pfad = null; }
   function jagdEnde(now, pause) { Bots.jaeger = null; Bots.jagdPause = now + (pause || 25000) + Math.random() * 15000; }
 
-  // Passt jemand von der Stufe her zu dir? Nur solche Spieler fordern dich heraus und tauchen in deiner Nähe auf.
+  // Passt jemand von der Stufe her zu dir? Nur solche Spieler fordern dich heraus.
   const passt = b => { const m = CAM.maxLv(); return b.lv >= m * 0.6 - 2 && b.lv <= m * 1.5 + 4; };
   Bots.passt = passt;
-  // Neues Team in der Stufe des Spielers (wie jemand, der etwa gleich weit ist wie du)
-  function neuesTeam(b, x, y) {
-    const lv = Math.max(3, Math.min(100, Math.round(CAM.maxLv() + Math.random() * 6 - 3)));
-    b.team = teamFuer(Math.random, x, y, false, lv);
-    b.gold = Math.round((60 + lv * 25) * (0.7 + Math.random() * 0.6));
-    b.lv = Math.max.apply(null, b.team.map(m => m.lv));
-  }
-  // Damit man regelmässig auf jemanden stösst: Ist in der Nähe kaum jemand, taucht ein "Spieler" knapp ausserhalb des Bildes auf
-  // (wie ein echter, der gerade vorbeikommt oder online geht). Lieber einer, der von der Stufe her passt. Sonst kommt jemand Neues online
-  // und hat etwa deine Stufe. Nur wenn alle schon online sind, bekommt einer von weit weg ein neues Team.
-  const NAH = 45;
-  function holeNah() {
-    const fern = b => !b.halt && !b.champ && b !== Bots.jaeger && b.z !== 'prov' && Math.hypot(b.x - S.x, b.y - S.y) > 90;
-    const gut = Bots.liste.filter(b => fern(b) && passt(b)), frei = Bots.pool.filter(b => !b.on && !b.champ), rest = Bots.liste.filter(fern);
-    const wahl = l => l[Math.floor(Math.random() * l.length)];
-    const b = gut.length ? wahl(gut) : frei.length ? wahl(frei) : rest.length ? wahl(rest) : null;
-    if (!b) return false;
-    const v = sichtFelder();
-    for (let k = 0; k < 60; k++) {
-      const a = Math.random() * 6.283, r = Math.hypot(v.w / 2, v.h / 2) + 3 + Math.random() * 14, x = S.x + Math.cos(a) * r, y = S.y + Math.sin(a) * r;
-      if (!imBotGebiet(x, y) || !gehbar(x, y) || Welt.istSicher(x, y, 2)) continue;
-      const t = Welt.get(x, y); if (t !== Welt.T.BODEN && t !== Welt.T.GRAS && t !== Welt.T.WEG) continue;
-      if (!b.on) { b.on = true; Bots.liste = Bots.pool.filter(q => q.on); }
-      if (!passt(b)) neuesTeam(b, x, y);
-      auffuellen(b);
-      Object.assign(b, { hx: x, hy: y, x, y, tx: x, ty: y, z: 'ruhe', t: 1 + Math.random() * 2, pfad: null, halt: false, ruheBis: 0, provBis: Date.now() + 4000 + Math.random() * 10000 });
-      return true;
-    }
-    return false;
-  }
-  const sichtFelder = () => S.sicht || { w: 24, h: 15 };
-
   Bots.update = function (dt, now, frei) {
     if (S.modus !== 'welt') return;
-    Bots.nahT = (Bots.nahT === undefined ? 3 : Bots.nahT) - dt;
-    if (Bots.nahT <= 0) { Bots.nahT = 6 + Math.random() * 4; if (Bots.liste.filter(b => Math.hypot(b.x - S.x, b.y - S.y) < NAH).length < 2) holeNah(); }
     Bots.wechselT -= dt; if (Bots.wechselT <= 0) { Bots.wechselT = 5 + Math.random() * 12; wechsel(); }
     for (const b of Bots.liste) {
       const d = Math.hypot(b.x - S.x, b.y - S.y);
-      if (d > 70 && b.z !== 'geht') continue;          // weit weg: stehen sie still (spart Rechenzeit)
+      if (d > 70) { b.geht = false; continue; }        // weit weg: stehen sie still (spart Rechenzeit, sonst müsste dort Gelände entstehen)
       b.geht = false;
       if (b.halt) continue;                             // fordert gerade heraus oder verhandelt: bleibt stehen
       let vx = 0, vy = 0, tempo = 0;
@@ -231,10 +209,10 @@
         if (b.z === 'ruhe' && b.t <= 0) {
           const a = Math.random() * 6.283, r = 2 + Math.random() * 6;
           if (Math.random() < 0.12) {
-            // Wanderer: zieht in eine neue Gegend (manchmal in die Nähe des Spielers oder eines Dorfs) und bleibt dort
-            const nah = Math.random() < 0.4 && d < 90;
-            const cx = nah ? S.x : b.hx, cy = nah ? S.y : b.hy, rr = 8 + Math.random() * (nah ? 20 : 60);
-            [b.hx, b.hy] = imKreis(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+            // Wanderer: zieht in eine neue Gegend in der Nähe (oder zum Ausgang eines Dorfs) und bleibt dort, immer dort, wo seine Stufe hinpasst
+            const dorf = Math.random() < 0.3 && Welt.alleDoerfer().filter(q => Math.hypot(q.x - b.hx, q.y - b.hy) < 120).sort(() => Math.random() - 0.5)[0];
+            if (dorf) [b.hx, b.hy] = [dorf.x + (Math.random() - 0.5) * 16, dorf.rect.y2 + 3 + Math.random() * 4];
+            else { const rr = 8 + Math.random() * 60; [b.hx, b.hy] = imRing(b, b.hx + Math.cos(a) * rr, b.hy + Math.sin(a) * rr); }
             b.tx = b.hx; b.ty = b.hy; b.z = 'geht'; b.t = 40;
           } else {
             [b.tx, b.ty] = imKreis(b.hx + (Math.random() - 0.5) * 2 * WEITE + Math.cos(a) * r * 0.3, b.hy + (Math.random() - 0.5) * 2 * WEITE + Math.sin(a) * r * 0.3);

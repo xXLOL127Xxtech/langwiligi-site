@@ -1,6 +1,46 @@
 [
 {
 "d":"2026-10-30",
+"z":"18:55",
+"a":"Catch a Mob",
+"t":"Die Welt ist eine grosse Insel (Radius 850 Felder), Stufe 100 an der Küste",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"18:55",
+"a":"Catch a Mob",
+"t":"Spieler haben einen festen Platz auf der Insel, passend zu ihrer Stufe, und tauchen nicht mehr neben dir auf. Nach etwa 1 bis 3 Minuten Laufen triffst du jemanden",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"18:55",
+"a":"Catch a Mob",
+"t":"Die 8 Dörfer im Zentrum sind wieder sichere Zonen und werden als besucht erkannt",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"18:55",
+"a":"Catch a Mob",
+"t":"Wer nur das Titelbild öffnet, startet nicht mehr im Meer in der Weltecke",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
 "z":"18:00",
 "a":"Startseite",
 "t":"«Neuste Updates» kurz: nur die drei neusten Einträge mit je zwei Punkten, der Rest im Fenster «Updates»",
