@@ -413,7 +413,7 @@
       const host = UI.openPanel('Weltkarte', 'Orange = Arena (grün = Abzeichen), Rot = Riese, Gelb = besuchtes Dorf, grüne Punkte = Spieler in der Nähe, Weiss = du', true);
       host.innerHTML = '<canvas id="kc" width="560" height="560" style="position:static;width:min(560px,60vh);height:min(560px,60vh);border-radius:8px;image-rendering:pixelated;display:block;margin:auto"></canvas><div class="foot">Plus / Minus oder Klick = Zoom · Schliessen mit M, Esc oder Enter<br>Nur was du schon gesehen hast, ist eingezeichnet.</div>';
       const cv = $('kc'), c = cv.getContext('2d');
-      const SPANNEN = [1024, 2048, Welt.W];
+      const SPANNEN = [512, 1024, 2 * Welt.INSEL + 160];   // ganz herausgezoomt: die ganze Insel
       let si = 0, alive = true;
       const draw = () => {
         if (!alive) return;

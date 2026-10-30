@@ -60,7 +60,9 @@
   }
 
   // ---------- Update ----------
-  function blockiertBox(x, y) { return Welt.blockiert(x - 0.28, y - 0.18, true) || Welt.blockiert(x + 0.28, y - 0.18, true) || Welt.blockiert(x - 0.28, y + 0.3, true) || Welt.blockiert(x + 0.28, y + 0.3, true); }
+  let meerT = 0;
+  function meerHinweis() { const n = Date.now(); if (n - meerT > 6000) { meerT = n; UI.toast('Weiter draussen ist nur noch offenes Meer.', 2500); } }
+  function blockiertBox(x, y) { if (Welt.imMeer(x, y)) { meerHinweis(); return true; } return Welt.blockiert(x - 0.28, y - 0.18, true) || Welt.blockiert(x + 0.28, y - 0.18, true) || Welt.blockiert(x - 0.28, y + 0.3, true) || Welt.blockiert(x + 0.28, y + 0.3, true); }
 
   function update(dt, now, tick) {
     const welt = S.modus === 'welt';
@@ -434,8 +436,17 @@
       S.save.welt = 3; S.save.x += Welt.OFF; S.save.y += Welt.OFF; delete S.save.bots;
       UI.toast('Die Welt ist riesig geworden! Je weiter du hinauslaufst, desto stärker werden die Gegner.', 5500);
     } else if (S.save.welt !== 3) { S.save.welt = 3; const d0 = Welt.dorf[0]; S.save.x = d0.x + 0.5; S.save.y = d0.y + 3.5; S.save.besucht = [0]; UI.toast('Die Welt ist grösser geworden! Du stehst im Startdorf.', 4500); }
+    if (!S.save.insel) {   // die Welt ist jetzt eine Insel: Wer draussen im Meer stand, kommt ins nächste Dorf, verschwundene Dörfer fallen aus dem Wegstein
+      S.save.insel = 1;
+      S.save.besucht = (S.save.besucht || [0]).filter(nr => nr < 8 || Welt.dorfNr(nr) !== Welt.dorf[0]);
+      if (Math.hypot(S.save.x - Welt.START.x, S.save.y - Welt.START.y) > Welt.INSEL - 40) {
+        const d = Welt.dorf.slice().sort((a, b) => Math.hypot(a.x - S.save.x, a.y - S.save.y) - Math.hypot(b.x - S.save.x, b.y - S.save.y))[0];
+        S.save.x = d.x + 0.5; S.save.y = d.y + 3.5;
+      }
+      if (S.save.start) UI.toast('Die Welt ist jetzt eine grosse Insel: Überall auf ihr sind Spieler unterwegs.', 5000);
+    }
     S.x = S.save.x; S.y = S.save.y;
-    if (Welt.blockiert(S.x, S.y, true)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
+    if (Welt.blockiert(S.x, S.y, true) || Welt.imMeer(S.x, S.y)) { const d = Welt.dorf[0]; S.x = d.x + 0.5; S.y = d.y + 3.5; }
     S.x = Math.floor(S.x) + 0.5; S.y = Math.floor(S.y) + 0.5;
     S.letzteKachel = ''; S.schritte = 0; S.imDorf = null; S.sp = null; CAM.Wilde.liste = []; CAM.Wilde.spawnT = 3; CAM.Wilde.fuell = 3;
     CAM.Bots.erzeugen();

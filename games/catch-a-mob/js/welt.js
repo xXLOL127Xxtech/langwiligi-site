@@ -4,8 +4,10 @@
 (function (G) {
   const CAM = G.CAM;
   const W = 640, H = 640;          // das alte Kerngebiet mit den 8 Dörfern (eigene, lokale Koordinaten)
-  // Die Welt ist jetzt riesig (4096 x 4096 Felder) und entsteht beim Laufen aus dem Seed: Der Kern liegt in der Mitte, rundherum werden
-  // Stücke (Chunks) und Gebiete (Regionen) erst erzeugt, wenn du in die Nähe kommst. Jeder Spieler bekommt aus demselben Seed dieselbe Welt.
+  // Die Welt entsteht beim Laufen aus dem Seed: Der Kern liegt in der Mitte, rundherum werden Stücke (Chunks) und Gebiete (Regionen) erst
+  // erzeugt, wenn du in die Nähe kommst. Jeder Spieler bekommt aus demselben Seed dieselbe Welt.
+  // Sie ist eine grosse Insel (Radius etwa 850 Felder, rundherum offenes Meer): gross genug zum Entdecken, aber so, dass man nach
+  // ein bis drei Minuten Laufen auf einen anderen Spieler trifft. Das Raster bleibt 4096 x 4096 (alte Koordinaten gelten weiter).
   const WB = 4096, OFF = 13 * 128, CHS = 64, RG = 128, NR = WB / RG;
   const T = { WASSER: 0, BODEN: 1, GRAS: 2, WEG: 3, BAUM: 4, FELS: 5, LAVA: 6, WAND: 7, TUER: 8, STEIN: 9, RUNE: 10, GRAB: 11, KRISTALL: 12, DACH: 13, SCHILD: 14 };
   const BLOCK = new Uint8Array(16); [T.WASSER, T.FELS, T.LAVA, T.WAND, T.TUER, T.STEIN, T.RUNE, T.GRAB, T.KRISTALL, T.DACH, T.SCHILD].forEach(i => BLOCK[i] = 1);
@@ -13,7 +15,8 @@
   const GEBAEUDE = { 1: { n: 'Heilhaus', wand: '#e9e0d0', dach: '#c0392b' }, 2: { n: 'Fangkugel-Laden', wand: '#c9d4e8', dach: '#2d5fa8' }, 3: { n: 'Mob-Händler', wand: '#e8d9a8', dach: '#a8801f' }, 6: { n: 'Arena', wand: '#ddd0f4', dach: '#6a2fc4' } };
 
   CAM.BIOME.forEach(b => { b.cx = Math.round(b.cx * 1.6); b.cy = Math.round(b.cy * 1.6); b.P = Object.assign({ obst: b.obst }, b.pal); });
-  const Welt = CAM.Welt = { W: WB, H: WB, T, OFF, NR, RG, START, INNEN_R: 20, LV_DIST: 1800, bereit: false, dorf: [], dorfLoad: [], trainer: [], boss: [], arena: [], schilder: new Map(), sicher: [], seed: 1 };
+  const INSEL = 850;    // Radius der Insel
+  const Welt = CAM.Welt = { W: WB, H: WB, T, OFF, NR, RG, START, INSEL, INNEN_R: 20, LV_DIST: INSEL - 60, bereit: false, dorf: [], dorfLoad: [], trainer: [], boss: [], arena: [], schilder: new Map(), sicher: [], seed: 1 };
 
   function lerp(a, b, t) { return a + (b - a) * t; }
   function vn(x, y, sc, seed) {
@@ -49,7 +52,9 @@
     }
     const p = B[bi], hs = CAM.hash2, edge = Math.min(gx, gy, WB - 1 - gx, WB - 1 - gy);
     let t = T.BODEN;
+    const rd = Math.hypot(gx - START.x, gy - START.y);
     if (edge < 4 + vn(x, y, 7, SEED + 3) * 6) t = T.WASSER;
+    else if (rd > INSEL - 20 + (vn(x, y, 60, SEED + 31) - 0.5) * 70 + (vn(x, y, 13, SEED + 32) - 0.5) * 16) { t = T.WASSER; bi = 1; }   // Küste der Insel, dahinter offenes Meer (Farbe der Sonnenküste)
     else if (p.lava && vn(x, y, 11, SEED + 11) > p.lava) t = T.LAVA;
     else if (vn(x, y, 20, SEED + 4) < p.lake) t = T.WASSER;
     else {
@@ -192,7 +197,7 @@
       set(x, y, T.SCHILD, 9); Welt.schilder.set(y * W + x, Math.atan2(nah.y - y, nah.x - x));
     }
     // Kerngebiet in Weltkoordinaten umrechnen (alles bisher war lokal)
-    Welt.dorf.forEach(d => { d.x += OFF; d.y += OFF; d.rect.x1 += OFF; d.rect.x2 += OFF; d.rect.y1 += OFF; d.rect.y2 += OFF; });
+    Welt.dorf.forEach(d => { d.x += OFF; d.y += OFF; });   // d.rect steht auch in Welt.sicher und wird dort verschoben (nicht doppelt)
     Welt.sicher.forEach(r => { r.x1 += OFF; r.x2 += OFF; r.y1 += OFF; r.y2 += OFF; });
     Welt.trainer.forEach(t => { t.x += OFF; t.y += OFF; });
     Welt.boss.forEach(b => { b.x += OFF; b.y += OFF; });
@@ -236,6 +241,8 @@
   };
   Welt.blockiert = (x, y, schwimm) => { const t = Welt.get(Math.floor(x), Math.floor(y)); return BLOCK[t] === 1 && !(schwimm && t === T.WASSER); };
   Welt.istWasser = (x, y) => Welt.get(Math.floor(x), Math.floor(y)) === T.WASSER;
+  // Hinter der Küste kommt nur noch offenes Meer: Dort kann man nicht weiterschwimmen
+  Welt.imMeer = (x, y) => Math.hypot(x - START.x, y - START.y) > INSEL + 60;
 
   // ---------- Gebiete (Regionen, 128 x 128): Dörfer, Trainer und Riesen-Arenen weit draussen ----------
   const regionen = new Map();
@@ -365,8 +372,8 @@
   Welt.wildLevel = function (x, y, r) {
     const d = Math.hypot(x - START.x, y - START.y);
     const n = r !== undefined ? r : CAM.hash2(Math.floor(x), Math.floor(y), 9);
-    // Innen (bis 20 Felder um den Start) Stufe 3 bis 5, damit du am Anfang gewinnen kannst. Danach ab Stufe 6 und ganz langsam mehr:
-    // nach 100 Feldern etwa Stufe 8, nach 500 etwa Stufe 22, nach 1000 etwa Stufe 48, nach 1500 etwa Stufe 79. Stufe 100 gibt es erst ganz aussen (ab 1800 Feldern).
+    // Innen (bis 20 Felder um den Start) Stufe 3 bis 5, damit du am Anfang gewinnen kannst. Danach ab Stufe 6 und langsam mehr:
+    // nach 100 Feldern etwa Stufe 9, nach 300 etwa Stufe 25, nach 500 etwa Stufe 45, nach 700 etwa Stufe 68. Stufe 100 gibt es erst an der Küste (ab 940 Feldern).
     if (d <= Welt.INNEN_R) return 3 + Math.min(2, Math.floor(n * 3));
     const t = Math.min(1, (d - Welt.INNEN_R) / (Welt.LV_DIST - Welt.INNEN_R));
     return Math.max(6, Math.min(100, Math.round(6 + 94 * Math.pow(t, 1.35) + (n - 0.5) * 2)));

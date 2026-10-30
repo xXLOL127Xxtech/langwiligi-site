@@ -1,4 +1,11 @@
 [
+  { "d": "2026-10-30", "t": "Catch a Mob: Insel-Welt mit Spielern überall", "tag": "Update", "p": [
+    "Die Welt ist jetzt eine grosse Insel mit offenem Meer rundherum (etwa 5 Minuten zu Fuss von Küste zu Küste). Stufe 100 gibt es an der Küste",
+    "Alle Spieler der Rangliste haben einen festen Platz auf der Insel, dort, wo die wilden Mobs ihre Stufe haben. Niemand taucht mehr einfach neben dir auf",
+    "Nach etwa 1 bis 3 Minuten Laufen siehst du jemanden auf der Minikarte (grüner Punkt)",
+    "Die 8 Dörfer im Zentrum sind wieder sichere Zonen und werden als besucht erkannt",
+    "Wer nur das Titelbild geöffnet hatte, startete beim nächsten Mal im Meer in der Weltecke. Das ist behoben"
+  ] },
   { "d": "2026-10-30", "t": "Catch a Mob: Spieler in der Nähe und viele Korrekturen", "tag": "Update", "p": [
     "Andere Spieler findest du jetzt wirklich: Die meisten sind rund um den Start unterwegs, und alle paar Sekunden kommt jemand mit ähnlicher Stufe in deine Nähe. Auf der Minikarte und der Weltkarte siehst du sie als grüne Punkte",
     "Duelle sind fair: Ein Spieler kämpft mit so vielen Mobs wie du. Am Ende gibt es nur noch ein Fenster mit Ergebnis und Preis",
