@@ -355,7 +355,7 @@
       else if (r === 2) { await A.botDuell(b, { modus: 'fair', gold: 0, mobA: null, mobB: null, freund: true }, CAM.lvlMitte(S.save.team, kampfTeam(b)), 0); return; }
       else if (r === 3) {
         if (!await UI.confirm('Du überfällst ' + esc(b.name) + ' ohne Vorwarnung. Du schlägst zuerst zu, es gibt keinen Einsatz. Gewinnst du, klaust du ' + (b.gold < 150 ? '70 % seines Goldes' : '100 Gold') + '.<br><small>Stufe ' + b.lv + ' · ' + staerkeText(kampfTeam(b)) + '</small>', 'Überfall bestätigen', 'Überfallen', 'Abbrechen')) continue;
-        b.ruheBis = 0; await UI.banner('ÜBERFALL!'); await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
+        b.ruheBis = 0; S.busy = true; await UI.banner('ÜBERFALL!'); await A.botDuell(b, { modus: 'echt', gold: 0, mobA: null, mobB: null, klau: true }, 0, 0); return;
       } else return;
     }
   };
