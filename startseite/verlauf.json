@@ -1,6 +1,26 @@
 [
 {
 "d":"2026-10-30",
+"z":"18:00",
+"a":"Startseite",
+"t":"«Neuste Updates» kurz: nur die drei neusten Einträge mit je zwei Punkten, der Rest im Fenster «Updates»",
+"tag":"Update",
+"k":"Startseite",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:55",
+"a":"Catch a Mob",
+"t":"Während der Einblendung «ÜBERFALL!» kann man nicht mehr weglaufen oder ein zweites Menü öffnen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
 "z":"17:30",
 "a":"Startseite",
 "t":"Chill-Lounge oben mit eigenem Bild (Dame spielt Schach) und Knopf «Lounge betreten»",

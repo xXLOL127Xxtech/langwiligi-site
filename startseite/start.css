@@ -312,7 +312,10 @@ a.news-all, .news-all { font: 700 14px/1 var(--display); letter-spacing: .08em; 
 .news-e { padding: 14px 16px 12px; border: 1px solid var(--line); border-top: 2px solid var(--pink); background: var(--panel); }
 .news-e:first-child { border-top-color: var(--lime); }
 .news-e ul { margin: 8px 0 0; padding: 0; list-style: none; }
-.news-e li { position: relative; margin: 0 0 4px; padding-left: 18px; font-size: 14.5px; color: #cfcce0; }
+.news-e li { position: relative; margin: 0 0 4px; padding-left: 18px; font-size: 14.5px; color: #cfcce0;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.news-mehr { margin-top: 6px; padding: 0; font: 13px/1 var(--mono); letter-spacing: .06em; color: var(--cyan); background: none; border: 0; cursor: pointer; }
+.news-mehr:hover, .news-mehr:focus-visible { text-decoration: underline; outline: none; }
 .news-e li::before { content: "▸"; position: absolute; left: 0; color: var(--cyan); font-family: var(--mono); }
 
 /* ---------- Fuss mit Marke ---------- */

@@ -287,18 +287,18 @@
           '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
       }).join('');
     }
-    // Neuste Updates unten auf der Seite (drei Einträge) + Links, die das Fenster öffnen
-    var news = $('news-list');
+    // Neuste Updates unten auf der Seite: nur die drei neusten Einträge, je höchstens zwei kurze Punkte. Der Rest steht im Fenster «Updates».
+    var news = $('news-list'), NEWS_N = 3, NEWS_P = 2;
     function kurz() {
-      var tage = [];
-      data.forEach(function (u) { if (tage.indexOf(u.d) < 0) tage.push(u.d); });
-      var jung = tage.slice(0, 3);
-      news.innerHTML = data.filter(function (u) { return jung.indexOf(u.d) >= 0; }).map(function (u) {
+      news.innerHTML = data.slice(0, NEWS_N).map(function (u) {
+        var rest = u.p.length - NEWS_P;
         return '<article class="news-e"><div class="upd-h"><span class="upd-d">' + esc(fmt(u.d)) + '</span>' +
           '<span class="upd-g ' + esc((u.tag || '').toLowerCase()) + '">' + esc(u.tag || 'Update') + '</span></div>' +
-          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></article>';
+          '<div class="upd-t">' + esc(u.t) + '</div><ul>' + u.p.slice(0, NEWS_P).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' +
+          (rest > 0 ? '<button type="button" class="news-mehr" data-upd>+ ' + rest + ' weitere</button>' : '') + '</article>';
       }).join('');
     }
+    news.addEventListener('click', function (e) { if (e.target.closest('[data-upd]')) oeffnen(); });
     function laden() {
       return data ? Promise.resolve(data) : fetch('_start/updates.json?v=' + VER, { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (j) { data = j; return j; });
     }

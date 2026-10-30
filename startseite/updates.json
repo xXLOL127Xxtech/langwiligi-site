@@ -4,11 +4,13 @@
     "Duelle sind fair: Ein Spieler kämpft mit so vielen Mobs wie du. Am Ende gibt es nur noch ein Fenster mit Ergebnis und Preis",
     "Anfängerschutz: Bis Stufe 10 verlierst du bei einer Niederlage gegen wilde Mobs nur 20 % deines Goldes und keine Erfahrung",
     "Menüs: Liegt der Mauszeiger still über einem Fenster, springt die Auswahl nicht mehr dorthin. Enter wählt immer, was markiert war (z. B. «Ablehnen» bei einer Herausforderung)",
+    "Während der Einblendung «ÜBERFALL!» ist die Welt gesperrt, man kann nicht mehr weglaufen oder ein zweites Menü öffnen",
     "Kleinigkeiten: richtige Team-Grösse im Menü, Zurückkaufen nur mit genug Gold und Platz, Wegweiser kennt alle Dörfer, «Alle heilen» füllt dein Team aus dem Zwinger auf, die Anleitung erklärt Spieler und Freundschaftskämpfe"
   ] },
   { "d": "2026-10-30", "t": "Chill-Lounge gut sichtbar", "tag": "Update", "p": [
     "Die Chill-Lounge hat oben auf der Startseite einen eigenen Eingang mit Bild: eine ältere Dame spielt am Abend gemütlich Schach gegen ihre Katze",
-    "Ein Klick auf «Lounge betreten» zeigt nur die ruhigen Spiele und springt gleich zu ihnen, «Alle Spiele zeigen» bringt dich zurück"
+    "Ein Klick auf «Lounge betreten» zeigt nur die ruhigen Spiele und springt gleich zu ihnen, «Alle Spiele zeigen» bringt dich zurück",
+    "«Neuste Updates» unten auf der Startseite ist jetzt kurz: nur die drei neusten Einträge, alles Weitere im Fenster «Updates»"
   ] },
   { "d": "2026-10-29", "t": "Laptop-Steuerung und Tab-Wechsel", "tag": "Update", "p": [
     "Katapult-Krieg: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
