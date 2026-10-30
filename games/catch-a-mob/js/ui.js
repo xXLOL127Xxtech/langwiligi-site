@@ -25,6 +25,12 @@
   document.addEventListener('keyup', e => { UI.keysDown[e.key.toLowerCase()] = false; });
   G.addEventListener('blur', () => { UI.keysDown = {}; });
 
+  // Die Auswahl folgt dem Mauszeiger nur, wenn er wirklich bewegt wird. Öffnet sich ein Menü unter dem ruhenden Zeiger
+  // (Touchpad liegt still), bleibt die vorgesehene Auswahl stehen, sonst würde Enter etwas anderes wählen als gedacht.
+  UI.mausT = 0;
+  document.addEventListener('mousemove', e => { if (e.movementX || e.movementY) UI.mausT = performance.now(); }, true);
+  UI.mausSeit = t => UI.mausT > t;
+
   // ---------- Erklärung beim Darüberfahren (Elemente mit data-tip) ----------
   const tip = document.createElement('div'); tip.id = 'tip'; tip.className = 'hidden'; document.body.appendChild(tip);
   document.addEventListener('mouseover', e => {
@@ -59,13 +65,14 @@
       const list = document.createElement('div'); list.className = 'list' + (opt.cols === 2 ? ' two' : '');
       host.appendChild(list);
       let sel = Math.max(0, Math.min(items.length - 1, opt.start || 0));
+      const t0 = performance.now();
       if (items[sel] && items[sel].disabled) sel = Math.max(0, items.findIndex(x => !x.disabled));
       const btns = items.map((it, i) => {
         const b = document.createElement('button');
         b.className = 'it' + (it.disabled ? ' dis' : '');
         b.innerHTML = '<span class="lb">' + (opt.numbers !== false && i < 9 && items.length <= 9 ? '<small style="color:#8e89a8">' + (i + 1) + '</small> ' : '') + (it.ico === undefined ? (CAM.Icons ? CAM.Icons.fuerLabel(it.label) : '') : it.ico) + it.label + '</span>' + (it.sub ? '<span class="sb">' + it.sub + '</span>' : '');
         b.onclick = () => { if (!it.disabled) { UI.snd('klick'); done(i); } };
-        b.onmouseenter = () => setSel(i);
+        b.onmouseenter = b.onmousemove = () => { if (sel !== i && UI.mausSeit(t0)) setSel(i); };
         list.appendChild(b); return b;
       });
       if (opt.after) { const f = document.createElement('div'); f.className = 'foot'; f.innerHTML = opt.after; host.appendChild(f); }

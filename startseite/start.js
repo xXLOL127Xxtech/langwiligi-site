@@ -79,7 +79,10 @@
   });
 
   // Chill-Lounge: ein Klick zeigt nur die ruhigen Spiele, ein zweiter alle
-  $('lounge-btn').addEventListener('click', function () { typ = typ === 'chill' ? 'alle' : 'chill'; if (typ === 'chill') filter = 'alle'; save('lw-typ', typ); save('lw-filter', filter); apply(true); });
+  $('lounge-btn').addEventListener('click', function () {
+    typ = typ === 'chill' ? 'alle' : 'chill'; if (typ === 'chill') filter = 'alle'; save('lw-typ', typ); save('lw-filter', filter); apply(true);
+    if (typ === 'chill') $('lounge').scrollIntoView({ behavior: 'smooth', block: 'start' });   // gleich zu den ruhigen Spielen
+  });
   $('lounge-close').addEventListener('click', function () { typ = 'alle'; save('lw-typ', typ); apply(true); });
 
   // Markierung, Anzahl pro Eintrag und Zusammenfassung

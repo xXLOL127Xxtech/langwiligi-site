@@ -1,5 +1,85 @@
 [
 {
+"d":"2026-10-30",
+"z":"17:30",
+"a":"Startseite",
+"t":"Chill-Lounge oben mit eigenem Bild (Dame spielt Schach) und Knopf «Lounge betreten»",
+"tag":"Update",
+"k":"Startseite",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:28",
+"a":"Catch a Mob",
+"t":"Anleitung erklärt Spieler, Freundschaftskampf und Anfängerschutz",
+"tag":"Update",
+"k":"Doku",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:20",
+"a":"Catch a Mob",
+"t":"Menüs: Auswahl springt nicht mehr zum ruhenden Mauszeiger, Enter wählt immer das Vorgesehene",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:15",
+"a":"Catch a Mob",
+"t":"Anfängerschutz: bis Stufe 10 nur 20 % Gold weg bei einer Niederlage, keine Erfahrung",
+"tag":"Update",
+"k":"Balance",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:12",
+"a":"Catch a Mob",
+"t":"Duelle gegen Spieler: beide Seiten kämpfen mit gleich vielen Mobs, nur ein Fenster am Ende",
+"tag":"Update",
+"k":"Balance",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:10",
+"a":"Catch a Mob",
+"t":"Spieler sind jetzt wirklich in deiner Nähe: viele rund um den Start, passende Stufe, grüne Punkte auf Mini- und Weltkarte",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:05",
+"a":"Catch a Mob",
+"t":"Kleinigkeiten: Team-Anzeige im Menü (3 Plätze), Zurückkaufen prüft Gold und Platz, Wegweiser kennt alle Dörfer, «Alle heilen» füllt das Team aus dem Zwinger auf",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
+"d":"2026-10-30",
+"z":"17:05",
+"a":"Catch a Mob",
+"t":"Gespeicherte Einstellung der Rangliste heisst wie das Spiel",
+"tag":"Intern",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"ecstatic-noether-kkf2bh"
+},
+{
 "d":"2026-10-29",
 "z":"21:12",
 "a":"Dead Maze",

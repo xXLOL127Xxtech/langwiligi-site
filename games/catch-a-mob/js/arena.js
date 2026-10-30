@@ -8,7 +8,7 @@
 
   // ---------- Wegweiser ----------
   A.wegweiser = async function () {
-    const l = Welt.dorf.slice().sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y)).slice(0, 2);
+    const l = Welt.alleDoerfer().sort((a, b) => Math.hypot(a.x - S.x, a.y - S.y) - Math.hypot(b.x - S.x, b.y - S.y)).slice(0, 2);
     const zeilen = l.map((d, i) => { const dx = d.x - S.x, dy = d.y - S.y, r = richtung(dx, dy); return '<p>' + (i ? 'Danach: ' : '<b>Nächstes Dorf:</b> ') + '<b>' + esc(d.name) + '</b><br>' + Math.round(Math.hypot(dx, dy)) + ' Felder nach ' + r[0] + ' <span style="font-size:22px">' + r[1] + '</span></p>'; });
     await UI.info(zeilen.join(''), 'Wegweiser');
   };

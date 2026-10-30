@@ -12,8 +12,9 @@
   document.body.appendChild(rang); document.body.appendChild(mini);
   const tab = document.createElement('button'); tab.id = 'rangTab'; tab.className = 'hidden'; tab.title = 'Rangliste öffnen (R)'; tab.innerHTML = Icons.html('trophy', 16) + 'Rangliste <kbd style="font-size:10px">R</kbd>';
   document.body.appendChild(tab);
-  let zu = false; try { zu = localStorage.getItem('cam-rang-zu') === '1'; } catch (e) { /* ohne Speicher */ }
-  Seite.umschalten = () => { zu = !zu; try { localStorage.setItem('cam-rang-zu', zu ? '1' : '0'); } catch (e) { /* ohne Speicher */ } tR = 0; Seite.zeigen(Seite.an, performance.now()); };
+  const ZU_KEY = 'catch-a-mob-rang-zu';
+  let zu = false; try { const alt = localStorage.getItem('cam-rang-zu'); if (alt !== null) { localStorage.setItem(ZU_KEY, alt); localStorage.removeItem('cam-rang-zu'); } zu = localStorage.getItem(ZU_KEY) === '1'; } catch (e) { /* ohne Speicher */ }
+  Seite.umschalten = () => { zu = !zu; try { localStorage.setItem(ZU_KEY, zu ? '1' : '0'); } catch (e) { /* ohne Speicher */ } tR = 0; Seite.zeigen(Seite.an, performance.now()); };
   tab.onclick = Seite.umschalten;
   rang.addEventListener('click', e => { if (e.target.closest && e.target.closest('.x')) Seite.umschalten(); });
   const cv = mini.querySelector('canvas'), c = cv.getContext('2d');
@@ -56,6 +57,7 @@
     c.drawImage(miniBild, 0, 0, MINI, MINI);
     const px = x => (x - x0) * sc, py = y => (y - y0) * sc, drin = (x, y) => x >= x0 && y >= y0 && x < x0 + RADIUS * 2 && y < y0 + RADIUS * 2;
     for (const d of Welt.alleDoerfer()) if (drin(d.x, d.y)) { c.fillStyle = '#ff9f1c'; c.fillRect(px(d.x) - 3, py(d.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(d.x) - 3, py(d.y) - 3, 6, 6); }
+    for (const b of CAM.Bots.liste) if (drin(b.x, b.y)) { c.fillStyle = '#5fd38a'; c.fillRect(px(b.x) - 3, py(b.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(b.x) - 3, py(b.y) - 3, 6, 6); }
     for (const p of S.peers.values()) if (drin(p.x, p.y)) { c.fillStyle = (S.pt >= 0 && p.pt === S.pt) ? '#ffd54a' : '#5fd38a'; c.fillRect(px(p.x) - 3, py(p.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(p.x) - 3, py(p.y) - 3, 6, 6); }
     c.fillStyle = '#fff'; c.fillRect(px(S.x) - 3, py(S.y) - 3, 6, 6); c.strokeStyle = '#000'; c.strokeRect(px(S.x) - 3, py(S.y) - 3, 6, 6);
   }

@@ -341,7 +341,7 @@ fi
 
 # Startseite aus der Vorlage zusammensetzen
 mkdir -p "$BUILD/_start"
-cp "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" "$BUILD/_start/"
+cp "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" "$START/lounge.png" "$BUILD/_start/"
 # Logo im Browser-Tab (favicon.ico gilt auch für alle Spiele, die kein eigenes Symbol haben).
 # Eigenes Bild: startseite/logo.png (quadratisch, z.B. 512 × 512) hochladen, dann wird es statt favicon.svg verwendet.
 if [ -f "$START/logo.png" ]; then
@@ -362,7 +362,7 @@ fi
 # Vorschaubild für geteilte Links (og:image); neu bauen mit: node tools/vorschaubild/bauen.js
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
-ver="$(cat "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" | cksum | cut -d' ' -f1)"
+ver="$(cat "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" "$START/lounge.png" | cksum | cut -d' ' -f1)"
 CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" FREUNDEV="$FREUNDE_V" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
