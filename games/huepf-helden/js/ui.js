@@ -36,6 +36,41 @@ UI.addInventory = kind => { if (Prog.save) Prog.save.inv[kind] = Math.min(20, (P
 $('bSpielen').onclick = () => { audioUnlock(); showSlots(); };
 $('bHilfe').onclick = () => show('hilfe');
 $('bHilfeZurueck').onclick = () => show('titel');
+$('bRang').onclick = () => { show('rangliste'); Rang.laden($('rangListe')); };
+$('bRangZurueck').onclick = () => show('titel');
+
+// ---------------------------------------------------------------------
+//  Online-Rangliste: Fortschritt des besten Spielstands
+// ---------------------------------------------------------------------
+const Rang = {
+  hub: () => (window.GameHub && window.GameHub.highscores ? window.GameHub : null),
+  opts: { cols: [['score', 'Punkte']], empty: 'Noch keine Einträge – sei der Erste!' },
+  // geschafftes Level 100, geheimer Ausgang 150, Sternmünze 50
+  wert(save) {
+    let punkte = 0, schritte = 0;
+    for (const id in (save && save.done) || {}) {
+      const r = save.done[id], st = (r.stars || []).filter(Boolean).length;
+      punkte += (r.c ? 100 : 0) + (r.s ? 150 : 0) + st * 50;
+      schritte += (r.c || r.s ? 1 : 0) + st;
+    }
+    return { punkte, schritte };
+  },
+  laden(el) {
+    const H = this.hub();
+    if (!H) { el.innerHTML = '<div class="lw-empty">Die Online-Rangliste gibt es auf langwiligi.site.</div>'; return; }
+    el.innerHTML = '<div class="lw-empty">Lade Rangliste …</div>';
+    H.highscores(GAME_ID).then(rows => H.renderScores(el, rows, H.getName(), this.opts),
+      () => { el.innerHTML = '<div class="lw-empty">Rangliste gerade nicht erreichbar.</div>'; });
+  },
+  melden(info) {
+    const H = this.hub(), w = this.wert(Prog.save);
+    info.innerHTML = '';
+    if (!H || w.punkte <= 0) return;
+    H.submitScore(GAME_ID, H.getName(), Math.min(10000000, w.punkte), { jumps: w.schritte }).then(r => {
+      info.innerHTML = `🏆 Spielstand: <b>${w.punkte}</b> Punkte` + (r && r.rank ? ` · Rangliste: Platz <b>${r.rank}</b> von ${r.total}` : '');
+    }, () => {});
+  },
+};
 $('figInfo').innerHTML = CHARS.map(c => `<div style="--f:${c.color}"><span><b>${c.name}</b> – ${c.desc}</span></div>`).join('');
 $('itemInfo').innerHTML = Object.values(ITEM_INFO).map(i => `<div><span><b style="color:#ffd23a">${i.name}</b> – ${i.desc}</span></div>`).join('');
 
@@ -222,6 +257,7 @@ UI.levelClear = how => {
   const wasW9 = Prog.save.unlocked.includes(9), unlockedBefore = Prog.save.unlocked.slice();
   const secretBefore = Prog.save.done[nd.id] && Prog.save.done[nd.id].s;
   Prog.levelDone(nd.id, how === 'secret' ? 'secret' : 'normal', G.starGot);
+  Rang.melden($('ergRang'));
   UI.after = { nd, how, newSecret: how === 'secret' && !secretBefore, newW9: !wasW9 && Prog.save.unlocked.includes(9), newWorlds: Prog.save.unlocked.filter(w => !unlockedBefore.includes(w) && w !== 9) };
   UI.autosave();
   setTimeout(() => {
@@ -443,6 +479,7 @@ keyListeners.push(code => {
   if (UI.screen === 'lobby') return lobbyKey(code);
   if (UI.screen === 'ergebnis' && isJump(code)) { nextFromResults(); pressed.delete(code); return true; }
   if (UI.screen === 'hilfe' && code === 'Escape') { show('titel'); return true; }
+  if (UI.screen === 'rangliste' && code === 'Escape') { show('titel'); return true; }
   if (UI.screen === 'slots' && code === 'Escape') { show('titel'); return true; }
   if (G.mode === 'map' && UI.screen === null) {
     if (overOpen('frage')) {

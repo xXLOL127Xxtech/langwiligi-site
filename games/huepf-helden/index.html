@@ -46,6 +46,7 @@ h3{font-family:var(--fn);font-weight:400;margin:14px 0 6px;font-size:19px;letter
 .seg button:hover,.seg button:focus-visible{background:rgba(255,255,255,.18);box-shadow:0 0 0 3px var(--gold)}
 .seg button.on{background:var(--acc);color:#4a2600;box-shadow:0 3px 0 var(--acc-d)}
 .hinweis{font-size:13px;opacity:.75;text-align:center;margin-top:10px;line-height:1.6}
+#rangListe .lw-board{font-size:15px}#rangListe .lw-board tr.lw-me td{color:var(--gold)}#ergRang:empty{display:none}#ergRang b{color:var(--gold)}
 /* Lobby */
 .plaetze{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .pkarte{position:relative;border-radius:20px;padding:10px 8px 12px;background:rgba(255,255,255,.05);border:3px dashed rgba(255,255,255,.18);text-align:center;transition:transform .15s,border-color .2s;cursor:pointer;min-height:290px;display:flex;flex-direction:column;align-items:center}
@@ -141,6 +142,7 @@ input.txt:focus{border-color:var(--gold)}
     <canvas id="titelHelden" width="920" height="260"></canvas>
     <button class="btn haupt" id="bSpielen" autofocus>Spielen</button>
     <button class="btn" id="bHilfe">Steuerung und Tipps</button>
+    <button class="btn" id="bRang">🏆 Rangliste</button>
     <p class="hinweis">1 bis 2 Spieler an einer Tastatur, Spieler 3 und 4 mit Gamepads · der Fortschritt wird gespeichert</p>
   </div>
 </div>
@@ -173,11 +175,21 @@ input.txt:focus{border-color:var(--gold)}
   </div>
 </div>
 
+<div id="rangliste" class="screen hidden">
+  <div class="panel">
+    <h2>Rangliste</h2>
+    <p class="hinweis" style="margin-top:0">Gewertet wird der beste Spielstand: geschafftes Level 100 Punkte, geheimer Ausgang 150, jede Sternmünze 50.</p>
+    <div id="rangListe"></div>
+    <button class="btn haupt" id="bRangZurueck" style="margin-top:14px">Zurück</button>
+  </div>
+</div>
+
 <div id="ergebnis" class="screen hidden">
   <div class="panel breit">
     <h2 id="ergTitel">Geschafft!</h2>
     <div class="sterne" id="ergSterne"></div>
     <div class="ekarten" id="ekarten"></div>
+    <p class="hinweis" id="ergRang"></p>
     <button class="btn haupt" id="bWeiter" style="margin-top:14px">Weiter</button>
   </div>
 </div>
@@ -272,6 +284,7 @@ input.txt:focus{border-color:var(--gold)}
   </div>
 </div>
 
+<script src="../_shared/hub.js"></script>
 <script src="js/basis.js"></script>
 <script src="js/themen.js"></script>
 <script src="js/generator.js"></script>

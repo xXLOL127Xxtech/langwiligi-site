@@ -154,6 +154,7 @@ h2 { color:#173a1a; font-size:32px; }
 input.feld { background:#fff; color:#173a1a; border:2px solid #2e8b3d; border-radius:6px; box-shadow:inset 0 2px 0 rgba(0,0,0,.08); }
 .code { color:#c0392b; text-shadow:none; }
 .panel .lw-me, .panel table.karte th.jetzt { color:#b45f00; font-weight:700; }
+.panel .lw-board tr.lw-me td { color:#b45f00; }
 .panel table.karte td.eagle { color:#a87000; }
 .panel table.karte td.birdie { color:#1e7a34; }
 .panel table.karte td.bogey { color:#c0452e; }
@@ -180,7 +181,7 @@ input.feld { background:#fff; color:#173a1a; border:2px solid #2e8b3d; border-ra
       <button class="btn" id="mSplit">2 Spieler · Splitscreen</button>
     </div>
     <button class="btn" id="mOnline">Online mit Freunden <small>(bis 8, Geister-Bälle)</small></button>
-    <button class="btn" id="mHilfe">Steuerung & Tipps</button>
+    <div class="reihe"><button class="btn" id="mHilfe">Steuerung & Tipps</button><button class="btn" id="mRang">🏆 Solo-Rangliste</button></div>
     <div class="reihe">
       <button class="btn klein-btn" id="tGrafik">Grafik</button>
       <button class="btn klein-btn" id="tTon">Ton</button>
@@ -226,6 +227,16 @@ input.feld { background:#fff; color:#173a1a; border:2px solid #2e8b3d; border-ra
     <button class="btn haupt" id="lStart">Runde starten</button>
     <div id="lBoard"></div>
     <button class="btn" id="lVerlassen">Verlassen</button>
+  </div>
+</div>
+
+<!-- Solo-Rangliste -->
+<div class="screen dim hidden" id="sRang">
+  <div class="panel">
+    <h2>Solo-Rangliste</h2>
+    <p class="sub">Punkte pro Bahn wie beim Stableford: Par = 2, Birdie = 3, Eagle = 4, Bogey = 1. Gezählt wird deine beste Solo-Runde.</p>
+    <div id="rBoard"></div>
+    <button class="btn haupt" id="rZurueck">Zurück</button>
   </div>
 </div>
 
@@ -279,6 +290,7 @@ input.feld { background:#fff; color:#173a1a; border:2px solid #2e8b3d; border-ra
     <div id="ePodest"></div>
     <div class="kWrap" id="eKarte"></div>
     <div class="status" id="eInfo"></div>
+    <div id="eRang" class="hidden"><div class="status" id="eRangInfo"></div><div id="eRangListe"></div></div>
     <div id="eBoard" class="hidden"></div>
     <div class="reihe"><button class="btn haupt" id="eNochmal">Nochmal (neue Bahnen)</button><button class="btn" id="eMenue">Menü</button></div>
   </div>

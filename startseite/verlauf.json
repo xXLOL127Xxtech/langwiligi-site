@@ -1,5 +1,45 @@
 [
 {
+"d":"2026-10-31",
+"z":"12:40",
+"a":"Dead Maze",
+"t":"Online-Rangliste mit Namen im Startmenü und nach dem Game Over",
+"tag":"Neu",
+"k":"Oberfläche",
+"pr":null,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
+"z":"12:40",
+"a":"Golf-Tour",
+"t":"Solo-Rangliste mit Stableford-Punkten und Schlägen",
+"tag":"Neu",
+"k":"Oberfläche",
+"pr":null,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
+"z":"12:40",
+"a":"Federsturm",
+"t":"Rangliste der Solo-Kampagne (Summe aller Bestwerte, Sterne)",
+"tag":"Neu",
+"k":"Oberfläche",
+"pr":null,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
+"z":"12:40",
+"a":"Hüpf-Helden",
+"t":"Rangliste für den besten Spielstand",
+"tag":"Neu",
+"k":"Oberfläche",
+"pr":null,
+"b":"amazing-tesla-4ac8bl"
+},
+{
 "d":"2026-10-30",
 "z":"18:55",
 "a":"Catch a Mob",

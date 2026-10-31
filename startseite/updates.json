@@ -1,4 +1,10 @@
 [
+  { "d": "2026-10-31", "t": "Ranglisten für mehr Solo-Spiele", "tag": "Neu", "p": [
+    "Dead Maze: Online-Rangliste im Startmenü und nach dem Game Over. Die Wertung ist (Welle × 100 + Abschüsse) mal Schwierigkeit",
+    "Golf-Tour: Solo-Rangliste mit Punkten wie beim Stableford (Par = 2, Birdie = 3, Eagle = 4) und Schlägen, im Menü und am Ende der Runde",
+    "Federsturm: Rangliste der Solo-Kampagne mit der Summe aller Level-Bestwerte und den Sternen",
+    "Hüpf-Helden: Rangliste für den besten Spielstand (geschaffte Level, Geheimwege und Sternmünzen)"
+  ] },
   { "d": "2026-10-30", "t": "Catch a Mob: Insel-Welt mit Spielern überall", "tag": "Update", "p": [
     "Die Welt ist jetzt eine grosse Insel mit offenem Meer rundherum (etwa 5 Minuten zu Fuss von Küste zu Küste). Stufe 100 gibt es an der Küste",
     "Alle Spieler der Rangliste haben einen festen Platz auf der Insel, dort, wo die wilden Mobs ihre Stufe haben. Niemand taucht mehr einfach neben dir auf",

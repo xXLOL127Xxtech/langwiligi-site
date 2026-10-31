@@ -91,6 +91,8 @@ kbd{background:#2b3244;border-radius:5px;padding:1px 6px;font-size:12.5px;border
 #resStars span.on{color:#ffd23f;transform:scale(1);text-shadow:0 0 18px rgba(255,210,63,.6)}
 #resScore{font-family:var(--fn);font-size:36px}
 #resInfo{color:#d2d8e6;font-size:15px;margin:4px 0 10px}
+#resRank{color:#d2d8e6;font-size:14px;margin:-4px 0 10px}#resRank:empty{display:none}#resRank b{color:var(--gold)}
+#rankList{text-align:left;min-width:min(420px,80vw)}#rankList .lw-board{font-size:15px}#rankList .lw-board tr.lw-me td{color:var(--gold)}
 .duelRes{display:flex;gap:10px;justify-content:center;margin:10px 0}
 .duelRes div{flex:1;border-radius:14px;padding:10px;background:var(--panel2)}
 .duelRes div.w{box-shadow:0 0 0 3px var(--gold)}
@@ -135,6 +137,7 @@ kbd{background:#2b3244;border-radius:5px;padding:1px 6px;font-size:12.5px;border
     <div class="row">
       <button class="btn" id="bBirds">Vogelschar</button>
       <button class="btn" id="bHelp">Anleitung</button>
+      <button class="btn" id="bRank">Rangliste</button>
     </div>
     <div class="total" id="totalStars"></div>
   </div>
@@ -178,6 +181,15 @@ kbd{background:#2b3244;border-radius:5px;padding:1px 6px;font-size:12.5px;border
   </div>
 </div>
 
+<div id="scrRank" class="screen hidden">
+  <div class="box" style="width:520px">
+    <h2>Rangliste</h2>
+    <div class="sub" style="margin:0 0 8px">Solo-Kampagne: Summe deiner Bestwerte aus allen Leveln.</div>
+    <div id="rankList"></div>
+    <div class="row" style="margin-top:8px"><button class="btn" id="rankBack">Zurück</button></div>
+  </div>
+</div>
+
 <div id="scrPause" class="screen dim hidden">
   <div class="box" style="width:380px">
     <h2>Pause</h2>
@@ -195,6 +207,7 @@ kbd{background:#2b3244;border-radius:5px;padding:1px 6px;font-size:12.5px;border
     <div id="resDuel" class="duelRes hidden"></div>
     <div id="resScore">0</div>
     <div id="resInfo"></div>
+    <div id="resRank"></div>
     <button class="btn main" id="rNext">Weiter</button>
     <div class="row">
       <button class="btn" id="rAgain">Nochmal</button>
@@ -1836,7 +1849,7 @@ function keyAimStep(dt) {
 window.addEventListener('keydown', e => {
   Sfx.init();
   if (screenOpen === 'new' && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); $('newOk').click(); return; }
-  if (e.code === 'Escape') { if (screenOpen === 'game') pauseGame(); else if (screenOpen === 'pause') resumeGame(); else if (['levels', 'birds', 'help'].includes(screenOpen)) showMenu(); return; }
+  if (e.code === 'Escape') { if (screenOpen === 'game') pauseGame(); else if (screenOpen === 'pause') resumeGame(); else if (['levels', 'birds', 'help', 'rank'].includes(screenOpen)) showMenu(); return; }
   if (screenOpen !== 'game' || !G || G.demo) return;
   keys[e.code] = true;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -1864,11 +1877,11 @@ window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; }
 // =====================================================================
 // HUD und Bildschirme
 // =====================================================================
-const screens = { menu: 'scrMenu', levels: 'scrLevels', birds: 'scrBirds', help: 'scrHelp', pause: 'scrPause', result: 'scrResult', new: 'scrNew' };
+const screens = { menu: 'scrMenu', levels: 'scrLevels', birds: 'scrBirds', help: 'scrHelp', rank: 'scrRank', pause: 'scrPause', result: 'scrResult', new: 'scrNew' };
 function show(name) {
   for (const k in screens) $(screens[k]).classList.toggle('hidden', k !== name);
   screenOpen = name || 'game';
-  $('hud').classList.toggle('hidden', !(G && !G.demo) || name === 'menu' || name === 'levels' || name === 'birds' || name === 'help');
+  $('hud').classList.toggle('hidden', !(G && !G.demo) || name === 'menu' || name === 'levels' || name === 'birds' || name === 'help' || name === 'rank');
 }
 let hintTimer = 0;
 function updateHud() {
@@ -1947,7 +1960,37 @@ function starsFor(g) {
   const sc = g.score[0] + g.score[1];
   return sc >= g.stars[2] ? 3 : sc >= g.stars[1] ? 2 : 1;
 }
+// Online-Rangliste der Solo-Kampagne: Summe aller Level-Bestwerte.
+// Der Server nimmt höchstens 450 Punkte pro Fortschritts-Schritt an, darum wird in Hunderterpunkten gemeldet.
+const Rang = {
+  hub: () => (window.GameHub && window.GameHub.highscores ? window.GameHub : null),
+  opts: { cols: [['punkte', 'Punkte'], ['jumps', 'Sterne']], empty: 'Noch keine Einträge – sei der Erste!' },
+  wert() {
+    let total = 0, sterne = 0;
+    for (let i = 0; i < MODES.solo.list.length; i++) { total += save.solo.hs[i] || 0; sterne += save.solo.st[i] || 0; }
+    return { total, sterne };
+  },
+  zeigen(el, rows, limit) {
+    const H = this.hub();
+    H.renderScores(el, rows.map(r => Object.assign({}, r, { punkte: fmt(r.score * 100) })), H.getName(), Object.assign({ limit }, this.opts));
+  },
+  laden(el) {
+    const H = this.hub();
+    if (!H) { el.innerHTML = '<div class="lw-empty">Die Online-Rangliste gibt es auf langwiligi.site.</div>'; return; }
+    el.innerHTML = '<div class="lw-empty">Lade Rangliste …</div>';
+    H.highscores(GAME_ID).then(rows => this.zeigen(el, rows, 10), () => { el.innerHTML = '<div class="lw-empty">Rangliste gerade nicht erreichbar.</div>'; });
+  },
+  melden(info) {
+    const H = this.hub(), w = this.wert();
+    if (!H || w.total <= 0) return;
+    const score = Math.min(Math.round(w.total / 100), (w.sterne + 1) * 450);
+    H.submitScore(GAME_ID, H.getName(), score, { jumps: w.sterne }).then(r => {
+      info.innerHTML = 'Kampagne gesamt: <b>' + fmt(w.total) + '</b>' + (r && r.rank ? ' · Rangliste: Platz <b>' + r.rank + '</b> von ' + r.total : '');
+    }, () => {});
+  },
+};
 function showResult(g) {
+  $('resRank').innerHTML = '';
   if (window.LW && LW.rundeFertig) { try { LW.rundeFertig(); } catch (e) {} }
   const m = save[g.mode];
   const box = $('resBox');
@@ -1976,6 +2019,7 @@ function showResult(g) {
     if (g.won) {
       $('resInfo').textContent = (sc > best ? 'Neuer Bestwert! ' : 'Bestwert: ' + fmt(best) + ' · ') + 'Sterne ab ' + fmt(g.stars[1]) + ' / ' + fmt(g.stars[2]) + ' Punkten';
       m.st[g.idx] = Math.max(m.st[g.idx] || 0, st); m.hs[g.idx] = Math.max(best, sc); store();
+      if (g.mode === 'solo') Rang.melden($('resRank'));
       Sfx.win();
       for (let i = 0; i < st; i++) setTimeout(() => { stars[i].classList.add('on'); Sfx.star(i); }, 350 + i * 380);
     } else {
@@ -2038,6 +2082,8 @@ document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { Sfx.in
 $('lvBack').onclick = showMenu;
 $('bHelp').onclick = () => show('help');
 $('helpBack').onclick = showMenu;
+$('bRank').onclick = () => { show('rank'); Rang.laden($('rankList')); };
+$('rankBack').onclick = showMenu;
 $('bBirds').onclick = () => {
   const grid = $('birdGrid'); grid.innerHTML = '';
   BIRD_ORDER.forEach(t => {

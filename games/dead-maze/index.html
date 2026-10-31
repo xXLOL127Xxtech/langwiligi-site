@@ -131,6 +131,8 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 .row{display:flex;flex-wrap:wrap;gap:8px}
 .row .btn{flex:1;justify-content:center}
 .best{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);margin:0}
+.rang{border-top:1px solid var(--line);padding-top:10px}.rang h3{margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rang .rinfo{font-family:var(--f-mono);font-size:12.5px;margin:0 0 6px}.rang .lw-board{font-size:13px}.rang .lw-board tr.lw-me td{color:#e9a72a}
 .ostats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .ostats div{background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
 
@@ -187,6 +189,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 </div>
 <div class="modal" id="modal" hidden><div class="card" id="card"></div></div>
 
+<script src="../_shared/hub.js"></script>
 <script>
 (() => {
 'use strict';
@@ -1208,6 +1211,44 @@ function gameOver(){
   S.prevBest = prev;
   if (S.record) { best[S.diffKey] = { wave:S.wave, kills:S.kills }; store.set('deadmaze.best', best); }
   Sound.play('over');
+  rangMelden();
+}
+
+/* ---------------- Online-Rangliste ---------------- */
+// Wertung = (Welle × 100 + Abschüsse) × Faktor der Schwierigkeit
+const GAME_ID = 'dead-maze';
+const HUB = window.GameHub && window.GameHub.highscores ? window.GameHub : null;
+const DIFF_FAKTOR = { easy:0.6, normal:1, hard:1.5 };
+const RANG_OPTS = { cols:[['score', 'Wertung']], empty:'Noch keine Einträge – sei der Erste!' };
+const wertung = () => Math.round((S.wave * 100 + S.kills) * (DIFF_FAKTOR[S.diffKey] || 1));
+let rangStand = null;
+function rangHTML(info){ return `<div class="rang"><h3>🏆 Rangliste</h3>${info ? `<p class="rinfo">${info}</p>` : ''}<div class="rliste"></div></div>`; }
+function rangZeigen(el, rows, limit){
+  if (!el) return;
+  if (!HUB) { el.innerHTML = '<div class="lw-empty">Die Online-Rangliste gibt es auf langwiligi.site.</div>'; return; }
+  if (!rows) { el.innerHTML = '<div class="lw-empty">Rangliste gerade nicht erreichbar.</div>'; return; }
+  HUB.renderScores(el, rows, HUB.getName(), Object.assign({ limit }, RANG_OPTS));
+}
+function rangLaden(el, limit){
+  if (!HUB) return rangZeigen(el, null, limit);
+  el.innerHTML = '<div class="lw-empty">Lade Rangliste …</div>';
+  HUB.highscores(GAME_ID).then(rows => rangZeigen(el, rows, limit), () => rangZeigen(el, null, limit));
+}
+function rangMelden(){
+  const w = wertung();
+  rangStand = { w, res:null, fertig:!HUB || w <= 0 };
+  if (rangStand.fertig) return;
+  const st = rangStand;
+  HUB.submitScore(GAME_ID, HUB.getName(), w, { jumps:S.wave + S.kills })
+    .then(res => { st.res = res; }, () => {})
+    .then(() => { st.fertig = true; if (rangStand === st) rangOverFuellen(); });
+}
+function rangOverFuellen(){
+  const box = card.querySelector('#oRang'); if (!box || !rangStand) return;
+  const st = rangStand, info = box.querySelector('.rinfo'), el = box.querySelector('.rliste');
+  if (!st.fertig) { info.innerHTML = `Deine Wertung: <b>${st.w}</b> · trage ein …`; return; }
+  info.innerHTML = `Deine Wertung: <b>${st.w}</b>` + (st.res && st.res.rank ? ` · Platz <b>${st.res.rank}</b> von ${st.res.total} · dein Bestwert ${st.res.best}` : '');
+  if (st.res && st.res.rows) rangZeigen(el, st.res.rows, 5); else rangLaden(el, 5);
 }
 
 /* ---------------- Drawing ---------------- */
@@ -1861,7 +1902,9 @@ function showModal(kind){
         <li><b>Luftschlag</b> und <b>Frostbombe</b> retten dich in der Not.</li>
       </ul>
       <p class="best" id="mBest">${bestLine(menuDiff)}</p>
+      <div id="mRang">${rangHTML('Wertung = (Welle × 100 + Abschüsse) × Schwierigkeit (Rekrut 0.6 · Überlebender 1 · Albtraum 1.5)')}</div>
     </div>`;
+    rangLaden(card.querySelector('#mRang .rliste'), 5);
     card.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
       menuDiff = b.dataset.d; store.set('deadmaze.diff', menuDiff);
       card.querySelectorAll('.dbtn').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -1890,7 +1933,9 @@ function showModal(kind){
       </div>
       <p class="best">${S.record ? (prev ? `Neuer Rekord. Bisher: Welle ${prev.wave}.` : 'Erster Rekord auf dieser Stufe.') : `Bestwert bei ${S.diff.name}: Welle ${prev.wave} · ${prev.kills} Abschüsse`}</p>
       <div class="row"><button class="btn btn-go big" id="mRetry" type="button">Karte nochmal</button><button class="btn big" id="mNew" type="button">Neue Karte</button></div>
+      <div id="oRang">${rangHTML(' ')}</div>
     </div>`;
+    rangOverFuellen();
     $('#mRetry').addEventListener('click', () => startGame(S.seed));
     $('#mNew').addEventListener('click', () => { menuSeed = newSeed(); running = false; newGame(menuSeed, menuDiff); showModal('start'); });
     $('#mRetry').focus({ preventScroll:true });
