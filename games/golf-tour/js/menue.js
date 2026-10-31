@@ -7,7 +7,7 @@ const Menue = {
     for (const s of document.querySelectorAll('.screen')) s.classList.toggle('hidden', s.id !== id);
     this.aktuell = id;
     Eingabe.aktiv = !id && App.zustand === 'spiel';
-    $('hudBox').classList.toggle('hidden', !App.ansichten.length || ['sTitel', 'sOnline', 'sLobby', 'sEnde', 'sNamen'].includes(id));
+    $('hudBox').classList.toggle('hidden', !App.ansichten.length || ['sTitel', 'sOnline', 'sLobby', 'sEnde', 'sNamen', 'sRang'].includes(id));
     if (id) setTimeout(() => { const b = $(id).querySelector('.btn.haupt:not(.hidden), .btn:not(.hidden)'); if (b && document.activeElement.tagName !== 'INPUT') b.focus(); }, 30);
   },
   init() {
@@ -17,6 +17,8 @@ const Menue = {
     $('mOnline').onclick = () => { Ton.sfx('wahl'); this.zeige('sOnline'); Netz.zeigen(); };
     if (!HUB) { $('mOnline').disabled = true; $('mOnline').innerHTML = 'Online mit Freunden <small>(nur auf langwiligi.site)</small>'; }
     $('mHilfe').onclick = () => { this.hilfeZurueck = 'sTitel'; this.zeige('sHilfe'); };
+    $('mRang').onclick = () => { Ton.sfx('wahl'); this.zeige('sRang'); this.rangliste(); };
+    $('rZurueck').onclick = () => this.zeige('sTitel');
     $('hZurueck').onclick = () => this.zeige(this.hilfeZurueck || 'sTitel');
     $('oZurueck').onclick = () => this.zeige('sTitel');
     $('nZurueck').onclick = () => this.zeige('sTitel');
@@ -111,6 +113,29 @@ const Menue = {
     };
     tick();
   },
+  // ---------- Solo-Rangliste (Stableford-Punkte, beste Runde pro Name) ----------
+  RANG_OPTS: { cols: [['score', 'Punkte'], ['jumps', 'Schläge']], empty: 'Noch keine Solo-Runden – sei der Erste!' },
+  rangliste() {
+    const el = $('rBoard');
+    if (!HUB) { el.innerHTML = '<div class="lw-empty">Die Rangliste gibt es online auf langwiligi.site.</div>'; return; }
+    el.innerHTML = '<div class="lw-empty">Lade Rangliste …</div>';
+    HUB.highscores(GAME_ID).then(rows => HUB.renderScores(el, rows, HUB.getName(), this.RANG_OPTS),
+      () => { el.innerHTML = '<div class="lw-empty">Rangliste gerade nicht erreichbar.</div>'; });
+  },
+  soloMelden(sp) {
+    const punkte = App.plan.reduce((s, p, i) => s + Math.max(0, 2 + p.par - (sp.karte[i] || 10)), 0);
+    const schlaege = sp.gesamt();
+    $('eRangInfo').innerHTML = `Deine Punkte: <b>${punkte}</b>`;
+    $('eRangListe').innerHTML = '';
+    if (!HUB) { $('eRangInfo').innerHTML += ' · die Rangliste gibt es online auf langwiligi.site.'; return; }
+    const name = HUB.getName();
+    HUB.submitScore(GAME_ID, name, punkte, { jumps: Math.max(1, schlaege) }).then(r => {
+      $('eRangInfo').innerHTML = `Deine Punkte: <b>${punkte}</b>` + (r.rank ? ` · Platz <b>${r.rank}</b> von ${r.total} · Bestwert ${r.best}` : '');
+      HUB.renderScores($('eRangListe'), r.rows, HUB.getName(), Object.assign({}, this.RANG_OPTS, { limit: 5 }));
+    }, () => {
+      HUB.highscores(GAME_ID).then(rows => HUB.renderScores($('eRangListe'), rows, HUB.getName(), Object.assign({}, this.RANG_OPTS, { limit: 5 })), () => {});
+    });
+  },
   ende(liste) {
     const alle = liste.filter(s => s.karte.some(v => v != null));
     const sortiert = alle.slice().sort((a, b) => a.gesamt() - b.gesamt());
@@ -129,6 +154,8 @@ const Menue = {
     $('eInfo').textContent = App.online && !Netz.istHost() ? 'Der Gastgeber kann eine neue Runde starten.' : '';
     if (App.online && HUB) { this.boardZiel = $('eBoard'); Netz.boardEl = $('eBoard'); HUB.loadBoard(GAME_ID, $('eBoard'), HUB.getName()); $('eBoard').classList.remove('hidden'); }
     else $('eBoard').classList.add('hidden');
+    $('eRang').classList.toggle('hidden', App.modus !== 'solo');
+    if (App.modus === 'solo' && alle[0]) this.soloMelden(alle[0]);
     Ton.sfx('fanfare');
     this.zeige('sEnde');
   },

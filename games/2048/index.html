@@ -27,6 +27,13 @@
   .credits { margin-top: 18px; font-size: 13px; color: #8a8478; line-height: 1.6; }
   .credits a { color: #b8b1a5; font-weight: normal; }
   .game-container { touch-action: none; }
+  #rangliste { max-width: 500px; margin: 22px auto 40px; box-sizing: border-box; }
+  #rangliste .lw-board { font-size: 13px; }
+  #rangliste .lw-board td { padding: 4px 6px; }
+  @media screen and (min-width: 1120px) {
+    #rangliste { position: fixed; top: 14px; left: calc(50% + 275px); width: min(320px, calc(50vw - 300px));
+      max-height: calc(100vh - 28px); overflow-y: auto; margin: 0; }
+  }
   @media screen and (max-width: 520px) {
     body { margin: 16px 0; }
   }
@@ -94,13 +101,13 @@
       <strong>verschmelzen sie zu einer!</strong> Taste R startet neu.
     </p>
 
-    <div class="panel" id="rangliste"></div>
-
     <p class="credits">
       Original von <a href="https://github.com/gabrielecirulli/2048" target="_blank" rel="noopener">Gabriele Cirulli</a> (MIT-Lizenz, siehe <a href="LIZENZ.txt" target="_blank">LIZENZ.txt</a>),
       basierend auf 1024 von Veewo Studio und angelehnt an Threes von Asher Vollmer.
     </p>
   </div>
+  <!-- Rangliste: auf breiten Bildschirmen neben dem Spielfeld, damit sie beim Spielen sichtbar ist -->
+  <div class="panel" id="rangliste"></div>
 
   <script src="js/bind_polyfill.js"></script>
   <script src="js/classlist_polyfill.js"></script>
@@ -117,6 +124,12 @@
     // GAME_ID muss exakt dem Ordnernamen entsprechen
     var GAME_ID = '2048';
     Rangliste.init({ game: GAME_ID, el: document.getElementById('rangliste'), einheit: 'Punkte' });
+    // Aktuelle Punktzahl live an die Rangliste geben
+    (function () {
+      var sc = document.querySelector('.score-container');
+      new MutationObserver(function () { Rangliste.punkte(parseInt(sc.firstChild ? sc.firstChild.textContent : sc.textContent, 10) || 0); })
+        .observe(sc, { childList: true, characterData: true, subtree: true });
+    })();
   </script>
   <script src="js/application.js"></script>
   <script>
