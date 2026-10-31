@@ -132,7 +132,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
 .row .btn{flex:1;justify-content:center}
 .best{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);margin:0}
 .rang{border-top:1px solid var(--line);padding-top:10px}.rang h3{margin:0 0 6px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.rang .rinfo{font-family:var(--f-mono);font-size:12.5px;margin:0 0 6px}.rang .lw-board{font-size:13px}.rang .lw-board tr.lw-me td{color:#e9a72a}
+.rang .rinfo{font-family:var(--f-mono);font-size:12.5px;margin:0 0 6px}#rangSide{border-top:1px solid var(--line);padding-top:10px}#rangSide .rinfo{margin:0}.rang .lw-board{font-size:13px}.rang .lw-board tr.lw-me td{color:#e9a72a}
 .ostats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .ostats div{background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
 
@@ -159,6 +159,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
       <div class="chip"><span class="lbl">Welle</span><span class="val" id="hWave">0</span></div>
       <div class="chip"><span class="lbl">Abschüsse</span><span class="val" id="hKills">0</span></div>
       <div class="chip"><span class="lbl">Combo</span><span class="val toxic" id="hCombo">–</span></div>
+      <div class="chip" title="Platz in der Online-Rangliste mit deiner aktuellen Wertung"><span class="lbl">Rang</span><span class="val amber" id="hRang">–</span></div>
     </div>
     <div class="controls">
       <button class="btn btn-go" id="btnWave" type="button"><span id="waveLbl">Welle 1 starten</span><kbd>Leertaste</kbd></button>
@@ -184,6 +185,7 @@ kbd{font:600 10px/1 var(--f-mono);padding:2px 4px;border:1px solid currentColor;
       </section>
       <section class="panel" id="incoming"></section>
       <section class="panel info" id="info"></section>
+      <section class="panel rang" id="rangSide"><h2>🏆 Rangliste</h2><p class="rinfo" id="rangLive">Wertung = (Welle × 100 + Abschüsse) × Schwierigkeit</p><div class="rliste"></div></section>
     </aside>
   </main>
 </div>
@@ -1221,18 +1223,37 @@ const HUB = window.GameHub && window.GameHub.highscores ? window.GameHub : null;
 const DIFF_FAKTOR = { easy:0.6, normal:1, hard:1.5 };
 const RANG_OPTS = { cols:[['score', 'Wertung']], empty:'Noch keine Einträge – sei der Erste!' };
 const wertung = () => Math.round((S.wave * 100 + S.kills) * (DIFF_FAKTOR[S.diffKey] || 1));
-let rangStand = null;
+let rangStand = null, rangRows = null;
 function rangHTML(info){ return `<div class="rang"><h3>🏆 Rangliste</h3>${info ? `<p class="rinfo">${info}</p>` : ''}<div class="rliste"></div></div>`; }
 function rangZeigen(el, rows, limit){
   if (!el) return;
   if (!HUB) { el.innerHTML = '<div class="lw-empty">Die Online-Rangliste gibt es auf langwiligi.site.</div>'; return; }
   if (!rows) { el.innerHTML = '<div class="lw-empty">Rangliste gerade nicht erreichbar.</div>'; return; }
+  rangRows = rows; rangSeite(); rangLive();
   HUB.renderScores(el, rows, HUB.getName(), Object.assign({ limit }, RANG_OPTS));
 }
 function rangLaden(el, limit){
   if (!HUB) return rangZeigen(el, null, limit);
   el.innerHTML = '<div class="lw-empty">Lade Rangliste …</div>';
   HUB.highscores(GAME_ID).then(rows => rangZeigen(el, rows, limit), () => rangZeigen(el, null, limit));
+}
+// Seitenleiste: kompakte Tabelle (Top 5), damit die Rangliste beim Spielen sichtbar ist
+let rangSeiteRows = null;
+function rangSeite(){
+  const el = $('#rangSide .rliste');
+  if (!el || !HUB || !rangRows || rangSeiteRows === rangRows) return;
+  rangSeiteRows = rangRows;
+  HUB.renderScores(el, rangRows, HUB.getName(), Object.assign({ limit:5 }, RANG_OPTS));
+}
+// Live-Platz mit der aktuellen Wertung (ohne den eigenen alten Eintrag)
+function rangLive(){
+  if (!S || !hud.rang) return;
+  const w = wertung();
+  if (!rangRows || !running || w <= 0) { setText(hud.rang, '–'); setText(hud.rangLive, rangRows ? 'Deine Wertung: ' + w : 'Wertung = (Welle × 100 + Abschüsse) × Schwierigkeit'); return; }
+  const me = HUB.getName().toLowerCase();
+  const platz = 1 + rangRows.filter(r => r.score >= w && String(r.name).toLowerCase() !== me).length;
+  setText(hud.rang, '#' + platz);
+  setText(hud.rangLive, `Deine Wertung: ${w} → Platz ${platz}`);
 }
 function rangMelden(){
   const w = wertung();
@@ -1766,7 +1787,7 @@ function renderIncoming(){
   }).join('');
   $('#incoming').innerHTML = `<h2>Als Nächstes: Welle ${wn}</h2><div class="tags">${tags.join('')}</div><div class="comp">${comp}</div>${routes}`;
 }
-const hud = { lives:$('#hLives'), bar:$('#hLifeBar'), barWrap:$('#hLifeWrap'), points:$('#hPoints'), wave:$('#hWave'), kills:$('#hKills'), combo:$('#hCombo'), waveLbl:$('#waveLbl'), btnWave:$('#btnWave'), speed:$('#btnSpeed'), pause:$('#btnPause'), mute:$('#btnMute'), air:$('#abAir'), airS:$('#abAirS'), frz:$('#abFrz'), frzS:$('#abFrzS'), fix:$('#abFix'), fixS:$('#abFixS') };
+const hud = { rang:$('#hRang'), rangLive:$('#rangLive'), lives:$('#hLives'), bar:$('#hLifeBar'), barWrap:$('#hLifeWrap'), points:$('#hPoints'), wave:$('#hWave'), kills:$('#hKills'), combo:$('#hCombo'), waveLbl:$('#waveLbl'), btnWave:$('#btnWave'), speed:$('#btnSpeed'), pause:$('#btnPause'), mute:$('#btnMute'), air:$('#abAir'), airS:$('#abAirS'), frz:$('#abFrz'), frzS:$('#abFrzS'), fix:$('#abFix'), fixS:$('#abFixS') };
 function setText(el, v){ v = String(v); if (el._v !== v) { el._v = v; el.textContent = v; } }
 function refreshHUD(){
   setText(hud.lives, S.lives);
@@ -1774,6 +1795,7 @@ function refreshHUD(){
   hud.barWrap.classList.toggle('low', S.lives <= S.maxLives * .3);
   setText(hud.points, S.points); setText(hud.wave, S.wave); setText(hud.kills, S.kills);
   setText(hud.combo, S.combo >= 3 ? 'x' + S.combo : '–');
+  rangLive();
   let lbl, dis = false;
   if (!running || S.over) { lbl = 'Welle 1 starten'; dis = true; }
   else if (S.phase === 'build') lbl = S.countdown > 0 ? `Nächste Welle in ${Math.ceil(S.countdown)} s · +${Math.ceil(S.countdown)}` : `Welle ${S.wave + 1} starten`;
@@ -1966,6 +1988,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 newGame(menuSeed, menuDiff);
+if (!HUB) $('#rangSide').style.display = 'none';
 showModal('start');
 requestAnimationFrame(frame);
 })();

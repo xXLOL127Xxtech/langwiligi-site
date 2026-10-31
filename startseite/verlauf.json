@@ -1,6 +1,36 @@
 [
 {
 "d":"2026-10-31",
+"z":"13:19",
+"a":"2048",
+"t":"Rangliste neben dem Spielfeld, mit Live-Platz während dem Spielen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":104,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
+"z":"13:19",
+"a":"Dead Maze",
+"t":"Rang-Anzeige oben und Rangliste in der Seitenleiste während dem Spielen",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":104,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
+"z":"13:19",
+"a":"Kronenwacht",
+"t":"Bestenliste auf der Kampagnen-Karte",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":104,
+"b":"amazing-tesla-4ac8bl"
+},
+{
+"d":"2026-10-31",
 "z":"12:40",
 "a":"Dead Maze",
 "t":"Online-Rangliste mit Namen im Startmenü und nach dem Game Over",
