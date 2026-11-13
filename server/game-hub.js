@@ -1610,10 +1610,67 @@ function backgammonReferee() {
     state: () => st,   // (für den Test)
   };
 }
+
+// Das Königliche Spiel von Ur (games/koenigliches-ur): eigener Schiedsrichter. Nachrichten: start, roll { d: [0|1 ×4] }, mv { i, to }.
+// Weiss = Platz 0 beginnt. 7 Steine, Weg 0 (Start) bis 15 (Ziel), gemeinsame Felder 5–12, Rosetten 4/8/14 (nochmal würfeln, auf 8 geschützt).
+// HINWEIS: Die Würfel meldet der Spieler am Zug selbst, der Server prüft nur das Format.
+function urReferee() {
+  const N = 7, FINISH = 15, ROS = new Set([4, 8, 14]);
+  let st = null;
+  const valid = (player, roll) => {
+    if (roll === 0) return [];
+    const moves = [], seen = {};
+    for (let i = 0; i < N; i++) {
+      const cur = st.pieces[player][i];
+      if (cur === FINISH) continue;
+      const nxt = cur + roll;
+      if (nxt > FINISH) continue;
+      const k = cur + '>' + nxt;
+      if (seen[k]) continue;
+      seen[k] = true;
+      if (nxt !== FINISH && st.pieces[player].indexOf(nxt) !== -1) continue;
+      if (nxt >= 5 && nxt <= 12 && ROS.has(nxt) && st.pieces[3 - player].indexOf(nxt) !== -1) continue;
+      moves.push({ from: cur, to: nxt });
+    }
+    return moves;
+  };
+  return {
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') { if (seat !== 0) return false; st = { pieces: { 1: Array(N).fill(0), 2: Array(N).fill(0) }, turn: 1, roll: 0, phase: 'roll', res: null }; return true; }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.res) return false;
+      if (seat !== st.turn - 1) return false;
+      if (d.t === 'roll') {
+        if (st.phase !== 'roll' || !Array.isArray(d.d) || d.d.length !== 4) return false;
+        st.roll = d.d.reduce((a, x) => a + (x ? 1 : 0), 0);
+        if (st.roll === 0 || valid(st.turn, st.roll).length === 0) { st.turn = 3 - st.turn; st.roll = 0; st.phase = 'roll'; }
+        else st.phase = 'move';
+        return true;
+      }
+      if (d.t === 'mv') {
+        if (st.phase !== 'move' || !Number.isInteger(d.i) || d.i < 0 || d.i >= N) return false;
+        const me = st.turn, cur = st.pieces[me][d.i];
+        if (!valid(me, st.roll).some(m => m.from === cur && m.to === d.to)) return false;
+        const nxt = d.to, opp = 3 - me;
+        if (nxt >= 5 && nxt <= 12 && !ROS.has(nxt)) { const ci = st.pieces[opp].indexOf(nxt); if (ci !== -1) st.pieces[opp][ci] = 0; }
+        st.pieces[me][d.i] = nxt;
+        if (st.pieces[me].every(p => p === FINISH)) { st.res = { winner: me - 1 }; return true; }
+        st.phase = 'roll';
+        if (!ROS.has(nxt)) { st.turn = 3 - st.turn; st.roll = 0; }
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
 REFEREES.go = goReferee;
 REFEREES.backgammon = backgammonReferee;
+REFEREES['koenigliches-ur'] = urReferee;
 
 // ---------- Räume ----------
 const rooms = new Map();
