@@ -38,6 +38,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms)); let fail = 0; const ok 
   // Schalter DE zurück
   await Promise.all([page.waitForNavigation(), page.click('#lang-switch [data-l="de"]')]); await sleep(1000);
   ok((await page.evaluate(() => document.documentElement.lang)).startsWith('de') && /Schach/.test(await page.textContent('body')), 'Zurück auf Deutsch über den Schalter');
+  // Updates-Seite auf Englisch
+  await page.evaluate(() => localStorage.setItem('lw-lang', 'en'));
+  await page.goto('http://127.0.0.1:8123/updates/'); await sleep(1500);
+  const ut = await page.evaluate(() => document.body.innerText);
+  ok(/changes/i.test(ut) && !/Änderungen/i.test(ut) && /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /i.test(ut), 'Updates-Seite: Daten und Zähler englisch');
+  const ger = ut.split('\n').filter(l => /[äöü]|\b(und|der|die|das|mit)\b/.test(l) && l.length > 15);
+  ok(ger.length < 5, 'Updates-Seite: kaum Deutsch übrig (' + ger.length + ')'); if (ger.length) console.log(ger.slice(0, 8));
+  await page.screenshot({ path: out + '/04-updates-en.png' });
+  await page.evaluate(() => localStorage.setItem('lw-lang', 'de'));
   // zweiter Besuch: keine Frage mehr
   const p2 = await ctx.newPage(); await p2.goto('http://127.0.0.1:8123/'); await sleep(4500);
   ok(!(await p2.locator('#lang').evaluate(d => d.open)), 'Beim nächsten Besuch keine erneute Frage');

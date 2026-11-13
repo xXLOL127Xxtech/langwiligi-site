@@ -133,8 +133,10 @@
     return {};
   }
   const common = load('common'), mine = page === 'common' ? {} : load(page);
-  const dict = Object.assign({}, common, mine);
-  dict._exact = Object.assign({}, common._exact || {}, mine._exact || {});
+  const extra = (page === 'start' || page === 'updates') ? load('verlauf') : {};   // Texte der Updates-Listen
+  const dict = Object.assign({}, common, extra, mine);
+  dict._exact = Object.assign({}, common._exact || {}, extra._exact || {}, mine._exact || {});
+  dict._names = Object.assign({}, common._names || {}, extra._names || {}, mine._names || {});
   const T = makeTranslator(dict);
   const debug = get('lw-i18n-debug') === '1';
   const miss = root.__lwMiss = new Set();

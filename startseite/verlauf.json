@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-11-13",
+"z":"20:30",
+"a":"Startseite",
+"t":"Englische Version mit Sprachwahl, alle Spieltitel englisch",
+"tag":"Neu",
+"k":"Oberfläche",
+"pr":null,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
+"d":"2026-11-13",
 "z":"18:10",
 "a":"Backgammon, Ur",
 "t":"Der Server würfelt, Würfe sind nicht mehr manipulierbar",

@@ -1,4 +1,5 @@
 [
+  {"d": "2026-11-13", "t": "Englische Version der Seite", "tag": "Neu", "p": ["Beim ersten Besuch (nach der Animation) kannst du Deutsch oder Englisch wählen, später jederzeit oben umschalten", "Alles ausser dem Namen «KEI Langwiligi site» ist übersetzt, darunter steht «No boring site (translated from Swiss German)»", "Alle Spieltitel sind überall englisch: Startseite, im Spiel, Freunde, Bewertungen und Updates"]},
   { "d": "2026-11-13", "t": "Online-Spiele sind besser gegen Schummeln geschützt", "tag": "Intern", "p": [
     "Der Server prüft jetzt selbst, statt dem Browser alles zu glauben: Verbindungen nur noch von langwiligi.site, kein Spielen unter fremdem Namen mehr",
     "Siege in der Rangliste zählen nur, wenn die Runde mindestens 8 Sekunden dauerte, der Sieger die ganze Runde dabei war und zwei verschiedene Geräte spielten",
