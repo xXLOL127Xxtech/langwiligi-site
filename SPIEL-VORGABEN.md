@@ -133,6 +133,13 @@ GameHub.loadBoard(GAME_ID, el, GameHub.getName());  // Rangliste im Menü anzeig
 ```
 Ein Ergebnis zählt nur, wenn mindestens 2 Spieler im Raum sind und vorher `roundStart()` kam. Spiele gegen Bots oder lokale Spiele kommen **nicht** in die Rangliste.
 
+Der Server prüft zusätzlich (der Browser wird nicht einfach geglaubt), sonst zählt die Runde nicht:
+- Mindestens 2 **verschiedene Geräte** (Konten) sassen von Rundenstart bis Rundenende am Tisch.
+- Die Runde dauerte mindestens **8 Sekunden**. Eine neue Runde kann erst beginnen, wenn die letzte beendet oder diese 8 Sekunden um sind.
+- `winnerIdx` ist `-1` oder ein Platz, der die ganze Runde besetzt war.
+- Höchstens **12 gewertete Runden pro Stunde** zwischen denselben Spielern und 60 pro Stunde pro Konto.
+- Nachrichten über `room.send()` dürfen höchstens **64 KB** gross sein (insgesamt etwa 400 KB pro Sekunde und Verbindung), grössere werden verworfen. Der Server akzeptiert Verbindungen nur von langwiligi.site und der Server-IP.
+
 ## 7. Highscores für Solo-Spiele (optional)
 
 ```js
@@ -146,6 +153,7 @@ GameHub.renderScores(el, await GameHub.highscores(GAME_ID), GameHub.getName());
 Regeln des Servers, sonst wird das Ergebnis abgelehnt:
 - `punkte` ist eine ganze Zahl zwischen 0 und 10'000'000.
 - **Plausibilitätsprüfung:** `punkte ≤ (jumps + 1) × 450`. Gib als `jumps` einen Fortschrittswert mit, der zu deinen Punkten passt (z.B. Sprünge, Level, gefahrene Meter / 10). Bei sehr hohen Punktzahlen pro Aktion skalierst du die Punkte entsprechend.
+- Es zählt nur das Konto des Geräts (geheimer Schlüssel aus `GameHub`, nie ein frei gewählter Name). Pro Konto höchstens 120 Meldungen pro Stunde.
 - Pro Name höchstens 1 Meldung alle 2 Sekunden. Gespeichert wird nur der beste Wert pro Name.
 - Pro Spiel behält der Server höchstens 1000 Einträge.
 - Die Spiel-ID muss online als Ordner existieren. Lokal schlägt das Melden deshalb fehl, das Spiel darf dabei nicht abstürzen.

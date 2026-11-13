@@ -18,7 +18,28 @@ const MAX_ROOMS = 3000, MAX_ROOMS_PER_IP = 40;
 const MAX_CONN_PER_IP = 80;             // offene WebSockets pro IP
 const MSG_RATE = 150, MSG_BURST = 600;  // Nachrichten pro Sekunde und Spitze (Spiele schicken ~20–60 pro Sekunde)
 const GAMES_DIR = process.env.GAMES_DIR || '/var/www/games';
-const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
+const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;
+// Absicherung: Der Server vertraut dem Browser nicht.
+const MAX_BYTES_PER_SEC = 400 * 1024, BYTES_BURST = 2 * 1024 * 1024;   // Datenmenge pro Verbindung (Spiele schicken Zustände, aber keine Megabytes)
+const MAX_RELAY_BYTES = 64 * 1024;       // eine einzelne Spiel-Nachricht
+const MIN_ROUND_MS = 8000;               // Eine Runde, die kürzer dauert, zählt nicht für die Rangliste
+const MAX_COUNTED_PER_PAIR_HOUR = 12;    // gleiche Spieler untereinander: höchstens so viele gewertete Runden pro Stunde (gegen Sieg-Farmen zu zweit)
+const MAX_COUNTED_PER_ACCOUNT_HOUR = 60;
+const MISS_LIMIT_PER_IP = 30;            // falsche Raumcodes pro IP und Minute, dann Sperre für diese Minute
+const MAX_SCORE_PER_ACCOUNT_HOUR = 120;
+// Erlaubte Herkunft (Origin) für WebSocket und schreibende API-Aufrufe: unsere Seite, die Server-IP und lokale Tests.
+// Weitere mit ALLOWED_ORIGINS="https://a.example,https://b.example" ergänzen.
+const ORIGIN_HOSTS = new Set(['langwiligi.site', '46.224.94.231', 'localhost', '127.0.0.1']);
+(process.env.ALLOWED_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean).forEach(o => { try { ORIGIN_HOSTS.add(new URL(o).hostname); } catch (e) {} });
+function originOk(origin) {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const h = u.hostname.toLowerCase();
+    return ORIGIN_HOSTS.has(h) || h.endsWith('.langwiligi.site');
+  } catch (e) { return false; }
+}  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
 
 // Nur Spiele, die es als Ordner auf der Webseite gibt, dürfen etwas speichern (Liste 1 Min. gecacht)
 let knownGames = null, knownAt = 0;
@@ -526,6 +547,23 @@ function send(ws, msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m
 function others(room, ws) { return room.players.filter(p => p && p.ws !== ws); }
 function names(room) { return room.players.map(p => p ? p.name : null); }
 
+// Gegen Siege-Farmen: gleiche Konten untereinander und einzelne Konten bekommen nur eine begrenzte Zahl gewerteter Runden pro Stunde
+const counted = new Map();   // Schlüssel -> Zeitpunkte
+function bump(key, limit, now) {
+  const list = (counted.get(key) || []).filter(t => now - t < 3600000);
+  if (list.length >= limit) { counted.set(key, list); return false; }
+  list.push(now); counted.set(key, list);
+  return true;
+}
+function countAllowed(room, now) {
+  const codes = [...new Set(room.players.filter(Boolean).map(p => p.code))].sort();
+  if (counted.size > 20000) counted.clear();
+  for (const c of codes) if ((counted.get('a|' + c) || []).filter(t => now - t < 3600000).length >= MAX_COUNTED_PER_ACCOUNT_HOUR) return false;
+  if (codes.length >= 2 && (counted.get('p|' + codes.join('|')) || []).filter(t => now - t < 3600000).length >= MAX_COUNTED_PER_PAIR_HOUR) return false;
+  codes.forEach(c => bump('a|' + c, 1e9, now));
+  if (codes.length >= 2) bump('p|' + codes.join('|'), 1e9, now);
+  return true;
+}
 function leave(ws) {
   const room = ws.room; if (!room) return;
   ws.room = null;
@@ -536,6 +574,7 @@ function leave(ws) {
   roomChanged(room);
 }
 
+const joinMisses = new Map();   // ip -> Zeitpunkte falscher Raumcodes
 function onMessage(ws, raw) {
   let m; try { m = JSON.parse(raw); } catch (e) { return; }
   if (!m || typeof m !== 'object') return;
@@ -543,12 +582,15 @@ function onMessage(ws, raw) {
     case 'create': {
       leave(ws);
       if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
+      if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let mine = 0;
       for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
       const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
-      room.players[0] = { ws, name: roomName(ws, m), code: accountOf(m) };
+      const nm = roomName(ws, m);
+      if (!nm) { rooms.delete(room.code); return send(ws, { t: 'error', msg: 'invalid' }); }
+      room.players[0] = { ws, name: nm, code: accountOf(m) };
       rooms.set(room.code, room); ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
       roomChanged(room);
@@ -558,6 +600,7 @@ function onMessage(ws, raw) {
     case 'quick': {
       leave(ws);
       const game = cleanGame(m.game);
+      if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let room = null;
       for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && !sitztSchon(r, ws, m) && (!room || freeSeats(r) < freeSeats(room))) room = r;
       if (!room) {
@@ -567,7 +610,9 @@ function onMessage(ws, raw) {
       }
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
-      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
+      const nm = roomName(ws, m);
+      if (!nm || idx < 0) { if (!room.players.some(Boolean)) rooms.delete(room.code); return send(ws, { t: 'error', msg: nm ? 'full' : 'invalid' }); }
+      room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -578,10 +623,14 @@ function onMessage(ws, raw) {
       const room = rooms.get(code);
       if (!room) {
         // Codes durchprobieren bremsen: zu viele Fehlversuche in einer Minute trennen die Verbindung
+        // Pro Verbindung UND pro IP (sonst umgeht man die Bremse mit neuen Verbindungen)
         const t = Date.now();
         ws.misses = (ws.misses || []).filter(x => t - x < 60000);
         ws.misses.push(t);
-        if (ws.misses.length > 15) return ws.close(1008);
+        const ipm = (joinMisses.get(ws.ip) || []).filter(x => t - x < 60000);
+        ipm.push(t); joinMisses.set(ws.ip, ipm);
+        if (joinMisses.size > 5000) joinMisses.clear();
+        if (ws.misses.length > 15 || ipm.length > MISS_LIMIT_PER_IP) return ws.close(1008);
         return send(ws, { t: 'error', msg: 'not-found' });
       }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
@@ -589,8 +638,10 @@ function onMessage(ws, raw) {
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
       if (sitztSchon(room, ws, m)) return send(ws, { t: 'error', msg: 'already-in' });
+      const nm = roomName(ws, m);
+      if (!nm) return send(ws, { t: 'error', msg: 'invalid' });
       leave(ws);
-      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
+      room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -599,22 +650,36 @@ function onMessage(ws, raw) {
     case 'relay': {
       const room = ws.room; if (!room) return;
       const from = room.players.findIndex(p => p && p.ws === ws);
+      if (from < 0 || m.d === undefined) return;
       const out = JSON.stringify({ t: 'relay', from, d: m.d });
+      if (out.length > MAX_RELAY_BYTES) return;
       others(room, ws).forEach(p => p.ws.readyState === 1 && p.ws.send(out));
       break;
     }
     // Nur der Host (Platz 0) meldet Rundenstart und Ergebnis -> jede Runde zählt genau einmal
     case 'round-start': {
       const room = ws.room; if (!room || room.players[0]?.ws !== ws) return;
-      room.roundOpen = true;
+      // Beginnt nur, wenn die letzte Runde zu Ende gemeldet war (oder die alte schon lange offen ist). Merkt, wer dabei war.
+      if (room.roundOpen && Date.now() - room.roundAt < MIN_ROUND_MS) return;
+      room.roundOpen = true; room.roundAt = Date.now();
+      room.roundCodes = room.players.map(p => p ? p.code : null);
       break;
     }
     case 'result': {
       const room = ws.room; if (!room || room.players[0]?.ws !== ws || !room.roundOpen) return;
       room.roundOpen = false;
-      const present = room.players.filter(Boolean).length;
+      // Der Server kann das Spiel nicht nachrechnen, prüft aber alles, was er prüfen kann:
+      const now = Date.now(), present = room.players.filter(Boolean).length;
       if (present < 2) return;
+      if (now - room.roundAt < MIN_ROUND_MS) return;                                  // zu kurz für eine echte Runde
+      const codes = room.roundCodes || [];
       const w = Number.isInteger(m.winner) ? m.winner : -1;
+      // Sieger muss jemand sein, der die ganze Runde dabei war (kein Geisterplatz, kein Spieler, der später reinkam)
+      if (w >= 0 && !(room.players[w] && room.players[w].code && room.players[w].code === codes[w])) return;
+      // Mindestens zwei verschiedene Geräte (Konten) am Tisch
+      const real = new Set(room.players.filter(Boolean).map(p => p.code));
+      if (real.size < 2 || real.has(null)) return;
+      if (!countAllowed(room, now)) return;
       record(room.game, names(room), w);
       room.players.forEach(p => p && send(p.ws, { t: 'leaderboard', game: room.game, rows: rows(room.game) }));
       break;
@@ -718,7 +783,7 @@ function accountOf(m) { const s = String(m.secret || ''); return /^[A-Za-z0-9]{1
 function sitztSchon(room, ws, m) { const c = accountOf(m); return !!c && room.players.some(p => p && p.ws !== ws && p.code === c); }
 function roomName(ws, m) {
   const code = ensureAccount(ws.ip, m.secret, m.name);
-  if (!code) return cleanName(m.name);
+  if (!code) return null;
   const acc = accounts[code], w = rawName(m.name);
   if (w && w !== acc.name) claimName(code, w);
   acc.seen = Date.now();
@@ -1000,14 +1065,22 @@ code{color:#ffe14d;font-size:1.4em;letter-spacing:.2em}</style></head>
 }
 
 // ---------- HTTP + WebSocket ----------
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+// CORS nur für unsere Seiten (statt für alle). Eine fremde Webseite darf im Browser des Spielers weder lesen noch schreiben.
+// Die Spiele selbst liegen auf derselben Adresse wie die API, brauchen CORS also normalerweise gar nicht.
 function json(res, status, obj) {
-  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, CORS));
+  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, res.cors));
   res.end(JSON.stringify(obj));
 }
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  const origin = req.headers.origin;
+  res.cors = origin && originOk(origin)
+    ? { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Key' }
+    : { 'Vary': 'Origin' };
+  if (req.method === 'OPTIONS') { res.writeHead(origin && !originOk(origin) ? 403 : 204, res.cors); return res.end(); }
+  // Schreibende Aufrufe nur von unseren Seiten. Browser schicken Origin immer mit; wer ohne Origin kommt (curl, Skript), darf nicht schreiben.
+  // Die Admin-Seite ist ausgenommen, sie schützt sich mit dem Schlüssel.
+  if (req.method === 'POST' && !originOk(origin) && !/^\/api\/(empfehlungen|bewertungen)\.json$/.test(url.pathname)) return json(res, 403, { error: 'bad-origin' });
   const inv = url.pathname.match(/^\/api\/e\/([a-z0-9-]{1,40})\/([A-Za-z0-9]{4})$/);
   if (inv) {
     const game = inv[1], code = inv[2].toUpperCase();
@@ -1048,8 +1121,12 @@ const server = http.createServer((req, res) => {
       let m; try { m = JSON.parse(body); } catch (e) { return json(res, 400, { error: 'bad-json' }); }
       const game = cleanGame(m && m.game);
       // Mit dem geheimen Schlüssel des Geräts zählt der Name des Kontos (so kann niemand unter fremdem Namen eintragen)
-      const sec = String(m && m.secret || ''), acct = /^[A-Za-z0-9]{16,64}$/.test(sec) ? accounts[friendCode(sec)] : null;
-      const name = acct ? acct.name : cleanName(m && m.name);
+      // Ohne gültigen Schlüssel wird nichts eingetragen (sonst könnte jeder unter jedem Namen Punkte setzen)
+      const sec = String(m && m.secret || ''), ipS = clientIp(req);
+      const code = /^[A-Za-z0-9]{16,64}$/.test(sec) ? ensureAccount(ipS, sec, m && m.name) : null;
+      const acct = code ? accounts[code] : null;
+      if (!acct) return json(res, 400, { error: 'invalid-secret' });
+      const name = acct.name;
       const score = Math.floor(Number(m && m.score)), jumps = Math.floor(Number(m && m.jumps) || 0);
       // Grobe Plausibilitätsprüfung: pro Sprung sind höchstens ~450 Punkte möglich
       if (!game || !Number.isFinite(score) || score < 0 || score > 10000000 || jumps < 0 || jumps > 100000 ||
@@ -1058,6 +1135,8 @@ const server = http.createServer((req, res) => {
       const ip = req.headers['x-real-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0] || req.socket.remoteAddress;
       const key = ip + '|' + name.toLowerCase(), now = Date.now();
       if (now - (lastScorePost.get(key) || 0) < 2000) return json(res, 429, { error: 'too-fast' });
+      if (!bump('s|' + code, MAX_SCORE_PER_ACCOUNT_HOUR, now)) return json(res, 429, { error: 'too-fast' });
+      acct.seen = now;
       lastScorePost.set(key, now);
       if (lastScorePost.size > 5000) lastScorePost.clear();
       json(res, 200, recordScore(game, name, score, jumps));
@@ -1124,7 +1203,7 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === '/api/spiele') {
     res.setHeader('Cache-Control', 'public, max-age=60');
-    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, CORS));
+    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, res.cors));
     return res.end(JSON.stringify(gameStats()));
   }
   if (url.pathname === '/api/bewertungen.json') {
@@ -1154,7 +1233,9 @@ const server = http.createServer((req, res) => {
   }
   res.writeHead(404); res.end();
 });
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 128 * 1024,
+  // Browser schicken bei WebSockets immer die Herkunft mit. Fremde Webseiten (oder Skripte) kommen nicht rein.
+  verifyClient: (info, cb) => originOk(info.origin) ? cb(true) : cb(false, 403, 'bad-origin') });
 const connPerIp = new Map();
 wss.on('connection', (ws, req) => {
   ws.alive = true;
@@ -1170,6 +1251,10 @@ wss.on('connection', (ws, req) => {
     const now = Date.now();
     ws.tokens = Math.min(MSG_BURST, ws.tokens + (now - ws.tokenAt) * MSG_RATE / 1000); ws.tokenAt = now;
     if (--ws.tokens < 0) return ws.close(1008);
+    // Auch die Datenmenge begrenzen (wenige grosse Nachrichten wären sonst eine Flut)
+    const size = raw.length || 0;
+    ws.bytes = Math.min(BYTES_BURST, (ws.bytes === undefined ? BYTES_BURST : ws.bytes) + (now - (ws.bytesAt || now)) * MAX_BYTES_PER_SEC / 1000) - size; ws.bytesAt = now;
+    if (ws.bytes < 0) return ws.close(1008);
     onMessage(ws, raw);
   });
   ws.on('close', () => {

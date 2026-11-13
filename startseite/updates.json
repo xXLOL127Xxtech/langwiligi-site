@@ -1,4 +1,9 @@
 [
+  { "d": "2026-11-13", "t": "Online-Spiele sind besser gegen Schummeln geschützt", "tag": "Intern", "p": [
+    "Der Server prüft jetzt selbst, statt dem Browser alles zu glauben: Verbindungen nur noch von langwiligi.site, kein Spielen unter fremdem Namen mehr",
+    "Siege in der Rangliste zählen nur, wenn die Runde mindestens 8 Sekunden dauerte, der Sieger die ganze Runde dabei war und zwei verschiedene Geräte spielten",
+    "Grenzen gegen Sieg-Farmen und Datenfluten, Highscores nur noch mit dem Konto des Geräts"
+  ] },
   { "d": "2026-10-31", "t": "Ranglisten für mehr Solo-Spiele", "tag": "Neu", "p": [
     "Dead Maze: Online-Rangliste im Startmenü und nach dem Game Over. Die Wertung ist (Welle × 100 + Abschüsse) mal Schwierigkeit",
     "Golf-Tour: Solo-Rangliste mit Punkten wie beim Stableford (Par = 2, Birdie = 3, Eagle = 4) und Schlägen, im Menü und am Ende der Runde",
