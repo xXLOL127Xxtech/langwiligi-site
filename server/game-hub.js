@@ -1222,6 +1222,145 @@ const ENGINES = {
       result: st => st.res,
     };
   })(),
+
+  // Schach: Zug m = [vonReihe, vonSpalte, nachReihe, nachSpalte, spezial, umwandlung]. Weiss (Platz 0) beginnt, Reihe 0 ist Schwarz' Grundlinie.
+  // Alle Regeln: Rochade, en passant, Umwandlung, Schach/Matt/Patt, zu wenig Material, 50-Züge-Regel, dreifache Wiederholung.
+  // Der Server bestimmt "spezial" selbst aus den legalen Zügen und ignoriert die Angabe des Clients.
+  'schach': (() => {
+    const inB = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8, opp = c => c === 'w' ? 'b' : 'w';
+    const copy = b => b.map(row => row.map(p => p && { color: p.color, type: p.type }));
+    const KN = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+    function attacked(b, r, c, by) {
+      for (const [dr, dc] of KN) { const y = r + dr, x = c + dc; if (inB(y, x) && b[y][x] && b[y][x].color === by && b[y][x].type === 'N') return true; }
+      const pd = by === 'w' ? 1 : -1;
+      for (const dc of [-1, 1]) if (inB(r + pd, c + dc)) { const p = b[r + pd][c + dc]; if (p && p.color === by && p.type === 'P') return true; }
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        if (inB(r + dr, c + dc)) { const p = b[r + dr][c + dc]; if (p && p.color === by && p.type === 'K') return true; }
+      }
+      for (const [dr, dc] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { let y = r + dr, x = c + dc; while (inB(y, x)) { const p = b[y][x]; if (p) { if (p.color === by && (p.type === 'R' || p.type === 'Q')) return true; break; } y += dr; x += dc; } }
+      for (const [dr, dc] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { let y = r + dr, x = c + dc; while (inB(y, x)) { const p = b[y][x]; if (p) { if (p.color === by && (p.type === 'B' || p.type === 'Q')) return true; break; } y += dr; x += dc; } }
+      return false;
+    }
+    function inCheck(b, color) {
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = b[r][c]; if (p && p.color === color && p.type === 'K') return attacked(b, r, c, opp(color)); }
+      return false;
+    }
+    function pseudo(b, r, c, cr, ep) {
+      const p = b[r][c], out = [];
+      if (!p) return out;
+      const color = p.color;
+      if (p.type === 'P') {
+        const dir = color === 'w' ? -1 : 1, start = color === 'w' ? 6 : 1, promo = color === 'w' ? 0 : 7;
+        let nr = r + dir;
+        if (inB(nr, c) && !b[nr][c]) {
+          out.push(nr === promo ? { r: nr, c, special: 'promote' } : { r: nr, c });
+          if (r === start && !b[r + dir * 2][c]) out.push({ r: r + dir * 2, c, special: 'pawnDouble' });
+        }
+        for (const nc of [c - 1, c + 1]) {
+          nr = r + dir;
+          if (!inB(nr, nc)) continue;
+          const t = b[nr][nc];
+          if (t && t.color !== color) out.push(nr === promo ? { r: nr, c: nc, special: 'promote' } : { r: nr, c: nc });
+          if (ep && ep.r === nr && ep.c === nc) out.push({ r: nr, c: nc, special: 'enpassant' });
+        }
+      }
+      if (p.type === 'N') for (const [dr, dc] of KN) { const y = r + dr, x = c + dc; if (inB(y, x) && (!b[y][x] || b[y][x].color !== color)) out.push({ r: y, c: x }); }
+      const slide = dirs => { for (const [dr, dc] of dirs) { let y = r + dr, x = c + dc; while (inB(y, x)) { if (b[y][x]) { if (b[y][x].color !== color) out.push({ r: y, c: x }); break; } out.push({ r: y, c: x }); y += dr; x += dc; } } };
+      if (p.type === 'B' || p.type === 'Q') slide([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+      if (p.type === 'R' || p.type === 'Q') slide([[0, 1], [0, -1], [1, 0], [-1, 0]]);
+      if (p.type === 'K') {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const y = r + dr, x = c + dc;
+          if (inB(y, x) && (!b[y][x] || b[y][x].color !== color)) out.push({ r: y, c: x });
+        }
+        const row = color === 'w' ? 7 : 0, o = opp(color);
+        if (r === row && c === 4) {
+          if (cr[color + 'K'] && !b[row][5] && !b[row][6] && b[row][7] && b[row][7].type === 'R' && b[row][7].color === color &&
+              !attacked(b, row, 4, o) && !attacked(b, row, 5, o) && !attacked(b, row, 6, o)) out.push({ r: row, c: 6, special: 'castleK' });
+          if (cr[color + 'Q'] && !b[row][3] && !b[row][2] && !b[row][1] && b[row][0] && b[row][0].type === 'R' && b[row][0].color === color &&
+              !attacked(b, row, 4, o) && !attacked(b, row, 3, o) && !attacked(b, row, 2, o)) out.push({ r: row, c: 2, special: 'castleQ' });
+        }
+      }
+      return out;
+    }
+    function legal(b, r, c, cr, ep) {
+      const piece = b[r][c], res = [];
+      if (!piece) return res;
+      for (const m of pseudo(b, r, c, cr, ep)) {
+        const nb = copy(b);
+        nb[m.r][m.c] = nb[r][c]; nb[r][c] = null;
+        if (m.special === 'enpassant') nb[piece.color === 'w' ? m.r + 1 : m.r - 1][m.c] = null;
+        if (m.special === 'promote') nb[m.r][m.c] = { color: piece.color, type: 'Q' };
+        if (m.special === 'castleK') { const row = piece.color === 'w' ? 7 : 0; nb[row][5] = nb[row][7]; nb[row][7] = null; }
+        if (m.special === 'castleQ') { const row = piece.color === 'w' ? 7 : 0; nb[row][3] = nb[row][0]; nb[row][0] = null; }
+        if (!inCheck(nb, piece.color)) res.push(m);
+      }
+      return res;
+    }
+    const anyLegal = (st, color) => { for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (st.b[r][c] && st.b[r][c].color === color && legal(st.b, r, c, st.cr, st.ep).length) return true; return false; };
+    const key = st => {
+      let k = '';
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = st.b[r][c]; k += p ? p.color + p.type : '..'; }
+      return k + '|' + st.turn + '|' + (st.cr.wK ? 'K' : '') + (st.cr.wQ ? 'Q' : '') + (st.cr.bK ? 'k' : '') + (st.cr.bQ ? 'q' : '') + '|' + (st.ep ? st.ep.r + ',' + st.ep.c : '-');
+    };
+    function insufficient(b) {
+      const nk = [];
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = b[r][c]; if (p && p.type !== 'K') nk.push({ p, sq: (r + c) % 2 }); }
+      if (nk.length === 0) return true;
+      if (nk.length === 1) return nk[0].p.type === 'B' || nk[0].p.type === 'N';
+      return nk.length === 2 && nk[0].p.type === 'B' && nk[1].p.type === 'B' && nk[0].p.color !== nk[1].p.color && nk[0].sq === nk[1].sq;
+    }
+    function startBoard() {
+      const b = Array.from({ length: 8 }, () => Array(8).fill(null)), back = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+      for (let c = 0; c < 8; c++) { b[0][c] = { color: 'b', type: back[c] }; b[1][c] = { color: 'b', type: 'P' }; b[7][c] = { color: 'w', type: back[c] }; b[6][c] = { color: 'w', type: 'P' }; }
+      return b;
+    }
+    const eng = {
+      init() {
+        const st = { b: startBoard(), turn: 'w', cr: { wK: true, wQ: true, bK: true, bQ: true }, ep: null, half: 0, hist: [], res: null };
+        st.hist.push(key(st));
+        return st;
+      },
+      turn: st => st.turn === 'w' ? 0 : 1,
+      legalMoves: (st, r, c) => legal(st.b, r, c, st.cr, st.ep),   // (für den Test)
+      apply(st, m) {
+        if (!Array.isArray(m) || m.length < 4 || !m.slice(0, 4).every(Number.isInteger)) return false;
+        const [fr, fc, tr, tc] = m;
+        if (!inB(fr, fc) || !inB(tr, tc)) return false;
+        const piece = st.b[fr][fc];
+        if (!piece || piece.color !== st.turn) return false;
+        const mv = legal(st.b, fr, fc, st.cr, st.ep).find(x => x.r === tr && x.c === tc);
+        if (!mv) return false;
+        const special = mv.special, color = piece.color;
+        let captured = st.b[tr][tc];
+        if (special === 'enpassant') { const er = color === 'w' ? tr + 1 : tr - 1; captured = st.b[er][tc]; st.b[er][tc] = null; }
+        st.half = (piece.type === 'P' || captured) ? 0 : st.half + 1;
+        st.b[tr][tc] = piece; st.b[fr][fc] = null;
+        if (special === 'promote') { const pt = m[5]; st.b[tr][tc] = { color, type: (pt === 'R' || pt === 'B' || pt === 'N') ? pt : 'Q' }; }
+        if (special === 'castleK') { const row = color === 'w' ? 7 : 0; st.b[row][5] = st.b[row][7]; st.b[row][7] = null; }
+        if (special === 'castleQ') { const row = color === 'w' ? 7 : 0; st.b[row][3] = st.b[row][0]; st.b[row][0] = null; }
+        if (piece.type === 'K') { st.cr[color + 'K'] = false; st.cr[color + 'Q'] = false; }
+        if (piece.type === 'R') {
+          if (fr === 7 && fc === 0) st.cr.wQ = false; if (fr === 7 && fc === 7) st.cr.wK = false;
+          if (fr === 0 && fc === 0) st.cr.bQ = false; if (fr === 0 && fc === 7) st.cr.bK = false;
+        }
+        if (tr === 7 && tc === 0) st.cr.wQ = false; if (tr === 7 && tc === 7) st.cr.wK = false;
+        if (tr === 0 && tc === 0) st.cr.bQ = false; if (tr === 0 && tc === 7) st.cr.bK = false;
+        st.ep = special === 'pawnDouble' ? { r: (fr + tr) / 2, c: tc } : null;
+        st.turn = opp(st.turn);
+        const check = inCheck(st.b, st.turn), k = key(st);
+        st.hist.push(k);
+        const rep = st.hist.filter(x => x === k).length;
+        if (!anyLegal(st, st.turn)) st.res = { winner: check ? (st.turn === 'w' ? 1 : 0) : -1 };
+        else if (insufficient(st.b) || st.half >= 100 || rep >= 3) st.res = { winner: -1 };
+        return true;
+      },
+      result: st => st.res,
+    };
+    return eng;
+  })(),
 };
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
