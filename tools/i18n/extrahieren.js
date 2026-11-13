@@ -174,8 +174,9 @@ if (require.main === module) {
     // Textstücke, die Teil einer übersetzten Vorlage sind ("Spieler {0} ist dran" deckt "Spieler" und "ist dran" ab), gelten als erledigt
     const cleanKey = x => x.replace(/\s+/g, ' ').replace(/^[\s.,:;!?)\]·•|\-–—]+|[\s(\[·•|:\-–—]+$/g, '').trim();
     const covered = new Set();
+    const known = new Set([...Object.keys(d), ...Object.keys(d._exact || {}), ...Object.keys(d._names || {})].map(cleanKey));   // auch gleichlautende Einträge ("Game over!": "Game over!") gelten als erledigt
     Object.keys(d).forEach(k => { if (/\{\d+\}/.test(k)) k.split(/\{\d+\}/).forEach(part => covered.add(cleanKey(part))); });
-    list = list.filter(s => { if (covered.has(s)) return false; if (/\{\d+\}/.test(s)) { const x = s.replace(/\{\d+\}/g, '7'), t = T.t(x); return t === x ? looksGerman(x) : looksGerman(t) || /\{\d+\}/.test(t) && false; } const t = T.t(s); return t === s ? looksGerman(s) || /^\p{Lu}[\p{Ll}-]+( \p{L}+)*[.!?]?$/u.test(s) && !/^[A-Za-z]+$/.test(s) : looksGerman(t); });
+    list = list.filter(s => { if (covered.has(s) || known.has(s)) return false; if (/\{\d+\}/.test(s)) { const x = s.replace(/\{\d+\}/g, '7'), t = T.t(x); return t === x ? looksGerman(x) : looksGerman(t) || /\{\d+\}/.test(t) && false; } const t = T.t(s); return t === s ? looksGerman(s) || /^\p{Lu}[\p{Ll}-]+( \p{L}+)*[.!?]?$/u.test(s) && !/^[A-Za-z]+$/.test(s) : looksGerman(t); });
   }
   process.stdout.write(list.join('\n') + '\n');
 }
