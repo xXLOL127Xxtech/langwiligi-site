@@ -1473,9 +1473,147 @@ function goReferee() {
     state: () => st,   // (für den Test)
   };
 }
+
+// Backgammon (games/backgammon): eigener Schiedsrichter. Nachrichten: start, roll { d: [a, b] }, mv { from, to, die }, undo.
+// Elfenbein = Platz 0 (zieht von 24 nach 1) beginnt, Nussbaum = Platz 1. Pflicht, möglichst viele Würfel zu spielen (bei einem nur den höheren),
+// Schlagen, Bar, Auswürfeln wie im Spiel. HINWEIS: Die Würfel meldet der Spieler am Zug selbst, der Server prüft nur, dass sie 1–6 sind.
+function backgammonReferee() {
+  const P1 = 1, P2 = 2, CHECKERS = 15;
+  let st = null;
+  const other = p => p === P1 ? P2 : P1;
+  function init() {
+    const pts = Array.from({ length: 25 }, () => ({ count: 0, owner: 0 }));
+    pts[24] = { count: 2, owner: P1 }; pts[13] = { count: 5, owner: P1 }; pts[8] = { count: 3, owner: P1 }; pts[6] = { count: 5, owner: P1 };
+    pts[1] = { count: 2, owner: P2 }; pts[12] = { count: 5, owner: P2 }; pts[17] = { count: 3, owner: P2 }; pts[19] = { count: 5, owner: P2 };
+    return { pts, bar: { 1: 0, 2: 0 }, off: { 1: 0, 2: 0 }, turn: P1, dice: [], phase: 'roll', hist: [], res: null };
+  }
+  const blocked = (p, pt, pts) => pts[pt].owner === other(p) && pts[pt].count >= 2;
+  function allInHome(p, pts, bar) {
+    if (bar[p] > 0) return false;
+    if (p === P1) { for (let i = 7; i <= 24; i++) if (pts[i].owner === p && pts[i].count > 0) return false; }
+    else { for (let i = 1; i <= 18; i++) if (pts[i].owner === p && pts[i].count > 0) return false; }
+    return true;
+  }
+  function highestHome(p, pts) {
+    if (p === P1) { for (let i = 6; i >= 1; i--) if (pts[i].owner === p && pts[i].count > 0) return i; }
+    else { for (let i = 19; i <= 24; i++) if (pts[i].owner === p && pts[i].count > 0) return i; }
+    return -1;
+  }
+  const homeIdx = (p, pt) => p === P1 ? pt : 25 - pt;
+  function singleMoves(p, dv, pts, bar) {
+    const moves = [], opp = other(p);
+    if (bar[p] > 0) {
+      const entry = p === P1 ? 25 - dv : dv;
+      if (entry >= 1 && entry <= 24 && !blocked(p, entry, pts)) moves.push({ from: 'bar', to: entry, dieVal: dv, hit: pts[entry].owner === opp && pts[entry].count === 1 });
+      return moves;
+    }
+    const canOff = allInHome(p, pts, bar);
+    for (let i = 1; i <= 24; i++) {
+      if (pts[i].owner !== p || pts[i].count === 0) continue;
+      const dest = p === P1 ? i - dv : i + dv;
+      if (canOff) {
+        const hi = homeIdx(p, i);
+        if ((p === P1 && dest < 1) || (p === P2 && dest > 24)) {
+          if (hi === dv) moves.push({ from: i, to: 'off', dieVal: dv, hit: false });
+          else if (hi < dv && highestHome(p, pts) === i) moves.push({ from: i, to: 'off', dieVal: dv, hit: false });
+          continue;
+        }
+      }
+      if (dest >= 1 && dest <= 24 && !blocked(p, dest, pts)) moves.push({ from: i, to: dest, dieVal: dv, hit: pts[dest].owner === opp && pts[dest].count === 1 });
+    }
+    return moves;
+  }
+  function apply(mv, p, pts, bar, off) {
+    const opp = other(p), u = { hit: false };
+    if (mv.from === 'bar') bar[p]--; else { pts[mv.from].count--; if (pts[mv.from].count === 0) pts[mv.from].owner = 0; }
+    if (mv.to === 'off') off[p]++;
+    else {
+      if (pts[mv.to].owner === opp && pts[mv.to].count === 1) { pts[mv.to].count = 0; pts[mv.to].owner = 0; bar[opp]++; u.hit = true; }
+      pts[mv.to].count++; pts[mv.to].owner = p;
+    }
+    return u;
+  }
+  function unapply(mv, p, pts, bar, off, wasHit) {
+    const opp = other(p);
+    if (mv.to === 'off') off[p]--;
+    else { pts[mv.to].count--; if (pts[mv.to].count === 0) pts[mv.to].owner = 0; if (wasHit) { bar[opp]--; pts[mv.to].count = 1; pts[mv.to].owner = opp; } }
+    if (mv.from === 'bar') bar[p]++; else { pts[mv.from].count++; pts[mv.from].owner = p; }
+  }
+  function sequences(p, dice, pts, bar, off) {
+    if (dice.length === 0) return [[]];
+    const out = [], tried = {};
+    for (let d = 0; d < dice.length; d++) {
+      const dv = dice[d];
+      if (tried[dv]) continue;
+      tried[dv] = true;
+      for (const mv of singleMoves(p, dv, pts, bar)) {
+        const u = apply(mv, p, pts, bar, off), nd = dice.slice(); nd.splice(d, 1);
+        for (const rest of sequences(p, nd, pts, bar, off)) out.push([mv].concat(rest));
+        unapply(mv, p, pts, bar, off, u.hit);
+      }
+    }
+    return out;
+  }
+  function allLegal(p, dice, pts, bar, off) {
+    const seqs = sequences(p, dice, pts, bar, off);
+    if (!seqs.length) return [];
+    let maxLen = 0; seqs.forEach(q => { if (q.length > maxLen) maxLen = q.length; });
+    let f = seqs.filter(q => q.length === maxLen);
+    if (maxLen === 1 && dice.length >= 2 && dice[0] !== dice[1]) {
+      const hv = Math.max(dice[0], dice[1]), hi = f.filter(q => q[0].dieVal === hv);
+      if (hi.length) f = hi;
+    }
+    return f;
+  }
+  function firstMoves(p, dice) {
+    const seqs = allLegal(p, dice, st.pts, st.bar, st.off), seen = {}, out = [];
+    for (const q of seqs) { const k = q[0].from + '->' + q[0].to + ':' + q[0].dieVal; if (!seen[k]) { seen[k] = true; out.push(q[0]); } }
+    return out;
+  }
+  function endTurn() { st.dice = []; st.hist = []; st.phase = 'roll'; st.turn = other(st.turn); }
+  return {
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') { if (seat !== 0) return false; st = init(); return true; }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.phase === 'over') return false;
+      if (seat !== (st.turn === P1 ? 0 : 1)) return false;
+      if (d.t === 'roll') {
+        if (st.phase !== 'roll' || !Array.isArray(d.d) || d.d.length !== 2) return false;
+        const a = d.d[0], b = d.d[1];
+        if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 6 || b < 1 || b > 6) return false;
+        st.dice = a === b ? [a, a, a, a] : [a, b]; st.hist = []; st.phase = 'move';
+        if (allLegal(st.turn, st.dice, st.pts, st.bar, st.off).length === 0) { st.phase = 'roll'; st.dice = []; st.turn = other(st.turn); }
+        return true;
+      }
+      if (d.t === 'mv') {
+        if (st.phase !== 'move') return false;
+        const mv = firstMoves(st.turn, st.dice).find(m => String(m.from) === String(d.from) && String(m.to) === String(d.to) && m.dieVal === d.die);
+        if (!mv) return false;
+        const u = apply(mv, st.turn, st.pts, st.bar, st.off);
+        st.hist.push({ move: mv, wasHit: u.hit, dieVal: mv.dieVal });
+        const di = st.dice.indexOf(mv.dieVal); if (di >= 0) st.dice.splice(di, 1);
+        if (st.off[st.turn] === CHECKERS) { st.phase = 'over'; st.res = { winner: st.turn === P1 ? 0 : 1 }; return true; }
+        if (!(st.dice.length > 0 && firstMoves(st.turn, st.dice).length > 0)) endTurn();
+        return true;
+      }
+      if (d.t === 'undo') {
+        if (st.phase !== 'move' || !st.hist.length) return false;
+        const last = st.hist.pop();
+        unapply(last.move, st.turn, st.pts, st.bar, st.off, last.wasHit);
+        st.dice.push(last.dieVal);
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
 REFEREES.go = goReferee;
+REFEREES.backgammon = backgammonReferee;
 
 // ---------- Räume ----------
 const rooms = new Map();
