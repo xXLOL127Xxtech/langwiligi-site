@@ -137,6 +137,7 @@ Der Server prüft zusätzlich (der Browser wird nicht einfach geglaubt), sonst z
 - Mindestens 2 **verschiedene Geräte** (Konten) sassen von Rundenstart bis Rundenende am Tisch.
 - Die Runde dauerte mindestens **8 Sekunden**. Eine neue Runde kann erst beginnen, wenn die letzte beendet oder diese 8 Sekunden um sind.
 - `winnerIdx` ist `-1` oder ein Platz, der die ganze Runde besetzt war.
+- **Freiwillig, aber empfohlen:** Auch die anderen Spieler (nicht nur der Host) dürfen am Rundenende `room.result(winnerIdx)` mit dem Sieger melden, den **sie** sehen. Widerspricht jemand dem Host (Frist 3 Sekunden), zählt die Runde nicht. So kann ein manipulierter Host keinen falschen Sieg eintragen.
 - Höchstens **12 gewertete Runden pro Stunde** zwischen denselben Spielern und 60 pro Stunde pro Konto.
 - Nachrichten über `room.send()` dürfen höchstens **64 KB** gross sein (insgesamt etwa 400 KB pro Sekunde und Verbindung), grössere werden verworfen. Der Server akzeptiert Verbindungen nur von langwiligi.site und der Server-IP.
 

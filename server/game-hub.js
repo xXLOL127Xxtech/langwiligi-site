@@ -25,6 +25,7 @@ const MAX_RELAY_BYTES = 64 * 1024;       // eine einzelne Spiel-Nachricht
 const MIN_ROUND_MS = 8000;               // Eine Runde, die kürzer dauert, zählt nicht für die Rangliste
 const MAX_COUNTED_PER_PAIR_HOUR = 12;    // gleiche Spieler untereinander: höchstens so viele gewertete Runden pro Stunde (gegen Sieg-Farmen zu zweit)
 const MAX_COUNTED_PER_ACCOUNT_HOUR = 60;
+const VOTE_GRACE_MS = 3000;              // Nach dem Host-Ergebnis dürfen die anderen so lange widersprechen (room.result() von Nicht-Hosts)
 const MISS_LIMIT_PER_IP = 30;            // falsche Raumcodes pro IP und Minute, dann Sperre für diese Minute
 const MAX_SCORE_PER_ACCOUNT_HOUR = 120;
 // Erlaubte Herkunft (Origin) für WebSocket und schreibende API-Aufrufe: unsere Seite, die Server-IP und lokale Tests.
@@ -663,25 +664,42 @@ function onMessage(ws, raw) {
       if (room.roundOpen && Date.now() - room.roundAt < MIN_ROUND_MS) return;
       room.roundOpen = true; room.roundAt = Date.now();
       room.roundCodes = room.players.map(p => p ? p.code : null);
+      room.votes = new Map();
       break;
     }
     case 'result': {
-      const room = ws.room; if (!room || room.players[0]?.ws !== ws || !room.roundOpen) return;
+      const room = ws.room; if (!room) return;
+      const w = Number.isInteger(m.winner) ? m.winner : -1;
+      const me = room.players.findIndex(p => p && p.ws === ws);
+      if (me < 0) return;
+      // Mitspieler (nicht der Host) dürfen das Ergebnis ebenfalls melden. Weichen sie vom Host ab, wird die Runde nicht gewertet.
+      // Spiele, die das nicht tun, zählen weiter nur mit dem Host-Ergebnis.
+      if (me !== 0) {
+        if (room.roundOpen || room.pending) { room.votes = room.votes || new Map(); room.votes.set(room.players[me].code, w); }
+        return;
+      }
+      if (!room.roundOpen) return;
       room.roundOpen = false;
       // Der Server kann das Spiel nicht nachrechnen, prüft aber alles, was er prüfen kann:
       const now = Date.now(), present = room.players.filter(Boolean).length;
       if (present < 2) return;
       if (now - room.roundAt < MIN_ROUND_MS) return;                                  // zu kurz für eine echte Runde
       const codes = room.roundCodes || [];
-      const w = Number.isInteger(m.winner) ? m.winner : -1;
       // Sieger muss jemand sein, der die ganze Runde dabei war (kein Geisterplatz, kein Spieler, der später reinkam)
       if (w >= 0 && !(room.players[w] && room.players[w].code && room.players[w].code === codes[w])) return;
       // Mindestens zwei verschiedene Geräte (Konten) am Tisch
       const real = new Set(room.players.filter(Boolean).map(p => p.code));
       if (real.size < 2 || real.has(null)) return;
       if (!countAllowed(room, now)) return;
-      record(room.game, names(room), w);
-      room.players.forEach(p => p && send(p.ws, { t: 'leaderboard', game: room.game, rows: rows(room.game) }));
+      // Kurze Frist, in der die anderen widersprechen können
+      const snapshot = names(room), votes = room.votes || new Map();
+      room.pending = true;
+      setTimeout(() => {
+        room.pending = false;
+        for (const v of votes.values()) if (v !== w) { console.log('Ergebnis angezweifelt, nicht gewertet:', room.game, room.code); return; }
+        record(room.game, snapshot, w);
+        room.players.forEach(p => p && send(p.ws, { t: 'leaderboard', game: room.game, rows: rows(room.game) }));
+      }, VOTE_GRACE_MS);
       break;
     }
     case 'leaderboard':
@@ -1080,7 +1098,7 @@ const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(origin && !originOk(origin) ? 403 : 204, res.cors); return res.end(); }
   // Schreibende Aufrufe nur von unseren Seiten. Browser schicken Origin immer mit; wer ohne Origin kommt (curl, Skript), darf nicht schreiben.
   // Die Admin-Seite ist ausgenommen, sie schützt sich mit dem Schlüssel.
-  if (req.method === 'POST' && !originOk(origin) && !/^\/api\/(empfehlungen|bewertungen)\.json$/.test(url.pathname)) return json(res, 403, { error: 'bad-origin' });
+  if (req.method === 'POST' && !originOk(origin) && !/^\/api\/(empfehlungen|bewertungen|moderation)\.json$/.test(url.pathname)) return json(res, 403, { error: 'bad-origin' });
   const inv = url.pathname.match(/^\/api\/e\/([a-z0-9-]{1,40})\/([A-Za-z0-9]{4})$/);
   if (inv) {
     const game = inv[1], code = inv[2].toUpperCase();
@@ -1214,6 +1232,19 @@ const server = http.createServer((req, res) => {
       const i = ratings.findIndex(r => m && r.id === m.id);
       if (i >= 0 && m.action === 'delete') { ratings.splice(i, 1); saveRatings(); }
       json(res, 200, list());
+    });
+  }
+  // Betrüger entfernen: { name, game? } löscht den Namen aus Duell-Rangliste und Highscores (eines Spiels oder aller)
+  if (url.pathname === '/api/moderation.json' && req.method === 'POST') {
+    if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
+    return readBody(req, 1024, m => {
+      const key = rawName(m && m.name).toLowerCase(), only = m && m.game ? cleanGame(m.game) : '';
+      let n = 0;
+      if (key) [board, scores].forEach(store => Object.keys(store).forEach(g => {
+        if ((!only || g === only) && store[g][key]) { delete store[g][key]; n++; }
+      }));
+      if (n) { saveBoard(); saveScores(); }
+      json(res, 200, { ok: true, removed: n });
     });
   }
   if (url.pathname === '/api/aufrufe.json') {
