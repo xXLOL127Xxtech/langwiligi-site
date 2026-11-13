@@ -535,6 +535,52 @@ function record(game, names, winnerIdx) {
   saveBoard();
 }
 
+// ---------- Schiedsrichter: der Server spielt mit und kennt die Regeln ----------
+// Der Server sieht alle Nachrichten eines Raums. Für Spiele, deren Züge vollständig durch den Server laufen, gibt es hier
+// einen Schiedsrichter: Er verfolgt die Partie mit, lehnt regelwidrige Züge ab (sie werden nicht weitergeleitet, die Runde zählt dann nicht)
+// und bestimmt den Sieger selbst. Das Ergebnis des Hosts spielt für die Rangliste dann keine Rolle mehr.
+// Neues Spiel: unten in REFEREES einen Eintrag mit dem Spiel-Ordnernamen ergänzen. Die Funktion liefert ein Objekt mit
+//   move(seat, daten)  -> true (Nachricht ok, weiterleiten) oder false (regelwidrig)
+//   verdict()          -> null (läuft noch / unbekannt) oder { winner: Platz im Raum, -1 = unentschieden }
+const REFEREES = {
+  // Fünf gewinnt (games/fuenf-gewinnt): start { swap, options: { size, need } } vom Host, dann abwechselnd mv { m: { r, c } }.
+  // Spieler 0 beginnt. Spieler p sitzt auf Platz (swap ? 1 - p : p).
+  'fuenf-gewinnt'() {
+    let st = null;
+    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    return {
+      move(seat, d) {
+        if (!d || typeof d !== 'object') return false;
+        if (d.t === 'start') {
+          if (seat !== 0) return false;
+          const o = d.options || {}, size = +o.size || 15, need = +o.need || 5;
+          if (![9, 13, 15, 19].includes(size) || ![4, 5, 6].includes(need)) { st = null; return false; }
+          st = { size, need, swap: !!d.swap, board: Array.from({ length: size }, () => Array(size).fill(-1)), turn: 0, moves: 0, over: false, winner: null };
+          return true;
+        }
+        if (d.t !== 'mv') return true;   // again, bye usw.: nichts zu prüfen
+        if (!st || st.over) return false;
+        const m = d.m, r = m && m.r, c = m && m.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.size || c >= st.size) return false;
+        if (seat !== (st.swap ? 1 - st.turn : st.turn)) return false;     // nicht an der Reihe
+        if (st.board[r][c] !== -1) return false;                            // Feld besetzt
+        const p = st.turn;
+        st.board[r][c] = p; st.moves++;
+        for (const [dr, dc] of dirs) {
+          let n = 1;
+          for (let k = 1; ; k++) { const y = r + dr * k, x = c + dc * k; if (y < 0 || x < 0 || y >= st.size || x >= st.size || st.board[y][x] !== p) break; n++; }
+          for (let k = 1; ; k++) { const y = r - dr * k, x = c - dc * k; if (y < 0 || x < 0 || y >= st.size || x >= st.size || st.board[y][x] !== p) break; n++; }
+          if (n >= st.need) { st.over = true; st.winner = st.swap ? 1 - p : p; return true; }
+        }
+        if (st.moves >= st.size * st.size) { st.over = true; st.winner = -1; return true; }
+        st.turn = 1 - p;
+        return true;
+      },
+      verdict() { return st && st.over ? { winner: st.winner } : null; },
+    };
+  },
+};
+
 // ---------- Räume ----------
 const rooms = new Map();
 function newCode() {
@@ -589,6 +635,7 @@ function onMessage(ws, raw) {
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
       const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
+      if (REFEREES[room.game]) room.ref = REFEREES[room.game]();
       const nm = roomName(ws, m);
       if (!nm) { rooms.delete(room.code); return send(ws, { t: 'error', msg: 'invalid' }); }
       room.players[0] = { ws, name: nm, code: accountOf(m) };
@@ -607,6 +654,7 @@ function onMessage(ws, raw) {
       if (!room) {
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
         room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
+        if (REFEREES[room.game]) room.ref = REFEREES[room.game]();
         rooms.set(room.code, room);
       }
       let idx = -1;
@@ -654,6 +702,8 @@ function onMessage(ws, raw) {
       if (from < 0 || m.d === undefined) return;
       const out = JSON.stringify({ t: 'relay', from, d: m.d });
       if (out.length > MAX_RELAY_BYTES) return;
+      // Schiedsrichter: Regelwidriges wird nicht weitergeleitet, und die Runde zählt nicht mehr
+      if (room.ref && !room.ref.move(from, m.d)) { room.tainted = true; console.log('Regelwidrige Nachricht verworfen:', room.game, room.code, 'Platz', from); return; }
       others(room, ws).forEach(p => p.ws.readyState === 1 && p.ws.send(out));
       break;
     }
@@ -665,11 +715,12 @@ function onMessage(ws, raw) {
       room.roundOpen = true; room.roundAt = Date.now();
       room.roundCodes = room.players.map(p => p ? p.code : null);
       room.votes = new Map();
+      room.tainted = false;
       break;
     }
     case 'result': {
       const room = ws.room; if (!room) return;
-      const w = Number.isInteger(m.winner) ? m.winner : -1;
+      let w = Number.isInteger(m.winner) ? m.winner : -1;
       const me = room.players.findIndex(p => p && p.ws === ws);
       if (me < 0) return;
       // Mitspieler (nicht der Host) dürfen das Ergebnis ebenfalls melden. Weichen sie vom Host ab, wird die Runde nicht gewertet.
@@ -683,7 +734,13 @@ function onMessage(ws, raw) {
       // Der Server kann das Spiel nicht nachrechnen, prüft aber alles, was er prüfen kann:
       const now = Date.now(), present = room.players.filter(Boolean).length;
       if (present < 2) return;
-      if (now - room.roundAt < MIN_ROUND_MS) return;                                  // zu kurz für eine echte Runde
+      if (room.ref) {
+        // Der Schiedsrichter entscheidet, nicht der Host. Läuft die Partie noch oder war etwas regelwidrig: keine Wertung.
+        const v = room.ref.verdict();
+        if (!v || room.tainted) return;
+        if (v.winner !== w) console.log('Host meldete anderen Sieger als der Schiedsrichter:', room.game, room.code, w, '->', v.winner);
+        w = v.winner;
+      } else if (now - room.roundAt < MIN_ROUND_MS) return;                            // zu kurz für eine echte Runde
       const codes = room.roundCodes || [];
       // Sieger muss jemand sein, der die ganze Runde dabei war (kein Geisterplatz, kein Spieler, der später reinkam)
       if (w >= 0 && !(room.players[w] && room.players[w].code && room.players[w].code === codes[w])) return;
@@ -692,7 +749,7 @@ function onMessage(ws, raw) {
       if (real.size < 2 || real.has(null)) return;
       if (!countAllowed(room, now)) return;
       // Kurze Frist, in der die anderen widersprechen können
-      const snapshot = names(room), votes = room.votes || new Map();
+      const snapshot = names(room), votes = room.ref ? new Map() : (room.votes || new Map());
       room.pending = true;
       setTimeout(() => {
         room.pending = false;

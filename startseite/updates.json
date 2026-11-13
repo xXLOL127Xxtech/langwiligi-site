@@ -3,7 +3,8 @@
     "Der Server prüft jetzt selbst, statt dem Browser alles zu glauben: Verbindungen nur noch von langwiligi.site, kein Spielen unter fremdem Namen mehr",
     "Siege in der Rangliste zählen nur, wenn die Runde mindestens 8 Sekunden dauerte, der Sieger die ganze Runde dabei war und zwei verschiedene Geräte spielten",
     "Grenzen gegen Sieg-Farmen und Datenfluten, Highscores nur noch mit dem Konto des Geräts",
-    "Mitspieler können ein falsches Host-Ergebnis anzweifeln, Betrüger lassen sich aus den Ranglisten entfernen"
+    "Mitspieler können ein falsches Host-Ergebnis anzweifeln, Betrüger lassen sich aus den Ranglisten entfernen",
+    "Fünf gewinnt: Der Server spielt jetzt mit, prüft jeden Zug und bestimmt den Sieger selbst"
   ] },
   { "d": "2026-10-31", "t": "Ranglisten für mehr Solo-Spiele", "tag": "Neu", "p": [
     "Dead Maze: Online-Rangliste im Startmenü und nach dem Game Over. Die Wertung ist (Welle × 100 + Abschüsse) mal Schwierigkeit",
