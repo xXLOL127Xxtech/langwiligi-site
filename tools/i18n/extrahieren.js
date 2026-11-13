@@ -137,6 +137,7 @@ const CODE = /^(?:[a-z0-9_$.\-:#\[\]\/=,()%@+*>~<!?'"` &|;{}\\^]*|\s*)$/;     //
 function isText(s) {
   s = s.replace(/\s+/g, ' ').trim();
   if (s.length < 2 || !/\p{L}{2}/u.test(s)) return false;
+  if (/\b(uniform|varying|vec[234]|void main|gl_Frag|gl_Position|attribute|precision mediump)\b/.test(s) || (s.length > 300 && (s.match(/;/g) || []).length > 6)) return false;   // Shader-/Programmtext
   if (/^(https?:|\/|\.\.?\/|data:|#[0-9a-f]{3,8}$|rgba?\(|hsla?\(|[a-z]+\([^)]*\)$)/i.test(s)) return false;
   if (/^[\w.\-/]+\.(png|jpe?g|webp|svg|gif|mp3|ogg|wav|json|js|css|html)$/i.test(s)) return false;
   if (/^[A-Za-z0-9_\-]+$/.test(s) && /^[a-z]/.test(s) && !/[äöüß]/.test(s)) return false;           // einzelnes kleingeschriebenes Wort ohne Umlaut: Schlüssel/ID
