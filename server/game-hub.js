@@ -996,6 +996,232 @@ const ENGINES = {
       result: st => st.res,
     };
   })(),
+
+  // Laser-Duell: Zug { t: 'rotate', idx } oder { t: 'move', from, to } (Feldnummern 0–63). Danach feuert die eigene Kanone automatisch.
+  'laser-duell': (() => {
+    const N = 8, ADJ = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const refl = (m, dr, dc) => m === '/' ? [-dc, -dr] : [dc, dr];
+    function fire(pieces, player) {
+      const cannon = pieces.findIndex(p => p && p.type === 'cannon' && p.player === player);
+      let r = Math.floor(cannon / N), c = cannon % N, [dr, dc] = player === 0 ? [-1, 0] : [1, 0];
+      const seen = new Set();
+      for (let step = 0; step < N * N * 8; step++) {
+        r += dr; c += dc;
+        if (r < 0 || c < 0 || r >= N || c >= N) return null;
+        const i = r * N + c, key = i + ':' + dr + ':' + dc;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        const p = pieces[i];
+        if (!p) continue;
+        if (p.type === 'mirror') { [dr, dc] = refl(p.mirror, dr, dc); continue; }
+        if (p.type === 'core') return p.player === player ? 1 - player : player;
+        return null;
+      }
+      return null;
+    }
+    return {
+      init() {
+        const b = Array(N * N).fill(null), put = (r, c, p) => { b[r * N + c] = p; };
+        put(7, 0, { type: 'cannon', player: 0 }); put(7, 4, { type: 'core', player: 0 });
+        put(6, 2, { type: 'mirror', player: 0, mirror: '/' }); put(6, 5, { type: 'mirror', player: 0, mirror: '\\' });
+        put(5, 1, { type: 'mirror', player: 0, mirror: '\\' }); put(5, 6, { type: 'mirror', player: 0, mirror: '/' });
+        put(0, 7, { type: 'cannon', player: 1 }); put(0, 3, { type: 'core', player: 1 });
+        put(1, 5, { type: 'mirror', player: 1, mirror: '/' }); put(1, 2, { type: 'mirror', player: 1, mirror: '\\' });
+        put(2, 6, { type: 'mirror', player: 1, mirror: '\\' }); put(2, 1, { type: 'mirror', player: 1, mirror: '/' });
+        return { b, turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m) return false;
+        if (m.t === 'rotate') {
+          const p = Number.isInteger(m.idx) ? st.b[m.idx] : null;
+          if (!p || p.type !== 'mirror' || p.player !== st.turn) return false;
+          p.mirror = p.mirror === '/' ? '\\' : '/';
+        } else if (m.t === 'move') {
+          const f = m.from, t = m.to;
+          if (!Number.isInteger(f) || !Number.isInteger(t) || f < 0 || f >= N * N || t < 0 || t >= N * N) return false;
+          const p = st.b[f];
+          if (!p || p.type !== 'mirror' || p.player !== st.turn || st.b[t]) return false;
+          const r = Math.floor(f / N), c = f % N;
+          if (!ADJ.some(([dr, dc]) => r + dr >= 0 && r + dr < N && c + dc >= 0 && c + dc < N && (r + dr) * N + c + dc === t)) return false;
+          st.b[t] = p; st.b[f] = null;
+        } else return false;
+        const w = fire(st.b, st.turn);
+        if (w !== null) st.res = { winner: w }; else st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+
+  // Panzer-Taktik: Zug { t: 'move'|'shoot'|'pierce'|'rocket'|'mine', r, c } oder { t: 'end' }. Mehrere Aktionen pro Zug (Aktionspunkte).
+  // Gelände und Kisten kommen aus dem Seed der Runde (gleicher Zufallsgenerator wie im Spiel).
+  'panzer-taktik': (() => {
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]], ITEM_KEYS = ['repair', 'armor', 'rocket', 'mine'];
+    const DENS = { open: { wall: 0.06, crate: 0.11, water: 0.04, forest: 0.05 }, balanced: { wall: 0.09, crate: 0.16, water: 0.06, forest: 0.07 }, dense: { wall: 0.12, crate: 0.20, water: 0.08, forest: 0.09 } };
+    const inside = (st, r, c) => r >= 0 && r < st.N && c >= 0 && c < st.N;
+    const occupied = (st, r, c) => st.players.findIndex(p => p.hp > 0 && p.r === r && p.c === c);
+    const passable = (st, r, c) => inside(st, r, c) && (st.terrain[r][c].type === 'empty' || st.terrain[r][c].type === 'forest') && occupied(st, r, c) === -1;
+    function makeTerrain(N, density, rng) {
+      const grid = Array.from({ length: N }, () => Array.from({ length: N }, () => ({ type: 'empty', hp: 0, item: null })));
+      const safe = (r, c) => Math.abs(r - (N - 1)) + Math.abs(c) <= 2 || Math.abs(r) + Math.abs(c - (N - 1)) <= 2 || r === 0 || c === 0 || r === N - 1 || c === N - 1;
+      const setPair = (r, c, cell) => { const mr = N - 1 - r, mc = N - 1 - c; if (!safe(r, c)) grid[r][c] = Object.assign({}, cell); if (!safe(mr, mc)) grid[mr][mc] = Object.assign({}, cell); };
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        const mr = N - 1 - r, mc = N - 1 - c;
+        if (r > mr || (r === mr && c > mc) || safe(r, c)) continue;
+        const roll = rng(), tWall = density.wall, tCrate = tWall + density.crate, tWater = tCrate + density.water, tForest = tWater + density.forest;
+        if (roll < tWall) setPair(r, c, { type: 'wall', hp: 0, item: null });
+        else if (roll < tCrate) { const item = rng() < 0.58 ? ITEM_KEYS[Math.floor(rng() * ITEM_KEYS.length)] : null; setPair(r, c, { type: 'crate', hp: 1, item }); }
+        else if (roll < tWater) setPair(r, c, { type: 'water', hp: 0, item: null });
+        else if (roll < tForest) setPair(r, c, { type: 'forest', hp: 0, item: null });
+      }
+      return grid;
+    }
+    function checkEnd(st) {
+      if (st.res) return;
+      const d0 = st.players[0].hp <= 0, d1 = st.players[1].hp <= 0;
+      if (!d0 && !d1) return;
+      st.res = { winner: d0 && d1 ? -1 : d0 ? 1 : 0 };
+    }
+    function damage(st, idx, raw, defer) {
+      const p = st.players[idx]; let dmg = raw;
+      if (p.armor) { dmg = Math.ceil(dmg * 0.45); p.armor = false; }
+      p.hp = Math.max(0, p.hp - dmg);
+      if (!defer) checkEnd(st);
+    }
+    function breakCrate(st, r, c) {
+      const cell = st.terrain[r][c];
+      if (cell.type !== 'crate') return;
+      if (cell.item) st.items[r][c] = cell.item;
+      st.terrain[r][c] = { type: 'empty', hp: 0, item: null };
+    }
+    function endTurn(st) { if (st.res) return; st.turn = 1 - st.turn; st.ap = st.START_AP; }
+    function shortestPath(st, start, target, maxCost) {
+      if (!passable(st, target.r, target.c)) return null;
+      const q = [{ r: start.r, c: start.c }], seen = new Set([start.r + ',' + start.c]), prev = new Map();
+      const dist = cur => { let key = cur.r + ',' + cur.c, d = 0; while (prev.has(key)) { key = prev.get(key); d++; } return d; };
+      while (q.length) {
+        const cur = q.shift();
+        if (dist(cur) >= maxCost) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = cur.r + dr, nc = cur.c + dc, key = nr + ',' + nc;
+          if (!passable(st, nr, nc) || seen.has(key)) continue;
+          seen.add(key); prev.set(key, cur.r + ',' + cur.c);
+          if (nr === target.r && nc === target.c) {
+            const out = []; let k = key;
+            while (k) { const [r, c] = k.split(',').map(Number); out.push({ r, c }); k = prev.get(k); }
+            return out.reverse();
+          }
+          q.push({ r: nr, c: nc });
+        }
+      }
+      return null;
+    }
+    const lineDir = (sr, sc, tr, tc) => (sr === tr && sc !== tc) ? [0, tc > sc ? 1 : -1] : (sc === tc && sr !== tr) ? [tr > sr ? 1 : -1, 0] : null;
+    function traceShot(st, sr, sc, tr, tc, dir) {
+      let r = sr + dir[0], c = sc + dir[1];
+      while (inside(st, r, c)) {
+        const tank = occupied(st, r, c);
+        if (tank !== -1) return { type: 'tank', player: tank, r, c };
+        const cell = st.terrain[r][c];
+        if (cell.type === 'wall') return { type: 'wall', r, c };
+        if (cell.type === 'crate') return { type: 'crate', r, c };
+        if (r === tr && c === tc) return { type: 'miss', r, c };
+        r += dir[0]; c += dir[1];
+      }
+      return { type: 'miss', r: tr, c: tc };
+    }
+    return {
+      init(o, seed) {
+        const N = o.size === undefined ? 11 : inChoices(o.size, [9, 11, 13], 11), hp = o.hp === undefined ? 100 : inChoices(o.hp, [80, 100, 120], 100);
+        const ap = o.ap === undefined ? 4 : inChoices(o.ap, [3, 4, 5], 4), map = o.map === undefined ? 'balanced' : o.map;
+        if (!N || !hp || !ap || !DENS[map] || !seed || (o.range !== undefined && o.range !== 5)) return null;
+        let a = seed >>> 0;
+        const rng = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        return { N, MAX_HP: hp, START_AP: ap, RANGE: 5, terrain: makeTerrain(N, DENS[map], rng),
+          items: Array.from({ length: N }, () => Array(N).fill(null)), mines: Array.from({ length: N }, () => Array(N).fill(null)),
+          players: [{ r: N - 1, c: 0, hp, armor: false, rockets: 1, mines: 1 }, { r: 0, c: N - 1, hp, armor: false, rockets: 1, mines: 1 }],
+          turn: 0, ap, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m) return false;
+        if (m.t === 'end') { endTurn(st); return true; }
+        const r = m.r, c = m.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c)) return false;
+        const pl = st.players[st.turn], t = st.turn;
+        if (m.t === 'move') {
+          const path = shortestPath(st, pl, { r, c }, st.ap);
+          if (!path || path.length < 2) return false;
+          const cost = path.length - 1;
+          for (let i = 1; i < path.length; i++) {
+            pl.r = path[i].r; pl.c = path[i].c;
+            const mine = st.mines[pl.r][pl.c];
+            if (mine && mine.owner !== t) { st.mines[pl.r][pl.c] = null; damage(st, t, 28); }
+            const it = st.items[pl.r][pl.c];
+            if (it) {
+              st.items[pl.r][pl.c] = null;
+              if (it === 'repair') pl.hp = Math.min(st.MAX_HP, pl.hp + 30); else if (it === 'armor') pl.armor = true; else if (it === 'rocket') pl.rockets++; else if (it === 'mine') pl.mines++;
+            }
+            if (st.res) return true;
+          }
+          st.ap -= cost;
+          if (st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'shoot') {
+          if (st.ap < 2) return false;
+          const dir = lineDir(pl.r, pl.c, r, c);
+          if (!dir) return false;
+          st.ap -= 2;
+          const hit = traceShot(st, pl.r, pl.c, r, c, dir);
+          if (hit.type === 'tank') damage(st, hit.player, 32); else if (hit.type === 'crate') breakCrate(st, hit.r, hit.c);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'pierce') {
+          if (st.ap < 3) return false;
+          const dir = lineDir(pl.r, pl.c, r, c);
+          if (!dir) return false;
+          st.ap -= 3;
+          let rr = pl.r + dir[0], cc = pl.c + dir[1];
+          while (inside(st, rr, cc)) {
+            const cell = st.terrain[rr][cc];
+            if (cell.type === 'wall') break;
+            const tank = occupied(st, rr, cc);
+            if (tank !== -1) damage(st, tank, 30, true);
+            if (cell.type === 'crate') breakCrate(st, rr, cc);
+            rr += dir[0]; cc += dir[1];
+          }
+          checkEnd(st);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'rocket') {
+          if (st.ap < 3 || pl.rockets <= 0 || Math.abs(pl.r - r) + Math.abs(pl.c - c) > st.RANGE) return false;
+          pl.rockets--; st.ap -= 3;
+          for (let rr = r - 1; rr <= r + 1; rr++) for (let cc = c - 1; cc <= c + 1; cc++) {
+            if (!inside(st, rr, cc)) continue;
+            if (st.terrain[rr][cc].type === 'crate') breakCrate(st, rr, cc);
+            const tank = occupied(st, rr, cc);
+            if (tank !== -1) damage(st, tank, (rr === r && cc === c) ? 48 : 28, true);
+          }
+          checkEnd(st);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'mine') {
+          if (st.ap < 1 || pl.mines <= 0) return false;
+          if (Math.abs(pl.r - r) + Math.abs(pl.c - c) !== 1 || !passable(st, r, c) || st.mines[r][c] || st.items[r][c]) return false;
+          st.mines[r][c] = { owner: t }; pl.mines--; st.ap--;
+          if (st.ap <= 0) endTurn(st);
+          return true;
+        }
+        return false;
+      },
+      result: st => st.res,
+    };
+  })(),
 };
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });

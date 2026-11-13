@@ -65,6 +65,23 @@ const PROPOSE = {
     const p = Math.random() < .03 ? 1 - st.turn : st.turn, n = st.pieces[p].length, idx = ri(n), pc = st.pieces[p][idx], dr = p === 0 ? -1 : 1, d = [[dr, 0], [dr, -1], [dr, 1]][ri(3)], k = 1 + ri(4);
     return { p, idx, to: [pc.r + d[0] * k, pc.c + d[1] * k] };
   },
+  'laser-duell': (st) => {
+    const mine = []; st.b.forEach((p, i) => { if (p && p.type === 'mirror' && p.player === st.turn) mine.push(i); });
+    const from = Math.random() < .9 ? mine[ri(mine.length)] : ri(64);
+    if (Math.random() < .4) return { t: 'rotate', idx: from };
+    const d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, 1]][ri(5)];
+    return { t: 'move', from, to: from + d[0] * 8 + d[1] };
+  },
+  'panzer-taktik': (st) => {
+    const pl = st.players[st.turn], x = Math.random(), N = st.N;
+    if (x < .08) return { t: 'end' };
+    if (x < .4) { const k = 1 + ri(3), d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, 1]][ri(5)]; return { t: 'move', r: pl.r + d[0] * k, c: pl.c + d[1] * k }; }
+    const kind = ['shoot', 'shoot', 'pierce', 'rocket', 'mine'][ri(5)];
+    if (kind === 'mine') { const d = [[-1, 0], [1, 0], [0, -1], [0, 1]][ri(4)]; return { t: 'mine', r: pl.r + d[0], c: pl.c + d[1] }; }
+    if (kind === 'rocket') return { t: 'rocket', r: Math.max(0, Math.min(N - 1, pl.r + ri(7) - 3)), c: Math.max(0, Math.min(N - 1, pl.c + ri(7) - 3)) };
+    const foe = st.players[1 - st.turn];
+    return Math.random() < .5 ? { t: kind, r: foe.r, c: foe.c } : { t: kind, r: pl.r, c: ri(N) };
+  },
   'dreh-duell': () => ({ cell: ri(36), quad: ri(4), dir: ['cw', 'ccw'][ri(2)] }),
   'kaesekaestchen': (st) => Math.random() < .5 ? { type: 'h', r: ri(st.H + 1), c: ri(st.W) } : { type: 'v', r: ri(st.H), c: ri(st.W + 1) },
 };
@@ -76,6 +93,8 @@ const OPTIONS = {
   'mauer-duell': [{ size: 5 }, { size: 7 }, { size: 9 }],
   'farben-duell': [{ reihen: 2 }, { reihen: 1 }],
   'dreh-duell': [{}],
+  'panzer-taktik': [{}, { size: 9, map: 'dense', ap: 5, hp: 80 }, { size: 13, map: 'open', ap: 3, hp: 120 }],
+  'laser-duell': [{}],
   'mancala': [{}],
   'dame': [{ kings: 'standard' }, { kings: 'flying' }],
   'kaesekaestchen': [{ cols: 4, rows: 4, bonus: 'few' }, { cols: 5, rows: 3, bonus: 'many' }, { cols: 3, rows: 3, bonus: 'off' }],
