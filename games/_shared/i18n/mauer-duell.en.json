@@ -1,0 +1,23 @@
+{
+ "(Gegner)": "(opponent)",
+ "(du bist dran)": "(your turn)",
+ "In jedem Zug machst du genau eins: deine Figur ZIEHEN (auf ein Nachbarfeld) ODER eine MAUER setzen.": "Each turn you do exactly one thing: MOVE your piece (to a neighboring square) OR place a WALL.",
+ "Mauer": "Wall",
+ "Mauern": "walls",
+ "Mauern pro Spieler": "Walls per player",
+ "Modus 🏃 Ziehen: Tippe auf ein leuchtendes Feld. Stehen die Figuren nebeneinander, darfst du über den Gegner springen.": "Mode 🏃 Move: tap a glowing square. If the pieces stand next to each other, you may jump over your opponent.",
+ "Modus 🧱 Mauer: Tippe auf eine Lücke zwischen den Feldern, um eine 2 Felder lange Mauer zu setzen. Mit der Maus siehst du eine Vorschau (grün = geht, rot = geht nicht).": "Mode 🧱 Wall: tap a gap between the squares to place a wall 2 squares long. With the mouse you see a preview (green = works, red = doesn't work).",
+ "Oben siehst du, wie viele SCHRITTE jeder noch bis zum Ziel braucht (kürzester Weg) und wie viele Mauern übrig sind – so erkennst du, wer vorne liegt.": "At the top you see how many STEPS each player still needs to reach the goal (shortest path) and how many walls are left – so you can tell who is ahead.",
+ "Regel: Eine Mauer darf den Weg zum Ziel NIE ganz versperren. Kleine Bretter (5×5/7×7) sind schnelle Runden. Wer zuerst am Ziel ist, gewinnt.": "Rule: a wall may NEVER completely block the way to the goal. Small boards (5×5/7×7) make quick rounds. Whoever reaches the goal first wins.",
+ "Renn auf die andere Seite und bau Mauern, um den Gegner aufzuhalten.": "Race to the other side and build walls to stop your opponent.",
+ "Schritte bis zum Ziel": "steps to the goal",
+ "Spieler 1 (🔴 rot) startet unten und muss die OBERSTE Reihe erreichen; Spieler 2 (🔵 blau) startet oben und muss in die UNTERSTE Reihe. Die Zielreihen sind farbig markiert.": "Player 1 (🔴 red) starts at the bottom and must reach the TOP row; player 2 (🔵 blue) starts at the top and must reach the BOTTOM row. The goal rows are marked in color.",
+ "Spieler {0} ist dran{1}. Zieh deine Figur oder setz eine Mauer.": "Player {0}'s turn{1}. Move your piece or place a wall.",
+ "Vorbei": "Over",
+ "Zieh deine Figur oder setz eine Mauer.": "Move your piece or place a wall.",
+ "Zieh deine Figur oder setz eine Mauer: Wer zuerst die andere Seite erreicht, gewinnt. Aber Achtung – ganz zumauern ist verboten!": "Move your piece or place a wall: whoever reaches the other side first wins. But careful – walling off completely is forbidden!",
+ "⛔ Hier geht keine Mauer (Überschneidung oder sie würde den Weg zum Ziel ganz versperren).": "⛔ No wall can go here (it overlaps or would completely block the way to the goal).",
+ "🎉 Spieler {0} hat das Ziel erreicht – Sieg!": "🎉 Player {0} has reached the goal – victory!",
+ "🏃 Ziehen": "🏃 Move",
+ "🧱 Mauer": "🧱 Wall"
+}

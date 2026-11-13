@@ -1,0 +1,17 @@
+{
+ "Gegner sät …": "Opponent is sowing …",
+ "In deinen eigenen Speicher kommt dabei auch ein Stein, der Speicher des Gegners wird übersprungen.": "A stone also goes into your own store; your opponent's store is skipped.",
+ "Jeder hat 6 kleine Mulden auf seiner Seite und einen grossen Speicher. Spieler 1 sitzt unten (Speicher rechts), Spieler 2 oben (Speicher links).": "Everyone has 6 small pits on their side and one big store. Player 1 sits at the bottom (store on the right), player 2 at the top (store on the left).",
+ "Landet der letzte Stein in deinem SPEICHER, darfst du nochmal.": "If your last stone lands in your STORE, you get another turn.",
+ "Landet der letzte Stein in einer LEEREN Mulde auf deiner Seite, fängst du ihn und alle Steine der gegenüberliegenden Mulde – ab in deinen Speicher.": "If your last stone lands in an EMPTY pit on your side, you capture it and all the stones in the opposite pit – straight into your store.",
+ "Mulde": "Pit",
+ "Mulden": "Pits",
+ "Sind auf einer Seite alle Mulden leer, kommen die restlichen Steine des anderen in dessen Speicher. Wer mehr Steine im Speicher hat, gewinnt.": "If all pits on one side are empty, the other player's remaining stones go into their store. Whoever has more stones in their store wins.",
+ "Speicher": "Store",
+ "Spieler {0} ist dran – wähle eine Mulde auf deiner Seite.": "Player {0}'s turn – choose a pit on your side.",
+ "Verteile Steine reihum, fang die Steine des Gegners und füll deinen Speicher.": "Sow stones around, capture your opponent's stones and fill your store.",
+ "Verteile die Steine einer Mulde reihum. Landest du im eigenen Speicher, darfst du nochmal – und leere Mulden schnappen dem Gegner Steine weg.": "Sow the stones of a pit around the board. If you land in your own store you go again – and empty pits snatch stones from your opponent.",
+ "Wähle eine Mulde auf deiner Seite und verteile die Steine im Gegenuhrzeigersinn. Die meisten Steine im Speicher gewinnen.": "Choose a pit on your side and sow the stones counter-clockwise. Most stones in the store wins.",
+ "Wähle eine Mulde mit Steinen auf deiner Seite: Alle Steine werden aufgenommen und einzeln im Gegenuhrzeigersinn in die folgenden Mulden verteilt.": "Choose a pit with stones on your side: all stones are picked up and dropped one by one counter-clockwise into the following pits.",
+ "✨ Spieler {0} landet im eigenen Speicher – nochmal!": "✨ Player {0} lands in their own store – again!"
+}

@@ -1,0 +1,23 @@
+{
+ "An (Zahlen + Vorschau)": "On (numbers + preview)",
+ "Aus (für Profis)": "Off (for pros)",
+ "Die Anzeige oben zählt die Steine und zeigt, wer dran ist. Ist das Brett voll (oder kann keiner mehr ziehen), gewinnt, wer mehr Steine hat.": "The display at the top counts the stones and shows whose turn it is. When the board is full (or nobody can move), whoever has more stones wins.",
+ "Du darfst nur dort setzen, wo du mindestens einen Stein umdrehst. Ohne gültigen Zug wirst du übersprungen.": "You may only play where you flip at least one stone. If you have no valid move, you are skipped.",
+ "Fahr mit der Maus über ein Feld für eine VORSCHAU: Die Steine, die umgedreht würden, blinken.": "Move the mouse over a square for a PREVIEW: the stones that would be flipped blink.",
+ "Hilfe für Anfänger": "Beginner help",
+ "Kesselt die Steine des Gegners ein und dreht sie in eure Farbe. Wer am Schluss mehr Steine hat, gewinnt.": "Surround your opponent's stones and turn them to your color. Whoever has more stones at the end wins.",
+ "Mit Anfänger-Hilfe zeigen erlaubte Felder eine ZAHL – so viele Steine drehst du dort um. Mehr ist oft besser.": "With beginner help, allowed squares show a NUMBER – that's how many stones you flip there. More is often better.",
+ "Schliesse gegnerische Steine ein und drehe sie um. Wer am Ende mehr Steine hat, gewinnt.": "Enclose enemy stones and flip them. Whoever has more stones at the end wins.",
+ "Spieler 1 (Schwarz)": "Player 1 (Black)",
+ "Spieler 1 spielt ⚫ Schwarz, Spieler 2 spielt ⚪ Weiss. Schwarz beginnt.": "Player 1 plays ⚫ Black, player 2 plays ⚪ White. Black goes first.",
+ "Spieler 2 (Weiss)": "Player 2 (White)",
+ "Tipp: Die vier Ecken sind sehr stark, denn sie können nie mehr umgedreht werden – hol dir die Ecken!": "Tip: the four corners are very strong because they can never be flipped again – grab the corners!",
+ "Tippe auf ein Feld mit Zahl – die Zahl zeigt, wie viele Steine du umdrehst.": "Tap a square with a number – the number shows how many stones you flip.",
+ "Ziel: Schliesse eine Reihe gegnerischer Steine zwischen deinem neuen Stein und einem anderen eigenen Stein ein – die ganze Reihe wird UMGEDREHT und gehört dir.": "Goal: enclose a row of enemy stones between your new stone and another stone of yours – the whole row is FLIPPED and becomes yours.",
+ "⏭️ {0} hat keinen gültigen Zug – wird übersprungen!": "⏭️ {0} has no valid move – skipped!",
+ "⚪ Weiss": "⚪ White",
+ "⚫ Schwarz": "⚫ Black",
+ "⚫ Schwarz: {0} – ⚪ Weiss: {1}. {2}": "⚫ Black: {0} – ⚪ White: {1}. {2}",
+ "🎉 Spieler 1 (Schwarz) gewinnt": "🎉 Player 1 (Black) wins",
+ "🎉 Spieler 2 (Weiss) gewinnt": "🎉 Player 2 (White) wins"
+}

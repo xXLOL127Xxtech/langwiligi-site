@@ -95,7 +95,7 @@
   }
 
   // Sieht der Text deutsch aus? (für die Suche nach fehlenden Übersetzungen)
-  const GER = /[äöüÄÖÜß]|(^|[^\p{L}])(der|die|das|und|nicht|du|dein|deine|deinen|ist|mit|auf|zu|ein|eine|einen|wird|kannst|Spieler|Runde|Punkte|Leben|Gegner|Neu|Menü|bitte|oder|noch|nur|wie|nach|von|für|im|am|hat|haben|dir|dich|zum|zur|bis|alle|Spiel|Zug|dran|gewinnt|weiter|zurück|Schliessen|Einstellungen|Spielen|Beenden|Abbrechen|Fertig|Wähle|Tippe|Klick|drücke|Taste|Leertaste|Pfeiltasten)($|[^\p{L}])/u;
+  const GER = /[äöüÄÖÜß]|(^|[^\p{L}])(der|dem|des|das|und|nicht|du|dein|deine|deinen|deiner|deinem|ist|mit|auf|zu|zum|zur|ein|eine|einen|einer|eines|wird|werden|wurde|wurden|kannst|kann|muss|soll|sollst|darfst|oder|noch|nur|wie|wenn|wer|dich|dir|euch|uns|für|von|nach|bis|über|unter|ohne|gegen|durch|beim|vom|schon|jetzt|hier|dort|wieder|auch|sehr|mehr|alle|alles|jeder|jede|jedes|kein|keine|keinen|sind|bist|seid|haben|hast|habt|Spieler|Runde|Runden|Gegner|Punkte|Spiel|Spiele|Zug|dran|gewinnt|verloren|weiter|zurück|Schliessen|Einstellungen|Beenden|Abbrechen|Wähle|Tippe|drücke|Taste|Tasten|Leertaste|Pfeiltasten|bitte|zuerst|ganz|viel|viele|wenig|dann|aber|weil|dass|gewinnen|verlieren|treffen|setzen|ziehen|wählen|starten|sammeln|bauen|kaufen|spielen|laufen|springen|schiessen|rennen|fahren|Neu|Menü|Leben|Stufe|Feld|Felder|Brett|Stein|Steine|Reihe|Zeit|Sekunden|Gewinn|Sieg|Niederlage|Ziel|Welt|Karte|Waffe|Münzen|Schaden|Angriff|Verteidigung|Schwarz|Weiss|Rot|Blau|Gelb|Grün|einem)($|[^\p{L}])/iu;
   function looksGerman(s) { return GER.test(s); }
 
   const api = { makeTranslator, looksGerman, norm };

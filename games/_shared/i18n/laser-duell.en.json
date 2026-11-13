@@ -1,0 +1,19 @@
+{
+ "(Der Strahl ist im Kreis gelaufen und verpufft.)": "(The beam went in a circle and fizzled out.)",
+ "Die blasse Ziellinie zeigt, wohin der Strahl jetzt fliegen würde – so kannst du vorausplanen.": "The faint aiming line shows where the beam would go now – so you can plan ahead.",
+ "Dreh und verschieb Spiegel, um den Laser umzulenken. Triff den gegnerischen Kern!": "Rotate and move mirrors to redirect the laser. Hit the enemy core!",
+ "Jeder Zug verändert den Weg des Laserstrahls. Lenk ihn mit deinen Spiegeln in den gegnerischen Kern – aber nie in deinen eigenen!": "Every move changes the path of the laser beam. Steer it into the enemy core with your mirrors – but never into your own!",
+ "Jeder hat eine 🔫 Laserkanone, einen 💠 Kern und 4 Spiegel (/ oder \\).": "Everyone has a 🔫 laser cannon, a 💠 core and 4 mirrors (/ or \\).",
+ "Laser Chess": "Laser Chess",
+ "Nach dem Drehen oder Verschieben feuert deine Kanone AUTOMATISCH. Der Strahl fliegt geradeaus und wird von Spiegeln abgelenkt.": "After rotating or moving, your cannon fires AUTOMATICALLY. The beam flies straight and is deflected by mirrors.",
+ "Spieler 1 (Rot)": "Player 1 (Red)",
+ "Spieler 2 (Blau)": "Player 2 (Blue)",
+ "Spieler {0}: Tippe auf einen eigenen Spiegel zum AUSWÄHLEN, nochmal zum DREHEN oder auf ein freies Nachbarfeld zum VERSCHIEBEN. Danach feuert deine Kanone automatisch.{1}": "Player {0}: tap one of your mirrors to SELECT it, tap again to ROTATE, or tap a free neighboring square to MOVE it. Then your cannon fires automatically.{1}",
+ "Tippe auf einen eigenen Spiegel zum AUSWÄHLEN, nochmal zum DREHEN oder auf ein freies Nachbarfeld zum VERSCHIEBEN. Danach feuert deine Kanone automatisch.": "Tap one of your mirrors to SELECT it, tap again to ROTATE, or tap a free neighboring square to MOVE it. Then your cannon fires automatically.",
+ "Trifft dein Laser den gegnerischen 💠 Kern, gewinnst du. Vorsicht: Lenkst du ihn in deinen eigenen Kern, gewinnt der Gegner.": "If your laser hits the enemy 💠 core, you win. Careful: if you steer it into your own core, the opponent wins.",
+ "Wenn du dran bist: Tippe auf einen eigenen Spiegel, um ihn AUSZUWÄHLEN. Tippe nochmal darauf, um ihn zu DREHEN (/ ↔ \\), oder tippe auf ein freies Nachbarfeld, um ihn dorthin zu VERSCHIEBEN.": "When it's your turn: tap one of your mirrors to SELECT it. Tap it again to ROTATE it (/ ↔ \\), or tap a free neighboring square to MOVE it there.",
+ "🎉 Spieler {0} gewinnt! Der Gegner hat seinen eigenen Kern getroffen.": "🎉 Player {0} wins! The opponent hit their own core.",
+ "🎉 Spieler {0} gewinnt! Der Laser hat den gegnerischen Kern getroffen.": "🎉 Player {0} wins! The laser hit the enemy core.",
+ "🔴 Rot": "🔴 Red",
+ "🔵 Blau": "🔵 Blue"
+}
