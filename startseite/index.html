@@ -35,6 +35,8 @@
   ]}
   </script>
   <!--ICONS-->
+  <!-- Deutsch/English: übersetzt die Seite im Browser (games/_shared/i18n.js + games/_shared/i18n/*.en.json) -->
+  <script src="_shared/i18n.js?v=<!--I18N-V-->"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
@@ -59,6 +61,7 @@
       <p>&gt; langeweile wird entfernt<span class="ok">100%</span></p>
     </div>
     <div class="logo"><span class="kei">KEI</span><span class="glitch" data-text="LANGWILIGI">LANGWILIGI</span><span class="sub">site</span></div>
+    <p class="trans trans-intro" lang="en" translate="no">No boring site <small>(translated from Swiss German)</small></p>
     <div class="sweep"></div>
     <p class="skip">Klicken zum Überspringen</p>
   </div>
@@ -68,8 +71,12 @@
   <main>
     <header class="top">
       <div class="hello">
+        <div class="lang-switch" id="lang-switch" role="group" aria-label="Sprache / Language" translate="no">
+          <button type="button" data-l="de" aria-pressed="true">DE</button><button type="button" data-l="en" aria-pressed="false">EN</button>
+        </div>
         <p class="kicker">// langwiligi.site</p>
         <h1><span class="kei">KEI</span> <span class="glitch" data-text="LANGWILIGI">LANGWILIGI</span> <span class="site">site</span></h1>
+        <p class="trans" lang="en" translate="no">No boring site <small>(translated from Swiss German)</small></p>
         <p class="lead">Browser-Spiele für <b>1 gegen 1</b>: zu zweit an einem Gerät, online mit Freunden oder gegen Bots. Kein Download, kein Login.</p>
         <ul class="hud">
           <li><b><!--ANZAHL--></b><span>Spiele</span></li>
@@ -185,6 +192,7 @@
         <div class="brand-logo" aria-label="KEI Langwiligi site">
           <span class="kei">KEI</span><span class="glitch" data-text="LANGWILIGI">LANGWILIGI</span><span class="dot">.site</span>
         </div>
+        <p class="trans trans-foot" lang="en" translate="no">No boring site <small>(translated from Swiss German)</small></p>
         <p class="brand-claim">Best Browser Games · gratis · ohne Werbung · gemacht in der Schweiz <span class="flag" aria-hidden="true">✚</span></p>
         <nav class="brand-links" aria-label="Weitere Links">
           <a href="https://github.com/xXLOL127Xxtech/langwiligi-site/blob/main/MITMACHEN.md" target="_blank" rel="noopener">Eigenes Spiel hochladen</a>
@@ -225,6 +233,18 @@
         <button type="submit">Wunsch abschicken</button>
       </div>
     </form>
+  </dialog>
+  <!-- Sprachwahl beim ersten Besuch, nach der Intro-Animation (und über den Schalter DE | EN im Kopf) -->
+  <dialog id="lang" aria-labelledby="lang-h" translate="no">
+    <div class="lang-box">
+      <p class="kicker">// language</p>
+      <h2 id="lang-h">Sprache wählen<br><span>Choose your language</span></h2>
+      <div class="lang-opts">
+        <button type="button" data-l="de"><b>Deutsch</b><small>Spiele und Seite auf Deutsch</small></button>
+        <button type="button" data-l="en"><b>English</b><small>Games and site in English</small></button>
+      </div>
+      <p class="hint">Du kannst die Sprache jederzeit oben auf der Startseite ändern.<br>You can change the language any time at the top of the home page.</p>
+    </div>
   </dialog>
   <script src="_start/start.js?v=<!--VERSION-->"></script>
   <script src="_shared/freunde.js?v=<!--FREUNDE-V-->"></script>
