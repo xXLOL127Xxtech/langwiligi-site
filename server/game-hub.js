@@ -7,7 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
-const PORT = 8090;
+const PORT = process.env.PORT !== undefined ? +process.env.PORT : 8090;
 const DATA_DIR = process.env.DATA_DIR || '/var/lib/game-hub';
 const BOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -544,44 +544,287 @@ function record(game, names, winnerIdx) {
 //   verdict()          -> null (läuft noch / unbekannt) oder { winner: Platz im Raum, -1 = unentschieden }
 // REFEREE_MODE=watch: nur protokollieren, nichts verwerfen und den Host weiter zählen lassen (falls ein Schiedsrichter fälschlich ablehnt)
 const REFEREE_WATCH = process.env.REFEREE_MODE === 'watch';
-const REFEREES = {
-  // Fünf gewinnt (games/fuenf-gewinnt): start { swap, options: { size, need } } vom Host, dann abwechselnd mv { m: { r, c } }.
-  // Spieler 0 beginnt. Spieler p sitzt auf Platz (swap ? 1 - p : p).
-  'fuenf-gewinnt'() {
-    let st = null;
-    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+// Gemeinsames Gerüst für die Brettspiele der Plattform (GameRegistry): Der Host schickt start { swap, options }, danach kommen die Züge
+// als mv { m: Zug }. Spieler p (0 = beginnt) sitzt auf Platz (swap ? 1 - p : p). Das Gerüst kümmert sich um Start, Platz und Zugrecht,
+// die Engine nur um die Regeln:
+//   engine.init(options, seed) -> Spielzustand, oder null wenn die Optionen ungültig sind
+//   engine.turn(state)      -> Spieler (0/1), der jetzt ziehen darf
+//   engine.apply(state, zug)-> true (legal, Zustand ist aktualisiert) oder false
+//   engine.result(state)    -> null (läuft noch) oder { winner: Spieler 0/1, oder -1 = unentschieden }
+function platformReferee(engine) {
+  return () => {
+    let st = null, swap = false;
     return {
       move(seat, d) {
         if (!d || typeof d !== 'object') return false;
         if (d.t === 'start') {
           if (seat !== 0) return false;
-          const o = d.options || {}, size = +o.size || 15, need = +o.need || 5;
-          if (![9, 13, 15, 19].includes(size) || ![4, 5, 6].includes(need)) { st = null; return false; }
-          st = { size, need, swap: !!d.swap, board: Array.from({ length: size }, () => Array(size).fill(-1)), turn: 0, moves: 0, over: false, winner: null };
-          return true;
+          st = engine.init(d.options && typeof d.options === 'object' ? d.options : {}, d.seed);
+          swap = !!d.swap;
+          return !!st;
         }
         if (d.t !== 'mv') return true;   // again, bye usw.: nichts zu prüfen
-        if (!st || st.over) return false;
-        const m = d.m, r = m && m.r, c = m && m.c;
-        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.size || c >= st.size) return false;
-        if (seat !== (st.swap ? 1 - st.turn : st.turn)) return false;     // nicht an der Reihe
-        if (st.board[r][c] !== -1) return false;                            // Feld besetzt
-        const p = st.turn;
-        st.board[r][c] = p; st.moves++;
-        for (const [dr, dc] of dirs) {
-          let n = 1;
-          for (let k = 1; ; k++) { const y = r + dr * k, x = c + dc * k; if (y < 0 || x < 0 || y >= st.size || x >= st.size || st.board[y][x] !== p) break; n++; }
-          for (let k = 1; ; k++) { const y = r - dr * k, x = c - dc * k; if (y < 0 || x < 0 || y >= st.size || x >= st.size || st.board[y][x] !== p) break; n++; }
-          if (n >= st.need) { st.over = true; st.winner = st.swap ? 1 - p : p; return true; }
+        if (!st || engine.result(st)) return false;
+        if (seat !== (swap ? 1 - engine.turn(st) : engine.turn(st))) return false;
+        try { return !!engine.apply(st, d.m); } catch (e) { return false; }
+      },
+      verdict() {
+        const r = st && engine.result(st);
+        return r ? { winner: r.winner < 0 ? -1 : (swap ? 1 - r.winner : r.winner) } : null;
+      },
+    };
+  };
+}
+// Hilfen für die Engines
+const inChoices = (v, list, def) => { v = v === undefined || v === null || v === '' ? def : +v; return list.includes(v) ? v : null; };
+// n gleiche Steine in einer Reihe durch (r, c)? board[r][c] === p, beliebige Grösse
+function lineThrough(board, rows, cols, r, c, p, need) {
+  for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+    let n = 1;
+    for (let k = 1; ; k++) { const y = r + dr * k, x = c + dc * k; if (y < 0 || x < 0 || y >= rows || x >= cols || board[y][x] !== p) break; n++; }
+    for (let k = 1; ; k++) { const y = r - dr * k, x = c - dc * k; if (y < 0 || x < 0 || y >= rows || x >= cols || board[y][x] !== p) break; n++; }
+    if (n >= need) return true;
+  }
+  return false;
+}
+const LINES3 = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+function winner3(cells) { for (const [a, b, c] of LINES3) if (cells[a] !== null && cells[a] === cells[b] && cells[a] === cells[c]) return cells[a]; return null; }
+
+const ENGINES = {
+  // Fünf gewinnt: Zug { r, c }, Brett size×size, need in einer Reihe
+  'fuenf-gewinnt': {
+    init(o) {
+      const size = inChoices(o.size, [9, 13, 15, 19], 15), need = inChoices(o.need, [4, 5, 6], 5);
+      if (!size || !need) return null;
+      return { size, need, board: Array.from({ length: size }, () => Array(size).fill(-1)), turn: 0, moves: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, m) {
+      const r = m && m.r, c = m && m.c;
+      if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.size || c >= st.size || st.board[r][c] !== -1) return false;
+      const p = st.turn; st.board[r][c] = p; st.moves++;
+      if (lineThrough(st.board, st.size, st.size, r, c, p, st.need)) st.res = { winner: p };
+      else if (st.moves >= st.size * st.size) st.res = { winner: -1 };
+      else st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Vier gewinnt: Zug = Spalte (Zahl), Steine fallen nach unten
+  'vier-gewinnt': {
+    init(o) {
+      const cols = inChoices(o.cols, [5, 7, 9], 7), rows = inChoices(o.rows, [5, 6, 8], 6), need = inChoices(o.need, [3, 4, 5], 4);
+      if (!cols || !rows || !need) return null;
+      return { cols, rows, need, board: Array.from({ length: rows }, () => Array(cols).fill(-1)), turn: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, c) {
+      if (!Number.isInteger(c) || c < 0 || c >= st.cols) return false;
+      let r = -1;
+      for (let y = st.rows - 1; y >= 0; y--) if (st.board[y][c] === -1) { r = y; break; }
+      if (r < 0) return false;
+      const p = st.turn; st.board[r][c] = p;
+      if (lineThrough(st.board, st.rows, st.cols, r, c, p, st.need)) st.res = { winner: p };
+      else if (st.board[0].every(v => v !== -1)) st.res = { winner: -1 };
+      else st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Ultimate Tic-Tac-Toe: Zug { b, c } (Teilbrett, Feld), man muss im Teilbrett spielen, auf das der letzte Zug zeigte
+  'ultimate-tic-tac-toe': {
+    init() { return { boards: Array.from({ length: 9 }, () => Array(9).fill(null)), bWin: Array(9).fill(null), turn: 0, forced: -1, res: null }; },
+    turn: st => st.turn,
+    apply(st, m) {
+      const b = m && m.b, c = m && m.c;
+      if (!Number.isInteger(b) || !Number.isInteger(c) || b < 0 || b > 8 || c < 0 || c > 8) return false;
+      if (st.bWin[b] !== null || (st.forced !== -1 && b !== st.forced) || st.boards[b][c] !== null) return false;
+      const p = st.turn; st.boards[b][c] = p;
+      const w = winner3(st.boards[b]);
+      if (w !== null) st.bWin[b] = w; else if (st.boards[b].every(v => v !== null)) st.bWin[b] = 'draw';
+      const bw = winner3(st.bWin.map(x => (x === 0 || x === 1) ? x : null));
+      if (bw !== null) { st.res = { winner: bw }; return true; }
+      if (st.bWin.every(x => x !== null)) {
+        const c0 = st.bWin.filter(x => x === 0).length, c1 = st.bWin.filter(x => x === 1).length;
+        st.res = { winner: c0 === c1 ? -1 : (c0 > c1 ? 0 : 1) };
+        return true;
+      }
+      st.forced = st.bWin[c] === null ? c : -1;
+      st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+
+  // Reversi: Zug { r, c }. Ohne Zug des Gegners zieht man nochmal, ohne Zug für beide ist Schluss. Mehr Steine gewinnen.
+  'reversi': (() => {
+    const N = 8, DIRS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    const flips = (b, r, c, p) => {
+      if (b[r][c] !== null) return [];
+      const out = [];
+      for (const [dr, dc] of DIRS) {
+        const line = []; let y = r + dr, x = c + dc;
+        while (y >= 0 && x >= 0 && y < N && x < N && b[y][x] === 1 - p) { line.push([y, x]); y += dr; x += dc; }
+        if (line.length && y >= 0 && x >= 0 && y < N && x < N && b[y][x] === p) out.push(...line);
+      }
+      return out;
+    };
+    const hasMove = (b, p) => { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (flips(b, r, c, p).length) return true; return false; };
+    return {
+      init() {
+        const b = Array.from({ length: N }, () => Array(N).fill(null));
+        b[3][3] = 1; b[3][4] = 0; b[4][3] = 0; b[4][4] = 1;
+        return { b, turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const r = m && m.r, c = m && m.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= N || c >= N) return false;
+        const f = flips(st.b, r, c, st.turn);
+        if (!f.length) return false;
+        st.b[r][c] = st.turn; f.forEach(([y, x]) => { st.b[y][x] = st.turn; });
+        const other = 1 - st.turn;
+        if (hasMove(st.b, other)) st.turn = other;
+        else if (!hasMove(st.b, st.turn)) {
+          let n0 = 0, n1 = 0;
+          st.b.forEach(row => row.forEach(v => { if (v === 0) n0++; else if (v === 1) n1++; }));
+          st.res = { winner: n0 > n1 ? 0 : n1 > n0 ? 1 : -1 };
         }
-        if (st.moves >= st.size * st.size) { st.over = true; st.winner = -1; return true; }
-        st.turn = 1 - p;
         return true;
       },
-      verdict() { return st && st.over ? { winner: st.winner } : null; },
+      result: st => st.res,
     };
+  })(),
+  // Mancala: Zug = Mulde 0–5 (Spieler 0) oder 7–12 (Spieler 1). Speicher 6 und 13. Letzter Stein im eigenen Speicher = nochmal.
+  'mancala': {
+    init() { return { pits: [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0], turn: 0, res: null }; },
+    turn: st => st.turn,
+    apply(st, i) {
+      const own = (p, k) => p === 0 ? (k >= 0 && k <= 5) : (k >= 7 && k <= 12);
+      if (!Number.isInteger(i) || !own(st.turn, i) || st.pits[i] === 0) return false;
+      const me = st.turn, myS = me === 0 ? 6 : 13, oppS = me === 0 ? 13 : 6, pits = st.pits;
+      let stones = pits[i], idx = i; pits[i] = 0;
+      while (stones > 0) { idx = (idx + 1) % 14; if (idx === oppS) continue; pits[idx]++; stones--; }
+      if (own(me, idx) && pits[idx] === 1) {
+        const opp = 12 - idx;
+        if (pits[opp] > 0) { pits[myS] += pits[opp] + 1; pits[opp] = 0; pits[idx] = 0; }
+      }
+      const empty = p => { for (let k = p === 0 ? 0 : 7; k <= (p === 0 ? 5 : 12); k++) if (pits[k] > 0) return false; return true; };
+      if (empty(0) || empty(1)) {
+        for (let k = 0; k <= 5; k++) { pits[6] += pits[k]; pits[k] = 0; }
+        for (let k = 7; k <= 12; k++) { pits[13] += pits[k]; pits[k] = 0; }
+        st.res = { winner: pits[6] > pits[13] ? 0 : pits[13] > pits[6] ? 1 : -1 };
+        return true;
+      }
+      st.turn = idx === myS ? me : 1 - me;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Dame: Zug { from:[r,c], to:[r,c] } (cap wird vom Server selbst bestimmt). Schlagpflicht, Weiterschlagen, Dame bei "kings": "flying" fliegend.
+  'dame': (() => {
+    const N = 8, inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N, D4 = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    function pieceMoves(st, r, c, capsOnly) {
+      const b = st.board, piece = b[r][c], moves = [];
+      if (!piece) return moves;
+      if (piece.king && st.flying) {
+        for (const [dr, dc] of D4) {
+          let y = r + dr, x = c + dc;
+          while (inB(y, x) && b[y][x] === null) { if (!capsOnly) moves.push({ to: [y, x], cap: null }); y += dr; x += dc; }
+          if (inB(y, x) && b[y][x] && b[y][x].p !== piece.p) {
+            const cap = [y, x]; let ly = y + dr, lx = x + dc;
+            while (inB(ly, lx) && b[ly][lx] === null) { moves.push({ to: [ly, lx], cap }); ly += dr; lx += dc; }
+          }
+        }
+        return moves;
+      }
+      const dirs = piece.king ? D4 : piece.p === 0 ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
+      for (const [dr, dc] of dirs) {
+        const ar = r + dr, ac = c + dc, lr = r + 2 * dr, lc = c + 2 * dc;
+        if (inB(lr, lc) && b[ar][ac] && b[ar][ac].p !== piece.p && b[lr][lc] === null) moves.push({ to: [lr, lc], cap: [ar, ac] });
+        else if (!capsOnly && inB(ar, ac) && b[ar][ac] === null) moves.push({ to: [ar, ac], cap: null });
+      }
+      return moves;
+    }
+    const hasCap = (st, p) => { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (st.board[r][c] && st.board[r][c].p === p && pieceMoves(st, r, c, true).length) return true; return false; };
+    const hasAny = (st, p) => { const f = hasCap(st, p); for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (st.board[r][c] && st.board[r][c].p === p && pieceMoves(st, r, c, f).length) return true; return false; };
+    return {
+      init(o) {
+        if (o.kings !== undefined && o.kings !== 'standard' && o.kings !== 'flying') return null;
+        const board = Array.from({ length: N }, () => Array(N).fill(null));
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if ((r + c) % 2 === 1) { if (r < 3) board[r][c] = { p: 1, king: false }; else if (r > 4) board[r][c] = { p: 0, king: false }; }
+        return { board, flying: o.kings === 'flying', turn: 0, quiet: 0, must: null, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const f = m && m.from, t = m && m.to;
+        if (!Array.isArray(f) || !Array.isArray(t) || ![...f, ...t].every(Number.isInteger) || !inB(f[0], f[1]) || !inB(t[0], t[1])) return false;
+        const piece = st.board[f[0]][f[1]];
+        if (!piece || piece.p !== st.turn) return false;
+        let legal;
+        if (st.must) { if (st.must[0] !== f[0] || st.must[1] !== f[1]) return false; legal = pieceMoves(st, f[0], f[1], true); }
+        else legal = pieceMoves(st, f[0], f[1], hasCap(st, st.turn));
+        const mv = legal.find(x => x.to[0] === t[0] && x.to[1] === t[1]);
+        if (!mv) return false;
+        const cap = mv.cap;
+        m.cap = cap;   // (für den Vergleichstest: der Server bestimmt den Schlag selbst)
+        st.board[t[0]][t[1]] = piece; st.board[f[0]][f[1]] = null;
+        if (cap) st.board[cap[0]][cap[1]] = null;
+        let promoted = false;
+        if (!piece.king && ((piece.p === 0 && t[0] === 0) || (piece.p === 1 && t[0] === N - 1))) { piece.king = true; promoted = true; }
+        if (cap && !promoted && pieceMoves(st, t[0], t[1], true).length) { st.must = [t[0], t[1]]; return true; }
+        st.must = null;
+        st.quiet = (cap || !piece.king || promoted) ? 0 : st.quiet + 1;
+        st.turn = 1 - st.turn;
+        if (st.quiet >= 40) st.res = { winner: -1 };
+        else if (!hasAny(st, st.turn)) st.res = { winner: 1 - st.turn };
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Käsekästchen: Zug { type: 'h'|'v', r, c }. Wer ein Kästchen schliesst, zieht nochmal. Bonus-Kästchen (aus dem Seed) zählen 2.
+  'kaesekaestchen': {
+    init(o, seed) {
+      const clamp = (v, lo, hi, def) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : def; };
+      const W = clamp(o.cols, 3, 9, 5), H = clamp(o.rows, 3, 9, 5), bonus = o.bonus || 'few';
+      if (!['off', 'few', 'many'].includes(bonus) || !seed) return null;
+      // Gleicher Zufallsgenerator und gleiche Mischung wie im Spiel, damit dieselben Kästchen Bonus sind
+      let a = seed >>> 0;
+      const rng = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const total = W * H, want = bonus === 'off' ? 0 : bonus === 'many' ? Math.max(2, Math.round(total * 0.2)) : Math.max(1, Math.round(total * 0.1));
+      const all = []; for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) all.push([r, c]);
+      for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const tmp = all[i]; all[i] = all[j]; all[j] = tmp; }
+      const stars = new Set(); for (let i = 0; i < want && i < all.length; i++) stars.add(all[i][0] + ',' + all[i][1]);
+      return { W, H, stars, h: Array.from({ length: H + 1 }, () => Array(W).fill(false)), v: Array.from({ length: H }, () => Array(W + 1).fill(false)),
+        owner: Array.from({ length: H }, () => Array(W).fill(null)), pts: [0, 0], filled: 0, turn: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, m) {
+      const type = m && m.type, r = m && m.r, c = m && m.c;
+      if ((type !== 'h' && type !== 'v') || !Number.isInteger(r) || !Number.isInteger(c)) return false;
+      const { W, H } = st;
+      if (type === 'h') { if (r < 0 || r > H || c < 0 || c >= W || st.h[r][c]) return false; st.h[r][c] = true; }
+      else { if (r < 0 || r >= H || c < 0 || c > W || st.v[r][c]) return false; st.v[r][c] = true; }
+      const cand = [];
+      if (type === 'h') { if (r > 0) cand.push([r - 1, c]); if (r < H) cand.push([r, c]); }
+      else { if (c > 0) cand.push([r, c - 1]); if (c < W) cand.push([r, c]); }
+      let count = 0;
+      for (const [br, bc] of cand) {
+        if (st.owner[br][bc] === null && st.h[br][bc] && st.h[br + 1][bc] && st.v[br][bc] && st.v[br][bc + 1]) {
+          st.owner[br][bc] = st.turn; st.filled++; count++;
+          st.pts[st.turn] += st.stars.has(br + ',' + bc) ? 2 : 1;
+        }
+      }
+      if (count > 0) { if (st.filled === W * H) st.res = { winner: st.pts[0] > st.pts[1] ? 0 : st.pts[1] > st.pts[0] ? 1 : -1 }; }
+      else st.turn = 1 - st.turn;
+      return true;
+    },
+    result: st => st.res,
   },
 };
+const REFEREES = {};
+Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
 
 // ---------- Räume ----------
 const rooms = new Map();
@@ -1363,4 +1606,5 @@ setInterval(() => {
     room.players.forEach(p => p && p.ws.close()); rooms.delete(code);
   }
 }, 25000);
+if (process.env.HUB_TEST) module.exports = { ENGINES };   // nur für die Tests (tools/schiedsrichter-test.js)
 server.listen(PORT, '127.0.0.1', () => console.log('game-hub läuft auf Port ' + PORT));
