@@ -112,7 +112,9 @@
   "Hillclimber (Hill Climb Spiel)": "Hillclimber (hill climb game)",
   "Car-Fight (Autokampf-Spiel)": "Car-Fight (car combat game)",
   "Catapult (Catapult-Spiel)": "Catapult (catapult game)",
-  "SBB Runner (SBB Spiel)": "SBB Runner (SBB game)"
+  "SBB Runner (SBB Spiel)": "SBB Runner (SBB game)",
+  ": schiessen": ": shoot",
+  "springen": "jump"
  },
  "(Bot überlegt …)": "(Bot is thinking …)",
  "(Bot)": "(Bot)",
