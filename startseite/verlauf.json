@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-11-13",
+"z":"18:10",
+"a":"Backgammon, Ur",
+"t":"Der Server würfelt, Würfe sind nicht mehr manipulierbar",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
+"d":"2026-11-13",
 "z":"16:30",
 "a":"Server",
 "t":"16 Online-Brettspiele: Server prüft alle Züge und bestimmt den Sieger selbst",

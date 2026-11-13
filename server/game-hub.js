@@ -544,6 +544,8 @@ function record(game, names, winnerIdx) {
 //   verdict()          -> null (läuft noch / unbekannt) oder { winner: Platz im Raum, -1 = unentschieden }
 // REFEREE_MODE=watch: nur protokollieren, nichts verwerfen und den Host weiter zählen lassen (falls ein Schiedsrichter fälschlich ablehnt)
 const REFEREE_WATCH = process.env.REFEREE_MODE === 'watch';
+// Backgammon/Ur: Erst wenn alle Seiten neu geladen sind (Server-Würfel), mit REQUIRE_SERVER_DICE=1 auch alte Seiten aussperren, die den Wurf selbst melden
+const REQUIRE_SERVER_DICE = process.env.REQUIRE_SERVER_DICE === '1';
 // Gemeinsames Gerüst für die Brettspiele der Plattform (GameRegistry): Der Host schickt start { swap, options }, danach kommen die Züge
 // als mv { m: Zug }. Spieler p (0 = beginnt) sitzt auf Platz (swap ? 1 - p : p). Das Gerüst kümmert sich um Start, Platz und Zugrecht,
 // die Engine nur um die Regeln:
@@ -1571,20 +1573,31 @@ function backgammonReferee() {
     return out;
   }
   function endTurn() { st.dice = []; st.hist = []; st.phase = 'roll'; st.turn = other(st.turn); }
+  function doRoll(a, b) {
+    if (st.phase !== 'roll' || !Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 6 || b < 1 || b > 6) return false;
+    st.dice = a === b ? [a, a, a, a] : [a, b]; st.hist = []; st.phase = 'move';
+    if (allLegal(st.turn, st.dice, st.pts, st.bar, st.off).length === 0) { st.phase = 'roll'; st.dice = []; st.turn = other(st.turn); }
+    return true;
+  }
   return {
+    // Der Server würfelt für den Spieler am Zug (Nachricht { t: 'dice' }). Gibt die Würfel zurück oder null, wenn gerade nicht gewürfelt werden darf.
+    roll(seat) {
+      if (!st || !st.serverDice || st.phase !== 'roll' || seat !== (st.turn === P1 ? 0 : 1)) return null;
+      const a = crypto.randomInt(1, 7), b = crypto.randomInt(1, 7);
+      return doRoll(a, b) ? [a, b] : null;
+    },
     move(seat, d) {
       if (!d || typeof d !== 'object') return false;
-      if (d.t === 'start') { if (seat !== 0) return false; st = init(); return true; }
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        if (REQUIRE_SERVER_DICE && d.dice !== 'server') return false;
+        st = init(); st.serverDice = d.dice === 'server'; return true;
+      }
       if (d.t === 'again' || d.t === 'bye') return true;
       if (!st || st.phase === 'over') return false;
       if (seat !== (st.turn === P1 ? 0 : 1)) return false;
-      if (d.t === 'roll') {
-        if (st.phase !== 'roll' || !Array.isArray(d.d) || d.d.length !== 2) return false;
-        const a = d.d[0], b = d.d[1];
-        if (!Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 6 || b < 1 || b > 6) return false;
-        st.dice = a === b ? [a, a, a, a] : [a, b]; st.hist = []; st.phase = 'move';
-        if (allLegal(st.turn, st.dice, st.pts, st.bar, st.off).length === 0) { st.phase = 'roll'; st.dice = []; st.turn = other(st.turn); }
-        return true;
+      if (d.t === 'roll') {   // alte Seiten melden den Wurf selbst; mit Server-Würfeln ist das nicht mehr erlaubt
+        return !st.serverDice && Array.isArray(d.d) && d.d.length === 2 && doRoll(d.d[0], d.d[1]);
       }
       if (d.t === 'mv') {
         if (st.phase !== 'move') return false;
@@ -1634,19 +1647,32 @@ function urReferee() {
     }
     return moves;
   };
+  function doRoll(sum) {
+    if (st.phase !== 'roll') return false;
+    st.roll = sum;
+    if (st.roll === 0 || valid(st.turn, st.roll).length === 0) { st.turn = 3 - st.turn; st.roll = 0; st.phase = 'roll'; }
+    else st.phase = 'move';
+    return true;
+  }
   return {
+    // Der Server wirft die vier Münzwürfel (0/1) für den Spieler am Zug. Gibt sie zurück oder null.
+    roll(seat) {
+      if (!st || !st.serverDice || st.res || st.phase !== 'roll' || seat !== st.turn - 1) return null;
+      const d = [0, 0, 0, 0].map(() => crypto.randomInt(0, 2));
+      return doRoll(d.reduce((a, x) => a + x, 0)) ? d : null;
+    },
     move(seat, d) {
       if (!d || typeof d !== 'object') return false;
-      if (d.t === 'start') { if (seat !== 0) return false; st = { pieces: { 1: Array(N).fill(0), 2: Array(N).fill(0) }, turn: 1, roll: 0, phase: 'roll', res: null }; return true; }
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        if (REQUIRE_SERVER_DICE && d.dice !== 'server') return false;
+        st = { pieces: { 1: Array(N).fill(0), 2: Array(N).fill(0) }, turn: 1, roll: 0, phase: 'roll', res: null, serverDice: d.dice === 'server' }; return true;
+      }
       if (d.t === 'again' || d.t === 'bye') return true;
       if (!st || st.res) return false;
       if (seat !== st.turn - 1) return false;
-      if (d.t === 'roll') {
-        if (st.phase !== 'roll' || !Array.isArray(d.d) || d.d.length !== 4) return false;
-        st.roll = d.d.reduce((a, x) => a + (x ? 1 : 0), 0);
-        if (st.roll === 0 || valid(st.turn, st.roll).length === 0) { st.turn = 3 - st.turn; st.roll = 0; st.phase = 'roll'; }
-        else st.phase = 'move';
-        return true;
+      if (d.t === 'roll') {   // alte Seiten melden den Wurf selbst; mit Server-Würfeln ist das nicht mehr erlaubt
+        return !st.serverDice && Array.isArray(d.d) && d.d.length === 4 && doRoll(d.d.reduce((a, x) => a + (x ? 1 : 0), 0));
       }
       if (d.t === 'mv') {
         if (st.phase !== 'move' || !Number.isInteger(d.i) || d.i < 0 || d.i >= N) return false;
@@ -1856,6 +1882,17 @@ function onMessage(ws, raw) {
     case 'leaderboard':
       send(ws, { t: 'leaderboard', game: cleanGame(m.game), rows: rows(cleanGame(m.game)) });
       break;
+    // Würfeln auf dem Server (Backgammon, Ur): Der Schiedsrichter würfelt für den Spieler am Zug, alle im Raum bekommen den Wurf
+    case 'dice': {
+      const room = ws.room;
+      if (!room || !room.ref || !room.ref.roll) return;
+      const from = room.players.findIndex(p => p && p.ws === ws);
+      if (from < 0) return;
+      const d = room.ref.roll(from);
+      if (!d) return;
+      room.players.forEach(p => p && send(p.ws, { t: 'dice', d, from }));
+      break;
+    }
     default:
       social(ws, m);
   }
