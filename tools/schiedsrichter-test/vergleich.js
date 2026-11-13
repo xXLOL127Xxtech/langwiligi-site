@@ -56,6 +56,16 @@ const PROPOSE = {
     const d = [[-1, -1], [-1, 1], [1, -1], [1, 1]][ri(4)], k = 1 + ri(Math.random() < .5 ? 2 : 6);
     return { from, to: [from[0] + d[0] * k, from[1] + d[1] * k], cap: null };
   },
+  'mauer-duell': (st) => {
+    const me = st.pawns[st.turn], x = Math.random();
+    if (x < .55) { const d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-2, 0], [2, 0], [-1, 1], [1, -1], [-1, -1], [1, 1]][ri(10)]; return { t: 'move', r: me.r + d[0], c: me.c + d[1] }; }
+    return { t: 'wall', o: ['h', 'v'][ri(2)], r: ri(st.N), c: ri(st.N) };
+  },
+  'farben-duell': (st) => {
+    const p = Math.random() < .03 ? 1 - st.turn : st.turn, n = st.pieces[p].length, idx = ri(n), pc = st.pieces[p][idx], dr = p === 0 ? -1 : 1, d = [[dr, 0], [dr, -1], [dr, 1]][ri(3)], k = 1 + ri(4);
+    return { p, idx, to: [pc.r + d[0] * k, pc.c + d[1] * k] };
+  },
+  'dreh-duell': () => ({ cell: ri(36), quad: ri(4), dir: ['cw', 'ccw'][ri(2)] }),
   'kaesekaestchen': (st) => Math.random() < .5 ? { type: 'h', r: ri(st.H + 1), c: ri(st.W) } : { type: 'v', r: ri(st.H), c: ri(st.W + 1) },
 };
 const OPTIONS = {
@@ -63,11 +73,14 @@ const OPTIONS = {
   'vier-gewinnt': [{}, { cols: 5, rows: 5, need: 3 }, { cols: 9, rows: 8, need: 5 }],
   'ultimate-tic-tac-toe': [{}],
   'reversi': [{}],
+  'mauer-duell': [{ size: 5 }, { size: 7 }, { size: 9 }],
+  'farben-duell': [{ reihen: 2 }, { reihen: 1 }],
+  'dreh-duell': [{}],
   'mancala': [{}],
   'dame': [{ kings: 'standard' }, { kings: 'flying' }],
   'kaesekaestchen': [{ cols: 4, rows: 4, bonus: 'few' }, { cols: 5, rows: 3, bonus: 'many' }, { cols: 3, rows: 3, bonus: 'off' }],
 };
-const LENIENT = new Set(['dame']);
+const LENIENT = new Set(['dame', 'farben-duell', 'dreh-duell']);
 const clone = o => JSON.parse(JSON.stringify(o));
 
 function runOne(id, options, seedNum) {

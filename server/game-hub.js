@@ -822,6 +822,180 @@ const ENGINES = {
     },
     result: st => st.res,
   },
+
+  // Mauer-Duell: Zug { t: 'move', r, c } (Figur) oder { t: 'wall', o: 'h'|'v', r, c } (Mauer). Wer die Gegenseite erreicht, gewinnt.
+  'mauer-duell': (() => {
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const blocked = (st, r1, c1, r2, c2) => {
+      if (r2 === r1 - 1) return st.h.has((r1 - 1) + ',' + c1) || st.h.has((r1 - 1) + ',' + (c1 - 1));
+      if (r2 === r1 + 1) return st.h.has(r1 + ',' + c1) || st.h.has(r1 + ',' + (c1 - 1));
+      if (c2 === c1 - 1) return st.v.has(r1 + ',' + (c1 - 1)) || st.v.has((r1 - 1) + ',' + (c1 - 1));
+      if (c2 === c1 + 1) return st.v.has(r1 + ',' + c1) || st.v.has((r1 - 1) + ',' + c1);
+      return true;
+    };
+    const on = (st, r, c) => r >= 0 && r < st.N && c >= 0 && c < st.N;
+    function pawnMoves(st, me, opp) {
+      const res = [];
+      for (const [dr, dc] of DIRS) {
+        const nr = me.r + dr, nc = me.c + dc;
+        if (!on(st, nr, nc) || blocked(st, me.r, me.c, nr, nc)) continue;
+        if (opp.r === nr && opp.c === nc) {
+          const jr = nr + dr, jc = nc + dc;
+          if (on(st, jr, jc) && !blocked(st, nr, nc, jr, jc)) res.push([jr, jc]);
+          else for (const [sr, sc] of (dr === 0 ? [[-1, 0], [1, 0]] : [[0, -1], [0, 1]])) {
+            const r2 = nr + sr, c2 = nc + sc;
+            if (on(st, r2, c2) && !blocked(st, nr, nc, r2, c2)) res.push([r2, c2]);
+          }
+        } else res.push([nr, nc]);
+      }
+      return res;
+    }
+    function hasPath(st, pawn) {
+      const seen = new Set([pawn.r + ',' + pawn.c]), q = [[pawn.r, pawn.c]];
+      while (q.length) {
+        const [r, c] = q.shift();
+        if (r === pawn.goal) return true;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (!on(st, nr, nc) || blocked(st, r, c, nr, nc)) continue;
+          const k = nr + ',' + nc;
+          if (!seen.has(k)) { seen.add(k); q.push([nr, nc]); }
+        }
+      }
+      return false;
+    }
+    function conflict(st, o, r, c) {
+      const S = st.N - 1;
+      if (r < 0 || r > S - 1 || c < 0 || c > S - 1) return true;
+      if (o === 'h') return st.h.has(r + ',' + c) || st.h.has(r + ',' + (c - 1)) || st.h.has(r + ',' + (c + 1)) || st.v.has(r + ',' + c);
+      return st.v.has(r + ',' + c) || st.v.has((r - 1) + ',' + c) || st.v.has((r + 1) + ',' + c) || st.h.has(r + ',' + c);
+    }
+    function wallLegal(st, o, r, c) {
+      if (conflict(st, o, r, c)) return false;
+      const set = o === 'h' ? st.h : st.v;
+      set.add(r + ',' + c);
+      const ok = hasPath(st, st.pawns[0]) && hasPath(st, st.pawns[1]);
+      set.delete(r + ',' + c);
+      return ok;
+    }
+    return {
+      init(o) {
+        const N = o.size === undefined ? 9 : inChoices(o.size, [5, 7, 9], 9);
+        const walls = o.walls === undefined ? 10 : +o.walls;
+        if (!N || !Number.isInteger(walls) || walls < 1 || walls > 30) return null;
+        const CC = (N - 1) / 2;
+        return { N, pawns: [{ r: N - 1, c: CC, goal: 0 }, { r: 0, c: CC, goal: N - 1 }], walls: [walls, walls], h: new Set(), v: new Set(), turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m || !Number.isInteger(m.r) || !Number.isInteger(m.c)) return false;
+        const me = st.pawns[st.turn];
+        if (m.t === 'move') {
+          if (!pawnMoves(st, me, st.pawns[1 - st.turn]).some(([r, c]) => r === m.r && c === m.c)) return false;
+          me.r = m.r; me.c = m.c;
+          if (me.r === me.goal) { st.res = { winner: st.turn }; return true; }
+        } else if (m.t === 'wall' && (m.o === 'h' || m.o === 'v')) {
+          if (st.walls[st.turn] <= 0 || !wallLegal(st, m.o, m.r, m.c)) return false;
+          (m.o === 'h' ? st.h : st.v).add(m.r + ',' + m.c);
+          st.walls[st.turn]--;
+        } else return false;
+        st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Farben-Duell: Zug { p, idx, to: [r, c] }. Die Farbe des Zielfelds bestimmt, welchen Turm der Gegner ziehen muss.
+  'farben-duell': (() => {
+    const N = 8;
+    const BC = [[0, 1, 2, 3, 4, 5, 6, 7], [5, 0, 3, 6, 1, 4, 7, 2], [6, 3, 0, 5, 2, 7, 4, 1], [3, 2, 1, 0, 7, 6, 5, 4],
+      [4, 5, 6, 7, 0, 1, 2, 3], [1, 4, 7, 2, 5, 0, 3, 6], [2, 7, 4, 1, 6, 3, 0, 5], [7, 6, 5, 4, 3, 2, 1, 0]];
+    const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+    const goal = p => p === 0 ? 0 : N - 1;
+    const moves = (st, p, idx) => {
+      const pc = st.pieces[p][idx], dr = p === 0 ? -1 : 1, out = [];
+      for (const [a, b] of [[dr, 0], [dr, -1], [dr, 1]]) { let r = pc.r + a, c = pc.c + b; while (inB(r, c) && !st.occ[r][c]) { out.push([r, c]); r += a; c += b; } }
+      return out;
+    };
+    const forced = (st, p) => { const o = []; if (st.forcedColor >= 0) st.pieces[p].forEach((pc, i) => { if (pc.color === st.forcedColor) o.push(i); }); return o; };
+    const selectable = (st, p) => { const fp = forced(st, p); if (fp.length) { const ok = fp.filter(i => moves(st, p, i).length); return ok.length ? ok : fp; } return st.pieces[p].map((_, i) => i); };
+    return {
+      init(o) {
+        const rowsOpt = o.reihen === undefined ? 2 : inChoices(o.reihen, [1, 2], 2);
+        if (!rowsOpt) return null;
+        const occ = Array.from({ length: N }, () => Array(N).fill(null)), pieces = [[], []];
+        for (let k = 0; k < rowsOpt; k++) for (let c = 0; c < N; c++) {
+          pieces[1].push({ r: k, c, color: BC[k][c] }); occ[k][c] = { p: 1, idx: pieces[1].length - 1 };
+          pieces[0].push({ r: N - 1 - k, c, color: BC[N - 1 - k][c] }); occ[N - 1 - k][c] = { p: 0, idx: pieces[0].length - 1 };
+        }
+        return { occ, pieces, turn: 0, forcedColor: -1, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const p = m && m.p, idx = m && m.idx, to = m && m.to;
+        if (p !== st.turn || !Number.isInteger(idx) || !Array.isArray(to) || !Number.isInteger(to[0]) || !Number.isInteger(to[1])) return false;
+        if (!st.pieces[p][idx] || !selectable(st, p).includes(idx)) return false;
+        if (!moves(st, p, idx).some(([r, c]) => r === to[0] && c === to[1])) return false;
+        const pc = st.pieces[p][idx];
+        st.occ[pc.r][pc.c] = null; pc.r = to[0]; pc.c = to[1]; st.occ[pc.r][pc.c] = { p, idx };
+        if (pc.r === goal(p)) { st.res = { winner: p }; return true; }
+        let next = 1 - p; st.forcedColor = BC[pc.r][pc.c];
+        let guard = 0;
+        for (;;) {
+          const fps = forced(st, next);
+          if (!fps.length) break;
+          if (fps.some(i => moves(st, next, i).length > 0)) break;
+          const fp = fps.reduce((a, b) => (Math.abs(st.pieces[next][b].r - goal(next)) < Math.abs(st.pieces[next][a].r - goal(next)) ? b : a));
+          const stuck = st.pieces[next][fp];
+          st.forcedColor = BC[stuck.r][stuck.c];
+          next = 1 - next;
+          if (++guard > 4) { st.res = { winner: -1 }; return true; }
+        }
+        st.turn = next;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Dreh-Duell: Zug { cell: Feldnummer 0–35, quad: 0–3, dir: 'cw'|'ccw' }. Kugel setzen, dann ein Viertel drehen. Fünf in einer Reihe gewinnt.
+  'dreh-duell': (() => {
+    const N = 6;
+    const rotate = (b, q, dir) => {
+      const qr = Math.floor(q / 2) * 3, qc = (q % 2) * 3, old = [];
+      for (let r = 0; r < 3; r++) old.push([b[qr + r][qc], b[qr + r][qc + 1], b[qr + r][qc + 2]]);
+      const nu = [[null, null, null], [null, null, null], [null, null, null]];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { if (dir === 'cw') nu[c][2 - r] = old[r][c]; else nu[2 - c][r] = old[r][c]; }
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) b[qr + r][qc + c] = nu[r][c];
+    };
+    const winners = b => {
+      const found = new Set();
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        const p = b[r][c]; if (p === null) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+          let cnt = 1, nr = r + dr, nc = c + dc;
+          while (nr >= 0 && nr < N && nc >= 0 && nc < N && b[nr][nc] === p) { cnt++; nr += dr; nc += dc; if (cnt >= 5) { found.add(p); break; } }
+        }
+      }
+      return [...found];
+    };
+    return {
+      init() { return { b: Array.from({ length: N }, () => Array(N).fill(null)), turn: 0, res: null }; },
+      turn: st => st.turn,
+      apply(st, m) {
+        const cell = m && m.cell, q = m && m.quad;
+        if (!Number.isInteger(cell) || cell < 0 || cell >= N * N || !Number.isInteger(q) || q < 0 || q > 3 || (m.dir !== 'cw' && m.dir !== 'ccw')) return false;
+        const r = Math.floor(cell / N), c = cell % N;
+        if (st.b[r][c] !== null) return false;
+        st.b[r][c] = st.turn; rotate(st.b, q, m.dir);
+        const w = winners(st.b);
+        if (w.length) st.res = { winner: w.includes(0) && w.includes(1) ? -1 : w[0] };
+        else if (st.b.every(row => row.every(v => v !== null))) st.res = { winner: -1 };
+        else st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
 };
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
