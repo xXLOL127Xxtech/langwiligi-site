@@ -542,6 +542,8 @@ function record(game, names, winnerIdx) {
 // Neues Spiel: unten in REFEREES einen Eintrag mit dem Spiel-Ordnernamen ergänzen. Die Funktion liefert ein Objekt mit
 //   move(seat, daten)  -> true (Nachricht ok, weiterleiten) oder false (regelwidrig)
 //   verdict()          -> null (läuft noch / unbekannt) oder { winner: Platz im Raum, -1 = unentschieden }
+// REFEREE_MODE=watch: nur protokollieren, nichts verwerfen und den Host weiter zählen lassen (falls ein Schiedsrichter fälschlich ablehnt)
+const REFEREE_WATCH = process.env.REFEREE_MODE === 'watch';
 const REFEREES = {
   // Fünf gewinnt (games/fuenf-gewinnt): start { swap, options: { size, need } } vom Host, dann abwechselnd mv { m: { r, c } }.
   // Spieler 0 beginnt. Spieler p sitzt auf Platz (swap ? 1 - p : p).
@@ -703,7 +705,10 @@ function onMessage(ws, raw) {
       const out = JSON.stringify({ t: 'relay', from, d: m.d });
       if (out.length > MAX_RELAY_BYTES) return;
       // Schiedsrichter: Regelwidriges wird nicht weitergeleitet, und die Runde zählt nicht mehr
-      if (room.ref && !room.ref.move(from, m.d)) { room.tainted = true; console.log('Regelwidrige Nachricht verworfen:', room.game, room.code, 'Platz', from); return; }
+      if (room.ref && !room.ref.move(from, m.d)) {
+        console.log('Regelwidrige Nachricht' + (REFEREE_WATCH ? ' (nur protokolliert)' : ' verworfen') + ':', room.game, room.code, 'Platz', from);
+        if (!REFEREE_WATCH) { room.tainted = true; return; }
+      }
       others(room, ws).forEach(p => p.ws.readyState === 1 && p.ws.send(out));
       break;
     }
@@ -734,7 +739,7 @@ function onMessage(ws, raw) {
       // Der Server kann das Spiel nicht nachrechnen, prüft aber alles, was er prüfen kann:
       const now = Date.now(), present = room.players.filter(Boolean).length;
       if (present < 2) return;
-      if (room.ref) {
+      if (room.ref && !REFEREE_WATCH) {
         // Der Schiedsrichter entscheidet, nicht der Host. Läuft die Partie noch oder war etwas regelwidrig: keine Wertung.
         const v = room.ref.verdict();
         if (!v || room.tainted) return;
