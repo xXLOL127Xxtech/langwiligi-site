@@ -1362,8 +1362,120 @@ const ENGINES = {
     return eng;
   })(),
 };
+
+// Go (games/go): eigener Schiedsrichter, weil es nach den zwei Pässen eine gemeinsame Wertungsphase gibt.
+// Nachrichten: start { settings: { size: 9|13|19 } }, mv { r, c }, pass, dann dead { r, c, on }, confirm { v }, resume.
+// Schwarz = Platz 0. Regeln wie im Spiel: kein Selbstmord, einfaches Ko (wird nach einem Pass aufgehoben), Flächenzählung mit 6.5 Komi.
+function goReferee() {
+  const KOMI = 6.5, EMPTY = 0, BLACK = 1, WHITE = 2;
+  let st = null;
+  const nb = (n, r, c) => { const a = []; if (r > 0) a.push([r - 1, c]); if (r < n - 1) a.push([r + 1, c]); if (c > 0) a.push([r, c - 1]); if (c < n - 1) a.push([r, c + 1]); return a; };
+  const copy = b => b.map(row => row.slice());
+  function group(n, b, r, c) {
+    const color = b[r][c], seen = new Set([r + ',' + c]), stones = [], libs = new Set(), stack = [[r, c]];
+    if (color === EMPTY) return { stones, libs: 0 };
+    while (stack.length) {
+      const [y, x] = stack.pop(); stones.push([y, x]);
+      for (const [a, c2] of nb(n, y, x)) {
+        const k = a + ',' + c2;
+        if (seen.has(k)) continue;
+        if (b[a][c2] === color) { seen.add(k); stack.push([a, c2]); } else if (b[a][c2] === EMPTY) libs.add(k);
+      }
+    }
+    return { stones, libs: libs.size };
+  }
+  function tryMove(r, c, player) {
+    const n = st.n;
+    if (r < 0 || r >= n || c < 0 || c >= n || st.b[r][c] !== EMPTY) return null;
+    const opp = player === BLACK ? WHITE : BLACK, t = copy(st.b);
+    t[r][c] = player;
+    for (const [a, c2] of nb(n, r, c)) if (t[a][c2] === opp) { const g = group(n, t, a, c2); if (g.libs === 0) g.stones.forEach(([y, x]) => { t[y][x] = EMPTY; }); }
+    if (group(n, t, r, c).libs === 0) return null;
+    if (st.prev && t.every((row, y) => row.every((v, x) => v === st.prev[y][x]))) return null;
+    return t;
+  }
+  function score(b) {
+    const n = st.n; let bs = 0, ws = 0, bt = 0, wt = 0; const seen = new Set();
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { if (b[r][c] === BLACK) bs++; else if (b[r][c] === WHITE) ws++; }
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      if (b[r][c] !== EMPTY || seen.has(r + ',' + c)) continue;
+      let size = 0, tb = false, tw = false; const stack = [[r, c]]; seen.add(r + ',' + c);
+      while (stack.length) {
+        const [y, x] = stack.pop(); size++;
+        for (const [a, c2] of nb(n, y, x)) {
+          if (b[a][c2] === BLACK) { tb = true; continue; }
+          if (b[a][c2] === WHITE) { tw = true; continue; }
+          const k = a + ',' + c2; if (seen.has(k)) continue; seen.add(k); stack.push([a, c2]);
+        }
+      }
+      if (tb && !tw) bt += size; else if (tw && !tb) wt += size;
+    }
+    return { black: bs + bt, white: ws + wt + KOMI };
+  }
+  return {
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        const size = d.settings && d.settings.size !== undefined ? +d.settings.size : 9;
+        if (![9, 13, 19].includes(size)) { st = null; return false; }
+        st = { n: size, b: Array.from({ length: size }, () => Array(size).fill(EMPTY)), cur: BLACK, prev: null, passes: 0, scoring: false, dead: new Set(),
+          ver: 0, conf: {}, pre: null, over: false, res: null };
+        return true;
+      }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.over) return false;
+      const me = seat === 0 ? BLACK : WHITE;
+      if (st.scoring) {
+        if (d.t === 'dead') {
+          const r = d.r, c = d.c;
+          if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.n || c >= st.n || st.b[r][c] === EMPTY) return false;
+          group(st.n, st.b, r, c).stones.forEach(([y, x]) => { if (d.on) st.dead.add(y + ',' + x); else st.dead.delete(y + ',' + x); });
+          st.ver++; st.conf = {};
+          return true;
+        }
+        if (d.t === 'confirm') {
+          if (d.v !== st.ver) return true;      // veraltet (nach einer Änderung der Markierung), wird auch vom Spiel ignoriert
+          st.conf[seat] = true;
+          if (st.conf[0] && st.conf[1]) {
+            const b = copy(st.b); st.dead.forEach(k => { const [y, x] = k.split(',').map(Number); b[y][x] = EMPTY; });
+            const sc = score(b);
+            st.over = true; st.res = { winner: sc.black > sc.white ? 0 : sc.white > sc.black ? 1 : -1 };
+          }
+          return true;
+        }
+        if (d.t === 'resume') {
+          st.b = copy(st.pre.b); st.cur = st.pre.cur; st.scoring = false; st.dead = new Set(); st.pre = null; st.prev = null; st.passes = 0;
+          return true;
+        }
+        return false;
+      }
+      if (me !== st.cur) return false;
+      if (d.t === 'mv') {
+        const t = Number.isInteger(d.r) && Number.isInteger(d.c) ? tryMove(d.r, d.c, st.cur) : null;
+        if (!t) return false;
+        st.prev = copy(st.b); st.b = t; st.passes = 0; st.cur = st.cur === BLACK ? WHITE : BLACK;
+        return true;
+      }
+      if (d.t === 'pass') {
+        st.passes++;
+        if (st.passes >= 2) {
+          st.cur = st.cur === BLACK ? WHITE : BLACK;
+          st.scoring = true; st.dead = new Set(); st.pre = { b: copy(st.b), cur: st.cur };
+          return true;
+        }
+        st.prev = null; st.cur = st.cur === BLACK ? WHITE : BLACK;
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.over && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
 const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
+REFEREES.go = goReferee;
 
 // ---------- Räume ----------
 const rooms = new Map();
@@ -2145,5 +2257,5 @@ setInterval(() => {
     room.players.forEach(p => p && p.ws.close()); rooms.delete(code);
   }
 }, 25000);
-if (process.env.HUB_TEST) module.exports = { ENGINES };   // nur für die Tests (tools/schiedsrichter-test.js)
+if (process.env.HUB_TEST) module.exports = { ENGINES, REFEREES };   // nur für die Tests (tools/schiedsrichter-test.js)
 server.listen(PORT, '127.0.0.1', () => console.log('game-hub läuft auf Port ' + PORT));
