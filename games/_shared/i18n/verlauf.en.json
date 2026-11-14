@@ -406,5 +406,13 @@
  "«ab Stufe» bei gesperrten Attacken ist rot": "“from level” on locked attacks is red",
  "Überfall-Sperre von 30 Minuten ergänzt": "30-minute ambush lock added",
  "Überfall: Mobs kämpfen mit echter Stufe und nur gelernten Attacken": "Ambush: mobs fight at real level and only with learned attacks",
- "Übersicht": "Overview"
+ "Übersicht": "Overview",
+ "Baustellen-Banner und einheitliche Spielnamen": "Construction banner and consistent game names",
+ "Spiele, die noch in Arbeit sind, tragen auf der Startseite den Banner «Under Construction / Demo available»": "Games that are still being worked on carry the banner «Under Construction / Demo available» on the home page",
+ "Alle Spiele heissen jetzt überall gleich, auch in der Adresse (z.B. /hillclimber/ statt /berg-bastler/). Alte Links und Einladungen leiten weiter, Ranglisten und Bewertungen bleiben erhalten": "Every game now has the same name everywhere, including its address (e.g. /hillclimber/ instead of /berg-bastler/). Old links and invitations redirect, leaderboards and ratings are kept",
+ "Wer ein Online-Spiel verlässt, kann mit demselben Code sofort wieder beitreten. Die Meldung «Du bist mit diesem Gerät schon in diesem Spiel» kommt nicht mehr": "If you leave an online game you can rejoin right away with the same code. The message «You are already in this game with this device» no longer appears",
+ "Banner «Under Construction / Demo available» auf 17 Spielen in Arbeit": "Banner «Under Construction / Demo available» on 17 games in progress",
+ "20 Spiele heissen in der Adresse wie ihr Titel, alte Links leiten weiter": "20 games now have their title in the address, old links redirect",
+ "Ranglisten, Bewertungen und Aufrufe ziehen auf die neuen Spielnamen um": "Leaderboards, ratings and visit counts move to the new game names",
+ "Nach dem Verlassen kann man einem Raum wieder beitreten": "You can rejoin a room after leaving it"
 }
