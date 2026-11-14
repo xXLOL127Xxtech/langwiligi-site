@@ -42,6 +42,36 @@ function originOk(origin) {
   } catch (e) { return false; }
 }  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
 
+// Umbenannte Spiele: alter Ordner -> neuer Ordner. Alte Adressen leiten weiter (deploy.sh, startseite/umzug.txt, dort dieselbe Liste),
+// alte Seiten im Browser-Speicher melden sich noch mit dem alten Namen, und gespeicherte Ranglisten, Bewertungen und Aufrufe ziehen beim Start um.
+const UMZUG = {
+  'berg-bastler': 'hillclimber', 'billard-duell': 'billard', 'blasen-arena': 'bubble-rivals', 'blech-duell': 'car-fight',
+  'bleifuss-flucht': 'road-runner', 'bogen-duell': '3d-bowfight', 'bubble-duell': 'bubble-race', 'dreh-duell': 'dreh-und-gewinn',
+  'farben-duell': 'farbfalle', 'festungs-duell': 'festungssturm', 'flaschen-flip': 'bottle-flip', 'gitter-krieg': 'gitterkrieg',
+  'kaesekaestchen': 'dots-and-boxes', 'katapult-krieg': 'catapult', 'koenigliches-ur': 'ur', 'laser-duell': 'laserlabyrinth',
+  'mauer-duell': 'mauerbauer', 'panzer-taktik': 'panzer-duell', 'schlangen-arena': 'snake', 'ultimate-tic-tac-toe': 'tic-tac-turbo',
+};
+// Daten pro Spiel (obj[spiel] = ...) auf den neuen Namen umziehen. merge(alt, neu) führt zusammen, falls es beide gibt.
+function umziehen(obj, merge) {
+  let changed = false;
+  for (const alt of Object.keys(UMZUG)) {
+    if (!obj || typeof obj !== 'object' || !(alt in obj)) continue;
+    const neu = UMZUG[alt];
+    obj[neu] = neu in obj ? merge(obj[alt], obj[neu]) : obj[alt];
+    delete obj[alt]; changed = true;
+  }
+  return changed;
+}
+const zusammen = (alt, neu) => Object.assign({}, alt, neu);
+// Tageszahlen addieren: Zahl (Aufrufe) oder [Sekunden, Besuche] (Spielzeit)
+function tageAddieren(alt, neu) {
+  const out = Object.assign({}, neu);
+  for (const d of Object.keys(alt)) {
+    const a = alt[d], b = out[d];
+    out[d] = b === undefined ? a : Array.isArray(a) ? [a[0] + (b[0] || 0), a[1] + (b[1] || 0)] : a + b;
+  }
+  return out;
+}
 // Nur Spiele, die es als Ordner auf der Webseite gibt, dürfen etwas speichern (Liste 1 Min. gecacht)
 let knownGames = null, knownAt = 0;
 function isKnownGame(game) {
@@ -85,6 +115,7 @@ function prune(g, worse) {
 let board = {};
 try { board = JSON.parse(fs.readFileSync(BOARD_FILE, 'utf8')); } catch (e) { board = {}; }
 let saveTimer = null;
+if (umziehen(board, zusammen)) saveBoard();
 function saveBoard() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -98,6 +129,7 @@ const SCORE_FILE = path.join(DATA_DIR, 'highscores.json');
 let scores = {};
 try { scores = JSON.parse(fs.readFileSync(SCORE_FILE, 'utf8')); } catch (e) { scores = {}; }
 let scoreTimer = null;
+if (umziehen(scores, zusammen)) saveScores();
 function saveScores() {
   clearTimeout(scoreTimer);
   scoreTimer = setTimeout(() => {
@@ -170,6 +202,7 @@ const RATINGS_PER_IP_HOUR = 40;   // ganze Schulklasse hinter einer IP soll noch
 let ratings = [];
 try { ratings = JSON.parse(fs.readFileSync(RATINGS_FILE, 'utf8')); } catch (e) { ratings = []; }
 let ratingsTimer = null;
+if (Array.isArray(ratings) && ratings.filter(r => r && UMZUG[r.game]).map(r => { r.game = UMZUG[r.game]; }).length) saveRatings();
 function saveRatings() {
   clearTimeout(ratingsTimer);
   ratingsTimer = setTimeout(() => {
@@ -197,6 +230,7 @@ const START_KEY = '_start';
 let plays = {};
 try { plays = JSON.parse(fs.readFileSync(PLAYS_FILE, 'utf8')); } catch (e) { plays = {}; }
 let playsTimer = null;
+if (umziehen(plays, tageAddieren)) savePlays();
 function savePlays() {
   clearTimeout(playsTimer);
   playsTimer = setTimeout(() => {
@@ -232,6 +266,7 @@ const TIME_FILE = path.join(DATA_DIR, 'spielzeit.json');
 let zeit = {};
 try { zeit = JSON.parse(fs.readFileSync(TIME_FILE, 'utf8')); } catch (e) { zeit = {}; }
 let zeitTimer = null;
+if (umziehen(zeit, tageAddieren)) saveZeit();
 function saveZeit() {
   clearTimeout(zeitTimer);
   zeitTimer = setTimeout(() => {
@@ -515,7 +550,7 @@ function cleanName(n) {
 function rawName(n) {
   return String(n || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16).trim();
 }
-function cleanGame(g) { return String(g || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40); }
+function cleanGame(g) { g = String(g || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 40); return UMZUG[g] || g; }
 function rows(game) {
   const g = board[game] || {};
   return Object.values(g).sort((a, b) => b.wins - a.wins || a.games - b.games || a.name.localeCompare(b.name)).slice(0, 50);
@@ -633,8 +668,8 @@ const ENGINES = {
     },
     result: st => st.res,
   },
-  // Ultimate Tic-Tac-Toe: Zug { b, c } (Teilbrett, Feld), man muss im Teilbrett spielen, auf das der letzte Zug zeigte
-  'ultimate-tic-tac-toe': {
+  // Tic-Tac-Turbo: Zug { b, c } (Teilbrett, Feld), man muss im Teilbrett spielen, auf das der letzte Zug zeigte
+  'tic-tac-turbo': {
     init() { return { boards: Array.from({ length: 9 }, () => Array(9).fill(null)), bWin: Array(9).fill(null), turn: 0, forced: -1, res: null }; },
     turn: st => st.turn,
     apply(st, m) {
@@ -785,8 +820,8 @@ const ENGINES = {
       result: st => st.res,
     };
   })(),
-  // Käsekästchen: Zug { type: 'h'|'v', r, c }. Wer ein Kästchen schliesst, zieht nochmal. Bonus-Kästchen (aus dem Seed) zählen 2.
-  'kaesekaestchen': {
+  // Dots and Boxes: Zug { type: 'h'|'v', r, c }. Wer ein Kästchen schliesst, zieht nochmal. Bonus-Kästchen (aus dem Seed) zählen 2.
+  'dots-and-boxes': {
     init(o, seed) {
       const clamp = (v, lo, hi, def) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : def; };
       const W = clamp(o.cols, 3, 9, 5), H = clamp(o.rows, 3, 9, 5), bonus = o.bonus || 'few';
@@ -825,8 +860,8 @@ const ENGINES = {
     result: st => st.res,
   },
 
-  // Mauer-Duell: Zug { t: 'move', r, c } (Figur) oder { t: 'wall', o: 'h'|'v', r, c } (Mauer). Wer die Gegenseite erreicht, gewinnt.
-  'mauer-duell': (() => {
+  // Mauerbauer: Zug { t: 'move', r, c } (Figur) oder { t: 'wall', o: 'h'|'v', r, c } (Mauer). Wer die Gegenseite erreicht, gewinnt.
+  'mauerbauer': (() => {
     const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     const blocked = (st, r1, c1, r2, c2) => {
       if (r2 === r1 - 1) return st.h.has((r1 - 1) + ',' + c1) || st.h.has((r1 - 1) + ',' + (c1 - 1));
@@ -907,8 +942,8 @@ const ENGINES = {
       result: st => st.res,
     };
   })(),
-  // Farben-Duell: Zug { p, idx, to: [r, c] }. Die Farbe des Zielfelds bestimmt, welchen Turm der Gegner ziehen muss.
-  'farben-duell': (() => {
+  // Farbfalle: Zug { p, idx, to: [r, c] }. Die Farbe des Zielfelds bestimmt, welchen Turm der Gegner ziehen muss.
+  'farbfalle': (() => {
     const N = 8;
     const BC = [[0, 1, 2, 3, 4, 5, 6, 7], [5, 0, 3, 6, 1, 4, 7, 2], [6, 3, 0, 5, 2, 7, 4, 1], [3, 2, 1, 0, 7, 6, 5, 4],
       [4, 5, 6, 7, 0, 1, 2, 3], [1, 4, 7, 2, 5, 0, 3, 6], [2, 7, 4, 1, 6, 3, 0, 5], [7, 6, 5, 4, 3, 2, 1, 0]];
@@ -959,8 +994,8 @@ const ENGINES = {
       result: st => st.res,
     };
   })(),
-  // Dreh-Duell: Zug { cell: Feldnummer 0–35, quad: 0–3, dir: 'cw'|'ccw' }. Kugel setzen, dann ein Viertel drehen. Fünf in einer Reihe gewinnt.
-  'dreh-duell': (() => {
+  // Dreh & Gewinn: Zug { cell: Feldnummer 0–35, quad: 0–3, dir: 'cw'|'ccw' }. Kugel setzen, dann ein Viertel drehen. Fünf in einer Reihe gewinnt.
+  'dreh-und-gewinn': (() => {
     const N = 6;
     const rotate = (b, q, dir) => {
       const qr = Math.floor(q / 2) * 3, qc = (q % 2) * 3, old = [];
@@ -999,8 +1034,8 @@ const ENGINES = {
     };
   })(),
 
-  // Laser-Duell: Zug { t: 'rotate', idx } oder { t: 'move', from, to } (Feldnummern 0–63). Danach feuert die eigene Kanone automatisch.
-  'laser-duell': (() => {
+  // Laserlabyrinth: Zug { t: 'rotate', idx } oder { t: 'move', from, to } (Feldnummern 0–63). Danach feuert die eigene Kanone automatisch.
+  'laserlabyrinth': (() => {
     const N = 8, ADJ = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     const refl = (m, dr, dc) => m === '/' ? [-dc, -dr] : [dc, dr];
     function fire(pieces, player) {
@@ -1056,9 +1091,9 @@ const ENGINES = {
     };
   })(),
 
-  // Panzer-Taktik: Zug { t: 'move'|'shoot'|'pierce'|'rocket'|'mine', r, c } oder { t: 'end' }. Mehrere Aktionen pro Zug (Aktionspunkte).
+  // Panzer-Duell: Zug { t: 'move'|'shoot'|'pierce'|'rocket'|'mine', r, c } oder { t: 'end' }. Mehrere Aktionen pro Zug (Aktionspunkte).
   // Gelände und Kisten kommen aus dem Seed der Runde (gleicher Zufallsgenerator wie im Spiel).
-  'panzer-taktik': (() => {
+  'panzer-duell': (() => {
     const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]], ITEM_KEYS = ['repair', 'armor', 'rocket', 'mine'];
     const DENS = { open: { wall: 0.06, crate: 0.11, water: 0.04, forest: 0.05 }, balanced: { wall: 0.09, crate: 0.16, water: 0.06, forest: 0.07 }, dense: { wall: 0.12, crate: 0.20, water: 0.08, forest: 0.09 } };
     const inside = (st, r, c) => r >= 0 && r < st.N && c >= 0 && c < st.N;
@@ -1624,7 +1659,7 @@ function backgammonReferee() {
   };
 }
 
-// Das Königliche Spiel von Ur (games/koenigliches-ur): eigener Schiedsrichter. Nachrichten: start, roll { d: [0|1 ×4] }, mv { i, to }.
+// Das Königliche Spiel von Ur (games/ur): eigener Schiedsrichter. Nachrichten: start, roll { d: [0|1 ×4] }, mv { i, to }.
 // Weiss = Platz 0 beginnt. 7 Steine, Weg 0 (Start) bis 15 (Ziel), gemeinsame Felder 5–12, Rosetten 4/8/14 (nochmal würfeln, auf 8 geschützt).
 // HINWEIS: Die Würfel meldet der Spieler am Zug selbst, der Server prüft nur das Format.
 function urReferee() {
@@ -1696,7 +1731,7 @@ const REFEREES = {};
 Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
 REFEREES.go = goReferee;
 REFEREES.backgammon = backgammonReferee;
-REFEREES['koenigliches-ur'] = urReferee;
+REFEREES['ur'] = urReferee;
 
 // ---------- Räume ----------
 const rooms = new Map();
@@ -1767,7 +1802,8 @@ function onMessage(ws, raw) {
       const game = cleanGame(m.game);
       if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let room = null;
-      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && !sitztSchon(r, ws, m) && (!room || freeSeats(r) < freeSeats(room))) room = r;
+      for (const r of [...rooms.values()]) if (r.pub && r.game === game) platzFreigeben(r, ws, m, true);
+      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && (!room || freeSeats(r) < freeSeats(room))) room = r;
       if (!room) {
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
         room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
@@ -1800,13 +1836,15 @@ function onMessage(ws, raw) {
         return send(ws, { t: 'error', msg: 'not-found' });
       }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
+      // Wer rausgegangen ist und wieder beitritt, übernimmt seinen alten Platz (die alte Verbindung hängt oft noch)
+      if (ws.room !== room) platzFreigeben(room, ws, m);
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
-      if (sitztSchon(room, ws, m)) return send(ws, { t: 'error', msg: 'already-in' });
       const nm = roomName(ws, m);
-      if (!nm) return send(ws, { t: 'error', msg: 'invalid' });
+      if (!nm) { if (!room.players.some(Boolean)) rooms.delete(room.code); return send(ws, { t: 'error', msg: 'invalid' }); }
       leave(ws);
+      if (!rooms.has(room.code)) rooms.set(room.code, room);
       room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
@@ -1986,7 +2024,13 @@ function ensureAccount(ip, secret, wanted) {
 // Name für einen Raum: der Name des Kontos (so kann sich niemand als jemand anderes ausgeben). Ohne Schlüssel (alte Seiten) der angegebene Name.
 // Dasselbe Gerät (gleicher Schlüssel = gleiches Konto) darf nur einmal pro Raum sitzen, auch nicht mit zwei Tabs
 function accountOf(m) { const s = String(m.secret || ''); return /^[A-Za-z0-9]{16,64}$/.test(s) ? friendCode(s) : null; }
-function sitztSchon(room, ws, m) { const c = accountOf(m); return !!c && room.players.some(p => p && p.ws !== ws && p.code === c); }
+// Alte Verbindung desselben Kontos aus dem Raum nehmen, damit man nach dem Rausgehen wieder beitreten kann.
+// Der Raum bleibt dabei bestehen (ausser bei loeschen), auch wenn er kurz leer ist.
+function platzFreigeben(room, ws, m, loeschen) {
+  const c = accountOf(m); if (!c) return;
+  room.players.filter(p => p && p.ws !== ws && p.code === c).forEach(p => leave(p.ws));
+  if (!loeschen && !rooms.has(room.code)) rooms.set(room.code, room);
+}
 function roomName(ws, m) {
   const code = ensureAccount(ws.ip, m.secret, m.name);
   if (!code) return null;

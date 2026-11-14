@@ -1,0 +1,22 @@
+# Umbenannte Spiele: alter Ordner, neuer Ordner. deploy.sh legt unter der alten Adresse eine Weiterleitung an.
+# Dieselbe Liste steht in server/game-hub.js (UMZUG), damit Ranglisten und Bewertungen mit umziehen.
+berg-bastler hillclimber
+billard-duell billard
+blasen-arena bubble-rivals
+blech-duell car-fight
+bleifuss-flucht road-runner
+bogen-duell 3d-bowfight
+bubble-duell bubble-race
+dreh-duell dreh-und-gewinn
+farben-duell farbfalle
+festungs-duell festungssturm
+flaschen-flip bottle-flip
+gitter-krieg gitterkrieg
+kaesekaestchen dots-and-boxes
+katapult-krieg catapult
+koenigliches-ur ur
+laser-duell laserlabyrinth
+mauer-duell mauerbauer
+panzer-taktik panzer-duell
+schlangen-arena snake
+ultimate-tic-tac-toe tic-tac-turbo

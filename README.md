@@ -11,52 +11,52 @@
 | Spiel | Modi | Worum geht's? |
 |---|---|---|
 | [2048](https://langwiligi.site/2048/) | Solo | Zahlen zusammenschieben bis zur 2048-Kachel. Original: Gabriele Cirulli (MIT). |
-| [3D Bowfight](https://langwiligi.site/bogen-duell/) | Online · Bots | 1 gegen 1 mit Pfeil und Bogen in 3D. |
+| [3D Bowfight](https://langwiligi.site/3d-bowfight/) | Online · Bots | 1 gegen 1 mit Pfeil und Bogen in 3D. |
 | [Backgammon](https://langwiligi.site/backgammon/) | Lokal · Online · Bots | Würfeln, ziehen, abtragen – der Brettspiel-Klassiker. |
-| [Billard](https://langwiligi.site/billard-duell/) | Lokal · Online | Billard im Duell mit Power-ups. |
-| [Bottle-Flip](https://langwiligi.site/flaschen-flip/) | Solo | Flip die Flasche und lande sie aufrecht. |
-| [Bubble-Race](https://langwiligi.site/bubble-duell/) | Online · Bots | Bubble-Shooter im Duell. |
-| [Bubble-Rivals](https://langwiligi.site/blasen-arena/) | Lokal · Online · Bots | Gegner in Blasen fangen: 8 Level gegen Bots, 1 gegen 1 oder 2 gegen 2 auf Zufallskarten. |
-| [Car-Fight](https://langwiligi.site/blech-duell/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
-| [Catapult](https://langwiligi.site/katapult-krieg/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
+| [Billard](https://langwiligi.site/billard/) | Lokal · Online | Billard im Duell mit Power-ups. |
+| [Bottle-Flip](https://langwiligi.site/bottle-flip/) | Solo | Flip die Flasche und lande sie aufrecht. |
+| [Bubble-Race](https://langwiligi.site/bubble-race/) | Online · Bots | Bubble-Shooter im Duell. |
+| [Bubble-Rivals](https://langwiligi.site/bubble-rivals/) | Lokal · Online · Bots | Gegner in Blasen fangen: 8 Level gegen Bots, 1 gegen 1 oder 2 gegen 2 auf Zufallskarten. |
+| [Car-Fight](https://langwiligi.site/car-fight/) | Lokal · Online · Bots | Zwei Karren, eine Arena, jede Menge Kanonen. |
+| [Catapult](https://langwiligi.site/catapult/) | Lokal · Online · Bots | Schiess die Burg deines Gegners in Trümmer. |
 | [Catch a Mob](https://langwiligi.site/catch-a-mob/) | Online · Bots | Düstere Mobs fangen in einer riesigen Welt mit Wetter und Jahreszeiten. Mit der Party gegen Riesen, im Duell gegen Freunde. |
 | [Clumsy Bird](https://langwiligi.site/clumsy-bird/) | Solo | Flatter durch die Röhren. Original: Ellison Leão (GPL-3.0). |
 | [Dame](https://langwiligi.site/dame/) | Lokal · Online · Bots | Springen, schlagen, zur Dame werden. |
 | [Dead Maze](https://langwiligi.site/dead-maze/) | Solo | Tower-Defense gegen Zombie-Horden. |
-| [Dots and Boxes](https://langwiligi.site/kaesekaestchen/) | Lokal · Online · Bots | Linien ziehen, Kästchen schliessen, Extrazüge holen. |
-| [Dreh & Gewinn](https://langwiligi.site/dreh-duell/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
-| [Farbfalle](https://langwiligi.site/farben-duell/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
+| [Dots and Boxes](https://langwiligi.site/dots-and-boxes/) | Lokal · Online · Bots | Linien ziehen, Kästchen schliessen, Extrazüge holen. |
+| [Dreh & Gewinn](https://langwiligi.site/dreh-und-gewinn/) | Lokal · Online · Bots | Kugel setzen, Brettviertel drehen, fünf in eine Reihe. |
+| [Farbfalle](https://langwiligi.site/farbfalle/) | Lokal · Online · Bots | Deine Zielfarbe bestimmt den Zug des Gegners. |
 | [Faust-Duell](https://langwiligi.site/faust-duell/) | Lokal · Online · Bots | Prügel-Duell im Dojo: Schläge, Tritte, Uppercuts. Engine: mk.js von Minko Gechev (MIT). |
 | [Federsturm](https://langwiligi.site/federsturm/) | Lokal · Solo | Spann die Schleuder und schiess die Waschbär-Bande aus ihren Burgen – allein, im Duell oder im Koop. |
 | [Eisenherbst 1438](https://langwiligi.site/eisenherbst/) | Solo · Online | Realistisches 2D-Mittelalter-Rollenspiel von oben mit endloser Zufallswelt: Rüstung in Schichten, tödliche Kämpfe, Räuberlager, Goblin-Höhlen, Pferde, Würfel und Karnöffel – allein oder im Koop bis 8. |
-| [Festungssturm](https://langwiligi.site/festungs-duell/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
+| [Festungssturm](https://langwiligi.site/festungssturm/) | Online | Truppen schicken, Türme bauen, Festung zerstören – in Echtzeit. |
 | [Flucht-Schiesserei](https://langwiligi.site/flucht-schiesserei/) | Online · Bots | Wackelige Gauner hüpfen zum Fluchtfahrzeug – über Züge, Flugzeuge und Brücken. |
 | [Formenfabrik](https://langwiligi.site/formenfabrik/) | Solo | Formen schneiden, drehen, färben und eine riesige Fabrik automatisieren. Original: shapez von tobspr Games (GPL-3.0). |
 | [Fünf gewinnt](https://langwiligi.site/fuenf-gewinnt/) | Lokal · Online · Bots | X gegen O auf dem grossen Brett. |
-| [Gitterkrieg](https://langwiligi.site/gitter-krieg/) | Online · Bots · Solo | Neon-Arena-Shooter: Schiess Gegnerschwärme ab, sammle Geoms für den Multiplikator und lass das Gitter beben. |
+| [Gitterkrieg](https://langwiligi.site/gitterkrieg/) | Online · Bots · Solo | Neon-Arena-Shooter: Schiess Gegnerschwärme ab, sammle Geoms für den Multiplikator und lass das Gitter beben. |
 | [Go](https://langwiligi.site/go/) | Lokal · Online · Bots | Das Umzingelungs-Spiel auf 9×9, 13×13 und 19×19. |
 | [Golf-Tour](https://langwiligi.site/golf-tour/) | Lokal · Online · Solo | 3D-Golf mit echter Ballphysik: 8 neue Bahnen von Wüste bis Vulkan – solo, zu zweit oder online mit Geister-Bällen. |
 | [Hextris](https://langwiligi.site/hextris/) | Solo | Sechseck drehen, Farben abräumen. Original: Hextris-Team (GPL-3.0). |
-| [Hillclimber](https://langwiligi.site/berg-bastler/) | Solo | Bau dein eigenes Auto und bezwinge den Berg. |
+| [Hillclimber](https://langwiligi.site/hillclimber/) | Solo | Bau dein eigenes Auto und bezwinge den Berg. |
 | [Hüpf-Helden](https://langwiligi.site/huepf-helden/) | Lokal · Solo | Rettet Prinzessin Lunara! Jump and Run für 1–4 (ab 3 mit Gamepads): 13 Welten, Geheimwege, Drehsprung und Bosse mit eigenen Angriffen. |
 | [Kopf voraus!](https://langwiligi.site/kopf-voraus/) | Lokal · Online · Bots · Solo | Pixel-Autoduell mit verrückter Physik. |
 | [Kronenwacht](https://langwiligi.site/kronenwacht/) | Solo · Online | Tower Defense mit Helden, solo oder im Online-Koop. |
-| [Laserlabyrinth](https://langwiligi.site/laser-duell/) | Lokal · Online · Bots | Spiegel drehen, bis der Laser den Kern trifft. |
+| [Laserlabyrinth](https://langwiligi.site/laserlabyrinth/) | Lokal · Online · Bots | Spiegel drehen, bis der Laser den Kern trifft. |
 | [Mancala](https://langwiligi.site/mancala/) | Lokal · Online · Bots | Das uralte Säspiel mit Steinen und Mulden. |
-| [Mauerbauer](https://langwiligi.site/mauer-duell/) | Lokal · Online · Bots | Ans Ziel rennen und dem Gegner den Weg verbauen. |
+| [Mauerbauer](https://langwiligi.site/mauerbauer/) | Lokal · Online · Bots | Ans Ziel rennen und dem Gegner den Weg verbauen. |
 | [Nebelvilla](https://langwiligi.site/nebelvilla/) | Online · Bots | Mord in der Villa: Verdächtige befragen, Beweise notieren, Täter, Waffe und Tatort entlarven. Mit Tutorial. |
-| [Panzer-Duell](https://langwiligi.site/panzer-taktik/) | Lokal · Online | Rundenbasiertes Panzer-Duell mit Minen und Raketen. |
+| [Panzer-Duell](https://langwiligi.site/panzer-duell/) | Lokal · Online | Rundenbasiertes Panzer-Duell mit Minen und Raketen. |
 | [Pfeilhagel](https://langwiligi.site/pfeilhagel/) | Lokal · Online · Bots | Pixel-Bogenduell für bis zu 4: Pfeile sammeln, ausweichen, treffen oder draufspringen. |
 | [Reversi](https://langwiligi.site/reversi/) | Lokal · Online · Bots | Steine einschliessen und umdrehen. |
-| [Road-Runner](https://langwiligi.site/bleifuss-flucht/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
+| [Road-Runner](https://langwiligi.site/road-runner/) | Lokal · Online · Bots · Solo | Voxel-Verfolgungsjagd mit der Polizei. |
 | [SBB Runner](https://langwiligi.site/sbb-runner/) | Solo · Bots · Lokal · Online | Renn über Schweizer Gleise und häng den Kontrolleur ab. |
 | [Schach](https://langwiligi.site/schach/) | Lokal · Online · Bots | Gegen einen Bot mit vier Stärken und drei Stilen. |
-| [Snake](https://langwiligi.site/schlangen-arena/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
+| [Snake](https://langwiligi.site/snake/) | Online · Bots | Friss Kugeln, werde lang, schneide den anderen den Weg ab. |
 | [Sternen-Party](https://langwiligi.site/sternen-party/) | Lokal · Online · Bots | Party-Brettspiel für 4: würfeln, Sterne kaufen, Münzen sammeln und nach jeder Runde ein Minispiel. |
 | [Strassenbaron](https://langwiligi.site/strassenbaron/) | Lokal · Online · Bots | Kaufen, bauen, abkassieren: der Brettspiel-Klassiker in 3D mit Schweizer Strassen, für 2 bis 6 Spieler. |
-| [Tic-Tac-Turbo](https://langwiligi.site/ultimate-tic-tac-toe/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
+| [Tic-Tac-Turbo](https://langwiligi.site/tic-tac-turbo/) | Lokal · Online · Bots | Tic-Tac-Toe im Tic-Tac-Toe. |
 | [Turbo-Kart](https://langwiligi.site/turbo-kart/) | Lokal · Online · Bots · Solo | 3D-Kartrennen mit Drift-Turbos, Item-Würfeln, Grand Prix, Ballon-Schlacht, Teams und Online-Rennen. |
-| [Ur](https://langwiligi.site/koenigliches-ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
+| [Ur](https://langwiligi.site/ur/) | Lokal · Online · Bots | 4500 Jahre altes Würfel-Rennspiel. |
 | [Vier gewinnt](https://langwiligi.site/vier-gewinnt/) | Lokal · Online · Bots | Steine fallen lassen, vier in eine Reihe bringen. |
 | [Wanderlicht](https://langwiligi.site/wanderlicht/) | Solo | Endlose Welt mit riesigen Wäldern, gewaltigen Schlössern voller Säle und einem Besen zum Fliegen. |
 | [Weltenbrand](https://langwiligi.site/weltenbrand/) | Online · Bots | Weltkriegs-Strategie in Echtzeit: Wirtschaft, Forschung, Armeen zu Land, Luft und See. |

@@ -4,7 +4,7 @@
 const { start } = require('./e2e-infra');
 (async () => {
   const { player, stop, sleep, ok } = await start();
-  const mk = async name => { const p = await player(name, '/koenigliches-ur/'); await p.click('#mode-on'); await p.fill('.ol-name', name); return p; };
+  const mk = async name => { const p = await player(name, '/ur/'); await p.click('#mode-on'); await p.fill('.ol-name', name); return p; };
   const A = await mk('Anna'), B = await mk('Bob');
   await A.click('.ol-create'); await A.waitForFunction(() => document.querySelector('.ol-big').textContent.trim().length === 4, null, { timeout: 8000 });
   const code = (await A.textContent('.ol-big')).trim(); ok(/^[A-Z0-9]{4}$/.test(code), 'Raum erstellt: ' + code);

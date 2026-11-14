@@ -285,7 +285,7 @@
     '</aside>' +
     '<div id="lw-fr-toasts" aria-live="polite"></div>';
 
-  // Klicks und Tasten bleiben im Panel und gelangen nicht ins Spiel (z.B. Mausfang beim Bogen-Duell)
+  // Klicks und Tasten bleiben im Panel und gelangen nicht ins Spiel (z.B. Mausfang beim 3D Bowfight)
   function isolate(el) {
     ['mousedown', 'pointerdown', 'touchstart', 'keydown', 'keyup', 'keypress', 'wheel', 'click', 'mouseup', 'pointerup', 'contextmenu'].forEach(function (ev) {
       el.addEventListener(ev, function (e) { e.stopPropagation(); });

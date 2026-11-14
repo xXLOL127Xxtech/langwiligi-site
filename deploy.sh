@@ -9,6 +9,7 @@
 #   <meta name="spiel-modi" content="Lokal,Online,Bots,Solo">  Spielmodi (Häkchen auf der Karte + Filter)
 #   <meta name="spiel-tags" content="1 gegen 1,3D">   Schildchen auf dem Bild
 #   <meta name="spiel-typ" content="Action,3D">       Typen für den Typ-Filter (Liste in tools/spiel-pruefen.js)
+#   <meta name="spiel-status" content="Baustelle">    Noch in Arbeit: Banner "Under Construction / Demo available" auf der Karte
 #   cover.svg / cover.png / cover.jpg / cover.webp    Bild (16:10, z.B. 640x400)
 # "Neu" auf der Startseite = Datum, an dem games/<name>/index.html zum ersten Mal in Git auftaucht.
 # Aussehen der Startseite: startseite/ (index.html mit Platzhaltern, start.css, start.js)
@@ -230,6 +231,9 @@ for dir in "$SRC"/*/; do
   # Typen als Schlüssel: "Pixel-Art,3D" -> "pixel-art 3d"
   typ="$(meta spiel-typ "$page" | tr '[:upper:]' '[:lower:]' | tr ',' ' ' | tr -s ' ' | sed 's/^ *//; s/ *$//' | tr -cd 'a-z0-9 -')"
   when="$(added "$slug")"
+  # Noch in Arbeit: Banner quer über das Bild
+  wip=""
+  [ -n "$(meta spiel-status "$page")" ] && wip='<span class="badge-wip" translate="no"><b>Under Construction</b><i>Demo available</i></span>'
   if [ "$when" -gt "$newest_t" ]; then newest_t="$when"; newest_title="$title"; fi
 
   cover=""
@@ -270,7 +274,7 @@ for dir in "$SRC"/*/; do
   cat >> "$CARDS" <<EOF
       <a class="card" href="$slug/" style="--c: $color" data-filter="$filter" data-typ="$typ" data-slug="$slug" data-added="$when" data-title="$title">
         <div class="frame"><div class="body">
-          <div class="cover">$img<div class="pills">$pills</div><span class="badge-new">Neu</span></div>
+          <div class="cover">$img<div class="pills">$pills</div><span class="badge-new">Neu</span>$wip</div>
           <div class="info">
             <h2>$title</h2>
             <p>$desc</p>
@@ -285,6 +289,21 @@ EOF
   printf '%s %s %s\n' "$when" "$slug" "$title" >> "$TMP/spiele.txt"
   items+="${items:+,}{\"@type\":\"ListItem\",\"position\":$count,\"url\":\"$SITE/$slug/\",\"name\":$(json_str "$(title_raw "$page")")}"
 done
+
+# Umbenannte Spiele (startseite/umzug.txt): unter der alten Adresse liegt eine Weiterleitung, damit alte Links und Einladungen weiter gehen
+if [ -f "$START/umzug.txt" ]; then
+  while read -r alt neu _; do
+    case "$alt" in ''|'#'*) continue ;; esac
+    [[ "$alt" =~ ^[a-z0-9-]+$ && "$neu" =~ ^[a-z0-9-]+$ ]] || continue
+    [ -f "$SRC/$neu/index.html" ] && [ ! -e "$BUILD/$alt" ] || continue
+    mkdir -p "$BUILD/$alt"
+    cat > "$BUILD/$alt/index.html" <<EOF
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Umgezogen</title><meta name="robots" content="noindex">
+<link rel="canonical" href="$SITE/$neu/"><script>location.replace('../$neu/' + location.search + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=../$neu/"></head><body><a href="../$neu/">Das Spiel ist umgezogen. Hier geht es weiter.</a></body></html>
+EOF
+  done < "$START/umzug.txt"
+fi
 
 # Spiele in der Beschreibung für Google: die meistgespielten der letzten 7 Tage (vom Spiel-Server),
 # aufgefüllt mit den neusten. Ist der Server nicht erreichbar, nur die neusten.
