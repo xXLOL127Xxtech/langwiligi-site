@@ -19,5 +19,6 @@
  "Tippe auf eine Spalte, um deinen Stein hineinzuwerfen – er FÄLLT bis ganz nach unten auf das tiefste freie Feld.": "Tap a column to drop your disc in – it FALLS all the way down to the lowest free square.",
  "Wer zuerst vier in einer Reihe hat, gewinnt (die Siegerreihe leuchtet). Ist das Brett voll ohne Sieger, ist es unentschieden.": "Whoever first gets four in a row wins (the winning row lights up). If the board is full with no winner, it's a draw.",
  "Ziel: vier Steine deiner Farbe in eine Reihe bringen – waagrecht, senkrecht oder schräg.": "Goal: get four discs of your color in a row – horizontally, vertically or diagonally.",
- "🎉 Spieler {0} hat {1} in einer Reihe – Sieg!": "🎉 Player {0} has {1} in a row – victory!"
+ "🎉 Spieler {0} hat {1} in einer Reihe – Sieg!": "🎉 Player {0} has {1} in a row – victory!",
+ "Lass die Steine fallen und bring als Erster vier in eine Reihe – gegen Freunde oder einen schlauen Bot.": "Drop the stones and be the first to get four in a row – against friends or a clever bot."
 }

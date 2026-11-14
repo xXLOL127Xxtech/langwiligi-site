@@ -80,8 +80,11 @@ class Items {
     this.r.fx.boxBruch(b.pos);
     if (k && k.lokal >= 0) Ton.sfx('box');
     if (k && !vonNetz) {
-      if (!k.item && k.roulette <= 0 && !k.gehalten && !k.orbit.length) {
+      // Zwei Items: Ist der erste Platz leer (auch wenn gerade Kugeln kreisen oder eine Banane hinten hängt), kommt das neue dorthin,
+      // sonst in den Reserveplatz. Sind beide voll, bleibt die Box wirkungslos.
+      if (k.roulette <= 0 && (!k.item || !k.item2)) {
         k.rouletteItem = this.ziehen(k);
+        k.rouletteZiel = k.item ? 'zwei' : 'eins';
         k.roulette = k.typ === 'bot' ? 1.0 : 1.45;
       }
       if (this.r.netz) this.r.netz.box(this.boxen.indexOf(b), k);
@@ -130,7 +133,7 @@ class Items {
     if (k.item === 'goldnitro' && k.goldT <= 0 && k.goldBenutzt) { k.item = null; k.goldBenutzt = false; }
     if (k.orbit.length && inp.itemDruck) { this.orbitFeuern(k, inp.bremse); return; }
     if (k.gehalten) { if (!inp.item) this.loslassen(k, inp.bremse); return; }
-    if (!k.item || k.roulette > 0) return;
+    if (!k.item || (k.roulette > 0 && k.rouletteZiel !== 'zwei')) return;   // beim Ziehen des zweiten Items darf das erste benutzt werden
     if (inp.itemDruck) this.benutze(k, inp);
   }
   benutze(k, inp) {
@@ -433,14 +436,16 @@ class Items {
     }
     // Kreisende Kugeln treffen andere Karts
     for (const k of r.karts) {
-      if (!k.orbit.length || k.orbit[0].typ === 'banane') continue;
+      if (!k.orbit.length) continue;
       for (const p of this.schutzPunkte(k)) {
+        if (!p.orbit || !k.orbit.includes(p.orbit)) continue;
+        const banane = p.orbit.typ === 'banane';
         for (const o of r.karts) {
-          if (o === k || r.gleichesTeam(o, k) || o.rettung > 0) continue;
-          if (o.pos.distanceToSquared(p.pos) < 2.6) {
+          if (o === k || r.gleichesTeam(o, k) || o.rettung > 0 || o.treffer) continue;
+          if (o.pos.distanceToSquared(p.pos) < (banane ? 3.2 : 2.6) && Math.abs(o.pos.y - p.pos.y) < 2.2) {
             k.orbit.splice(k.orbit.indexOf(p.orbit), 1);
-            r.trifft(o, 'salto', k);
-            r.fx.truemmer(p.pos, p.orbit.typ === 'gruen' ? '#2ccf4a' : '#e8302c');
+            if (o.sternT <= 0 && o.raketeT <= 0) r.trifft(o, banane ? 'dreh' : 'salto', k);   // Stern/Rakete: unverwundbar, die Banane geht trotzdem kaputt
+            r.fx.truemmer(p.pos, banane ? '#ffd23a' : p.orbit.typ === 'gruen' ? '#2ccf4a' : '#e8302c');
             break;
           }
         }

@@ -17,5 +17,6 @@
  "Würfle.": "Roll the dice.",
  "Zug zurückgenommen. Wähle einen Stein.": "Move taken back. Choose a checker.",
  "Züge": "Moves",
- "{0} ist dran ({1})": "{0}'s turn ({1})"
+ "{0} ist dran ({1})": "{0}'s turn ({1})",
+ "Würfeln, ziehen, schlagen und abtragen: das uralte Brettspiel gegen den Bot oder zu zweit an einem Gerät.": "Roll, move, hit and bear off: the ancient board game against the bot or two players on one device."
 }

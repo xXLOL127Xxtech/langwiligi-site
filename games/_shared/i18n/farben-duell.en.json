@@ -21,5 +21,6 @@
  "einen": "a",
  "⛔ Diesen Zug MUSST du {0} {1}-Turm ziehen (leuchtet) – ein anderer geht nicht.": "⛔ This move you MUST move {0} {1} rook (glowing) – no other will do.",
  "🎉 Spieler {0} gewinnt – ein Turm hat die gegnerische Grundreihe erreicht!": "🎉 Player {0} wins – a rook has reached the enemy's back row!",
- "🤝 Unentschieden – beide Seiten sind blockiert!": "🤝 Draw – both sides are blocked!"
+ "🤝 Unentschieden – beide Seiten sind blockiert!": "🤝 Draw – both sides are blocked!",
+ "Wo du landest, bestimmt den nächsten Zug des Gegners: das bunte Taktik-Duell auf dem 8×8-Farbenbrett.": "Where you land decides your opponent's next move: the colorful tactics duel on the 8×8 color board."
 }

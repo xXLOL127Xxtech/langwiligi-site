@@ -19,6 +19,6 @@ const { start } = require('./e2e-infra');
   const anna = rows.find(r => r.name === 'Anna'), bob = rows.find(r => r.name === 'Bob');
   ok(anna && anna.wins === 1 && anna.games === 1, 'Anna: 1 Sieg in der Rangliste');
   ok(bob && bob.wins === 0 && bob.games === 1, 'Bob: 0 Siege, 1 Spiel');
-  ok(/gewinnst/i.test(await A.textContent('#resTitle').catch(() => '')), 'Anna sieht «Du gewinnst!»');
+  ok(/gewinnst|you win/i.test(await A.textContent('#resTitle').catch(() => '')), 'Anna sieht «Du gewinnst!»');
   await stop();
 })().catch(e => { console.error(e); process.exit(1); });

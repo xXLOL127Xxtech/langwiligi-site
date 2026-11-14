@@ -153,6 +153,9 @@ function check(slug) {
   }
   if (!meta(html, 'spiel-tags')) warn('`<meta name="spiel-tags" content="1 gegen 1,3D">` fehlt (Schildchen auf dem Bild).', file);
 
+  // Englische Version (Wörterbuch für die Sprachwahl, siehe SPIEL-VORGABEN.md)
+  if (!fs.existsSync(path.join(GAMES, '_shared', 'i18n', path.basename(dir) + '.en.json'))) warn(`Englisches Wörterbuch \`games/_shared/i18n/${path.basename(dir)}.en.json\` fehlt (ohne bleibt das Spiel auch in der englischen Version deutsch).`);
+
   // Titelbild
   const cover = ['webp', 'png', 'jpg', 'jpeg', 'svg'].map(e => `cover.${e}`).find(n => fs.existsSync(path.join(dir, n)));
   if (!cover) err('Titelbild `cover.webp` fehlt (16:10, am besten 1280 × 800).');

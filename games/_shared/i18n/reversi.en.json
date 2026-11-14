@@ -19,5 +19,6 @@
  "⚫ Schwarz": "⚫ Black",
  "⚫ Schwarz: {0} – ⚪ Weiss: {1}. {2}": "⚫ Black: {0} – ⚪ White: {1}. {2}",
  "🎉 Spieler 1 (Schwarz) gewinnt": "🎉 Player 1 (Black) wins",
- "🎉 Spieler 2 (Weiss) gewinnt": "🎉 Player 2 (White) wins"
+ "🎉 Spieler 2 (Weiss) gewinnt": "🎉 Player 2 (White) wins",
+ "Schliesse gegnerische Steine ein, dreh sie um und erobere das Brett. Mit Anfänger-Hilfe und starkem Bot.": "Enclose enemy stones, flip them and conquer the board. With beginner help and a strong bot."
 }

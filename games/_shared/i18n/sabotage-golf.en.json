@@ -57,5 +57,6 @@
  "{0} Zeiger bewegen und klicken, Esc bricht ab.": "{0} move the pointer and click, Esc cancels.",
  "{0} Zurück zum letzten Schlag": "{0} Back to the last shot",
  "{0} trifft das Loch!": "{0} sinks the hole!",
- "{0} von {1} Plätzen": "{0} of {1} seats"
+ "{0} von {1} Plätzen": "{0} of {1} seats",
+ "Echtzeit-Golf in der Pixel-Sandkiste: Wer zuerst das Loch trifft, gewinnt. Sprenge und überflute die Bahn der anderen. Bis 16 online.": "Real-time golf in the pixel sandbox: whoever hits the hole first wins. Blast and flood the others' course. Up to 16 online."
 }

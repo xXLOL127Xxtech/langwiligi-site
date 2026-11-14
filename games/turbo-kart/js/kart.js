@@ -38,7 +38,7 @@ class Kart {
     this.drift = { an: false, dir: 0, t: 0, stufe: 0 }; this.hop = false; this.hopT = 0;
     this.boostT = 0; this.sternT = 0; this.kleinT = 0; this.tinteT = 0; this.schutzT = 0; this.raketeT = 0; this.goldT = 0;
     this.treffer = null;
-    this.item = null; this.anzahl = 0; this.roulette = 0; this.rouletteItem = null;
+    this.item = null; this.anzahl = 0; this.roulette = 0; this.rouletteItem = null; this.item2 = null; this.rouletteZiel = 'eins';
     this.gehalten = null; this.orbit = [];
     this.muenzen = 0; this.ballons = 3; this.punkte = 0; this.tot = false;
     this.rettung = 0; this.sicher = { si: 0, yaw: 0 };
@@ -113,7 +113,16 @@ class Kart {
     }
     if (this.roulette > 0) {
       this.roulette -= dt;
-      if (this.roulette <= 0) { this.item = this.rouletteItem; this.anzahl = /3$/.test(this.item) ? 3 : 1; if (this.item === 'goldnitro') this.goldT = 0; if (this.lokal >= 0) Ton.sfx('itemda'); }
+      if (this.roulette <= 0) {
+        if (this.item) this.item2 = this.rouletteItem;   // erstes Item noch da: neues wandert in den Reserveplatz
+        else { this.item = this.rouletteItem; this.anzahl = /3$/.test(this.item) ? 3 : 1; if (this.item === 'goldnitro') this.goldT = 0; }
+        if (this.lokal >= 0) Ton.sfx('itemda');
+      }
+    }
+    // Erster Platz frei: Reserve-Item rückt nach
+    if (!this.item && this.item2 && this.roulette <= 0) {
+      this.item = this.item2; this.item2 = null; this.anzahl = /3$/.test(this.item) ? 3 : 1; if (this.item === 'goldnitro') this.goldT = 0;
+      if (this.lokal >= 0) Ton.sfx('itemda');
     }
     if (this.rettung > 0) { this.rettungSchritt(dt); return; }
     if (this.treffer) {

@@ -1,5 +1,45 @@
 [
 {
+"d":"2026-11-14",
+"z":"12:00",
+"a":"Lobby",
+"t":"Einladungslink bringt zuverlässig direkt in den Raum, auch auf Englisch",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":107,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
+"d":"2026-11-14",
+"z":"11:50",
+"a":"Turbo-Kart",
+"t":"Grand Prix mit 3 Rennen, Punktewertung und grosse Siegerverkündung",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":107,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
+"d":"2026-11-14",
+"z":"11:40",
+"a":"Turbo-Kart",
+"t":"Zwei Items tragen, kreisende Items nachladen und auslösen",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":107,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
+"d":"2026-11-14",
+"z":"09:30",
+"a":"Startseite",
+"t":"Englisch: Einladungen, Formenfabrik und Spielbeschreibungen übersetzt",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":107,
+"b":"ccr-c53f1738-ws3mbd"
+},
+{
 "d":"2026-11-13",
 "z":"20:30",
 "a":"Startseite",

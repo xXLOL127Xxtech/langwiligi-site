@@ -23,5 +23,6 @@
  "Wähle einen Stein (grün = ziehen, rot = schlagen).": "Choose a piece (green = move, red = capture).",
  "Ziehe schräg, überspringe gegnerische Steine und werde zur Dame. Wer alle Steine des Gegners schlägt, gewinnt.": "Move diagonally, jump over enemy pieces and become a king. Whoever captures all of the opponent's pieces wins.",
  "🎉 Spieler {0} gewinnt – der Gegner kann nicht mehr ziehen!": "🎉 Player {0} wins – the opponent can no longer move!",
- "🤝 Unentschieden – 20 Züge lang wurde nur mit Damen gezogen, ohne zu schlagen.": "🤝 Draw – for 20 moves only kings were moved, without capturing."
+ "🤝 Unentschieden – 20 Züge lang wurde nur mit Damen gezogen, ohne zu schlagen.": "🤝 Draw – for 20 moves only kings were moved, without capturing.",
+ "Springen, schlagen, zur Dame werden: das klassische Brettspiel mit Schlagpflicht und fliegender Dame.": "Jump, capture, become a king: the classic board game with forced capture and flying kings."
 }

@@ -265,6 +265,13 @@ class Effekte {
 
 // ---------- Rennen ----------
 const GP_PUNKTE = [15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+// Grand Prix: eine Serie aus 3 Rennen. Pro Rennen gibt es Punkte nach Platz (GP_PUNKTE), alle drei Rennen zusammengezählt ergeben den Sieger.
+const GP_RENNEN = 3;
+function gpStrecken(cup) {   // 3 der 4 Strecken des Cups, zufällig gewählt, in der Cup-Reihenfolge gefahren
+  const alle = STRECKEN.map((s, i) => [s, i]).filter(([s]) => s.cup === cup).map(([, i]) => i);
+  const wahl = alle.map(i => [Math.random(), i]).sort((a, b) => a[0] - b[0]).slice(0, GP_RENNEN).map(x => x[1]);
+  return alle.filter(i => wahl.includes(i));
+}
 
 class Rennen {
   // cfg: { modus, strecke, cc, ki, items, teams, runden, fahrer: [...], demo, netz, qual }
@@ -663,7 +670,7 @@ class Rennen {
     } else {
       const ok = o.getroffen(art, quelle);
       if (!ok) return;
-      if (art === 'blitz' && extra) { o.kleinT = extra.klein; o.gehalten = null; o.orbit = []; if (o.item && o.lokal < 0) o.item = null; }
+      if (art === 'blitz' && extra) { o.kleinT = extra.klein; o.gehalten = null; o.orbit = []; if (o.item && o.lokal < 0) o.item = null; if (o.lokal < 0) o.item2 = null; }
     }
     if (this.welt.istArena) this.ballonWeg(o, quelle);
   }
