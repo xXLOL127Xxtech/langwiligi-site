@@ -1,0 +1,15 @@
+{
+ "(2) Danach DREHST du ein beliebiges Viertel um 90° – mit ↺ (links herum) oder ↻ (rechts herum) in der Leiste unten.": "(2) Then you ROTATE any quarter by 90° – with ↺ (counter-clockwise) or ↻ (clockwise) in the bar below.",
+ "Das 6×6-Brett besteht aus vier 3×3-Vierteln. Spieler 1 hat rote Kugeln, Spieler 2 blaue.": "The 6×6 board consists of four 3×3 quarters. Player 1 has red balls, player 2 has blue ones.",
+ "Das Drehen verschiebt alle Kugeln in diesem Viertel – damit baust du Reihen oder zerstörst die des Gegners.": "Rotating moves all balls in that quarter – you use it to build rows or destroy your opponent's.",
+ "Haben nach einer Drehung beide eine Fünferreihe, ist es unentschieden.": "If both have a row of five after a rotation, it's a draw.",
+ "Jeder Zug hat 2 Schritte: (1) Tippe auf ein freies Feld, um deine Kugel zu setzen.": "Every move has 2 steps: (1) Tap an empty square to place your ball.",
+ "Kugel gesetzt. Jetzt ein Viertel DREHEN (↺ oder ↻).": "Ball placed. Now ROTATE a quarter (↺ or ↻).",
+ "Kugel setzen, Brettviertel um 90° drehen, fünf in eine Reihe bringen.": "Place a ball, rotate a quarter of the board by 90°, get five in a row.",
+ "Setz eine Kugel und dreh danach ein Viertel des Bretts. So entstehen – oder zerbrechen – Fünferreihen.": "Place a ball and then rotate a quarter of the board. That's how rows of five are made – or broken.",
+ "Setz eine Kugel und dreh dann ein Viertel des Bretts. Wer zuerst fünf in einer Reihe hat, gewinnt.": "Place a ball and then rotate a quarter of the board. Whoever first gets five in a row wins.",
+ "Spieler {0} ist dran – setz eine Kugel auf ein freies Feld.": "Player {0}'s turn – place a ball on an empty square.",
+ "Ziel: fünf Kugeln deiner Farbe in einer Reihe (waagrecht, senkrecht oder schräg) – gezählt wird nach dem Drehen.": "Goal: five balls of your color in a row (horizontally, vertically or diagonally) – counted after rotating.",
+ "🎉 Spieler {0} hat fünf in einer Reihe – Sieg!": "🎉 Player {0} has five in a row – victory!",
+ "🤝 Beide haben fünf in einer Reihe – unentschieden!": "🤝 Both have five in a row – draw!"
+}

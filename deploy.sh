@@ -47,6 +47,7 @@ version() { cksum "$1" | cut -d' ' -f1; }
 # Zurück-Knopf und Bewertung (games/_shared/back.js) in jedes Spiel einbauen
 BACK_V="$(version "$SRC/_shared/back.js")"
 FREUNDE_V="$(version "$SRC/_shared/freunde.js")"
+I18N_V="$(cat "$SRC/_shared/i18n.js" "$SRC/_shared/i18n/"*.json | cksum | cut -d' ' -f1)"
 # data-v = Version des Spiels (Tag der letzten Änderung). Ändert sie sich, fragt die Bewertung nochmal nach.
 game_version() {
   local t=""
@@ -78,6 +79,13 @@ for f in "$BUILD"/*/index.html; do
   [ -n "$name" ] || name="$slug"
   grep -q '_shared/back.js' "$f" || printf '\n<script src="../_shared/back.js?v=%s" data-v="%s" data-name="%s"></script>\n' "$BACK_V" "$(game_version "$slug")" "$(printf '%s' "$name" | html_escape)" >> "$f"
   # Freunde, Online-Status und Einladungen (games/_shared/freunde.js)
+  # Deutsch/English (games/_shared/i18n.js): ganz oben im <head>, damit nichts Deutsches aufblitzt
+  if ! grep -q '_shared/i18n.js' "$f"; then
+    I18N_TAG="<script src=\"../_shared/i18n.js?v=$I18N_V\"></script>" awk '
+      !done && (i = index(tolower($0), "<head>")) > 0 { $0 = substr($0, 1, i + 5) ENVIRON["I18N_TAG"] substr($0, i + 6); done = 1 }
+      { print }
+    ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  fi
   grep -q '_shared/freunde.js' "$f" || printf '<script src="../_shared/freunde.js?v=%s"></script>\n' "$FREUNDE_V" >> "$f"
   # Für Google: Suchbegriffe in Titel und Beschreibung, die Hauptadresse (canonical), damit die IP nicht als zweite Seite zählt,
   # Vorschau für geteilte Links und strukturierte Daten (schema.org). Der Name auf der Startseite bleibt kurz,
@@ -363,7 +371,7 @@ fi
 cp "$START/vorschau.jpg" "$BUILD/"
 bild_v="$(version "$START/vorschau.jpg")"
 ver="$(cat "$START/start.css" "$START/start.js" "$START/updates.json" "$START/verlauf.js" "$START/verlauf.json" "$START/lounge.png" | cksum | cut -d' ' -f1)"
-CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" FREUNDEV="$FREUNDE_V" awk '
+CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ticker" ICONS="$icons" BILDV="$bild_v" FREUNDEV="$FREUNDE_V" I18NV="$I18N_V" awk '
   # Ersetzen ohne Regex-Sonderzeichen (Titel können & enthalten)
   function put(s, pat, rep,   i, out) {
     out = ""
@@ -371,11 +379,11 @@ CARDS="$CARDS" ITEMS="$items" N="$count" TOP="$top_games" VER="$ver" TICKER="$ti
     return out s
   }
   /<!--SPIELE-->/ { while ((getline line < ENVIRON["CARDS"]) > 0) print line; next }
-  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--FREUNDE-V-->", ENVIRON["FREUNDEV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
+  { $0 = put($0, "<!--ANZAHL-->", ENVIRON["N"]); $0 = put($0, "<!--TOP-SPIELE-->", ENVIRON["TOP"]); $0 = put($0, "<!--VERSION-->", ENVIRON["VER"]); $0 = put($0, "<!--ICONS-->", ENVIRON["ICONS"]); $0 = put($0, "<!--BILD-V-->", ENVIRON["BILDV"]); $0 = put($0, "<!--FREUNDE-V-->", ENVIRON["FREUNDEV"]); $0 = put($0, "<!--I18N-V-->", ENVIRON["I18NV"]); $0 = put($0, "<!--SPIELE-LISTE-->", ENVIRON["ITEMS"]); print put($0, "<!--TICKER-->", ENVIRON["TICKER"]) }
 ' "$START/index.html" > "$BUILD/index.html"
 # Unterseite /updates/: alle Änderungen mit Datum und Uhrzeit (startseite/verlauf.html + verlauf.json)
 mkdir -p "$BUILD/updates"
-sed -e "s|<!--VERSION-->|$ver|g" -e "s|<!--ICONS-->|$(printf '%s' "$icons" | sed -e 's/href="\([a-z-]*\.[a-z]*\)/href="..\/\1/g' -e 's/[&|]/\\&/g')|" "$START/verlauf.html" > "$BUILD/updates/index.html"
+sed -e "s|<!--VERSION-->|$ver|g" -e "s|<!--I18N-V-->|$I18N_V|g" -e "s|<!--ICONS-->|$(printf '%s' "$icons" | sed -e 's/href="\([a-z-]*\.[a-z]*\)/href="..\/\1/g' -e 's/[&|]/\\&/g')|" "$START/verlauf.html" > "$BUILD/updates/index.html"
 
 # Spiel-Server (Online-Modus, Ranglisten, Bewertungen) wird mitgeschickt; der Server spielt ihn nur ein, wenn er sich geändert hat
 mkdir -p "$BUILD/.server"

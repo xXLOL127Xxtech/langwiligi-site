@@ -133,6 +133,15 @@ GameHub.loadBoard(GAME_ID, el, GameHub.getName());  // Rangliste im Menü anzeig
 ```
 Ein Ergebnis zählt nur, wenn mindestens 2 Spieler im Raum sind und vorher `roundStart()` kam. Spiele gegen Bots oder lokale Spiele kommen **nicht** in die Rangliste.
 
+Der Server prüft zusätzlich (der Browser wird nicht einfach geglaubt), sonst zählt die Runde nicht:
+- Mindestens 2 **verschiedene Geräte** (Konten) sassen von Rundenstart bis Rundenende am Tisch.
+- Die Runde dauerte mindestens **8 Sekunden**. Eine neue Runde kann erst beginnen, wenn die letzte beendet oder diese 8 Sekunden um sind.
+- `winnerIdx` ist `-1` oder ein Platz, der die ganze Runde besetzt war.
+- **Schiedsrichter (Regeln auf dem Server):** Für Spiele, deren Züge vollständig über `room.send()` laufen (Brett- und Rundenspiele), spielt der Server die Partie mit. Er lehnt regelwidrige Züge ab (nicht an der Reihe, besetztes Feld, unmöglicher Zug), leitet sie nicht weiter, wertet die Runde dann nicht und bestimmt den Sieger selbst, auch wenn der Host etwas anderes meldet. Vorhanden für: `fuenf-gewinnt`, `vier-gewinnt`, `ultimate-tic-tac-toe`, `reversi`, `mancala`, `dame`, `kaesekaestchen`, `mauer-duell`, `farben-duell`, `dreh-duell`, `laser-duell`, `panzer-taktik`, `schach`, `go`, `backgammon`, `koenigliches-ur`. Bei Spielen mit Würfeln (`backgammon`, `koenigliches-ur`) würfelt der **Server**: Der Spieler am Zug ruft `room.dice()` auf, der Server würfelt zufällig (`crypto.randomInt`) und schickt den Wurf an alle im Raum (Ereignis `room.on('dice', (werte, platz) => …)`, auch an den Würfler selbst). Selbst gemeldete Würfe lehnt der Server dann ab. Dafür muss der Host im `start` die Angabe `dice: 'server'` mitschicken. Seiten ohne diese Angabe (alter Browser-Zwischenspeicher) funktionieren übergangsweise weiter, dort bleibt der Wurf unverifiziert. Mit der Umgebungsvariable `REQUIRE_SERVER_DICE=1` am Server werden sie ausgesperrt, sobald alle Spieler die neue Seite geladen haben. Nicht möglich ist das bei Echtzeit-Spielen (Physik, Schiessen, Rennen, Festungs- und Billard-Duell, Party-Spiele): Der Server kann sie nicht nachrechnen, dort gelten nur die allgemeinen Prüfungen oben. Neues Spiel anbinden: in `server/game-hub.js` einen Eintrag unter `ENGINES` (Gerüst `platformReferee`) oder einen eigenen Schiedsrichter unter `REFEREES` ergänzen. Dafür muss jeder Zug als eigene Nachricht über `room.send()` gehen, der Rundenstart (`start`) muss alle Optionen und den Zufalls-Seed enthalten, und der Server muss die Regeln aus diesen Nachrichten allein nachrechnen können (keine versteckten Informationen). Testen: `node tools/schiedsrichter-test/vergleich.js` (Vergleich mit dem echten Spielcode, braucht `npm i ws` ausserhalb des Projekts und `NODE_PATH`), dazu `schach-perft.js`, `go-vergleich.js`, `backgammon-vergleich.js`, `ur-vergleich.js`, `wuerfel-test.js` und die Ende-zu-Ende-Tests mit echten Browsern (`e2e-fuenf-gewinnt.js`, `e2e-schach.js`, `e2e-ur.js`, `e2e-backgammon.js`, brauchen Playwright und Port 80).
+- **Freiwillig, aber empfohlen:** Auch die anderen Spieler (nicht nur der Host) dürfen am Rundenende `room.result(winnerIdx)` mit dem Sieger melden, den **sie** sehen. Widerspricht jemand dem Host (Frist 3 Sekunden), zählt die Runde nicht. So kann ein manipulierter Host keinen falschen Sieg eintragen.
+- Höchstens **12 gewertete Runden pro Stunde** zwischen denselben Spielern und 60 pro Stunde pro Konto.
+- Nachrichten über `room.send()` dürfen höchstens **64 KB** gross sein (insgesamt etwa 400 KB pro Sekunde und Verbindung), grössere werden verworfen. Der Server akzeptiert Verbindungen nur von langwiligi.site und der Server-IP.
+
 ## 7. Highscores für Solo-Spiele (optional)
 
 ```js
@@ -146,6 +155,7 @@ GameHub.renderScores(el, await GameHub.highscores(GAME_ID), GameHub.getName());
 Regeln des Servers, sonst wird das Ergebnis abgelehnt:
 - `punkte` ist eine ganze Zahl zwischen 0 und 10'000'000.
 - **Plausibilitätsprüfung:** `punkte ≤ (jumps + 1) × 450`. Gib als `jumps` einen Fortschrittswert mit, der zu deinen Punkten passt (z.B. Sprünge, Level, gefahrene Meter / 10). Bei sehr hohen Punktzahlen pro Aktion skalierst du die Punkte entsprechend.
+- Es zählt nur das Konto des Geräts (geheimer Schlüssel aus `GameHub`, nie ein frei gewählter Name). Pro Konto höchstens 120 Meldungen pro Stunde.
 - Pro Name höchstens 1 Meldung alle 2 Sekunden. Gespeichert wird nur der beste Wert pro Name.
 - Pro Spiel behält der Server höchstens 1000 Einträge.
 - Die Spiel-ID muss online als Ordner existieren. Lokal schlägt das Melden deshalb fehl, das Spiel darf dabei nicht abstürzen.

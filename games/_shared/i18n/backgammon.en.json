@@ -1,0 +1,21 @@
+{
+ "Alle Elfenbein-Steine sind abgetragen.": "All ivory checkers have been borne off.",
+ "Alle Nussbaum-Steine sind abgetragen.": "All walnut checkers have been borne off.",
+ "Das uralte Würfel-Brettspiel": "The ancient dice board game",
+ "Elfenbein gewinnt!": "Ivory wins!",
+ "Elfenbein ist dran": "Ivory's turn",
+ "Kein gültiger Zug möglich. Der andere ist dran.": "No valid move possible. It's the other player's turn.",
+ "Nussbaum gewinnt!": "Walnut wins!",
+ "Nussbaum ist dran": "Walnut's turn",
+ "Restaugen": "Pip count",
+ "Restaugen — Elfenbein: {0}  |  Nussbaum: {1}": "Pip count — Ivory: {0}  |  Walnut: {1}",
+ "Rückgängig": "Undo",
+ "Von hier aus ist kein Zug möglich.": "No move is possible from here.",
+ "Wähle ein Ziel.": "Choose a destination.",
+ "Wähle einen Stein (noch {0}{1}).": "Choose a checker ({0}{1} left).",
+ "Würfle, um zu beginnen.": "Roll to begin.",
+ "Würfle.": "Roll the dice.",
+ "Zug zurückgenommen. Wähle einen Stein.": "Move taken back. Choose a checker.",
+ "Züge": "Moves",
+ "{0} ist dran ({1})": "{0}'s turn ({1})"
+}

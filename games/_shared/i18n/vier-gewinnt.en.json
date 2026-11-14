@@ -1,0 +1,23 @@
+{
+ "3 Steine (leicht)": "3 discs (easy)",
+ "4 Steine (Standard)": "4 discs (standard)",
+ "5 Reihen": "5 rows",
+ "5 Spalten": "5 columns",
+ "5 Steine (schwer)": "5 discs (hard)",
+ "6 Reihen (Standard)": "6 rows (standard)",
+ "7 Spalten (Standard)": "7 columns (standard)",
+ "8 Reihen": "8 rows",
+ "9 Spalten": "9 columns",
+ "Der Klassiker mit fallenden Steinen: Wer zuerst vier in einer Reihe hat – waagrecht, senkrecht oder schräg – gewinnt.": "The classic with falling discs: whoever first gets four in a row – horizontally, vertically or diagonally – wins.",
+ "Fährst du mit der Maus über eine Spalte, siehst du als blassen Stein, wo er landen wird.": "If you move the mouse over a column, a faint disc shows where it will land.",
+ "Ihr seid abwechselnd dran (Spieler 1 rot, Spieler 2 blau).": "You take turns (player 1 red, player 2 blue).",
+ "Lass Steine in die Spalten fallen – wer zuerst vier in einer Reihe hat, gewinnt.": "Drop discs into the columns – whoever first gets four in a row wins.",
+ "Lass Steine in die Spalten fallen. Vier in einer Reihe gewinnen.": "Drop discs into the columns. Four in a row wins.",
+ "Spalten": "Columns",
+ "Spieler {0} ist dran – tippe auf eine Spalte, um einen Stein fallen zu lassen.": "Player {0}'s turn – tap a column to drop a disc.",
+ "Steine zum Sieg": "Discs needed to win",
+ "Tippe auf eine Spalte, um deinen Stein hineinzuwerfen – er FÄLLT bis ganz nach unten auf das tiefste freie Feld.": "Tap a column to drop your disc in – it FALLS all the way down to the lowest free square.",
+ "Wer zuerst vier in einer Reihe hat, gewinnt (die Siegerreihe leuchtet). Ist das Brett voll ohne Sieger, ist es unentschieden.": "Whoever first gets four in a row wins (the winning row lights up). If the board is full with no winner, it's a draw.",
+ "Ziel: vier Steine deiner Farbe in eine Reihe bringen – waagrecht, senkrecht oder schräg.": "Goal: get four discs of your color in a row – horizontally, vertically or diagonally.",
+ "🎉 Spieler {0} hat {1} in einer Reihe – Sieg!": "🎉 Player {0} has {1} in a row – victory!"
+}

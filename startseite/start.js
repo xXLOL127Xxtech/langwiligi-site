@@ -16,12 +16,37 @@
   // Nur die zuletzt hochgeladenen Spiele bekommen das "Neu"-Schild
   cards.slice().sort(byNew).slice(0, NEW_COUNT).forEach(function (c) { c.classList.add('is-new'); });
 
+  // ---------- Sprache: Deutsch / English (Übersetzung: games/_shared/i18n.js) ----------
+  // Beim allerersten Besuch fragt ein Fenster nach der Sprache, sobald die Intro-Animation vorbei ist. Danach reicht der Schalter DE | EN im Kopf.
+  var LW = window.LW || { lang: 'de', langChosen: false };
+  var langDlg = $('lang');
+  function setLang(l) {
+    save('lw-lang', l);
+    if (l !== LW.lang) location.reload(); else if (langDlg.open) langDlg.close();
+  }
+  function askLang() {
+    if (LW.langChosen || !langDlg || langDlg.open || !langDlg.showModal) return;
+    langDlg.showModal();
+    var first = langDlg.querySelector('button'); if (first) first.focus();
+  }
+  if (langDlg) {
+    langDlg.addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b) setLang(b.dataset.l); });
+    langDlg.addEventListener('cancel', function (e) { e.preventDefault(); });   // Auswahl ist Pflicht (Esc schliesst nicht)
+  }
+  var sw = $('lang-switch');
+  if (sw) {
+    sw.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.l === LW.lang ? 'true' : 'false'); });
+    sw.addEventListener('click', function (e) { var b = e.target.closest('[data-l]'); if (b && b.dataset.l !== LW.lang) setLang(b.dataset.l); });
+  }
+
   // ---------- Intro ----------
   var intro = $('intro');
+  if (!document.documentElement.classList.contains('intro-on')) setTimeout(askLang, 500);
   if (document.documentElement.classList.contains('intro-on')) {
     var end = function () {
       intro.classList.add('done');
       document.documentElement.classList.remove('intro-on');
+      setTimeout(askLang, 450);
     };
     var timer = setTimeout(end, 3250);
     var skip = function () {

@@ -1,0 +1,20 @@
+{
+ "13×13": "13×13",
+ "15×15 (Standard)": "15×15 (standard)",
+ "19×19 (gross)": "19×19 (large)",
+ "4 (leicht)": "4 (easy)",
+ "5 (Standard)": "5 (standard)",
+ "6 (schwer)": "6 (hard)",
+ "Gespielt wird auf einem grossen Brett (normal 15×15). Spieler 1 setzt X, Spieler 2 setzt O. X beginnt.": "The game is played on a large board (normally 15×15). Player 1 places X, player 2 places O. X goes first.",
+ "In den Einstellungen kannst du Brettgrösse und Anzahl ändern – für leichtere oder schwerere Runden.": "In the settings you can change the board size and the number needed – for easier or harder rounds.",
+ "Setz X und O auf ein grosses Brett – fünf in einer Reihe gewinnen.": "Place X and O on a big board – five in a row wins.",
+ "Spieler {0} ist dran ({1})": "Player {0}'s turn ({1})",
+ "Wenn du dran bist, tippst du auf ein beliebiges freies Feld.": "When it's your turn, tap any empty square.",
+ "Wer zuerst die nötige Anzahl in einer Reihe hat, gewinnt sofort.": "Whoever first gets the required number in a row wins immediately.",
+ "Wie Tic-Tac-Toe, nur viel grösser: Bring fünf Zeichen in eine Reihe und blockier die Drohungen deines Gegners.": "Like tic-tac-toe, just much bigger: get five marks in a row and block your opponent's threats.",
+ "X beginnt.": "X goes first.",
+ "X beginnt. {0} in einer Reihe gewinnen.": "X goes first. {0} in a row wins.",
+ "Zeichen zum Sieg": "Marks needed to win",
+ "Ziel: genug eigene Zeichen ohne Lücke in eine Reihe bringen – waagrecht, senkrecht oder schräg.": "Goal: get enough of your own marks in a row without a gap – horizontally, vertically or diagonally.",
+ "🎉 Spieler {0} ({1}) gewinnt!": "🎉 Player {0} ({1}) wins!"
+}

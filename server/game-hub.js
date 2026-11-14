@@ -7,7 +7,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
-const PORT = 8090;
+const PORT = process.env.PORT !== undefined ? +process.env.PORT : 8090;
 const DATA_DIR = process.env.DATA_DIR || '/var/lib/game-hub';
 const BOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -18,7 +18,29 @@ const MAX_ROOMS = 3000, MAX_ROOMS_PER_IP = 40;
 const MAX_CONN_PER_IP = 80;             // offene WebSockets pro IP
 const MSG_RATE = 150, MSG_BURST = 600;  // Nachrichten pro Sekunde und Spitze (Spiele schicken ~20–60 pro Sekunde)
 const GAMES_DIR = process.env.GAMES_DIR || '/var/www/games';
-const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
+const MAX_PER_GAME = +process.env.MAX_PER_GAME || 1000;
+// Absicherung: Der Server vertraut dem Browser nicht.
+const MAX_BYTES_PER_SEC = 400 * 1024, BYTES_BURST = 2 * 1024 * 1024;   // Datenmenge pro Verbindung (Spiele schicken Zustände, aber keine Megabytes)
+const MAX_RELAY_BYTES = 64 * 1024;       // eine einzelne Spiel-Nachricht
+const MIN_ROUND_MS = 8000;               // Eine Runde, die kürzer dauert, zählt nicht für die Rangliste
+const MAX_COUNTED_PER_PAIR_HOUR = 12;    // gleiche Spieler untereinander: höchstens so viele gewertete Runden pro Stunde (gegen Sieg-Farmen zu zweit)
+const MAX_COUNTED_PER_ACCOUNT_HOUR = 60;
+const VOTE_GRACE_MS = 3000;              // Nach dem Host-Ergebnis dürfen die anderen so lange widersprechen (room.result() von Nicht-Hosts)
+const MISS_LIMIT_PER_IP = 30;            // falsche Raumcodes pro IP und Minute, dann Sperre für diese Minute
+const MAX_SCORE_PER_ACCOUNT_HOUR = 120;
+// Erlaubte Herkunft (Origin) für WebSocket und schreibende API-Aufrufe: unsere Seite, die Server-IP und lokale Tests.
+// Weitere mit ALLOWED_ORIGINS="https://a.example,https://b.example" ergänzen.
+const ORIGIN_HOSTS = new Set(['langwiligi.site', '46.224.94.231', 'localhost', '127.0.0.1']);
+(process.env.ALLOWED_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean).forEach(o => { try { ORIGIN_HOSTS.add(new URL(o).hostname); } catch (e) {} });
+function originOk(origin) {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const h = u.hostname.toLowerCase();
+    return ORIGIN_HOSTS.has(h) || h.endsWith('.langwiligi.site');
+  } catch (e) { return false; }
+}  // Ranglisten-Einträge pro Spiel; darüber fliegen die schlechtesten raus
 
 // Nur Spiele, die es als Ordner auf der Webseite gibt, dürfen etwas speichern (Liste 1 Min. gecacht)
 let knownGames = null, knownAt = 0;
@@ -513,6 +535,1169 @@ function record(game, names, winnerIdx) {
   saveBoard();
 }
 
+// ---------- Schiedsrichter: der Server spielt mit und kennt die Regeln ----------
+// Der Server sieht alle Nachrichten eines Raums. Für Spiele, deren Züge vollständig durch den Server laufen, gibt es hier
+// einen Schiedsrichter: Er verfolgt die Partie mit, lehnt regelwidrige Züge ab (sie werden nicht weitergeleitet, die Runde zählt dann nicht)
+// und bestimmt den Sieger selbst. Das Ergebnis des Hosts spielt für die Rangliste dann keine Rolle mehr.
+// Neues Spiel: unten in REFEREES einen Eintrag mit dem Spiel-Ordnernamen ergänzen. Die Funktion liefert ein Objekt mit
+//   move(seat, daten)  -> true (Nachricht ok, weiterleiten) oder false (regelwidrig)
+//   verdict()          -> null (läuft noch / unbekannt) oder { winner: Platz im Raum, -1 = unentschieden }
+// REFEREE_MODE=watch: nur protokollieren, nichts verwerfen und den Host weiter zählen lassen (falls ein Schiedsrichter fälschlich ablehnt)
+const REFEREE_WATCH = process.env.REFEREE_MODE === 'watch';
+// Backgammon/Ur: Erst wenn alle Seiten neu geladen sind (Server-Würfel), mit REQUIRE_SERVER_DICE=1 auch alte Seiten aussperren, die den Wurf selbst melden
+const REQUIRE_SERVER_DICE = process.env.REQUIRE_SERVER_DICE === '1';
+// Gemeinsames Gerüst für die Brettspiele der Plattform (GameRegistry): Der Host schickt start { swap, options }, danach kommen die Züge
+// als mv { m: Zug }. Spieler p (0 = beginnt) sitzt auf Platz (swap ? 1 - p : p). Das Gerüst kümmert sich um Start, Platz und Zugrecht,
+// die Engine nur um die Regeln:
+//   engine.init(options, seed) -> Spielzustand, oder null wenn die Optionen ungültig sind
+//   engine.turn(state)      -> Spieler (0/1), der jetzt ziehen darf
+//   engine.apply(state, zug)-> true (legal, Zustand ist aktualisiert) oder false
+//   engine.result(state)    -> null (läuft noch) oder { winner: Spieler 0/1, oder -1 = unentschieden }
+function platformReferee(engine) {
+  return () => {
+    let st = null, swap = false;
+    return {
+      move(seat, d) {
+        if (!d || typeof d !== 'object') return false;
+        if (d.t === 'start') {
+          if (seat !== 0) return false;
+          st = engine.init(d.options && typeof d.options === 'object' ? d.options : {}, d.seed);
+          swap = !!d.swap;
+          return !!st;
+        }
+        if (d.t !== 'mv') return true;   // again, bye usw.: nichts zu prüfen
+        if (!st || engine.result(st)) return false;
+        if (seat !== (swap ? 1 - engine.turn(st) : engine.turn(st))) return false;
+        try { return !!engine.apply(st, d.m); } catch (e) { return false; }
+      },
+      verdict() {
+        const r = st && engine.result(st);
+        return r ? { winner: r.winner < 0 ? -1 : (swap ? 1 - r.winner : r.winner) } : null;
+      },
+    };
+  };
+}
+// Hilfen für die Engines
+const inChoices = (v, list, def) => { v = v === undefined || v === null || v === '' ? def : +v; return list.includes(v) ? v : null; };
+// n gleiche Steine in einer Reihe durch (r, c)? board[r][c] === p, beliebige Grösse
+function lineThrough(board, rows, cols, r, c, p, need) {
+  for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+    let n = 1;
+    for (let k = 1; ; k++) { const y = r + dr * k, x = c + dc * k; if (y < 0 || x < 0 || y >= rows || x >= cols || board[y][x] !== p) break; n++; }
+    for (let k = 1; ; k++) { const y = r - dr * k, x = c - dc * k; if (y < 0 || x < 0 || y >= rows || x >= cols || board[y][x] !== p) break; n++; }
+    if (n >= need) return true;
+  }
+  return false;
+}
+const LINES3 = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+function winner3(cells) { for (const [a, b, c] of LINES3) if (cells[a] !== null && cells[a] === cells[b] && cells[a] === cells[c]) return cells[a]; return null; }
+
+const ENGINES = {
+  // Fünf gewinnt: Zug { r, c }, Brett size×size, need in einer Reihe
+  'fuenf-gewinnt': {
+    init(o) {
+      const size = inChoices(o.size, [9, 13, 15, 19], 15), need = inChoices(o.need, [4, 5, 6], 5);
+      if (!size || !need) return null;
+      return { size, need, board: Array.from({ length: size }, () => Array(size).fill(-1)), turn: 0, moves: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, m) {
+      const r = m && m.r, c = m && m.c;
+      if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.size || c >= st.size || st.board[r][c] !== -1) return false;
+      const p = st.turn; st.board[r][c] = p; st.moves++;
+      if (lineThrough(st.board, st.size, st.size, r, c, p, st.need)) st.res = { winner: p };
+      else if (st.moves >= st.size * st.size) st.res = { winner: -1 };
+      else st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Vier gewinnt: Zug = Spalte (Zahl), Steine fallen nach unten
+  'vier-gewinnt': {
+    init(o) {
+      const cols = inChoices(o.cols, [5, 7, 9], 7), rows = inChoices(o.rows, [5, 6, 8], 6), need = inChoices(o.need, [3, 4, 5], 4);
+      if (!cols || !rows || !need) return null;
+      return { cols, rows, need, board: Array.from({ length: rows }, () => Array(cols).fill(-1)), turn: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, c) {
+      if (!Number.isInteger(c) || c < 0 || c >= st.cols) return false;
+      let r = -1;
+      for (let y = st.rows - 1; y >= 0; y--) if (st.board[y][c] === -1) { r = y; break; }
+      if (r < 0) return false;
+      const p = st.turn; st.board[r][c] = p;
+      if (lineThrough(st.board, st.rows, st.cols, r, c, p, st.need)) st.res = { winner: p };
+      else if (st.board[0].every(v => v !== -1)) st.res = { winner: -1 };
+      else st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Ultimate Tic-Tac-Toe: Zug { b, c } (Teilbrett, Feld), man muss im Teilbrett spielen, auf das der letzte Zug zeigte
+  'ultimate-tic-tac-toe': {
+    init() { return { boards: Array.from({ length: 9 }, () => Array(9).fill(null)), bWin: Array(9).fill(null), turn: 0, forced: -1, res: null }; },
+    turn: st => st.turn,
+    apply(st, m) {
+      const b = m && m.b, c = m && m.c;
+      if (!Number.isInteger(b) || !Number.isInteger(c) || b < 0 || b > 8 || c < 0 || c > 8) return false;
+      if (st.bWin[b] !== null || (st.forced !== -1 && b !== st.forced) || st.boards[b][c] !== null) return false;
+      const p = st.turn; st.boards[b][c] = p;
+      const w = winner3(st.boards[b]);
+      if (w !== null) st.bWin[b] = w; else if (st.boards[b].every(v => v !== null)) st.bWin[b] = 'draw';
+      const bw = winner3(st.bWin.map(x => (x === 0 || x === 1) ? x : null));
+      if (bw !== null) { st.res = { winner: bw }; return true; }
+      if (st.bWin.every(x => x !== null)) {
+        const c0 = st.bWin.filter(x => x === 0).length, c1 = st.bWin.filter(x => x === 1).length;
+        st.res = { winner: c0 === c1 ? -1 : (c0 > c1 ? 0 : 1) };
+        return true;
+      }
+      st.forced = st.bWin[c] === null ? c : -1;
+      st.turn = 1 - p;
+      return true;
+    },
+    result: st => st.res,
+  },
+
+  // Reversi: Zug { r, c }. Ohne Zug des Gegners zieht man nochmal, ohne Zug für beide ist Schluss. Mehr Steine gewinnen.
+  'reversi': (() => {
+    const N = 8, DIRS = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    const flips = (b, r, c, p) => {
+      if (b[r][c] !== null) return [];
+      const out = [];
+      for (const [dr, dc] of DIRS) {
+        const line = []; let y = r + dr, x = c + dc;
+        while (y >= 0 && x >= 0 && y < N && x < N && b[y][x] === 1 - p) { line.push([y, x]); y += dr; x += dc; }
+        if (line.length && y >= 0 && x >= 0 && y < N && x < N && b[y][x] === p) out.push(...line);
+      }
+      return out;
+    };
+    const hasMove = (b, p) => { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (flips(b, r, c, p).length) return true; return false; };
+    return {
+      init() {
+        const b = Array.from({ length: N }, () => Array(N).fill(null));
+        b[3][3] = 1; b[3][4] = 0; b[4][3] = 0; b[4][4] = 1;
+        return { b, turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const r = m && m.r, c = m && m.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= N || c >= N) return false;
+        const f = flips(st.b, r, c, st.turn);
+        if (!f.length) return false;
+        st.b[r][c] = st.turn; f.forEach(([y, x]) => { st.b[y][x] = st.turn; });
+        const other = 1 - st.turn;
+        if (hasMove(st.b, other)) st.turn = other;
+        else if (!hasMove(st.b, st.turn)) {
+          let n0 = 0, n1 = 0;
+          st.b.forEach(row => row.forEach(v => { if (v === 0) n0++; else if (v === 1) n1++; }));
+          st.res = { winner: n0 > n1 ? 0 : n1 > n0 ? 1 : -1 };
+        }
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Mancala: Zug = Mulde 0–5 (Spieler 0) oder 7–12 (Spieler 1). Speicher 6 und 13. Letzter Stein im eigenen Speicher = nochmal.
+  'mancala': {
+    init() { return { pits: [4, 4, 4, 4, 4, 4, 0, 4, 4, 4, 4, 4, 4, 0], turn: 0, res: null }; },
+    turn: st => st.turn,
+    apply(st, i) {
+      const own = (p, k) => p === 0 ? (k >= 0 && k <= 5) : (k >= 7 && k <= 12);
+      if (!Number.isInteger(i) || !own(st.turn, i) || st.pits[i] === 0) return false;
+      const me = st.turn, myS = me === 0 ? 6 : 13, oppS = me === 0 ? 13 : 6, pits = st.pits;
+      let stones = pits[i], idx = i; pits[i] = 0;
+      while (stones > 0) { idx = (idx + 1) % 14; if (idx === oppS) continue; pits[idx]++; stones--; }
+      if (own(me, idx) && pits[idx] === 1) {
+        const opp = 12 - idx;
+        if (pits[opp] > 0) { pits[myS] += pits[opp] + 1; pits[opp] = 0; pits[idx] = 0; }
+      }
+      const empty = p => { for (let k = p === 0 ? 0 : 7; k <= (p === 0 ? 5 : 12); k++) if (pits[k] > 0) return false; return true; };
+      if (empty(0) || empty(1)) {
+        for (let k = 0; k <= 5; k++) { pits[6] += pits[k]; pits[k] = 0; }
+        for (let k = 7; k <= 12; k++) { pits[13] += pits[k]; pits[k] = 0; }
+        st.res = { winner: pits[6] > pits[13] ? 0 : pits[13] > pits[6] ? 1 : -1 };
+        return true;
+      }
+      st.turn = idx === myS ? me : 1 - me;
+      return true;
+    },
+    result: st => st.res,
+  },
+  // Dame: Zug { from:[r,c], to:[r,c] } (cap wird vom Server selbst bestimmt). Schlagpflicht, Weiterschlagen, Dame bei "kings": "flying" fliegend.
+  'dame': (() => {
+    const N = 8, inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N, D4 = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+    function pieceMoves(st, r, c, capsOnly) {
+      const b = st.board, piece = b[r][c], moves = [];
+      if (!piece) return moves;
+      if (piece.king && st.flying) {
+        for (const [dr, dc] of D4) {
+          let y = r + dr, x = c + dc;
+          while (inB(y, x) && b[y][x] === null) { if (!capsOnly) moves.push({ to: [y, x], cap: null }); y += dr; x += dc; }
+          if (inB(y, x) && b[y][x] && b[y][x].p !== piece.p) {
+            const cap = [y, x]; let ly = y + dr, lx = x + dc;
+            while (inB(ly, lx) && b[ly][lx] === null) { moves.push({ to: [ly, lx], cap }); ly += dr; lx += dc; }
+          }
+        }
+        return moves;
+      }
+      const dirs = piece.king ? D4 : piece.p === 0 ? [[-1, -1], [-1, 1]] : [[1, -1], [1, 1]];
+      for (const [dr, dc] of dirs) {
+        const ar = r + dr, ac = c + dc, lr = r + 2 * dr, lc = c + 2 * dc;
+        if (inB(lr, lc) && b[ar][ac] && b[ar][ac].p !== piece.p && b[lr][lc] === null) moves.push({ to: [lr, lc], cap: [ar, ac] });
+        else if (!capsOnly && inB(ar, ac) && b[ar][ac] === null) moves.push({ to: [ar, ac], cap: null });
+      }
+      return moves;
+    }
+    const hasCap = (st, p) => { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (st.board[r][c] && st.board[r][c].p === p && pieceMoves(st, r, c, true).length) return true; return false; };
+    const hasAny = (st, p) => { const f = hasCap(st, p); for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (st.board[r][c] && st.board[r][c].p === p && pieceMoves(st, r, c, f).length) return true; return false; };
+    return {
+      init(o) {
+        if (o.kings !== undefined && o.kings !== 'standard' && o.kings !== 'flying') return null;
+        const board = Array.from({ length: N }, () => Array(N).fill(null));
+        for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if ((r + c) % 2 === 1) { if (r < 3) board[r][c] = { p: 1, king: false }; else if (r > 4) board[r][c] = { p: 0, king: false }; }
+        return { board, flying: o.kings === 'flying', turn: 0, quiet: 0, must: null, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const f = m && m.from, t = m && m.to;
+        if (!Array.isArray(f) || !Array.isArray(t) || ![...f, ...t].every(Number.isInteger) || !inB(f[0], f[1]) || !inB(t[0], t[1])) return false;
+        const piece = st.board[f[0]][f[1]];
+        if (!piece || piece.p !== st.turn) return false;
+        let legal;
+        if (st.must) { if (st.must[0] !== f[0] || st.must[1] !== f[1]) return false; legal = pieceMoves(st, f[0], f[1], true); }
+        else legal = pieceMoves(st, f[0], f[1], hasCap(st, st.turn));
+        const mv = legal.find(x => x.to[0] === t[0] && x.to[1] === t[1]);
+        if (!mv) return false;
+        const cap = mv.cap;
+        m.cap = cap;   // (für den Vergleichstest: der Server bestimmt den Schlag selbst)
+        st.board[t[0]][t[1]] = piece; st.board[f[0]][f[1]] = null;
+        if (cap) st.board[cap[0]][cap[1]] = null;
+        let promoted = false;
+        if (!piece.king && ((piece.p === 0 && t[0] === 0) || (piece.p === 1 && t[0] === N - 1))) { piece.king = true; promoted = true; }
+        if (cap && !promoted && pieceMoves(st, t[0], t[1], true).length) { st.must = [t[0], t[1]]; return true; }
+        st.must = null;
+        st.quiet = (cap || !piece.king || promoted) ? 0 : st.quiet + 1;
+        st.turn = 1 - st.turn;
+        if (st.quiet >= 40) st.res = { winner: -1 };
+        else if (!hasAny(st, st.turn)) st.res = { winner: 1 - st.turn };
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Käsekästchen: Zug { type: 'h'|'v', r, c }. Wer ein Kästchen schliesst, zieht nochmal. Bonus-Kästchen (aus dem Seed) zählen 2.
+  'kaesekaestchen': {
+    init(o, seed) {
+      const clamp = (v, lo, hi, def) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : def; };
+      const W = clamp(o.cols, 3, 9, 5), H = clamp(o.rows, 3, 9, 5), bonus = o.bonus || 'few';
+      if (!['off', 'few', 'many'].includes(bonus) || !seed) return null;
+      // Gleicher Zufallsgenerator und gleiche Mischung wie im Spiel, damit dieselben Kästchen Bonus sind
+      let a = seed >>> 0;
+      const rng = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const total = W * H, want = bonus === 'off' ? 0 : bonus === 'many' ? Math.max(2, Math.round(total * 0.2)) : Math.max(1, Math.round(total * 0.1));
+      const all = []; for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) all.push([r, c]);
+      for (let i = all.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const tmp = all[i]; all[i] = all[j]; all[j] = tmp; }
+      const stars = new Set(); for (let i = 0; i < want && i < all.length; i++) stars.add(all[i][0] + ',' + all[i][1]);
+      return { W, H, stars, h: Array.from({ length: H + 1 }, () => Array(W).fill(false)), v: Array.from({ length: H }, () => Array(W + 1).fill(false)),
+        owner: Array.from({ length: H }, () => Array(W).fill(null)), pts: [0, 0], filled: 0, turn: 0, res: null };
+    },
+    turn: st => st.turn,
+    apply(st, m) {
+      const type = m && m.type, r = m && m.r, c = m && m.c;
+      if ((type !== 'h' && type !== 'v') || !Number.isInteger(r) || !Number.isInteger(c)) return false;
+      const { W, H } = st;
+      if (type === 'h') { if (r < 0 || r > H || c < 0 || c >= W || st.h[r][c]) return false; st.h[r][c] = true; }
+      else { if (r < 0 || r >= H || c < 0 || c > W || st.v[r][c]) return false; st.v[r][c] = true; }
+      const cand = [];
+      if (type === 'h') { if (r > 0) cand.push([r - 1, c]); if (r < H) cand.push([r, c]); }
+      else { if (c > 0) cand.push([r, c - 1]); if (c < W) cand.push([r, c]); }
+      let count = 0;
+      for (const [br, bc] of cand) {
+        if (st.owner[br][bc] === null && st.h[br][bc] && st.h[br + 1][bc] && st.v[br][bc] && st.v[br][bc + 1]) {
+          st.owner[br][bc] = st.turn; st.filled++; count++;
+          st.pts[st.turn] += st.stars.has(br + ',' + bc) ? 2 : 1;
+        }
+      }
+      if (count > 0) { if (st.filled === W * H) st.res = { winner: st.pts[0] > st.pts[1] ? 0 : st.pts[1] > st.pts[0] ? 1 : -1 }; }
+      else st.turn = 1 - st.turn;
+      return true;
+    },
+    result: st => st.res,
+  },
+
+  // Mauer-Duell: Zug { t: 'move', r, c } (Figur) oder { t: 'wall', o: 'h'|'v', r, c } (Mauer). Wer die Gegenseite erreicht, gewinnt.
+  'mauer-duell': (() => {
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const blocked = (st, r1, c1, r2, c2) => {
+      if (r2 === r1 - 1) return st.h.has((r1 - 1) + ',' + c1) || st.h.has((r1 - 1) + ',' + (c1 - 1));
+      if (r2 === r1 + 1) return st.h.has(r1 + ',' + c1) || st.h.has(r1 + ',' + (c1 - 1));
+      if (c2 === c1 - 1) return st.v.has(r1 + ',' + (c1 - 1)) || st.v.has((r1 - 1) + ',' + (c1 - 1));
+      if (c2 === c1 + 1) return st.v.has(r1 + ',' + c1) || st.v.has((r1 - 1) + ',' + c1);
+      return true;
+    };
+    const on = (st, r, c) => r >= 0 && r < st.N && c >= 0 && c < st.N;
+    function pawnMoves(st, me, opp) {
+      const res = [];
+      for (const [dr, dc] of DIRS) {
+        const nr = me.r + dr, nc = me.c + dc;
+        if (!on(st, nr, nc) || blocked(st, me.r, me.c, nr, nc)) continue;
+        if (opp.r === nr && opp.c === nc) {
+          const jr = nr + dr, jc = nc + dc;
+          if (on(st, jr, jc) && !blocked(st, nr, nc, jr, jc)) res.push([jr, jc]);
+          else for (const [sr, sc] of (dr === 0 ? [[-1, 0], [1, 0]] : [[0, -1], [0, 1]])) {
+            const r2 = nr + sr, c2 = nc + sc;
+            if (on(st, r2, c2) && !blocked(st, nr, nc, r2, c2)) res.push([r2, c2]);
+          }
+        } else res.push([nr, nc]);
+      }
+      return res;
+    }
+    function hasPath(st, pawn) {
+      const seen = new Set([pawn.r + ',' + pawn.c]), q = [[pawn.r, pawn.c]];
+      while (q.length) {
+        const [r, c] = q.shift();
+        if (r === pawn.goal) return true;
+        for (const [dr, dc] of DIRS) {
+          const nr = r + dr, nc = c + dc;
+          if (!on(st, nr, nc) || blocked(st, r, c, nr, nc)) continue;
+          const k = nr + ',' + nc;
+          if (!seen.has(k)) { seen.add(k); q.push([nr, nc]); }
+        }
+      }
+      return false;
+    }
+    function conflict(st, o, r, c) {
+      const S = st.N - 1;
+      if (r < 0 || r > S - 1 || c < 0 || c > S - 1) return true;
+      if (o === 'h') return st.h.has(r + ',' + c) || st.h.has(r + ',' + (c - 1)) || st.h.has(r + ',' + (c + 1)) || st.v.has(r + ',' + c);
+      return st.v.has(r + ',' + c) || st.v.has((r - 1) + ',' + c) || st.v.has((r + 1) + ',' + c) || st.h.has(r + ',' + c);
+    }
+    function wallLegal(st, o, r, c) {
+      if (conflict(st, o, r, c)) return false;
+      const set = o === 'h' ? st.h : st.v;
+      set.add(r + ',' + c);
+      const ok = hasPath(st, st.pawns[0]) && hasPath(st, st.pawns[1]);
+      set.delete(r + ',' + c);
+      return ok;
+    }
+    return {
+      init(o) {
+        const N = o.size === undefined ? 9 : inChoices(o.size, [5, 7, 9], 9);
+        const walls = o.walls === undefined ? 10 : +o.walls;
+        if (!N || !Number.isInteger(walls) || walls < 1 || walls > 30) return null;
+        const CC = (N - 1) / 2;
+        return { N, pawns: [{ r: N - 1, c: CC, goal: 0 }, { r: 0, c: CC, goal: N - 1 }], walls: [walls, walls], h: new Set(), v: new Set(), turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m || !Number.isInteger(m.r) || !Number.isInteger(m.c)) return false;
+        const me = st.pawns[st.turn];
+        if (m.t === 'move') {
+          if (!pawnMoves(st, me, st.pawns[1 - st.turn]).some(([r, c]) => r === m.r && c === m.c)) return false;
+          me.r = m.r; me.c = m.c;
+          if (me.r === me.goal) { st.res = { winner: st.turn }; return true; }
+        } else if (m.t === 'wall' && (m.o === 'h' || m.o === 'v')) {
+          if (st.walls[st.turn] <= 0 || !wallLegal(st, m.o, m.r, m.c)) return false;
+          (m.o === 'h' ? st.h : st.v).add(m.r + ',' + m.c);
+          st.walls[st.turn]--;
+        } else return false;
+        st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Farben-Duell: Zug { p, idx, to: [r, c] }. Die Farbe des Zielfelds bestimmt, welchen Turm der Gegner ziehen muss.
+  'farben-duell': (() => {
+    const N = 8;
+    const BC = [[0, 1, 2, 3, 4, 5, 6, 7], [5, 0, 3, 6, 1, 4, 7, 2], [6, 3, 0, 5, 2, 7, 4, 1], [3, 2, 1, 0, 7, 6, 5, 4],
+      [4, 5, 6, 7, 0, 1, 2, 3], [1, 4, 7, 2, 5, 0, 3, 6], [2, 7, 4, 1, 6, 3, 0, 5], [7, 6, 5, 4, 3, 2, 1, 0]];
+    const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+    const goal = p => p === 0 ? 0 : N - 1;
+    const moves = (st, p, idx) => {
+      const pc = st.pieces[p][idx], dr = p === 0 ? -1 : 1, out = [];
+      for (const [a, b] of [[dr, 0], [dr, -1], [dr, 1]]) { let r = pc.r + a, c = pc.c + b; while (inB(r, c) && !st.occ[r][c]) { out.push([r, c]); r += a; c += b; } }
+      return out;
+    };
+    const forced = (st, p) => { const o = []; if (st.forcedColor >= 0) st.pieces[p].forEach((pc, i) => { if (pc.color === st.forcedColor) o.push(i); }); return o; };
+    const selectable = (st, p) => { const fp = forced(st, p); if (fp.length) { const ok = fp.filter(i => moves(st, p, i).length); return ok.length ? ok : fp; } return st.pieces[p].map((_, i) => i); };
+    return {
+      init(o) {
+        const rowsOpt = o.reihen === undefined ? 2 : inChoices(o.reihen, [1, 2], 2);
+        if (!rowsOpt) return null;
+        const occ = Array.from({ length: N }, () => Array(N).fill(null)), pieces = [[], []];
+        for (let k = 0; k < rowsOpt; k++) for (let c = 0; c < N; c++) {
+          pieces[1].push({ r: k, c, color: BC[k][c] }); occ[k][c] = { p: 1, idx: pieces[1].length - 1 };
+          pieces[0].push({ r: N - 1 - k, c, color: BC[N - 1 - k][c] }); occ[N - 1 - k][c] = { p: 0, idx: pieces[0].length - 1 };
+        }
+        return { occ, pieces, turn: 0, forcedColor: -1, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        const p = m && m.p, idx = m && m.idx, to = m && m.to;
+        if (p !== st.turn || !Number.isInteger(idx) || !Array.isArray(to) || !Number.isInteger(to[0]) || !Number.isInteger(to[1])) return false;
+        if (!st.pieces[p][idx] || !selectable(st, p).includes(idx)) return false;
+        if (!moves(st, p, idx).some(([r, c]) => r === to[0] && c === to[1])) return false;
+        const pc = st.pieces[p][idx];
+        st.occ[pc.r][pc.c] = null; pc.r = to[0]; pc.c = to[1]; st.occ[pc.r][pc.c] = { p, idx };
+        if (pc.r === goal(p)) { st.res = { winner: p }; return true; }
+        let next = 1 - p; st.forcedColor = BC[pc.r][pc.c];
+        let guard = 0;
+        for (;;) {
+          const fps = forced(st, next);
+          if (!fps.length) break;
+          if (fps.some(i => moves(st, next, i).length > 0)) break;
+          const fp = fps.reduce((a, b) => (Math.abs(st.pieces[next][b].r - goal(next)) < Math.abs(st.pieces[next][a].r - goal(next)) ? b : a));
+          const stuck = st.pieces[next][fp];
+          st.forcedColor = BC[stuck.r][stuck.c];
+          next = 1 - next;
+          if (++guard > 4) { st.res = { winner: -1 }; return true; }
+        }
+        st.turn = next;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+  // Dreh-Duell: Zug { cell: Feldnummer 0–35, quad: 0–3, dir: 'cw'|'ccw' }. Kugel setzen, dann ein Viertel drehen. Fünf in einer Reihe gewinnt.
+  'dreh-duell': (() => {
+    const N = 6;
+    const rotate = (b, q, dir) => {
+      const qr = Math.floor(q / 2) * 3, qc = (q % 2) * 3, old = [];
+      for (let r = 0; r < 3; r++) old.push([b[qr + r][qc], b[qr + r][qc + 1], b[qr + r][qc + 2]]);
+      const nu = [[null, null, null], [null, null, null], [null, null, null]];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { if (dir === 'cw') nu[c][2 - r] = old[r][c]; else nu[2 - c][r] = old[r][c]; }
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) b[qr + r][qc + c] = nu[r][c];
+    };
+    const winners = b => {
+      const found = new Set();
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        const p = b[r][c]; if (p === null) continue;
+        for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+          let cnt = 1, nr = r + dr, nc = c + dc;
+          while (nr >= 0 && nr < N && nc >= 0 && nc < N && b[nr][nc] === p) { cnt++; nr += dr; nc += dc; if (cnt >= 5) { found.add(p); break; } }
+        }
+      }
+      return [...found];
+    };
+    return {
+      init() { return { b: Array.from({ length: N }, () => Array(N).fill(null)), turn: 0, res: null }; },
+      turn: st => st.turn,
+      apply(st, m) {
+        const cell = m && m.cell, q = m && m.quad;
+        if (!Number.isInteger(cell) || cell < 0 || cell >= N * N || !Number.isInteger(q) || q < 0 || q > 3 || (m.dir !== 'cw' && m.dir !== 'ccw')) return false;
+        const r = Math.floor(cell / N), c = cell % N;
+        if (st.b[r][c] !== null) return false;
+        st.b[r][c] = st.turn; rotate(st.b, q, m.dir);
+        const w = winners(st.b);
+        if (w.length) st.res = { winner: w.includes(0) && w.includes(1) ? -1 : w[0] };
+        else if (st.b.every(row => row.every(v => v !== null))) st.res = { winner: -1 };
+        else st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+
+  // Laser-Duell: Zug { t: 'rotate', idx } oder { t: 'move', from, to } (Feldnummern 0–63). Danach feuert die eigene Kanone automatisch.
+  'laser-duell': (() => {
+    const N = 8, ADJ = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    const refl = (m, dr, dc) => m === '/' ? [-dc, -dr] : [dc, dr];
+    function fire(pieces, player) {
+      const cannon = pieces.findIndex(p => p && p.type === 'cannon' && p.player === player);
+      let r = Math.floor(cannon / N), c = cannon % N, [dr, dc] = player === 0 ? [-1, 0] : [1, 0];
+      const seen = new Set();
+      for (let step = 0; step < N * N * 8; step++) {
+        r += dr; c += dc;
+        if (r < 0 || c < 0 || r >= N || c >= N) return null;
+        const i = r * N + c, key = i + ':' + dr + ':' + dc;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        const p = pieces[i];
+        if (!p) continue;
+        if (p.type === 'mirror') { [dr, dc] = refl(p.mirror, dr, dc); continue; }
+        if (p.type === 'core') return p.player === player ? 1 - player : player;
+        return null;
+      }
+      return null;
+    }
+    return {
+      init() {
+        const b = Array(N * N).fill(null), put = (r, c, p) => { b[r * N + c] = p; };
+        put(7, 0, { type: 'cannon', player: 0 }); put(7, 4, { type: 'core', player: 0 });
+        put(6, 2, { type: 'mirror', player: 0, mirror: '/' }); put(6, 5, { type: 'mirror', player: 0, mirror: '\\' });
+        put(5, 1, { type: 'mirror', player: 0, mirror: '\\' }); put(5, 6, { type: 'mirror', player: 0, mirror: '/' });
+        put(0, 7, { type: 'cannon', player: 1 }); put(0, 3, { type: 'core', player: 1 });
+        put(1, 5, { type: 'mirror', player: 1, mirror: '/' }); put(1, 2, { type: 'mirror', player: 1, mirror: '\\' });
+        put(2, 6, { type: 'mirror', player: 1, mirror: '\\' }); put(2, 1, { type: 'mirror', player: 1, mirror: '/' });
+        return { b, turn: 0, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m) return false;
+        if (m.t === 'rotate') {
+          const p = Number.isInteger(m.idx) ? st.b[m.idx] : null;
+          if (!p || p.type !== 'mirror' || p.player !== st.turn) return false;
+          p.mirror = p.mirror === '/' ? '\\' : '/';
+        } else if (m.t === 'move') {
+          const f = m.from, t = m.to;
+          if (!Number.isInteger(f) || !Number.isInteger(t) || f < 0 || f >= N * N || t < 0 || t >= N * N) return false;
+          const p = st.b[f];
+          if (!p || p.type !== 'mirror' || p.player !== st.turn || st.b[t]) return false;
+          const r = Math.floor(f / N), c = f % N;
+          if (!ADJ.some(([dr, dc]) => r + dr >= 0 && r + dr < N && c + dc >= 0 && c + dc < N && (r + dr) * N + c + dc === t)) return false;
+          st.b[t] = p; st.b[f] = null;
+        } else return false;
+        const w = fire(st.b, st.turn);
+        if (w !== null) st.res = { winner: w }; else st.turn = 1 - st.turn;
+        return true;
+      },
+      result: st => st.res,
+    };
+  })(),
+
+  // Panzer-Taktik: Zug { t: 'move'|'shoot'|'pierce'|'rocket'|'mine', r, c } oder { t: 'end' }. Mehrere Aktionen pro Zug (Aktionspunkte).
+  // Gelände und Kisten kommen aus dem Seed der Runde (gleicher Zufallsgenerator wie im Spiel).
+  'panzer-taktik': (() => {
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]], ITEM_KEYS = ['repair', 'armor', 'rocket', 'mine'];
+    const DENS = { open: { wall: 0.06, crate: 0.11, water: 0.04, forest: 0.05 }, balanced: { wall: 0.09, crate: 0.16, water: 0.06, forest: 0.07 }, dense: { wall: 0.12, crate: 0.20, water: 0.08, forest: 0.09 } };
+    const inside = (st, r, c) => r >= 0 && r < st.N && c >= 0 && c < st.N;
+    const occupied = (st, r, c) => st.players.findIndex(p => p.hp > 0 && p.r === r && p.c === c);
+    const passable = (st, r, c) => inside(st, r, c) && (st.terrain[r][c].type === 'empty' || st.terrain[r][c].type === 'forest') && occupied(st, r, c) === -1;
+    function makeTerrain(N, density, rng) {
+      const grid = Array.from({ length: N }, () => Array.from({ length: N }, () => ({ type: 'empty', hp: 0, item: null })));
+      const safe = (r, c) => Math.abs(r - (N - 1)) + Math.abs(c) <= 2 || Math.abs(r) + Math.abs(c - (N - 1)) <= 2 || r === 0 || c === 0 || r === N - 1 || c === N - 1;
+      const setPair = (r, c, cell) => { const mr = N - 1 - r, mc = N - 1 - c; if (!safe(r, c)) grid[r][c] = Object.assign({}, cell); if (!safe(mr, mc)) grid[mr][mc] = Object.assign({}, cell); };
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+        const mr = N - 1 - r, mc = N - 1 - c;
+        if (r > mr || (r === mr && c > mc) || safe(r, c)) continue;
+        const roll = rng(), tWall = density.wall, tCrate = tWall + density.crate, tWater = tCrate + density.water, tForest = tWater + density.forest;
+        if (roll < tWall) setPair(r, c, { type: 'wall', hp: 0, item: null });
+        else if (roll < tCrate) { const item = rng() < 0.58 ? ITEM_KEYS[Math.floor(rng() * ITEM_KEYS.length)] : null; setPair(r, c, { type: 'crate', hp: 1, item }); }
+        else if (roll < tWater) setPair(r, c, { type: 'water', hp: 0, item: null });
+        else if (roll < tForest) setPair(r, c, { type: 'forest', hp: 0, item: null });
+      }
+      return grid;
+    }
+    function checkEnd(st) {
+      if (st.res) return;
+      const d0 = st.players[0].hp <= 0, d1 = st.players[1].hp <= 0;
+      if (!d0 && !d1) return;
+      st.res = { winner: d0 && d1 ? -1 : d0 ? 1 : 0 };
+    }
+    function damage(st, idx, raw, defer) {
+      const p = st.players[idx]; let dmg = raw;
+      if (p.armor) { dmg = Math.ceil(dmg * 0.45); p.armor = false; }
+      p.hp = Math.max(0, p.hp - dmg);
+      if (!defer) checkEnd(st);
+    }
+    function breakCrate(st, r, c) {
+      const cell = st.terrain[r][c];
+      if (cell.type !== 'crate') return;
+      if (cell.item) st.items[r][c] = cell.item;
+      st.terrain[r][c] = { type: 'empty', hp: 0, item: null };
+    }
+    function endTurn(st) { if (st.res) return; st.turn = 1 - st.turn; st.ap = st.START_AP; }
+    function shortestPath(st, start, target, maxCost) {
+      if (!passable(st, target.r, target.c)) return null;
+      const q = [{ r: start.r, c: start.c }], seen = new Set([start.r + ',' + start.c]), prev = new Map();
+      const dist = cur => { let key = cur.r + ',' + cur.c, d = 0; while (prev.has(key)) { key = prev.get(key); d++; } return d; };
+      while (q.length) {
+        const cur = q.shift();
+        if (dist(cur) >= maxCost) continue;
+        for (const [dr, dc] of DIRS) {
+          const nr = cur.r + dr, nc = cur.c + dc, key = nr + ',' + nc;
+          if (!passable(st, nr, nc) || seen.has(key)) continue;
+          seen.add(key); prev.set(key, cur.r + ',' + cur.c);
+          if (nr === target.r && nc === target.c) {
+            const out = []; let k = key;
+            while (k) { const [r, c] = k.split(',').map(Number); out.push({ r, c }); k = prev.get(k); }
+            return out.reverse();
+          }
+          q.push({ r: nr, c: nc });
+        }
+      }
+      return null;
+    }
+    const lineDir = (sr, sc, tr, tc) => (sr === tr && sc !== tc) ? [0, tc > sc ? 1 : -1] : (sc === tc && sr !== tr) ? [tr > sr ? 1 : -1, 0] : null;
+    function traceShot(st, sr, sc, tr, tc, dir) {
+      let r = sr + dir[0], c = sc + dir[1];
+      while (inside(st, r, c)) {
+        const tank = occupied(st, r, c);
+        if (tank !== -1) return { type: 'tank', player: tank, r, c };
+        const cell = st.terrain[r][c];
+        if (cell.type === 'wall') return { type: 'wall', r, c };
+        if (cell.type === 'crate') return { type: 'crate', r, c };
+        if (r === tr && c === tc) return { type: 'miss', r, c };
+        r += dir[0]; c += dir[1];
+      }
+      return { type: 'miss', r: tr, c: tc };
+    }
+    return {
+      init(o, seed) {
+        const N = o.size === undefined ? 11 : inChoices(o.size, [9, 11, 13], 11), hp = o.hp === undefined ? 100 : inChoices(o.hp, [80, 100, 120], 100);
+        const ap = o.ap === undefined ? 4 : inChoices(o.ap, [3, 4, 5], 4), map = o.map === undefined ? 'balanced' : o.map;
+        if (!N || !hp || !ap || !DENS[map] || !seed || (o.range !== undefined && o.range !== 5)) return null;
+        let a = seed >>> 0;
+        const rng = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+        return { N, MAX_HP: hp, START_AP: ap, RANGE: 5, terrain: makeTerrain(N, DENS[map], rng),
+          items: Array.from({ length: N }, () => Array(N).fill(null)), mines: Array.from({ length: N }, () => Array(N).fill(null)),
+          players: [{ r: N - 1, c: 0, hp, armor: false, rockets: 1, mines: 1 }, { r: 0, c: N - 1, hp, armor: false, rockets: 1, mines: 1 }],
+          turn: 0, ap, res: null };
+      },
+      turn: st => st.turn,
+      apply(st, m) {
+        if (!m) return false;
+        if (m.t === 'end') { endTurn(st); return true; }
+        const r = m.r, c = m.c;
+        if (!Number.isInteger(r) || !Number.isInteger(c)) return false;
+        const pl = st.players[st.turn], t = st.turn;
+        if (m.t === 'move') {
+          const path = shortestPath(st, pl, { r, c }, st.ap);
+          if (!path || path.length < 2) return false;
+          const cost = path.length - 1;
+          for (let i = 1; i < path.length; i++) {
+            pl.r = path[i].r; pl.c = path[i].c;
+            const mine = st.mines[pl.r][pl.c];
+            if (mine && mine.owner !== t) { st.mines[pl.r][pl.c] = null; damage(st, t, 28); }
+            const it = st.items[pl.r][pl.c];
+            if (it) {
+              st.items[pl.r][pl.c] = null;
+              if (it === 'repair') pl.hp = Math.min(st.MAX_HP, pl.hp + 30); else if (it === 'armor') pl.armor = true; else if (it === 'rocket') pl.rockets++; else if (it === 'mine') pl.mines++;
+            }
+            if (st.res) return true;
+          }
+          st.ap -= cost;
+          if (st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'shoot') {
+          if (st.ap < 2) return false;
+          const dir = lineDir(pl.r, pl.c, r, c);
+          if (!dir) return false;
+          st.ap -= 2;
+          const hit = traceShot(st, pl.r, pl.c, r, c, dir);
+          if (hit.type === 'tank') damage(st, hit.player, 32); else if (hit.type === 'crate') breakCrate(st, hit.r, hit.c);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'pierce') {
+          if (st.ap < 3) return false;
+          const dir = lineDir(pl.r, pl.c, r, c);
+          if (!dir) return false;
+          st.ap -= 3;
+          let rr = pl.r + dir[0], cc = pl.c + dir[1];
+          while (inside(st, rr, cc)) {
+            const cell = st.terrain[rr][cc];
+            if (cell.type === 'wall') break;
+            const tank = occupied(st, rr, cc);
+            if (tank !== -1) damage(st, tank, 30, true);
+            if (cell.type === 'crate') breakCrate(st, rr, cc);
+            rr += dir[0]; cc += dir[1];
+          }
+          checkEnd(st);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'rocket') {
+          if (st.ap < 3 || pl.rockets <= 0 || Math.abs(pl.r - r) + Math.abs(pl.c - c) > st.RANGE) return false;
+          pl.rockets--; st.ap -= 3;
+          for (let rr = r - 1; rr <= r + 1; rr++) for (let cc = c - 1; cc <= c + 1; cc++) {
+            if (!inside(st, rr, cc)) continue;
+            if (st.terrain[rr][cc].type === 'crate') breakCrate(st, rr, cc);
+            const tank = occupied(st, rr, cc);
+            if (tank !== -1) damage(st, tank, (rr === r && cc === c) ? 48 : 28, true);
+          }
+          checkEnd(st);
+          if (!st.res && st.ap <= 0) endTurn(st);
+          return true;
+        }
+        if (m.t === 'mine') {
+          if (st.ap < 1 || pl.mines <= 0) return false;
+          if (Math.abs(pl.r - r) + Math.abs(pl.c - c) !== 1 || !passable(st, r, c) || st.mines[r][c] || st.items[r][c]) return false;
+          st.mines[r][c] = { owner: t }; pl.mines--; st.ap--;
+          if (st.ap <= 0) endTurn(st);
+          return true;
+        }
+        return false;
+      },
+      result: st => st.res,
+    };
+  })(),
+
+  // Schach: Zug m = [vonReihe, vonSpalte, nachReihe, nachSpalte, spezial, umwandlung]. Weiss (Platz 0) beginnt, Reihe 0 ist Schwarz' Grundlinie.
+  // Alle Regeln: Rochade, en passant, Umwandlung, Schach/Matt/Patt, zu wenig Material, 50-Züge-Regel, dreifache Wiederholung.
+  // Der Server bestimmt "spezial" selbst aus den legalen Zügen und ignoriert die Angabe des Clients.
+  'schach': (() => {
+    const inB = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8, opp = c => c === 'w' ? 'b' : 'w';
+    const copy = b => b.map(row => row.map(p => p && { color: p.color, type: p.type }));
+    const KN = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+    function attacked(b, r, c, by) {
+      for (const [dr, dc] of KN) { const y = r + dr, x = c + dc; if (inB(y, x) && b[y][x] && b[y][x].color === by && b[y][x].type === 'N') return true; }
+      const pd = by === 'w' ? 1 : -1;
+      for (const dc of [-1, 1]) if (inB(r + pd, c + dc)) { const p = b[r + pd][c + dc]; if (p && p.color === by && p.type === 'P') return true; }
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+        if (!dr && !dc) continue;
+        if (inB(r + dr, c + dc)) { const p = b[r + dr][c + dc]; if (p && p.color === by && p.type === 'K') return true; }
+      }
+      for (const [dr, dc] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { let y = r + dr, x = c + dc; while (inB(y, x)) { const p = b[y][x]; if (p) { if (p.color === by && (p.type === 'R' || p.type === 'Q')) return true; break; } y += dr; x += dc; } }
+      for (const [dr, dc] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { let y = r + dr, x = c + dc; while (inB(y, x)) { const p = b[y][x]; if (p) { if (p.color === by && (p.type === 'B' || p.type === 'Q')) return true; break; } y += dr; x += dc; } }
+      return false;
+    }
+    function inCheck(b, color) {
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = b[r][c]; if (p && p.color === color && p.type === 'K') return attacked(b, r, c, opp(color)); }
+      return false;
+    }
+    function pseudo(b, r, c, cr, ep) {
+      const p = b[r][c], out = [];
+      if (!p) return out;
+      const color = p.color;
+      if (p.type === 'P') {
+        const dir = color === 'w' ? -1 : 1, start = color === 'w' ? 6 : 1, promo = color === 'w' ? 0 : 7;
+        let nr = r + dir;
+        if (inB(nr, c) && !b[nr][c]) {
+          out.push(nr === promo ? { r: nr, c, special: 'promote' } : { r: nr, c });
+          if (r === start && !b[r + dir * 2][c]) out.push({ r: r + dir * 2, c, special: 'pawnDouble' });
+        }
+        for (const nc of [c - 1, c + 1]) {
+          nr = r + dir;
+          if (!inB(nr, nc)) continue;
+          const t = b[nr][nc];
+          if (t && t.color !== color) out.push(nr === promo ? { r: nr, c: nc, special: 'promote' } : { r: nr, c: nc });
+          if (ep && ep.r === nr && ep.c === nc) out.push({ r: nr, c: nc, special: 'enpassant' });
+        }
+      }
+      if (p.type === 'N') for (const [dr, dc] of KN) { const y = r + dr, x = c + dc; if (inB(y, x) && (!b[y][x] || b[y][x].color !== color)) out.push({ r: y, c: x }); }
+      const slide = dirs => { for (const [dr, dc] of dirs) { let y = r + dr, x = c + dc; while (inB(y, x)) { if (b[y][x]) { if (b[y][x].color !== color) out.push({ r: y, c: x }); break; } out.push({ r: y, c: x }); y += dr; x += dc; } } };
+      if (p.type === 'B' || p.type === 'Q') slide([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+      if (p.type === 'R' || p.type === 'Q') slide([[0, 1], [0, -1], [1, 0], [-1, 0]]);
+      if (p.type === 'K') {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (!dr && !dc) continue;
+          const y = r + dr, x = c + dc;
+          if (inB(y, x) && (!b[y][x] || b[y][x].color !== color)) out.push({ r: y, c: x });
+        }
+        const row = color === 'w' ? 7 : 0, o = opp(color);
+        if (r === row && c === 4) {
+          if (cr[color + 'K'] && !b[row][5] && !b[row][6] && b[row][7] && b[row][7].type === 'R' && b[row][7].color === color &&
+              !attacked(b, row, 4, o) && !attacked(b, row, 5, o) && !attacked(b, row, 6, o)) out.push({ r: row, c: 6, special: 'castleK' });
+          if (cr[color + 'Q'] && !b[row][3] && !b[row][2] && !b[row][1] && b[row][0] && b[row][0].type === 'R' && b[row][0].color === color &&
+              !attacked(b, row, 4, o) && !attacked(b, row, 3, o) && !attacked(b, row, 2, o)) out.push({ r: row, c: 2, special: 'castleQ' });
+        }
+      }
+      return out;
+    }
+    function legal(b, r, c, cr, ep) {
+      const piece = b[r][c], res = [];
+      if (!piece) return res;
+      for (const m of pseudo(b, r, c, cr, ep)) {
+        const nb = copy(b);
+        nb[m.r][m.c] = nb[r][c]; nb[r][c] = null;
+        if (m.special === 'enpassant') nb[piece.color === 'w' ? m.r + 1 : m.r - 1][m.c] = null;
+        if (m.special === 'promote') nb[m.r][m.c] = { color: piece.color, type: 'Q' };
+        if (m.special === 'castleK') { const row = piece.color === 'w' ? 7 : 0; nb[row][5] = nb[row][7]; nb[row][7] = null; }
+        if (m.special === 'castleQ') { const row = piece.color === 'w' ? 7 : 0; nb[row][3] = nb[row][0]; nb[row][0] = null; }
+        if (!inCheck(nb, piece.color)) res.push(m);
+      }
+      return res;
+    }
+    const anyLegal = (st, color) => { for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (st.b[r][c] && st.b[r][c].color === color && legal(st.b, r, c, st.cr, st.ep).length) return true; return false; };
+    const key = st => {
+      let k = '';
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = st.b[r][c]; k += p ? p.color + p.type : '..'; }
+      return k + '|' + st.turn + '|' + (st.cr.wK ? 'K' : '') + (st.cr.wQ ? 'Q' : '') + (st.cr.bK ? 'k' : '') + (st.cr.bQ ? 'q' : '') + '|' + (st.ep ? st.ep.r + ',' + st.ep.c : '-');
+    };
+    function insufficient(b) {
+      const nk = [];
+      for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) { const p = b[r][c]; if (p && p.type !== 'K') nk.push({ p, sq: (r + c) % 2 }); }
+      if (nk.length === 0) return true;
+      if (nk.length === 1) return nk[0].p.type === 'B' || nk[0].p.type === 'N';
+      return nk.length === 2 && nk[0].p.type === 'B' && nk[1].p.type === 'B' && nk[0].p.color !== nk[1].p.color && nk[0].sq === nk[1].sq;
+    }
+    function startBoard() {
+      const b = Array.from({ length: 8 }, () => Array(8).fill(null)), back = ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'];
+      for (let c = 0; c < 8; c++) { b[0][c] = { color: 'b', type: back[c] }; b[1][c] = { color: 'b', type: 'P' }; b[7][c] = { color: 'w', type: back[c] }; b[6][c] = { color: 'w', type: 'P' }; }
+      return b;
+    }
+    const eng = {
+      init() {
+        const st = { b: startBoard(), turn: 'w', cr: { wK: true, wQ: true, bK: true, bQ: true }, ep: null, half: 0, hist: [], res: null };
+        st.hist.push(key(st));
+        return st;
+      },
+      turn: st => st.turn === 'w' ? 0 : 1,
+      legalMoves: (st, r, c) => legal(st.b, r, c, st.cr, st.ep),   // (für den Test)
+      apply(st, m) {
+        if (!Array.isArray(m) || m.length < 4 || !m.slice(0, 4).every(Number.isInteger)) return false;
+        const [fr, fc, tr, tc] = m;
+        if (!inB(fr, fc) || !inB(tr, tc)) return false;
+        const piece = st.b[fr][fc];
+        if (!piece || piece.color !== st.turn) return false;
+        const mv = legal(st.b, fr, fc, st.cr, st.ep).find(x => x.r === tr && x.c === tc);
+        if (!mv) return false;
+        const special = mv.special, color = piece.color;
+        let captured = st.b[tr][tc];
+        if (special === 'enpassant') { const er = color === 'w' ? tr + 1 : tr - 1; captured = st.b[er][tc]; st.b[er][tc] = null; }
+        st.half = (piece.type === 'P' || captured) ? 0 : st.half + 1;
+        st.b[tr][tc] = piece; st.b[fr][fc] = null;
+        if (special === 'promote') { const pt = m[5]; st.b[tr][tc] = { color, type: (pt === 'R' || pt === 'B' || pt === 'N') ? pt : 'Q' }; }
+        if (special === 'castleK') { const row = color === 'w' ? 7 : 0; st.b[row][5] = st.b[row][7]; st.b[row][7] = null; }
+        if (special === 'castleQ') { const row = color === 'w' ? 7 : 0; st.b[row][3] = st.b[row][0]; st.b[row][0] = null; }
+        if (piece.type === 'K') { st.cr[color + 'K'] = false; st.cr[color + 'Q'] = false; }
+        if (piece.type === 'R') {
+          if (fr === 7 && fc === 0) st.cr.wQ = false; if (fr === 7 && fc === 7) st.cr.wK = false;
+          if (fr === 0 && fc === 0) st.cr.bQ = false; if (fr === 0 && fc === 7) st.cr.bK = false;
+        }
+        if (tr === 7 && tc === 0) st.cr.wQ = false; if (tr === 7 && tc === 7) st.cr.wK = false;
+        if (tr === 0 && tc === 0) st.cr.bQ = false; if (tr === 0 && tc === 7) st.cr.bK = false;
+        st.ep = special === 'pawnDouble' ? { r: (fr + tr) / 2, c: tc } : null;
+        st.turn = opp(st.turn);
+        const check = inCheck(st.b, st.turn), k = key(st);
+        st.hist.push(k);
+        const rep = st.hist.filter(x => x === k).length;
+        if (!anyLegal(st, st.turn)) st.res = { winner: check ? (st.turn === 'w' ? 1 : 0) : -1 };
+        else if (insufficient(st.b) || st.half >= 100 || rep >= 3) st.res = { winner: -1 };
+        return true;
+      },
+      result: st => st.res,
+    };
+    return eng;
+  })(),
+};
+
+// Go (games/go): eigener Schiedsrichter, weil es nach den zwei Pässen eine gemeinsame Wertungsphase gibt.
+// Nachrichten: start { settings: { size: 9|13|19 } }, mv { r, c }, pass, dann dead { r, c, on }, confirm { v }, resume.
+// Schwarz = Platz 0. Regeln wie im Spiel: kein Selbstmord, einfaches Ko (wird nach einem Pass aufgehoben), Flächenzählung mit 6.5 Komi.
+function goReferee() {
+  const KOMI = 6.5, EMPTY = 0, BLACK = 1, WHITE = 2;
+  let st = null;
+  const nb = (n, r, c) => { const a = []; if (r > 0) a.push([r - 1, c]); if (r < n - 1) a.push([r + 1, c]); if (c > 0) a.push([r, c - 1]); if (c < n - 1) a.push([r, c + 1]); return a; };
+  const copy = b => b.map(row => row.slice());
+  function group(n, b, r, c) {
+    const color = b[r][c], seen = new Set([r + ',' + c]), stones = [], libs = new Set(), stack = [[r, c]];
+    if (color === EMPTY) return { stones, libs: 0 };
+    while (stack.length) {
+      const [y, x] = stack.pop(); stones.push([y, x]);
+      for (const [a, c2] of nb(n, y, x)) {
+        const k = a + ',' + c2;
+        if (seen.has(k)) continue;
+        if (b[a][c2] === color) { seen.add(k); stack.push([a, c2]); } else if (b[a][c2] === EMPTY) libs.add(k);
+      }
+    }
+    return { stones, libs: libs.size };
+  }
+  function tryMove(r, c, player) {
+    const n = st.n;
+    if (r < 0 || r >= n || c < 0 || c >= n || st.b[r][c] !== EMPTY) return null;
+    const opp = player === BLACK ? WHITE : BLACK, t = copy(st.b);
+    t[r][c] = player;
+    for (const [a, c2] of nb(n, r, c)) if (t[a][c2] === opp) { const g = group(n, t, a, c2); if (g.libs === 0) g.stones.forEach(([y, x]) => { t[y][x] = EMPTY; }); }
+    if (group(n, t, r, c).libs === 0) return null;
+    if (st.prev && t.every((row, y) => row.every((v, x) => v === st.prev[y][x]))) return null;
+    return t;
+  }
+  function score(b) {
+    const n = st.n; let bs = 0, ws = 0, bt = 0, wt = 0; const seen = new Set();
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) { if (b[r][c] === BLACK) bs++; else if (b[r][c] === WHITE) ws++; }
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      if (b[r][c] !== EMPTY || seen.has(r + ',' + c)) continue;
+      let size = 0, tb = false, tw = false; const stack = [[r, c]]; seen.add(r + ',' + c);
+      while (stack.length) {
+        const [y, x] = stack.pop(); size++;
+        for (const [a, c2] of nb(n, y, x)) {
+          if (b[a][c2] === BLACK) { tb = true; continue; }
+          if (b[a][c2] === WHITE) { tw = true; continue; }
+          const k = a + ',' + c2; if (seen.has(k)) continue; seen.add(k); stack.push([a, c2]);
+        }
+      }
+      if (tb && !tw) bt += size; else if (tw && !tb) wt += size;
+    }
+    return { black: bs + bt, white: ws + wt + KOMI };
+  }
+  return {
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        const size = d.settings && d.settings.size !== undefined ? +d.settings.size : 9;
+        if (![9, 13, 19].includes(size)) { st = null; return false; }
+        st = { n: size, b: Array.from({ length: size }, () => Array(size).fill(EMPTY)), cur: BLACK, prev: null, passes: 0, scoring: false, dead: new Set(),
+          ver: 0, conf: {}, pre: null, over: false, res: null };
+        return true;
+      }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.over) return false;
+      const me = seat === 0 ? BLACK : WHITE;
+      if (st.scoring) {
+        if (d.t === 'dead') {
+          const r = d.r, c = d.c;
+          if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= st.n || c >= st.n || st.b[r][c] === EMPTY) return false;
+          group(st.n, st.b, r, c).stones.forEach(([y, x]) => { if (d.on) st.dead.add(y + ',' + x); else st.dead.delete(y + ',' + x); });
+          st.ver++; st.conf = {};
+          return true;
+        }
+        if (d.t === 'confirm') {
+          if (d.v !== st.ver) return true;      // veraltet (nach einer Änderung der Markierung), wird auch vom Spiel ignoriert
+          st.conf[seat] = true;
+          if (st.conf[0] && st.conf[1]) {
+            const b = copy(st.b); st.dead.forEach(k => { const [y, x] = k.split(',').map(Number); b[y][x] = EMPTY; });
+            const sc = score(b);
+            st.over = true; st.res = { winner: sc.black > sc.white ? 0 : sc.white > sc.black ? 1 : -1 };
+          }
+          return true;
+        }
+        if (d.t === 'resume') {
+          st.b = copy(st.pre.b); st.cur = st.pre.cur; st.scoring = false; st.dead = new Set(); st.pre = null; st.prev = null; st.passes = 0;
+          return true;
+        }
+        return false;
+      }
+      if (me !== st.cur) return false;
+      if (d.t === 'mv') {
+        const t = Number.isInteger(d.r) && Number.isInteger(d.c) ? tryMove(d.r, d.c, st.cur) : null;
+        if (!t) return false;
+        st.prev = copy(st.b); st.b = t; st.passes = 0; st.cur = st.cur === BLACK ? WHITE : BLACK;
+        return true;
+      }
+      if (d.t === 'pass') {
+        st.passes++;
+        if (st.passes >= 2) {
+          st.cur = st.cur === BLACK ? WHITE : BLACK;
+          st.scoring = true; st.dead = new Set(); st.pre = { b: copy(st.b), cur: st.cur };
+          return true;
+        }
+        st.prev = null; st.cur = st.cur === BLACK ? WHITE : BLACK;
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.over && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
+
+// Backgammon (games/backgammon): eigener Schiedsrichter. Nachrichten: start, roll { d: [a, b] }, mv { from, to, die }, undo.
+// Elfenbein = Platz 0 (zieht von 24 nach 1) beginnt, Nussbaum = Platz 1. Pflicht, möglichst viele Würfel zu spielen (bei einem nur den höheren),
+// Schlagen, Bar, Auswürfeln wie im Spiel. HINWEIS: Die Würfel meldet der Spieler am Zug selbst, der Server prüft nur, dass sie 1–6 sind.
+function backgammonReferee() {
+  const P1 = 1, P2 = 2, CHECKERS = 15;
+  let st = null;
+  const other = p => p === P1 ? P2 : P1;
+  function init() {
+    const pts = Array.from({ length: 25 }, () => ({ count: 0, owner: 0 }));
+    pts[24] = { count: 2, owner: P1 }; pts[13] = { count: 5, owner: P1 }; pts[8] = { count: 3, owner: P1 }; pts[6] = { count: 5, owner: P1 };
+    pts[1] = { count: 2, owner: P2 }; pts[12] = { count: 5, owner: P2 }; pts[17] = { count: 3, owner: P2 }; pts[19] = { count: 5, owner: P2 };
+    return { pts, bar: { 1: 0, 2: 0 }, off: { 1: 0, 2: 0 }, turn: P1, dice: [], phase: 'roll', hist: [], res: null };
+  }
+  const blocked = (p, pt, pts) => pts[pt].owner === other(p) && pts[pt].count >= 2;
+  function allInHome(p, pts, bar) {
+    if (bar[p] > 0) return false;
+    if (p === P1) { for (let i = 7; i <= 24; i++) if (pts[i].owner === p && pts[i].count > 0) return false; }
+    else { for (let i = 1; i <= 18; i++) if (pts[i].owner === p && pts[i].count > 0) return false; }
+    return true;
+  }
+  function highestHome(p, pts) {
+    if (p === P1) { for (let i = 6; i >= 1; i--) if (pts[i].owner === p && pts[i].count > 0) return i; }
+    else { for (let i = 19; i <= 24; i++) if (pts[i].owner === p && pts[i].count > 0) return i; }
+    return -1;
+  }
+  const homeIdx = (p, pt) => p === P1 ? pt : 25 - pt;
+  function singleMoves(p, dv, pts, bar) {
+    const moves = [], opp = other(p);
+    if (bar[p] > 0) {
+      const entry = p === P1 ? 25 - dv : dv;
+      if (entry >= 1 && entry <= 24 && !blocked(p, entry, pts)) moves.push({ from: 'bar', to: entry, dieVal: dv, hit: pts[entry].owner === opp && pts[entry].count === 1 });
+      return moves;
+    }
+    const canOff = allInHome(p, pts, bar);
+    for (let i = 1; i <= 24; i++) {
+      if (pts[i].owner !== p || pts[i].count === 0) continue;
+      const dest = p === P1 ? i - dv : i + dv;
+      if (canOff) {
+        const hi = homeIdx(p, i);
+        if ((p === P1 && dest < 1) || (p === P2 && dest > 24)) {
+          if (hi === dv) moves.push({ from: i, to: 'off', dieVal: dv, hit: false });
+          else if (hi < dv && highestHome(p, pts) === i) moves.push({ from: i, to: 'off', dieVal: dv, hit: false });
+          continue;
+        }
+      }
+      if (dest >= 1 && dest <= 24 && !blocked(p, dest, pts)) moves.push({ from: i, to: dest, dieVal: dv, hit: pts[dest].owner === opp && pts[dest].count === 1 });
+    }
+    return moves;
+  }
+  function apply(mv, p, pts, bar, off) {
+    const opp = other(p), u = { hit: false };
+    if (mv.from === 'bar') bar[p]--; else { pts[mv.from].count--; if (pts[mv.from].count === 0) pts[mv.from].owner = 0; }
+    if (mv.to === 'off') off[p]++;
+    else {
+      if (pts[mv.to].owner === opp && pts[mv.to].count === 1) { pts[mv.to].count = 0; pts[mv.to].owner = 0; bar[opp]++; u.hit = true; }
+      pts[mv.to].count++; pts[mv.to].owner = p;
+    }
+    return u;
+  }
+  function unapply(mv, p, pts, bar, off, wasHit) {
+    const opp = other(p);
+    if (mv.to === 'off') off[p]--;
+    else { pts[mv.to].count--; if (pts[mv.to].count === 0) pts[mv.to].owner = 0; if (wasHit) { bar[opp]--; pts[mv.to].count = 1; pts[mv.to].owner = opp; } }
+    if (mv.from === 'bar') bar[p]++; else { pts[mv.from].count++; pts[mv.from].owner = p; }
+  }
+  function sequences(p, dice, pts, bar, off) {
+    if (dice.length === 0) return [[]];
+    const out = [], tried = {};
+    for (let d = 0; d < dice.length; d++) {
+      const dv = dice[d];
+      if (tried[dv]) continue;
+      tried[dv] = true;
+      for (const mv of singleMoves(p, dv, pts, bar)) {
+        const u = apply(mv, p, pts, bar, off), nd = dice.slice(); nd.splice(d, 1);
+        for (const rest of sequences(p, nd, pts, bar, off)) out.push([mv].concat(rest));
+        unapply(mv, p, pts, bar, off, u.hit);
+      }
+    }
+    return out;
+  }
+  function allLegal(p, dice, pts, bar, off) {
+    const seqs = sequences(p, dice, pts, bar, off);
+    if (!seqs.length) return [];
+    let maxLen = 0; seqs.forEach(q => { if (q.length > maxLen) maxLen = q.length; });
+    let f = seqs.filter(q => q.length === maxLen);
+    if (maxLen === 1 && dice.length >= 2 && dice[0] !== dice[1]) {
+      const hv = Math.max(dice[0], dice[1]), hi = f.filter(q => q[0].dieVal === hv);
+      if (hi.length) f = hi;
+    }
+    return f;
+  }
+  function firstMoves(p, dice) {
+    const seqs = allLegal(p, dice, st.pts, st.bar, st.off), seen = {}, out = [];
+    for (const q of seqs) { const k = q[0].from + '->' + q[0].to + ':' + q[0].dieVal; if (!seen[k]) { seen[k] = true; out.push(q[0]); } }
+    return out;
+  }
+  function endTurn() { st.dice = []; st.hist = []; st.phase = 'roll'; st.turn = other(st.turn); }
+  function doRoll(a, b) {
+    if (st.phase !== 'roll' || !Number.isInteger(a) || !Number.isInteger(b) || a < 1 || a > 6 || b < 1 || b > 6) return false;
+    st.dice = a === b ? [a, a, a, a] : [a, b]; st.hist = []; st.phase = 'move';
+    if (allLegal(st.turn, st.dice, st.pts, st.bar, st.off).length === 0) { st.phase = 'roll'; st.dice = []; st.turn = other(st.turn); }
+    return true;
+  }
+  return {
+    // Der Server würfelt für den Spieler am Zug (Nachricht { t: 'dice' }). Gibt die Würfel zurück oder null, wenn gerade nicht gewürfelt werden darf.
+    roll(seat) {
+      if (!st || !st.serverDice || st.phase !== 'roll' || seat !== (st.turn === P1 ? 0 : 1)) return null;
+      const a = crypto.randomInt(1, 7), b = crypto.randomInt(1, 7);
+      return doRoll(a, b) ? [a, b] : null;
+    },
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        if (REQUIRE_SERVER_DICE && d.dice !== 'server') return false;
+        st = init(); st.serverDice = d.dice === 'server'; return true;
+      }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.phase === 'over') return false;
+      if (seat !== (st.turn === P1 ? 0 : 1)) return false;
+      if (d.t === 'roll') {   // alte Seiten melden den Wurf selbst; mit Server-Würfeln ist das nicht mehr erlaubt
+        return !st.serverDice && Array.isArray(d.d) && d.d.length === 2 && doRoll(d.d[0], d.d[1]);
+      }
+      if (d.t === 'mv') {
+        if (st.phase !== 'move') return false;
+        const mv = firstMoves(st.turn, st.dice).find(m => String(m.from) === String(d.from) && String(m.to) === String(d.to) && m.dieVal === d.die);
+        if (!mv) return false;
+        const u = apply(mv, st.turn, st.pts, st.bar, st.off);
+        st.hist.push({ move: mv, wasHit: u.hit, dieVal: mv.dieVal });
+        const di = st.dice.indexOf(mv.dieVal); if (di >= 0) st.dice.splice(di, 1);
+        if (st.off[st.turn] === CHECKERS) { st.phase = 'over'; st.res = { winner: st.turn === P1 ? 0 : 1 }; return true; }
+        if (!(st.dice.length > 0 && firstMoves(st.turn, st.dice).length > 0)) endTurn();
+        return true;
+      }
+      if (d.t === 'undo') {
+        if (st.phase !== 'move' || !st.hist.length) return false;
+        const last = st.hist.pop();
+        unapply(last.move, st.turn, st.pts, st.bar, st.off, last.wasHit);
+        st.dice.push(last.dieVal);
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
+
+// Das Königliche Spiel von Ur (games/koenigliches-ur): eigener Schiedsrichter. Nachrichten: start, roll { d: [0|1 ×4] }, mv { i, to }.
+// Weiss = Platz 0 beginnt. 7 Steine, Weg 0 (Start) bis 15 (Ziel), gemeinsame Felder 5–12, Rosetten 4/8/14 (nochmal würfeln, auf 8 geschützt).
+// HINWEIS: Die Würfel meldet der Spieler am Zug selbst, der Server prüft nur das Format.
+function urReferee() {
+  const N = 7, FINISH = 15, ROS = new Set([4, 8, 14]);
+  let st = null;
+  const valid = (player, roll) => {
+    if (roll === 0) return [];
+    const moves = [], seen = {};
+    for (let i = 0; i < N; i++) {
+      const cur = st.pieces[player][i];
+      if (cur === FINISH) continue;
+      const nxt = cur + roll;
+      if (nxt > FINISH) continue;
+      const k = cur + '>' + nxt;
+      if (seen[k]) continue;
+      seen[k] = true;
+      if (nxt !== FINISH && st.pieces[player].indexOf(nxt) !== -1) continue;
+      if (nxt >= 5 && nxt <= 12 && ROS.has(nxt) && st.pieces[3 - player].indexOf(nxt) !== -1) continue;
+      moves.push({ from: cur, to: nxt });
+    }
+    return moves;
+  };
+  function doRoll(sum) {
+    if (st.phase !== 'roll') return false;
+    st.roll = sum;
+    if (st.roll === 0 || valid(st.turn, st.roll).length === 0) { st.turn = 3 - st.turn; st.roll = 0; st.phase = 'roll'; }
+    else st.phase = 'move';
+    return true;
+  }
+  return {
+    // Der Server wirft die vier Münzwürfel (0/1) für den Spieler am Zug. Gibt sie zurück oder null.
+    roll(seat) {
+      if (!st || !st.serverDice || st.res || st.phase !== 'roll' || seat !== st.turn - 1) return null;
+      const d = [0, 0, 0, 0].map(() => crypto.randomInt(0, 2));
+      return doRoll(d.reduce((a, x) => a + x, 0)) ? d : null;
+    },
+    move(seat, d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.t === 'start') {
+        if (seat !== 0) return false;
+        if (REQUIRE_SERVER_DICE && d.dice !== 'server') return false;
+        st = { pieces: { 1: Array(N).fill(0), 2: Array(N).fill(0) }, turn: 1, roll: 0, phase: 'roll', res: null, serverDice: d.dice === 'server' }; return true;
+      }
+      if (d.t === 'again' || d.t === 'bye') return true;
+      if (!st || st.res) return false;
+      if (seat !== st.turn - 1) return false;
+      if (d.t === 'roll') {   // alte Seiten melden den Wurf selbst; mit Server-Würfeln ist das nicht mehr erlaubt
+        return !st.serverDice && Array.isArray(d.d) && d.d.length === 4 && doRoll(d.d.reduce((a, x) => a + (x ? 1 : 0), 0));
+      }
+      if (d.t === 'mv') {
+        if (st.phase !== 'move' || !Number.isInteger(d.i) || d.i < 0 || d.i >= N) return false;
+        const me = st.turn, cur = st.pieces[me][d.i];
+        if (!valid(me, st.roll).some(m => m.from === cur && m.to === d.to)) return false;
+        const nxt = d.to, opp = 3 - me;
+        if (nxt >= 5 && nxt <= 12 && !ROS.has(nxt)) { const ci = st.pieces[opp].indexOf(nxt); if (ci !== -1) st.pieces[opp][ci] = 0; }
+        st.pieces[me][d.i] = nxt;
+        if (st.pieces[me].every(p => p === FINISH)) { st.res = { winner: me - 1 }; return true; }
+        st.phase = 'roll';
+        if (!ROS.has(nxt)) { st.turn = 3 - st.turn; st.roll = 0; }
+        return true;
+      }
+      return false;
+    },
+    verdict() { return st && st.res ? { winner: st.res.winner } : null; },
+    state: () => st,   // (für den Test)
+  };
+}
+const REFEREES = {};
+Object.keys(ENGINES).forEach(g => { REFEREES[g] = platformReferee(ENGINES[g]); });
+REFEREES.go = goReferee;
+REFEREES.backgammon = backgammonReferee;
+REFEREES['koenigliches-ur'] = urReferee;
+
 // ---------- Räume ----------
 const rooms = new Map();
 function newCode() {
@@ -526,6 +1711,23 @@ function send(ws, msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m
 function others(room, ws) { return room.players.filter(p => p && p.ws !== ws); }
 function names(room) { return room.players.map(p => p ? p.name : null); }
 
+// Gegen Siege-Farmen: gleiche Konten untereinander und einzelne Konten bekommen nur eine begrenzte Zahl gewerteter Runden pro Stunde
+const counted = new Map();   // Schlüssel -> Zeitpunkte
+function bump(key, limit, now) {
+  const list = (counted.get(key) || []).filter(t => now - t < 3600000);
+  if (list.length >= limit) { counted.set(key, list); return false; }
+  list.push(now); counted.set(key, list);
+  return true;
+}
+function countAllowed(room, now) {
+  const codes = [...new Set(room.players.filter(Boolean).map(p => p.code))].sort();
+  if (counted.size > 20000) counted.clear();
+  for (const c of codes) if ((counted.get('a|' + c) || []).filter(t => now - t < 3600000).length >= MAX_COUNTED_PER_ACCOUNT_HOUR) return false;
+  if (codes.length >= 2 && (counted.get('p|' + codes.join('|')) || []).filter(t => now - t < 3600000).length >= MAX_COUNTED_PER_PAIR_HOUR) return false;
+  codes.forEach(c => bump('a|' + c, 1e9, now));
+  if (codes.length >= 2) bump('p|' + codes.join('|'), 1e9, now);
+  return true;
+}
 function leave(ws) {
   const room = ws.room; if (!room) return;
   ws.room = null;
@@ -536,6 +1738,7 @@ function leave(ws) {
   roomChanged(room);
 }
 
+const joinMisses = new Map();   // ip -> Zeitpunkte falscher Raumcodes
 function onMessage(ws, raw) {
   let m; try { m = JSON.parse(raw); } catch (e) { return; }
   if (!m || typeof m !== 'object') return;
@@ -543,12 +1746,16 @@ function onMessage(ws, raw) {
     case 'create': {
       leave(ws);
       if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
+      if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let mine = 0;
       for (const r of rooms.values()) if (r.ip === ws.ip) mine++;
       if (mine >= MAX_ROOMS_PER_IP) return send(ws, { t: 'error', msg: 'busy' });
       const room = { ip: ws.ip, code: newCode(), game: cleanGame(m.game), max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)),
         players: [], roundOpen: false, created: Date.now() };
-      room.players[0] = { ws, name: roomName(ws, m), code: accountOf(m) };
+      if (REFEREES[room.game]) room.ref = REFEREES[room.game]();
+      const nm = roomName(ws, m);
+      if (!nm) { rooms.delete(room.code); return send(ws, { t: 'error', msg: 'invalid' }); }
+      room.players[0] = { ws, name: nm, code: accountOf(m) };
       rooms.set(room.code, room); ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: 0, players: names(room), max: room.max });
       roomChanged(room);
@@ -558,16 +1765,20 @@ function onMessage(ws, raw) {
     case 'quick': {
       leave(ws);
       const game = cleanGame(m.game);
+      if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let room = null;
       for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && !sitztSchon(r, ws, m) && (!room || freeSeats(r) < freeSeats(room))) room = r;
       if (!room) {
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
         room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
+        if (REFEREES[room.game]) room.ref = REFEREES[room.game]();
         rooms.set(room.code, room);
       }
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
-      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
+      const nm = roomName(ws, m);
+      if (!nm || idx < 0) { if (!room.players.some(Boolean)) rooms.delete(room.code); return send(ws, { t: 'error', msg: nm ? 'full' : 'invalid' }); }
+      room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -578,10 +1789,14 @@ function onMessage(ws, raw) {
       const room = rooms.get(code);
       if (!room) {
         // Codes durchprobieren bremsen: zu viele Fehlversuche in einer Minute trennen die Verbindung
+        // Pro Verbindung UND pro IP (sonst umgeht man die Bremse mit neuen Verbindungen)
         const t = Date.now();
         ws.misses = (ws.misses || []).filter(x => t - x < 60000);
         ws.misses.push(t);
-        if (ws.misses.length > 15) return ws.close(1008);
+        const ipm = (joinMisses.get(ws.ip) || []).filter(x => t - x < 60000);
+        ipm.push(t); joinMisses.set(ws.ip, ipm);
+        if (joinMisses.size > 5000) joinMisses.clear();
+        if (ws.misses.length > 15 || ipm.length > MISS_LIMIT_PER_IP) return ws.close(1008);
         return send(ws, { t: 'error', msg: 'not-found' });
       }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
@@ -589,8 +1804,10 @@ function onMessage(ws, raw) {
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
       if (sitztSchon(room, ws, m)) return send(ws, { t: 'error', msg: 'already-in' });
+      const nm = roomName(ws, m);
+      if (!nm) return send(ws, { t: 'error', msg: 'invalid' });
       leave(ws);
-      room.players[idx] = { ws, name: roomName(ws, m), code: accountOf(m) }; ws.room = room;
+      room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
       roomChanged(room);
@@ -599,29 +1816,83 @@ function onMessage(ws, raw) {
     case 'relay': {
       const room = ws.room; if (!room) return;
       const from = room.players.findIndex(p => p && p.ws === ws);
+      if (from < 0 || m.d === undefined) return;
       const out = JSON.stringify({ t: 'relay', from, d: m.d });
+      if (out.length > MAX_RELAY_BYTES) return;
+      // Schiedsrichter: Regelwidriges wird nicht weitergeleitet, und die Runde zählt nicht mehr
+      if (room.ref && !room.ref.move(from, m.d)) {
+        console.log('Regelwidrige Nachricht' + (REFEREE_WATCH ? ' (nur protokolliert)' : ' verworfen') + ':', room.game, room.code, 'Platz', from);
+        if (!REFEREE_WATCH) { room.tainted = true; return; }
+      }
       others(room, ws).forEach(p => p.ws.readyState === 1 && p.ws.send(out));
       break;
     }
     // Nur der Host (Platz 0) meldet Rundenstart und Ergebnis -> jede Runde zählt genau einmal
     case 'round-start': {
       const room = ws.room; if (!room || room.players[0]?.ws !== ws) return;
-      room.roundOpen = true;
+      // Beginnt nur, wenn die letzte Runde zu Ende gemeldet war (oder die alte schon lange offen ist). Merkt, wer dabei war.
+      if (room.roundOpen && Date.now() - room.roundAt < MIN_ROUND_MS) return;
+      room.roundOpen = true; room.roundAt = Date.now();
+      room.roundCodes = room.players.map(p => p ? p.code : null);
+      room.votes = new Map();
+      room.tainted = false;
       break;
     }
     case 'result': {
-      const room = ws.room; if (!room || room.players[0]?.ws !== ws || !room.roundOpen) return;
+      const room = ws.room; if (!room) return;
+      let w = Number.isInteger(m.winner) ? m.winner : -1;
+      const me = room.players.findIndex(p => p && p.ws === ws);
+      if (me < 0) return;
+      // Mitspieler (nicht der Host) dürfen das Ergebnis ebenfalls melden. Weichen sie vom Host ab, wird die Runde nicht gewertet.
+      // Spiele, die das nicht tun, zählen weiter nur mit dem Host-Ergebnis.
+      if (me !== 0) {
+        if (room.roundOpen || room.pending) { room.votes = room.votes || new Map(); room.votes.set(room.players[me].code, w); }
+        return;
+      }
+      if (!room.roundOpen) return;
       room.roundOpen = false;
-      const present = room.players.filter(Boolean).length;
+      // Der Server kann das Spiel nicht nachrechnen, prüft aber alles, was er prüfen kann:
+      const now = Date.now(), present = room.players.filter(Boolean).length;
       if (present < 2) return;
-      const w = Number.isInteger(m.winner) ? m.winner : -1;
-      record(room.game, names(room), w);
-      room.players.forEach(p => p && send(p.ws, { t: 'leaderboard', game: room.game, rows: rows(room.game) }));
+      if (room.ref && !REFEREE_WATCH) {
+        // Der Schiedsrichter entscheidet, nicht der Host. Läuft die Partie noch oder war etwas regelwidrig: keine Wertung.
+        const v = room.ref.verdict();
+        if (!v || room.tainted) return;
+        if (v.winner !== w) console.log('Host meldete anderen Sieger als der Schiedsrichter:', room.game, room.code, w, '->', v.winner);
+        w = v.winner;
+      } else if (now - room.roundAt < MIN_ROUND_MS) return;                            // zu kurz für eine echte Runde
+      const codes = room.roundCodes || [];
+      // Sieger muss jemand sein, der die ganze Runde dabei war (kein Geisterplatz, kein Spieler, der später reinkam)
+      if (w >= 0 && !(room.players[w] && room.players[w].code && room.players[w].code === codes[w])) return;
+      // Mindestens zwei verschiedene Geräte (Konten) am Tisch
+      const real = new Set(room.players.filter(Boolean).map(p => p.code));
+      if (real.size < 2 || real.has(null)) return;
+      if (!countAllowed(room, now)) return;
+      // Kurze Frist, in der die anderen widersprechen können
+      const snapshot = names(room), votes = room.ref ? new Map() : (room.votes || new Map());
+      room.pending = true;
+      setTimeout(() => {
+        room.pending = false;
+        for (const v of votes.values()) if (v !== w) { console.log('Ergebnis angezweifelt, nicht gewertet:', room.game, room.code); return; }
+        record(room.game, snapshot, w);
+        room.players.forEach(p => p && send(p.ws, { t: 'leaderboard', game: room.game, rows: rows(room.game) }));
+      }, VOTE_GRACE_MS);
       break;
     }
     case 'leaderboard':
       send(ws, { t: 'leaderboard', game: cleanGame(m.game), rows: rows(cleanGame(m.game)) });
       break;
+    // Würfeln auf dem Server (Backgammon, Ur): Der Schiedsrichter würfelt für den Spieler am Zug, alle im Raum bekommen den Wurf
+    case 'dice': {
+      const room = ws.room;
+      if (!room || !room.ref || !room.ref.roll) return;
+      const from = room.players.findIndex(p => p && p.ws === ws);
+      if (from < 0) return;
+      const d = room.ref.roll(from);
+      if (!d) return;
+      room.players.forEach(p => p && send(p.ws, { t: 'dice', d, from }));
+      break;
+    }
     default:
       social(ws, m);
   }
@@ -718,7 +1989,7 @@ function accountOf(m) { const s = String(m.secret || ''); return /^[A-Za-z0-9]{1
 function sitztSchon(room, ws, m) { const c = accountOf(m); return !!c && room.players.some(p => p && p.ws !== ws && p.code === c); }
 function roomName(ws, m) {
   const code = ensureAccount(ws.ip, m.secret, m.name);
-  if (!code) return cleanName(m.name);
+  if (!code) return null;
   const acc = accounts[code], w = rawName(m.name);
   if (w && w !== acc.name) claimName(code, w);
   acc.seen = Date.now();
@@ -1000,14 +2271,22 @@ code{color:#ffe14d;font-size:1.4em;letter-spacing:.2em}</style></head>
 }
 
 // ---------- HTTP + WebSocket ----------
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+// CORS nur für unsere Seiten (statt für alle). Eine fremde Webseite darf im Browser des Spielers weder lesen noch schreiben.
+// Die Spiele selbst liegen auf derselben Adresse wie die API, brauchen CORS also normalerweise gar nicht.
 function json(res, status, obj) {
-  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }, CORS));
+  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, res.cors));
   res.end(JSON.stringify(obj));
 }
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  const origin = req.headers.origin;
+  res.cors = origin && originOk(origin)
+    ? { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Key' }
+    : { 'Vary': 'Origin' };
+  if (req.method === 'OPTIONS') { res.writeHead(origin && !originOk(origin) ? 403 : 204, res.cors); return res.end(); }
+  // Schreibende Aufrufe nur von unseren Seiten. Browser schicken Origin immer mit; wer ohne Origin kommt (curl, Skript), darf nicht schreiben.
+  // Die Admin-Seite ist ausgenommen, sie schützt sich mit dem Schlüssel.
+  if (req.method === 'POST' && !originOk(origin) && !/^\/api\/(empfehlungen|bewertungen|moderation)\.json$/.test(url.pathname)) return json(res, 403, { error: 'bad-origin' });
   const inv = url.pathname.match(/^\/api\/e\/([a-z0-9-]{1,40})\/([A-Za-z0-9]{4})$/);
   if (inv) {
     const game = inv[1], code = inv[2].toUpperCase();
@@ -1048,8 +2327,12 @@ const server = http.createServer((req, res) => {
       let m; try { m = JSON.parse(body); } catch (e) { return json(res, 400, { error: 'bad-json' }); }
       const game = cleanGame(m && m.game);
       // Mit dem geheimen Schlüssel des Geräts zählt der Name des Kontos (so kann niemand unter fremdem Namen eintragen)
-      const sec = String(m && m.secret || ''), acct = /^[A-Za-z0-9]{16,64}$/.test(sec) ? accounts[friendCode(sec)] : null;
-      const name = acct ? acct.name : cleanName(m && m.name);
+      // Ohne gültigen Schlüssel wird nichts eingetragen (sonst könnte jeder unter jedem Namen Punkte setzen)
+      const sec = String(m && m.secret || ''), ipS = clientIp(req);
+      const code = /^[A-Za-z0-9]{16,64}$/.test(sec) ? ensureAccount(ipS, sec, m && m.name) : null;
+      const acct = code ? accounts[code] : null;
+      if (!acct) return json(res, 400, { error: 'invalid-secret' });
+      const name = acct.name;
       const score = Math.floor(Number(m && m.score)), jumps = Math.floor(Number(m && m.jumps) || 0);
       // Grobe Plausibilitätsprüfung: pro Sprung sind höchstens ~450 Punkte möglich
       if (!game || !Number.isFinite(score) || score < 0 || score > 10000000 || jumps < 0 || jumps > 100000 ||
@@ -1058,6 +2341,8 @@ const server = http.createServer((req, res) => {
       const ip = req.headers['x-real-ip'] || String(req.headers['x-forwarded-for'] || '').split(',')[0] || req.socket.remoteAddress;
       const key = ip + '|' + name.toLowerCase(), now = Date.now();
       if (now - (lastScorePost.get(key) || 0) < 2000) return json(res, 429, { error: 'too-fast' });
+      if (!bump('s|' + code, MAX_SCORE_PER_ACCOUNT_HOUR, now)) return json(res, 429, { error: 'too-fast' });
+      acct.seen = now;
       lastScorePost.set(key, now);
       if (lastScorePost.size > 5000) lastScorePost.clear();
       json(res, 200, recordScore(game, name, score, jumps));
@@ -1124,7 +2409,7 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === '/api/spiele') {
     res.setHeader('Cache-Control', 'public, max-age=60');
-    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, CORS));
+    res.writeHead(200, Object.assign({ 'Content-Type': 'application/json' }, res.cors));
     return res.end(JSON.stringify(gameStats()));
   }
   if (url.pathname === '/api/bewertungen.json') {
@@ -1135,6 +2420,19 @@ const server = http.createServer((req, res) => {
       const i = ratings.findIndex(r => m && r.id === m.id);
       if (i >= 0 && m.action === 'delete') { ratings.splice(i, 1); saveRatings(); }
       json(res, 200, list());
+    });
+  }
+  // Betrüger entfernen: { name, game? } löscht den Namen aus Duell-Rangliste und Highscores (eines Spiels oder aller)
+  if (url.pathname === '/api/moderation.json' && req.method === 'POST') {
+    if (!isAdmin(req)) return json(res, 403, { error: 'forbidden' });
+    return readBody(req, 1024, m => {
+      const key = rawName(m && m.name).toLowerCase(), only = m && m.game ? cleanGame(m.game) : '';
+      let n = 0;
+      if (key) [board, scores].forEach(store => Object.keys(store).forEach(g => {
+        if ((!only || g === only) && store[g][key]) { delete store[g][key]; n++; }
+      }));
+      if (n) { saveBoard(); saveScores(); }
+      json(res, 200, { ok: true, removed: n });
     });
   }
   if (url.pathname === '/api/aufrufe.json') {
@@ -1154,7 +2452,9 @@ const server = http.createServer((req, res) => {
   }
   res.writeHead(404); res.end();
 });
-const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 128 * 1024,
+  // Browser schicken bei WebSockets immer die Herkunft mit. Fremde Webseiten (oder Skripte) kommen nicht rein.
+  verifyClient: (info, cb) => originOk(info.origin) ? cb(true) : cb(false, 403, 'bad-origin') });
 const connPerIp = new Map();
 wss.on('connection', (ws, req) => {
   ws.alive = true;
@@ -1170,6 +2470,10 @@ wss.on('connection', (ws, req) => {
     const now = Date.now();
     ws.tokens = Math.min(MSG_BURST, ws.tokens + (now - ws.tokenAt) * MSG_RATE / 1000); ws.tokenAt = now;
     if (--ws.tokens < 0) return ws.close(1008);
+    // Auch die Datenmenge begrenzen (wenige grosse Nachrichten wären sonst eine Flut)
+    const size = raw.length || 0;
+    ws.bytes = Math.min(BYTES_BURST, (ws.bytes === undefined ? BYTES_BURST : ws.bytes) + (now - (ws.bytesAt || now)) * MAX_BYTES_PER_SEC / 1000) - size; ws.bytesAt = now;
+    if (ws.bytes < 0) return ws.close(1008);
     onMessage(ws, raw);
   });
   ws.on('close', () => {
@@ -1185,4 +2489,5 @@ setInterval(() => {
     room.players.forEach(p => p && p.ws.close()); rooms.delete(code);
   }
 }, 25000);
+if (process.env.HUB_TEST) module.exports = { ENGINES, REFEREES };   // nur für die Tests (tools/schiedsrichter-test.js)
 server.listen(PORT, '127.0.0.1', () => console.log('game-hub läuft auf Port ' + PORT));

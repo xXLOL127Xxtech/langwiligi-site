@@ -445,3 +445,30 @@ dialog .row button:disabled { opacity: .5; cursor: default; }
   .vl-meta { grid-column: 1 / -1; justify-self: start; }
   .vl-day h2 { top: 112px; }
 }
+
+
+/* ---------- Sprache: Schalter DE | EN, Übersetzung des Namens, Auswahl beim ersten Besuch ---------- */
+.hello { position: relative; }
+.lang-switch { position: absolute; top: -6px; right: 0; display: inline-flex; border: 1px solid var(--line-hi); background: var(--panel); z-index: 2; }
+.lang-switch button { font: 700 12px/1 var(--mono); letter-spacing: .14em; color: var(--muted); background: transparent; border: 0; padding: 9px 11px 8px; cursor: pointer; }
+.lang-switch button + button { border-left: 1px solid var(--line-hi); }
+.lang-switch button:hover { color: var(--text); }
+.lang-switch button[aria-pressed="true"] { color: var(--bg); background: var(--cyan); cursor: default; }
+.trans { display: none; margin: 10px 0 0; font: 15px/1.3 var(--mono); letter-spacing: .08em; color: var(--text); }
+.trans small { color: var(--muted); font-size: .86em; letter-spacing: .04em; }
+html[lang="en"] .trans { display: block; }
+html[lang="en"] .trans-foot { margin: 6px 0 0; font-size: 13px; }
+#intro .trans-intro { position: absolute; left: 0; right: 0; bottom: 22vh; text-align: center; margin: 0; font-size: clamp(13px, 2vw, 18px); opacity: 0; animation: lw-fade .6s 1.4s forwards; }
+@keyframes lw-fade { to { opacity: 1; } }
+dialog#lang { width: min(520px, calc(100% - 32px)); }
+.lang-box { display: flex; flex-direction: column; gap: 14px; padding: 26px; background: var(--panel); border: 1px solid var(--line-hi); }
+.lang-box .kicker { margin: 0; color: var(--pink); }
+.lang-box h2 { margin: -4px 0 0; font: 700 30px/1.1 var(--display); text-transform: uppercase; }
+.lang-box h2 span { color: var(--cyan); }
+.lang-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lang-opts button { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left; padding: 16px; color: var(--text); background: var(--bg); border: 1px solid var(--line-hi); cursor: pointer; font: 14px/1.3 var(--body); }
+.lang-opts button b { font: 700 22px/1 var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.lang-opts button small { color: var(--muted); font-size: 13px; }
+.lang-opts button:hover, .lang-opts button:focus-visible { border-color: var(--cyan); outline: none; box-shadow: 0 0 0 1px var(--cyan); }
+.lang-box .hint { margin: 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 520px) { .lang-opts { grid-template-columns: 1fr; } }

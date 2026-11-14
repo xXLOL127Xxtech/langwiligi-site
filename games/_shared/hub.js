@@ -160,7 +160,7 @@
       '</tbody></table>';
   }
 
-  // Verbindung zu einem Raum. Ereignisse: msg(data, from), peer-join({idx,name,players}), peer-left({idx}), leaderboard(rows), close()
+  // Verbindung zu einem Raum. Ereignisse: msg(data, from), peer-join({idx,name,players}), peer-left({idx}), leaderboard(rows), dice(werte, von), close()
   function connect(game) {
     const handlers = {};
     const emit = (ev, ...a) => (handlers[ev] || []).forEach(f => { try { f(...a); } catch (e) { console.error(e); } });
@@ -174,6 +174,8 @@
       join(code, name) { return open({ t: 'join', game, code: cleanCode(code), name, secret: secret() }); },
       send(d) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'relay', d })); },
       roundStart() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'round-start' })); },
+      // Würfeln übernimmt der Server (Backgammon, Ur): Er schickt das Ergebnis an alle im Raum, auch an den, der gewürfelt hat -> Ereignis 'dice'
+      dice() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'dice' })); },
       result(winner) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'result', winner })); },
       close() { closedByMe = true; if (ws) ws.close(); ws = null; },
       get open() { return !!ws && ws.readyState === 1; },
@@ -208,6 +210,7 @@
             case 'peer-join': api.players = m.players; emit('peer-join', m); break;
             case 'peer-left': if (api.players) api.players[m.idx] = null; emit('peer-left', m); break;
             case 'leaderboard': emit('leaderboard', m.rows); break;
+            case 'dice': emit('dice', m.d, m.from); break;
           }
         };
         ws.onerror = () => {};

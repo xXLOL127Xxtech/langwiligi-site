@@ -555,7 +555,7 @@
 window.OnlineKit = function (cfg) {
   var HUB = window.GameHub || null;
   var kit = { available: !!HUB, active: false, inRoom: false, seat: -1, round: 0, settings: null, names: ['', ''], invite: '' };
-  kit.show = kit.leave = kit.send = kit.end = function () {};
+  kit.show = kit.leave = kit.send = kit.end = kit.dice = function () {};
   kit.again = function () { return false; };
   kit.opponent = function () { return 'Gegner'; };
   if (!HUB) return kit;
@@ -621,6 +621,7 @@ window.OnlineKit = function (cfg) {
     room.on('peer-left', function () { abort('Dein Gegner hat den Raum verlassen.'); });
     room.on('close', function () { abort('Die Verbindung zum Spiel-Server ist abgebrochen.'); });
     room.on('leaderboard', function (rows) { HUB.renderBoard(q('.ol-board'), rows, HUB.getName()); });
+    room.on('dice', function (d) { if (kit.active && cfg.onDice) cfg.onDice(d); });
   }
   function begin() {
     kit.active = true; roundOpen = true; ready = {};
@@ -630,7 +631,7 @@ window.OnlineKit = function (cfg) {
   function hostStart() {
     kit.round++;
     kit.settings = cfg.getSettings ? cfg.getSettings() : null;
-    room.send({ t: 'start', round: kit.round, settings: kit.settings, names: kit.names });
+    room.send({ t: 'start', round: kit.round, settings: kit.settings, names: kit.names, dice: 'server' });
     try { room.roundStart(); } catch (e) { /* egal */ }
     begin();
   }
@@ -685,6 +686,8 @@ window.OnlineKit = function (cfg) {
     if (on && !lbLoaded) { lbLoaded = true; HUB.loadBoard(cfg.gameId, q('.ol-board'), HUB.getName()); }
   };
   kit.send = function (d) { if (room && kit.active) room.send(d); };
+  // Der Server würfelt (nicht der Spieler) und schickt den Wurf an beide -> cfg.onDice
+  kit.dice = function () { if (room && kit.active) room.dice(); };
   // Rundenende: nur der Host meldet das Ergebnis (Platz des Gewinners, -1 = unentschieden)
   kit.end = function (winnerSeat) {
     if (!roundOpen) return;
@@ -827,6 +830,7 @@ window.OnlineKit = function (cfg) {
     after: document.querySelector('.mode-selector'),
     sides: ['Elfenbein', 'Nussbaum'],
     onStart: function() { resetGame(); },
+    onDice: function(d) { if (phase === 'roll' && Array.isArray(d) && d.length === 2) rollDice([d[0], d[1]]); },
     onMsg: function(d) {
       if (phase === 'gameover' || turn === myPlayer()) return;
       if (d.t === 'roll' && phase === 'roll' && Array.isArray(d.d)) {
@@ -854,6 +858,7 @@ window.OnlineKit = function (cfg) {
 
   function userRoll() {
     if (phase !== 'roll' || notMyTurn()) return;
+    if (mode === 3) { kit.dice(); return; }   /* online würfelt der Server */
     var d = [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1];
     if (mode === 3) kit.send({ t: 'roll', d: d });
     rollDice(d);

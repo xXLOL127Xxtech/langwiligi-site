@@ -1,0 +1,18 @@
+{
+ "Das grosse Brett besteht aus 9 kleinen 3×3-Feldern. Ziel: drei kleine Felder in einer Reihe gewinnen (waagrecht, senkrecht oder schräg).": "The big board consists of 9 small 3×3 boards. Goal: win three small boards in a row (horizontally, vertically or diagonally).",
+ "Die Grundregel: Die Zelle, in die du setzt, bestimmt, in welchem kleinen Feld der GEGNER als Nächstes spielen muss – setzt du oben links, muss er ins kleine Feld oben links.": "The basic rule: the cell you play in decides which small board your OPPONENT must play in next – if you play top left, they must play in the top-left small board.",
+ "Du bist": "You are",
+ "Ein volles kleines Feld ohne Sieger gehört niemandem. Ist alles voll, gewinnt, wer mehr kleine Felder hat.": "A full small board with no winner belongs to nobody. When everything is full, whoever has more small boards wins.",
+ "Freie Wahl": "Free choice",
+ "Gewinne kleine Felder, um das grosse Brett zu erobern. Aber pass auf, wohin du deinen Gegner schickst!": "Win small boards to conquer the big board. But watch where you send your opponent!",
+ "Gewinnst du ein kleines Feld (drei Zeichen in einer Reihe), GEHÖRT dir dieses Feld auf dem grossen Brett.": "If you win a small board (three marks in a row), that board BELONGS to you on the big board.",
+ "Ist dieses Feld schon fertig (gewonnen oder voll), darf der Gegner FREI in jedes offene Feld setzen. Erlaubte Felder leuchten immer.": "If that board is already finished (won or full), your opponent may play FREELY in any open board. Allowed squares always light up.",
+ "Tic-Tac-Toe im Tic-Tac-Toe: Dein Zug bestimmt, wo der Gegner als Nächstes spielen muss.": "Tic-tac-toe inside tic-tac-toe: your move decides where your opponent has to play next.",
+ "Tipp: Denk nicht nur an kleine Siege – überleg, wohin dein Zug den Gegner schickt, und schenk ihm keine Chance.": "Tip: don't just think about small wins – consider where your move sends your opponent, and don't give them a chance.",
+ "spiel im leuchtenden Feld.": "play in the glowing board.",
+ "spiel in IRGENDEINEM offenen Feld (leuchtet).": "play in ANY open board (glowing).",
+ "{0} ({1}) ist dran": "{0} ({1})'s turn",
+ "🎉 {0} gewinnt nach Feldern ({1}:{2})!": "🎉 {0} wins on boards ({1}:{2})!",
+ "🎉 {0} gewinnt – drei Felder in einer Reihe!": "🎉 {0} wins – three boards in a row!",
+ "🤝 Unentschieden! Je {0} Felder.": "🤝 Draw! {0} boards each."
+}
