@@ -2,7 +2,7 @@
 'use strict';
 
 const MODI = {
-  gp: { name: 'Grand Prix', text: 'Vier Rennen, Punkte sammeln und den Pokal holen.', farbe: ['#ff9a2e', '#d4400f'], icon: 'stern' },
+  gp: { name: 'Grand Prix', text: 'Drei Rennen, Punkte nach Platz sammeln und den Pokal holen.', farbe: ['#ff9a2e', '#d4400f'], icon: 'stern' },
   vs: { name: 'VS-Rennen', text: 'Eigene Regeln: Teams, Items, Runden und Gegner.', farbe: ['#4f9aff', '#1c4fc8'], icon: 'gruen3' },
   schlacht: { name: 'Ballon-Schlacht', text: 'Platz die Ballons der anderen in der Arena!', farbe: ['#ff5a8a', '#b81c4a'], icon: 'bombe' },
   zeit: { name: 'Zeitfahren', text: 'Allein gegen die Uhr – mit 3 Nitros.', farbe: ['#3fd07a', '#16884a'], icon: 'nitro3' },
@@ -115,7 +115,11 @@ const App = {
     this.zeige('sTitel', false);
     if (location.hash && HUB) {
       const code = HUB.cleanCode(location.hash);
-      if (code) { this.zeige('sOnline'); Netz.onlineZeigen(); $('oCode').value = code; }
+      if (code) {
+        this.zeige('sOnline'); Netz.onlineZeigen(); $('oCode').value = code;
+        // Einladungslink: gleich in den Raum, ohne dass man noch auf «Beitreten» tippen muss
+        setTimeout(() => { if (!Netz.room && $('oName').value.trim()) Netz.beitreten(); }, 350);
+      }
     }
     let last = performance.now();
     const frame = t => {
@@ -308,7 +312,7 @@ const App = {
     return liste;
   },
   gpStart(cup) {
-    const strecken = STRECKEN.map((s, i) => [s, i]).filter(([s]) => s.cup === cup).map(([, i]) => i);
+    const strecken = gpStrecken(cup);
     const fahrer = this.baueFahrer(Einst.gesamt || 8, false);
     this.gp = { cup, nr: 0, strecken, fahrer, punkte: Object.fromEntries(fahrer.map(f => [f.id, 0])) };
     this.gpRennen();
@@ -397,7 +401,7 @@ const App = {
     if (istGp && !onlineInfo) {
       erg.forEach(e => { const f = r.cfg.fahrer[e.idx]; gp.punkte[f.id] = (gp.punkte[f.id] || 0) + e.punkte; });
     }
-    $('ergTitel').textContent = m === 'schlacht' ? 'Schlacht vorbei!' : m === 'zeit' ? (r.neuerRekord ? 'Neuer Rekord!' : 'Zeitfahren') : istGp ? `${CUPS[gp.cup].name} – Rennen ${gp.nr + 1}/4` : 'Ergebnis';
+    $('ergTitel').textContent = m === 'schlacht' ? 'Schlacht vorbei!' : m === 'zeit' ? (r.neuerRekord ? 'Neuer Rekord!' : 'Zeitfahren') : istGp ? `${CUPS[gp.cup].name} – Rennen ${gp.nr + 1}/${GP_RENNEN}` : 'Ergebnis';
     let teamHtml = '';
     if (r.teams) {
       const sum = [0, 0];
@@ -427,14 +431,14 @@ const App = {
     const knopf = (text, haupt, fn) => { const b = document.createElement('button'); b.className = 'btn' + (haupt ? ' haupt' : ''); b.textContent = text; b.onclick = () => { Ton.sfx('ok'); fn(); }; kn.appendChild(b); return b; };
     if (onlineInfo) {
       if (onlineInfo.host) {
-        if (istGp && gp.nr < 3) knopf('Nächstes Rennen', true, () => Netz.weiter());
+        if (istGp && gp.nr < GP_RENNEN - 1) knopf('Nächstes Rennen', true, () => Netz.weiter());
         else if (istGp) knopf('Siegerehrung', true, () => Netz.weiter());
         else knopf('Zurück in den Raum', true, () => Netz.zurLobby());
       } else { const b = knopf('Warte auf den Gastgeber …', false, () => { }); b.disabled = true; }
       knopf('Raum verlassen', false, () => { Netz.verlassen(); this.zumMenue(); });
-      if (HUB) { $('ergBoard').innerHTML = '<span class="lbl">Rangliste</span><div></div>'; Netz.boardEl = $('ergBoard').lastChild; HUB.loadBoard(GAME_ID, Netz.boardEl, HUB.getName()); }
+      // Die Rangliste über alle Spiele gehört nur in die Online-Lobby, nicht hierher: in einer Serie kann am Ende jemand anderes gewinnen.
     } else if (istGp) {
-      if (gp.nr < 3) knopf('Nächstes Rennen', true, () => { gp.nr++; this.gpRennen(); });
+      if (gp.nr < GP_RENNEN - 1) knopf('Nächstes Rennen', true, () => { gp.nr++; this.gpRennen(); });
       else knopf('Siegerehrung', true, () => this.siegerehrung());
       knopf('Aufgeben', false, () => this.zumMenue());
     } else {
@@ -452,10 +456,14 @@ const App = {
     const ord = [top[1], top[0], top[2]];
     $('podest').innerHTML = ord.map((f, i) => f ? `<div class="p${[2, 1, 3][i]}"><img src="${Portraet.bild(f.fi)}" alt=""><div>${esc(f.name)}</div><i>${[2, 1, 3][i]}</i></div>` : '').join('');
     const mensch = liste.findIndex(f => f.typ !== 'bot');
+    const sieger = liste[0], pts = gp.punkte[sieger.id] || 0;
+    $('siegerBanner').innerHTML = `<small>Sieger nach ${GP_RENNEN} Rennen</small><b>${esc(sieger.name)}</b><span>${pts} Punkte</span>`;
+    $('siegerBanner').classList.remove('zeigen'); void $('siegerBanner').offsetWidth; $('siegerBanner').classList.add('zeigen');
+    $('siegerTabelle').innerHTML = liste.map((f, i) => `<tr class="${f.typ !== 'bot' ? 'mensch' : ''}"><td class="pl">${i + 1}</td><td><img src="${Portraet.bild(f.fi)}" alt=""> ${esc(f.name)}</td><td class="num"><b>${gp.punkte[f.id] || 0}</b> Punkte</td></tr>`).join('');
     $('siegerTitel').textContent = CUPS[gp.cup].name;
     $('pokal').textContent = mensch === 0 ? '🏆' : mensch === 1 ? '🥈' : mensch === 2 ? '🥉' : '🏁';
     const pokalName = ['Gold-Pokal', 'Silber-Pokal', 'Bronze-Pokal'][mensch];
-    $('siegerText').textContent = mensch <= 2 ? `Glückwunsch! ${liste[mensch].name} gewinnt den ${pokalName} (${CC[this.rennen.cc].name}).` : 'Diesmal kein Pokal – versuch es nochmal!';
+    $('siegerText').textContent = mensch === 0 ? `Glückwunsch! ${liste[0].name} gewinnt den ${pokalName} (${CC[this.rennen.cc].name}).` : mensch >= 0 && mensch <= 2 ? `${liste[mensch].name} wird Platz ${mensch + 1} (${pokalName}). Gewonnen hat ${sieger.name}.` : 'Diesmal kein Pokal – versuch es nochmal!';
     Ton.sfx(mensch <= 2 ? 'ziel' : 'verloren');
     $('siegerNochmal').classList.toggle('hidden', !!onlineGp);
     this.zeige('sSieger', false);

@@ -146,7 +146,7 @@ const Anzeige = {
       const el = document.createElement('div');
       el.className = 'vp' + (r.welt.istArena ? ' arena' : '') + (r.demo ? ' demo' : '');
       el.innerHTML = `
-        <div class="h-item"><div class="h-item-box"><img alt=""><i class="h-anz"></i><div class="h-gold"><b></b></div></div></div>
+        <div class="h-item"><div class="h-item-box"><img alt=""><i class="h-anz"></i><div class="h-gold"><b></b></div></div><div class="h-item2"><img alt=""></div></div>
         <div class="h-unten-links"><div class="h-muenzen"><i class="coin"></i><span>0</span></div><div class="h-runde"><small>Runde</small> <b>1</b><small>/${r.runden}</small></div><div class="h-ballons"></div></div>
         <div class="h-zeit">0:00.00</div>
         <div class="h-liste"></div>
@@ -163,7 +163,7 @@ const Anzeige = {
       hud.appendChild(el);
       const v = {
         el, k, kam: new Kamera(), x: 0, y: 0, w: 1, h: 1,
-        img: el.querySelector('.h-item-box img'), anz: el.querySelector('.h-anz'), box: el.querySelector('.h-item-box'), gold: el.querySelector('.h-gold'),
+        img: el.querySelector('.h-item-box img'), anz: el.querySelector('.h-anz'), box: el.querySelector('.h-item-box'), img2: el.querySelector('.h-item2 img'), box2: el.querySelector('.h-item2'), gold: el.querySelector('.h-gold'),
         muenz: el.querySelector('.h-muenzen span'), runde: el.querySelector('.h-runde b'), zeit: el.querySelector('.h-zeit'),
         liste: el.querySelector('.h-liste'), platz: el.querySelector('.h-platz'), platzB: el.querySelector('.h-platz b'), karte: el.querySelector('.h-karte'),
         speed: el.querySelector('.h-speed'), tinteEl: el.querySelector('.h-tinte'), blitzEl: el.querySelector('.h-blitz'), falsch: el.querySelector('.h-falsch'),
@@ -403,6 +403,12 @@ const Anzeige = {
       v.img.style.visibility = it ? 'visible' : 'hidden';
     }
     if (k.roulette > 0) v.img.style.visibility = 'visible';
+    // Reserve-Item (zweiter Platz): kleines Feld neben dem ersten
+    const it2 = k.item2 || (k.roulette > 0 && k.rouletteZiel === 'zwei' ? '?' : null);
+    if (it2 !== v.letztes2) { v.letztes2 = it2; if (it2 && it2 !== '?') v.img2.src = Ikon.bild(it2); }
+    v.box2.classList.toggle('da', !!it2);
+    v.img2.style.visibility = it2 && it2 !== '?' ? 'visible' : 'hidden';
+    v.box2.classList.toggle('dreht', it2 === '?');
     const anz = k.item && (k.item === 'nitro3') ? k.anzahl : 0;
     v.anz.textContent = anz > 1 ? '×' + anz : '';
     v.gold.style.display = k.item === 'goldnitro' && k.goldT > 0 ? 'block' : 'none';

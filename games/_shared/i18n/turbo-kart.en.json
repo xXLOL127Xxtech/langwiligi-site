@@ -1,4 +1,5 @@
 {
+ "3D-Kartrennen mit Drift-Turbos, Item-Würfeln, Grand Prix, Ballon-Schlacht, Teams und Online-Rennen.": "3D kart racing with drift turbos, item boxes, Grand Prix, balloon battle, teams and online races.",
  "3× Grüne Kugeln": "3× green orbs",
  "Abgewürgt!": "Stalled!",
  "Abkürzungen": "Shortcuts",
@@ -21,6 +22,7 @@
  "Die Piratenbucht ruft! Über den wackligen Holzsteg, vorbei am gestrandeten Piratenschiff und rund ums Leuchtturm-Kap.": "The pirate bay calls! Over the rickety wooden pier, past the stranded pirate ship and around the lighthouse cape.",
  "Die Seilbahn ist viel zu langsam! Die Serpentinen hinauf, vorbei an der Skihütte, durch die glitzernde Eishöhle und rasant zurück ins Tal.": "The cable car is far too slow! Up the hairpin bends, past the ski hut, through the glittering ice cave and speeding back down into the valley.",
  "Diesmal kein Pokal – versuch es nochmal!": "No trophy this time – try again!",
+ "Drei Rennen, Punkte nach Platz sammeln und den Pokal holen.": "Three races, collect points by place and win the trophy.",
  "Driften, Turbos zünden, Würfel knacken!": "Drift, fire turbos, crack the boxes!",
  "Drück auf einer Schanze in der Luft die Drift-Taste – bei der Landung gibt es einen Turbo.": "Press the drift key in the air on a ramp – you get a turbo on landing.",
  "Eigene Regeln: Teams, Items, Runden und Gegner.": "Custom rules: teams, items, rounds and opponents.",
@@ -69,6 +71,7 @@
  "Rote Kugel": "Red orb",
  "Schlacht vorbei!": "Battle over!",
  "Shift links": "Left Shift",
+ "Sieger nach 3 Rennen": "Winner after 3 races",
  "So fährst du schnell": "How to drive fast",
  "Spieler 3 braucht ein Gamepad": "Player 3 needs a gamepad",
  "Spieler 3 und 4 brauchen Gamepads": "Players 3 and 4 need gamepads",
@@ -83,7 +86,6 @@
  "Trick!": "Trick!",
  "Turbo-Kart wird geladen …": "Loading Turbo Kart …",
  "VS-Rennen": "VS race",
- "Vier Rennen, Punkte sammeln und den Pokal holen.": "Four races, collect points and win the trophy.",
  "WASD wählen · E/Leertaste bestätigen · Q zurück": "WASD to choose · E/Space to confirm · Q to go back",
  "Warte auf Mitspieler … Schick ihnen den Code oder den Link.": "Waiting for players … Send them the code or the link.",
  "Wer weit hinten liegt, ist etwas schneller und bekommt stärkere Items wie Blitz, Rakete oder Stern. Tinte rinnt mit der Zeit weg, mit Turbo oder Stern viel schneller.": "Whoever is far behind is a bit faster and gets stronger items like lightning, rocket or star. Ink drips away over time, much faster with a turbo or star.",
@@ -98,9 +100,10 @@
  "Zeig auf eine Strecke, um ihre Geschichte zu lesen.": "Point at a track to read its story.",
  "Zeitfahren: Strecke wählen": "Time trial: choose a track",
  "Zurückschauen": "Look back",
+ "{0} Punkte": "{0} points",
  "{0} Spieler im Raum. Freie Plätze füllen Computerfahrer.": "{0} players in the room. Free seats are filled by computer drivers.",
- "{0} – Rennen {1}/4": "{0} – race {1}/4",
+ "{0} wird Platz {1} ({2}). Gewonnen hat {3}.": "{0} finishes in place {1} ({2}). {3} won.",
+ "{0} – Rennen {1}/3": "{0} – race {1}/3",
  "„Auto“ wählt die Grafikstufe passend zu deinem Laptop.": "“Auto” picks the graphics level to suit your laptop.",
- "🎲 Zufällige Strecke": "🎲 Random track",
- "3D-Kartrennen mit Drift-Turbos, Item-Würfeln, Grand Prix, Ballon-Schlacht, Teams und Online-Rennen.": "3D kart racing with drift turbos, item boxes, Grand Prix, balloon battle, teams and online races."
+ "🎲 Zufällige Strecke": "🎲 Random track"
 }

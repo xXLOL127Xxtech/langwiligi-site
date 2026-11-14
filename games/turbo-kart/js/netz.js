@@ -50,6 +50,7 @@ const Netz = {
     const code = HUB.cleanCode($('oCode').value);
     if (code.length !== 4) { $('oFehler').textContent = 'Der Code hat 4 Zeichen.'; return; }
     $('oFehler').textContent = 'Verbinde …';
+    $('oBeitreten').disabled = true;   // verhindert doppeltes Beitreten (Einladungslink + Auto-Klick)
     try {
       this.room = this.verbinden();
       const info = await this.room.join(code, n);
@@ -60,7 +61,8 @@ const Netz = {
       $('oFehler').textContent = '';
       this.lobbyZeigen();
       this.sendeIch();
-    } catch (e) { $('oFehler').textContent = HUB.errorText(e); }
+    } catch (e) { $('oFehler').textContent = HUB.errorText(e); try { if (this.room) this.room.close(); } catch (e2) { } this.room = null; }
+    $('oBeitreten').disabled = false;
   },
   verlassen() {
     if (this.room) { try { this.room.close(); } catch (e) { } }
@@ -182,7 +184,7 @@ const Netz = {
     const c = this.cfg;
     const menschen = this.spieler.filter(Boolean);
     if (c.modus === 'gp') {
-      const strecken = STRECKEN.map((s, i) => [s, i]).filter(([s]) => s.cup === c.cup).map(([, i]) => i);
+      const strecken = gpStrecken(c.cup);
       const fahrer = this.baueFahrer(menschen, c, false);
       this.gp = { cup: c.cup, nr: 0, strecken, fahrer, punkte: Object.fromEntries(fahrer.map(f => [f.id, 0])) };
       this.gpRennen();
@@ -388,16 +390,21 @@ const Netz = {
     if (!this.host) return;
     const r = App.rennen;
     if (this.gp && r.modus === 'gp') erg.forEach(e => { const f = r.cfg.fahrer[e.idx]; this.gp.punkte[f.id] = (this.gp.punkte[f.id] || 0) + e.punkte; });
-    // Rangliste: bester Mensch gewinnt
+    // Rangliste: bester Mensch gewinnt. Im Grand Prix zählt erst der Seriensieger nach allen Rennen (siehe weiter()).
     const mensch = erg.find(e => e.slot >= 0);
-    try { if (this.room && mensch) this.room.result(mensch.slot); } catch (e) { }
+    if (!this.gp) { try { if (this.room && mensch) this.room.result(mensch.slot); } catch (e) { } }
     this.sende({ t: 'ende', erg, gp: this.gp });
     setTimeout(() => App.ergebnisZeigen(erg, { host: true, gp: this.gp }), 800);
   },
   weiter() {
     if (!this.host || !this.gp) return;
-    if (this.gp.nr < 3) { this.gp.nr++; this.gpRennen(); }
-    else { this.sende({ t: 'sieger', gp: this.gp }); App.siegerehrung(this.gp); this.siegerKnoepfe(); }
+    if (this.gp.nr < GP_RENNEN - 1) { this.gp.nr++; this.gpRennen(); }
+    else {
+      // Wertung für die Online-Rangliste: der Mensch mit den meisten Punkten nach allen Rennen
+      const best = this.gp.fahrer.filter(f => f.slot >= 0).sort((a, b) => (this.gp.punkte[b.id] || 0) - (this.gp.punkte[a.id] || 0))[0];
+      try { if (this.room && best) this.room.result(best.slot); } catch (e) { }
+      this.sende({ t: 'sieger', gp: this.gp }); App.siegerehrung(this.gp); this.siegerKnoepfe();
+    }
   },
   siegerKnoepfe() {
     $('siegerMenue').textContent = this.host ? 'Zurück in den Raum' : 'Raum verlassen';
