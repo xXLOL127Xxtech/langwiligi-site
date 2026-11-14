@@ -47,7 +47,7 @@ const ri = n => Math.floor(Math.random() * n);
 const PROPOSE = {
   'fuenf-gewinnt': (st) => ({ r: ri(st.size), c: ri(st.size) }),
   'vier-gewinnt': (st) => ri(st.cols),
-  'ultimate-tic-tac-toe': (st) => Math.random() < .1 ? { b: ri(10) - 1, c: ri(9) } : (st.forced >= 0 && Math.random() < .8 ? { b: st.forced, c: ri(9) } : { b: ri(9), c: ri(9) }),
+  'tic-tac-turbo': (st) => Math.random() < .1 ? { b: ri(10) - 1, c: ri(9) } : (st.forced >= 0 && Math.random() < .8 ? { b: st.forced, c: ri(9) } : { b: ri(9), c: ri(9) }),
   'reversi': () => ({ r: ri(8), c: ri(8) }),
   'mancala': () => ri(14) - (Math.random() < .05 ? 1 : 0),
   'dame': (st) => {
@@ -56,23 +56,23 @@ const PROPOSE = {
     const d = [[-1, -1], [-1, 1], [1, -1], [1, 1]][ri(4)], k = 1 + ri(Math.random() < .5 ? 2 : 6);
     return { from, to: [from[0] + d[0] * k, from[1] + d[1] * k], cap: null };
   },
-  'mauer-duell': (st) => {
+  'mauerbauer': (st) => {
     const me = st.pawns[st.turn], x = Math.random();
     if (x < .55) { const d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-2, 0], [2, 0], [-1, 1], [1, -1], [-1, -1], [1, 1]][ri(10)]; return { t: 'move', r: me.r + d[0], c: me.c + d[1] }; }
     return { t: 'wall', o: ['h', 'v'][ri(2)], r: ri(st.N), c: ri(st.N) };
   },
-  'farben-duell': (st) => {
+  'farbfalle': (st) => {
     const p = Math.random() < .03 ? 1 - st.turn : st.turn, n = st.pieces[p].length, idx = ri(n), pc = st.pieces[p][idx], dr = p === 0 ? -1 : 1, d = [[dr, 0], [dr, -1], [dr, 1]][ri(3)], k = 1 + ri(4);
     return { p, idx, to: [pc.r + d[0] * k, pc.c + d[1] * k] };
   },
-  'laser-duell': (st) => {
+  'laserlabyrinth': (st) => {
     const mine = []; st.b.forEach((p, i) => { if (p && p.type === 'mirror' && p.player === st.turn) mine.push(i); });
     const from = Math.random() < .9 ? mine[ri(mine.length)] : ri(64);
     if (Math.random() < .4) return { t: 'rotate', idx: from };
     const d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, 1]][ri(5)];
     return { t: 'move', from, to: from + d[0] * 8 + d[1] };
   },
-  'panzer-taktik': (st) => {
+  'panzer-duell': (st) => {
     const pl = st.players[st.turn], x = Math.random(), N = st.N;
     if (x < .08) return { t: 'end' };
     if (x < .4) { const k = 1 + ri(3), d = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, 1]][ri(5)]; return { t: 'move', r: pl.r + d[0] * k, c: pl.c + d[1] * k }; }
@@ -82,24 +82,24 @@ const PROPOSE = {
     const foe = st.players[1 - st.turn];
     return Math.random() < .5 ? { t: kind, r: foe.r, c: foe.c } : { t: kind, r: pl.r, c: ri(N) };
   },
-  'dreh-duell': () => ({ cell: ri(36), quad: ri(4), dir: ['cw', 'ccw'][ri(2)] }),
-  'kaesekaestchen': (st) => Math.random() < .5 ? { type: 'h', r: ri(st.H + 1), c: ri(st.W) } : { type: 'v', r: ri(st.H), c: ri(st.W + 1) },
+  'dreh-und-gewinn': () => ({ cell: ri(36), quad: ri(4), dir: ['cw', 'ccw'][ri(2)] }),
+  'dots-and-boxes': (st) => Math.random() < .5 ? { type: 'h', r: ri(st.H + 1), c: ri(st.W) } : { type: 'v', r: ri(st.H), c: ri(st.W + 1) },
 };
 const OPTIONS = {
   'fuenf-gewinnt': [{ size: 9, need: 4 }, { size: 13, need: 5 }, { size: 9, need: 6 }],
   'vier-gewinnt': [{}, { cols: 5, rows: 5, need: 3 }, { cols: 9, rows: 8, need: 5 }],
-  'ultimate-tic-tac-toe': [{}],
+  'tic-tac-turbo': [{}],
   'reversi': [{}],
-  'mauer-duell': [{ size: 5 }, { size: 7 }, { size: 9 }],
-  'farben-duell': [{ reihen: 2 }, { reihen: 1 }],
-  'dreh-duell': [{}],
-  'panzer-taktik': [{}, { size: 9, map: 'dense', ap: 5, hp: 80 }, { size: 13, map: 'open', ap: 3, hp: 120 }],
-  'laser-duell': [{}],
+  'mauerbauer': [{ size: 5 }, { size: 7 }, { size: 9 }],
+  'farbfalle': [{ reihen: 2 }, { reihen: 1 }],
+  'dreh-und-gewinn': [{}],
+  'panzer-duell': [{}, { size: 9, map: 'dense', ap: 5, hp: 80 }, { size: 13, map: 'open', ap: 3, hp: 120 }],
+  'laserlabyrinth': [{}],
   'mancala': [{}],
   'dame': [{ kings: 'standard' }, { kings: 'flying' }],
-  'kaesekaestchen': [{ cols: 4, rows: 4, bonus: 'few' }, { cols: 5, rows: 3, bonus: 'many' }, { cols: 3, rows: 3, bonus: 'off' }],
+  'dots-and-boxes': [{ cols: 4, rows: 4, bonus: 'few' }, { cols: 5, rows: 3, bonus: 'many' }, { cols: 3, rows: 3, bonus: 'off' }],
 };
-const LENIENT = new Set(['dame', 'farben-duell', 'dreh-duell']);
+const LENIENT = new Set(['dame', 'farbfalle', 'dreh-und-gewinn']);
 const clone = o => JSON.parse(JSON.stringify(o));
 
 function runOne(id, options, seedNum) {

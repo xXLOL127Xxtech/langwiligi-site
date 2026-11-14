@@ -12,8 +12,8 @@ const GAMES = path.join(ROOT, 'games');
 const OUT = path.join(ROOT, 'startseite/vorschau.jpg');
 
 // Diese Spiele stehen vorne (gut erkennbar, bunt); danach kommen die übrigen
-const FAVORITEN = ['turbo-kart', 'sternen-party', 'billard-duell', 'schach', 'golf-tour', 'bubble-duell', 'kopf-voraus',
-  'laser-duell', 'panzer-taktik', 'nebelvilla', 'sbb-runner', 'vier-gewinnt', 'katapult-krieg', 'weltenbrand', 'hextris', 'bogen-duell'];
+const FAVORITEN = ['turbo-kart', 'sternen-party', 'billard', 'schach', 'golf-tour', 'bubble-race', 'kopf-voraus',
+  'laserlabyrinth', 'panzer-duell', 'nebelvilla', 'sbb-runner', 'vier-gewinnt', 'catapult', 'weltenbrand', 'hextris', '3d-bowfight'];
 
 const slugs = fs.readdirSync(GAMES).filter(s => !s.startsWith('_') && fs.existsSync(path.join(GAMES, s, 'index.html')));
 const cover = s => ['webp', 'png', 'jpg', 'jpeg', 'svg'].map(e => path.join(GAMES, s, 'cover.' + e)).find(f => fs.existsSync(f));

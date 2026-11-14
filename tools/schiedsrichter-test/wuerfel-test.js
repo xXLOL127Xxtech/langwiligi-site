@@ -3,7 +3,7 @@
 'use strict';
 const WebSocket = require('ws'), { spawn } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
 const R = fs.mkdtempSync(path.join(os.tmpdir(), 'wuerfel-'));
-for (const g of ['backgammon', 'koenigliches-ur']) { fs.mkdirSync(R + '/g/' + g, { recursive: true }); fs.writeFileSync(R + '/g/' + g + '/index.html', '<title>T</title>'); }
+for (const g of ['backgammon', 'ur']) { fs.mkdirSync(R + '/g/' + g, { recursive: true }); fs.writeFileSync(R + '/g/' + g + '/index.html', '<title>T</title>'); }
 const srv = spawn('node', [path.join(__dirname, '..', '..', 'server', 'game-hub.js')], { env: Object.assign({}, process.env, { DATA_DIR: R + '/data', GAMES_DIR: R + '/g' }), stdio: 'inherit' });
 const sleep = ms => new Promise(r => setTimeout(r, ms)); let fail = 0; const ok = (c, m) => { console.log((c ? '✅ ' : '❌ ') + m); if (!c) fail++; };
 const O = 'http://46.224.94.231', sec = n => 'abcdefghijklmnop' + n;
@@ -18,7 +18,7 @@ async function room(game) {
 }
 (async () => {
   await sleep(800);
-  for (const [game, n] of [['backgammon', 2], ['koenigliches-ur', 4]]) {
+  for (const [game, n] of [['backgammon', 2], ['ur', 4]]) {
     const [a, b] = await room(game);
     S(a, { t: 'relay', d: { t: 'start', dice: 'server' } }); S(a, { t: 'round-start' }); await sleep(150);
     b.msgs.length = 0; a.msgs.length = 0;

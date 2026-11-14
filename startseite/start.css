@@ -261,6 +261,12 @@ h1 .site { display: block; margin-top: .16em; color: var(--cyan); text-shadow: 5
 .badge-new { position: absolute; top: 0; right: 0; z-index: 2; display: none; padding: 6px 12px 5px 18px; font: 700 13px/1 var(--display);
   letter-spacing: .14em; text-transform: uppercase; color: var(--bg); background: var(--lime); clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%); }
 .card.is-new .badge-new { display: block; }
+/* Spiel noch in Arbeit (<meta name="spiel-status">): Baustellen-Banner quer über das Bild */
+.badge-wip { position: absolute; left: -6%; right: -6%; top: 50%; z-index: 1; transform: translateY(-50%) rotate(-5deg); display: block;
+  padding: 7px 0 6px; text-align: center; color: #15120a; background: #ffc400; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); pointer-events: none;
+  border-block: 6px solid transparent; border-image: repeating-linear-gradient(-45deg, #15120a 0 9px, #ffc400 9px 18px) 6; }
+.badge-wip b { display: block; font: 700 clamp(13px, 1.5vw, 17px)/1.1 var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.badge-wip i { display: block; margin-top: 2px; font: 600 11px/1.1 var(--mono); letter-spacing: .1em; text-transform: uppercase; font-style: normal; }
 
 .info { display: flex; flex-direction: column; flex: 1; padding: 0 18px 18px; margin-top: -12px; position: relative; z-index: 1; }
 .info h2 { margin: 0 0 4px; font: 700 23px/1.12 var(--display); text-transform: uppercase; letter-spacing: .01em; transition: text-shadow .3s; }

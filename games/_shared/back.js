@@ -69,7 +69,7 @@
   a.title = 'Zurück zur Übersicht mit allen Spielen';
   a.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="square" stroke-linejoin="miter">' +
     '<path d="M16 10H5m4-4-4 4 4 4"/></svg><span>Alle Spiele</span>';
-  // Klicks nicht ans Spiel weitergeben (z.B. Maus fangen bei Bogen-Duell)
+  // Klicks nicht ans Spiel weitergeben (z.B. Maus fangen bei 3D Bowfight)
   function stop(el) {
     ['mousedown', 'pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
       el.addEventListener(ev, function (e) { e.stopPropagation(); });
