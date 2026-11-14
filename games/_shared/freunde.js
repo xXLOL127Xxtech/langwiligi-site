@@ -161,7 +161,7 @@
   function inviteLink() {
     var r = S.room; if (!r) return '';
     // Mit dem neuen Server gibt es eine Seite mit Vorschaubild (WhatsApp, Discord, ...), sonst den schlichten Link
-    return S.feat >= 2 ? SEITE + '/api/e/' + GAME + '/' + r.code + (myName() ? '?von=' + encodeURIComponent(myName()) : '') : SEITE + '/' + GAME + '/#' + r.code;
+    return S.feat >= 2 ? SEITE + '/api/e/' + GAME + '/' + r.code + '?' + (myName() ? 'von=' + encodeURIComponent(myName()) + '&' : '') + 'l=' + (window.LW && window.LW.lang === 'en' ? 'en' : 'de') : SEITE + '/' + GAME + '/#' + r.code;
   }
   function copy(text) {
     function fallback() {

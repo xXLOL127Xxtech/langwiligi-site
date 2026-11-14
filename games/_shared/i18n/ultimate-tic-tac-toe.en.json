@@ -14,5 +14,6 @@
  "{0} ({1}) ist dran": "{0} ({1})'s turn",
  "🎉 {0} gewinnt nach Feldern ({1}:{2})!": "🎉 {0} wins on boards ({1}:{2})!",
  "🎉 {0} gewinnt – drei Felder in einer Reihe!": "🎉 {0} wins – three boards in a row!",
- "🤝 Unentschieden! Je {0} Felder.": "🤝 Draw! {0} boards each."
+ "🤝 Unentschieden! Je {0} Felder.": "🤝 Draw! {0} boards each.",
+ "Neun Tic-Tac-Toe-Felder in einem: Dein Zug bestimmt, wo der Gegner als Nächstes spielen muss.": "Nine tic-tac-toe boards in one: your move decides where your opponent has to play next."
 }

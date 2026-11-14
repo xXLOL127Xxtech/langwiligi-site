@@ -37,6 +37,7 @@ async function start() {
   // Neuer Spieler: eigener Browser-Speicher (= eigenes Konto), WebSocket wird an den lokalen Hub weitergereicht
   const player = async (name, url) => {
     const ctx = await br.newContext(), page = await ctx.newPage();
+    if (process.env.E2E_LANG === 'en') await page.addInitScript(() => { try { localStorage.setItem('lw-lang', 'en'); } catch (e) {} });   // Test mit englischer Seite
     await page.routeWebSocket(/\/ws$/, route => {
       const WS = require('ws'), up = new WS('ws://127.0.0.1:8090/ws', { headers: { Origin: 'http://langwiligi.site', 'X-Real-IP': '10.2.0.' + (++ipN) } });
       const queue = []; let open = false;

@@ -2248,17 +2248,26 @@ function gameBlurb(game) {
   } catch (e) { /* ohne Beschreibung */ }
   return '';
 }
-function invitePage(req, game, code, from) {
+let enT = null;
+function enTitles() {   // deutscher Spieltitel -> englischer (aus common.en.json, Abschnitt _names)
+  if (!enT) { try { enT = JSON.parse(fs.readFileSync(path.join(GAMES_DIR, '_shared', 'i18n', 'common.en.json'), 'utf8'))._names || {}; } catch (e) { enT = {}; } }
+  return enT;
+}
+function invitePage(req, game, code, from, en) {
   const host = String(req.headers.host || '').toLowerCase();
   const base = /(^|\.)langwiligi\.site$/.test(host) ? 'https://' + host : /^[0-9.]+(:\d+)?$/.test(host) ? 'http://' + host : 'https://langwiligi.site';
   const name = gameTitle(game), img = inviteImage(game), blurb = gameBlurb(game);
-  const title = from ? from + ' lädt dich zu ' + name + ' ein!' : 'Du wurdest zu ' + name + ' eingeladen!';
-  const desc = 'Komm in die Lobby ' + code + ' und spiel mit: direkt im Browser, ohne Download und ohne Login.' + (blurb ? ' ' + blurb : '');
+  // Englisch: Spieltitel kommen aus games/_shared/i18n/common.en.json, die Beschreibung bleibt der Spiel-Text
+  const nameEn = en ? ((enTitles()[name]) || name) : name;
+  const title = en ? (from ? from + ' invites you to ' + nameEn + '!' : 'You have been invited to ' + nameEn + '!')
+    : (from ? from + ' lädt dich zu ' + name + ' ein!' : 'Du wurdest zu ' + name + ' eingeladen!');
+  const desc = en ? 'Join lobby ' + code + ' and play along: right in the browser, no download and no login.'
+    : 'Komm in die Lobby ' + code + ' und spiel mit: direkt im Browser, ohne Download und ohne Login.' + (blurb ? ' ' + blurb : '');
   const target = '/' + game + '/#' + code;
-  return `<!doctype html><html lang="de-CH"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  return `<!doctype html><html lang="${en ? 'en' : 'de-CH'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${htmlEsc(title)} | KEI Langwiligi site</title><meta name="robots" content="noindex"><meta name="theme-color" content="#07060d">
 <meta name="description" content="${htmlEsc(desc)}">
-<meta property="og:type" content="website"><meta property="og:site_name" content="KEI Langwiligi site"><meta property="og:locale" content="de_CH">
+<meta property="og:type" content="website"><meta property="og:site_name" content="KEI Langwiligi site"><meta property="og:locale" content="${en ? 'en_GB' : 'de_CH'}">
 <meta property="og:url" content="${htmlEsc(base + '/api/e/' + game + '/' + code)}">
 <meta property="og:title" content="${htmlEsc(title)}"><meta property="og:description" content="${htmlEsc(desc)}">
 <meta property="og:image" content="${htmlEsc(base + img.path + '?v=' + img.v)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
@@ -2266,7 +2275,7 @@ function invitePage(req, game, code, from) {
 <style>html{background:#07060d}body{margin:0;min-height:100vh;display:grid;place-items:center;color:#ecebf5;font:16px/1.5 system-ui,sans-serif;text-align:center;padding:24px}
 a{display:inline-block;margin-top:18px;padding:12px 22px;background:#22e4ff;color:#07060d;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:.06em}
 code{color:#ffe14d;font-size:1.4em;letter-spacing:.2em}</style></head>
-<body><main><p>${htmlEsc(title)}</p><p>Lobby <code>${htmlEsc(code)}</code></p><a href="${htmlEsc(target)}">Jetzt beitreten</a></main>
+<body><main><p>${htmlEsc(title)}</p><p>${en ? 'Lobby' : 'Lobby'} <code>${htmlEsc(code)}</code></p><a href="${htmlEsc(target)}">${en ? 'Join now' : 'Jetzt beitreten'}</a></main>
 <script>location.replace(${JSON.stringify(target)});</script></body></html>`;
 }
 
@@ -2293,7 +2302,7 @@ const server = http.createServer((req, res) => {
     if (!isKnownGame(game)) { res.writeHead(302, { Location: '/' }); return res.end(); }
     const von = cleanName(url.searchParams.get('von') || '').replace(/^Spieler$/, '');
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300', 'X-Robots-Tag': 'noindex' });
-    return res.end(invitePage(req, game, code, von));
+    return res.end(invitePage(req, game, code, von, url.searchParams.get('l') === 'en'));
   }
   if (url.pathname === '/api/leaderboard') {
     const game = cleanGame(url.searchParams.get('game'));

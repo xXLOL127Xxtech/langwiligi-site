@@ -45,5 +45,6 @@
  "und wird vom Brett genommen.": "and is removed from the board.",
  "{0} hat die Wertung bestätigt. Prüfe sie und bestätige auch.": "{0} confirmed the scoring. Check it and confirm too.",
  "{0} ist dran": "{0}'s turn",
- "{0}{1} mit {2} Punkten{3}": "{0}{1} by {2} points{3}"
+ "{0}{1} mit {2} Punkten{3}": "{0}{1} by {2} points{3}",
+ "Das jahrtausendealte Umzingelungs-Spiel auf 9×9, 13×13 oder 19×19 – gegen den Bot oder zu zweit.": "The ancient surrounding game on 9×9, 13×13 or 19×19 – against the bot or two players."
 }

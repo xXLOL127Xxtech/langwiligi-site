@@ -16,5 +16,6 @@
  "X beginnt. {0} in einer Reihe gewinnen.": "X goes first. {0} in a row wins.",
  "Zeichen zum Sieg": "Marks needed to win",
  "Ziel: genug eigene Zeichen ohne Lücke in eine Reihe bringen – waagrecht, senkrecht oder schräg.": "Goal: get enough of your own marks in a row without a gap – horizontally, vertically or diagonally.",
- "🎉 Spieler {0} ({1}) gewinnt!": "🎉 Player {0} ({1}) wins!"
+ "🎉 Spieler {0} ({1}) gewinnt!": "🎉 Player {0} ({1}) wins!",
+ "X gegen O auf dem grossen Brett: Wer zuerst fünf in einer Reihe hat, gewinnt. Mit hartem Bot.": "X vs O on the big board: whoever gets five in a row first wins. With a tough bot."
 }
