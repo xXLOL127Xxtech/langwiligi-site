@@ -6,7 +6,7 @@
 "t":"Tasche auf der Weltkarte anklicken öffnet die Extras",
 "tag":"Update",
 "k":"Oberfläche",
-"pr":null,
+"pr":109,
 "b":"quirky-babbage-ae0dkg"
 },
 {
@@ -16,7 +16,7 @@
 "t":"Ziel zählt auf jeder Höhe, niemand fliegt mehr über die Zielfahne hinaus",
 "tag":"Update",
 "k":"Fehlerbehebung",
-"pr":null,
+"pr":109,
 "b":"quirky-babbage-ae0dkg"
 },
 {
@@ -26,7 +26,7 @@
 "t":"Geheimweg: verstecktes Rohr zur roten Fahne, das Level läuft weiter bis zum Ziel und öffnet beide Wege",
 "tag":"Update",
 "k":"Spielmechanik",
-"pr":null,
+"pr":109,
 "b":"quirky-babbage-ae0dkg"
 },
 {
@@ -36,7 +36,7 @@
 "t":"Rohre in den Untergrund, längere und verschachteltere Level ab Level 3",
 "tag":"Neu",
 "k":"Spielmechanik",
-"pr":null,
+"pr":109,
 "b":"quirky-babbage-ae0dkg"
 },
 {
