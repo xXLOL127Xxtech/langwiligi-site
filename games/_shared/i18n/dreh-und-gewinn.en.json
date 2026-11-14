@@ -11,5 +11,6 @@
  "Spieler {0} ist dran – setz eine Kugel auf ein freies Feld.": "Player {0}'s turn – place a ball on an empty square.",
  "Ziel: fünf Kugeln deiner Farbe in einer Reihe (waagrecht, senkrecht oder schräg) – gezählt wird nach dem Drehen.": "Goal: five balls of your color in a row (horizontally, vertically or diagonally) – counted after rotating.",
  "🎉 Spieler {0} hat fünf in einer Reihe – Sieg!": "🎉 Player {0} has five in a row – victory!",
- "🤝 Beide haben fünf in einer Reihe – unentschieden!": "🤝 Both have five in a row – draw!"
+ "🤝 Beide haben fünf in einer Reihe – unentschieden!": "🤝 Both have five in a row – draw!",
+ "Kugel setzen, Brettviertel drehen: Wer zuerst fünf in einer Reihe hat, gewinnt. Jeder Zug stellt alles auf den Kopf.": "Place a ball, rotate a quadrant: whoever gets five in a row first wins. Every move turns everything upside down."
 }

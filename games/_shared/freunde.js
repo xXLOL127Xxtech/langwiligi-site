@@ -161,7 +161,7 @@
   function inviteLink() {
     var r = S.room; if (!r) return '';
     // Mit dem neuen Server gibt es eine Seite mit Vorschaubild (WhatsApp, Discord, ...), sonst den schlichten Link
-    return S.feat >= 2 ? SEITE + '/api/e/' + GAME + '/' + r.code + (myName() ? '?von=' + encodeURIComponent(myName()) : '') : SEITE + '/' + GAME + '/#' + r.code;
+    return S.feat >= 2 ? SEITE + '/api/e/' + GAME + '/' + r.code + '?' + (myName() ? 'von=' + encodeURIComponent(myName()) + '&' : '') + 'l=' + (window.LW && window.LW.lang === 'en' ? 'en' : 'de') : SEITE + '/' + GAME + '/#' + r.code;
   }
   function copy(text) {
     function fallback() {
@@ -532,7 +532,7 @@
     var btns = document.querySelectorAll('button, [role=button], input[type=button], input[type=submit]');
     for (var i = 0; i < btns.length; i++) {
       var b = btns[i], t = String(b.textContent || b.value || '').replace(/[^A-Za-zÄÖÜäöüß\s]/g, '').trim().toLowerCase();
-      if (!/^((raum|spiel|jetzt|online) )?beitreten$|^mitspielen$/.test(t) || b.disabled || !visible(b)) continue;
+      if (!/^((raum|spiel|jetzt|online|room|game|now) )?(beitreten|join)$|^(mitspielen|play along|join (the )?(room|game|lobby))$/.test(t) || b.disabled || !visible(b)) continue;
       for (var sc = b.parentElement, d = 0; sc && d < 7; sc = sc.parentElement, d++) {
         var ins = sc.querySelectorAll('input'), ci = null;
         for (var k = 0; k < ins.length; k++) if ((ins[k].type === 'text' || !ins[k].type) && codeOf(ins[k].value) === inviteCode && ins[k].value.length <= 12) { ci = ins[k]; break; }

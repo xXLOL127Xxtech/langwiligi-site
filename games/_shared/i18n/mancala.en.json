@@ -13,5 +13,6 @@
  "Verteile die Steine einer Mulde reihum. Landest du im eigenen Speicher, darfst du nochmal – und leere Mulden schnappen dem Gegner Steine weg.": "Sow the stones of a pit around the board. If you land in your own store you go again – and empty pits snatch stones from your opponent.",
  "Wähle eine Mulde auf deiner Seite und verteile die Steine im Gegenuhrzeigersinn. Die meisten Steine im Speicher gewinnen.": "Choose a pit on your side and sow the stones counter-clockwise. Most stones in the store wins.",
  "Wähle eine Mulde mit Steinen auf deiner Seite: Alle Steine werden aufgenommen und einzeln im Gegenuhrzeigersinn in die folgenden Mulden verteilt.": "Choose a pit with stones on your side: all stones are picked up and dropped one by one counter-clockwise into the following pits.",
- "✨ Spieler {0} landet im eigenen Speicher – nochmal!": "✨ Player {0} lands in their own store – again!"
+ "✨ Spieler {0} landet im eigenen Speicher – nochmal!": "✨ Player {0} lands in their own store – again!",
+ "Das uralte Säspiel: Steine verteilen, Extrazüge holen und die Mulden des Gegners leer räumen.": "The ancient sowing game: distribute stones, win extra turns and empty your opponent's pits."
 }

@@ -124,6 +124,11 @@ rep(js + "profile/application_settings.js",
     '        this.language = "auto-detect";',
     '        this.language = "de";')
 
+# Sprache folgt der Sprachwahl der Seite (window.LW.lang aus games/_shared/i18n.js): Englisch ist im Spiel schon eingebaut
+rep(js + "profile/application_settings.js",
+    "        return this.getAllSettings().language;",
+    '        return window.LW && window.LW.lang === "en" ? "en" : "de";')
+
 # Handy-Hinweis auf Deutsch, ohne Steam-Link und Tracking
 rep(js + "states/mobile_warning.js",
     """            <p>I'm sorry, but shapez.io is not available on mobile devices yet!</p>

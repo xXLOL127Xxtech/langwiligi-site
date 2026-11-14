@@ -19,5 +19,6 @@
  "⛔ Hier geht keine Mauer (Überschneidung oder sie würde den Weg zum Ziel ganz versperren).": "⛔ No wall can go here (it overlaps or would completely block the way to the goal).",
  "🎉 Spieler {0} hat das Ziel erreicht – Sieg!": "🎉 Player {0} has reached the goal – victory!",
  "🏃 Ziehen": "🏃 Move",
- "🧱 Mauer": "🧱 Wall"
+ "🧱 Mauer": "🧱 Wall",
+ "Renn ans andere Ende des Bretts und verbau deinem Gegner mit Mauern den Weg. Taktik pur.": "Race to the other end of the board and block your opponent's path with walls. Pure tactics."
 }

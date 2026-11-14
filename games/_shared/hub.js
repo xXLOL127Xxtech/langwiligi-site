@@ -32,7 +32,12 @@
   // Jeder Name gibt es nur einmal (der Server prüft das) und er gilt in allen Spielen. Wer keinen hat, bekommt einen Zufallsnamen.
   const TIERE = ['Fuchs', 'Luchs', 'Dachs', 'Igel', 'Hase', 'Rabe', 'Wolf', 'Otter', 'Falke', 'Kauz', 'Biber', 'Marder', 'Specht', 'Molch', 'Gecko',
     'Panda', 'Lama', 'Puma', 'Kiwi', 'Adler', 'Hirsch', 'Frosch', 'Krebs', 'Bär', 'Pinguin', 'Delfin'];
-  function randomName() { return TIERE[Math.floor(Math.random() * TIERE.length)] + (10 + Math.floor(Math.random() * 990)); }
+  const ANIMALS = ['Fox', 'Lynx', 'Badger', 'Hedgehog', 'Hare', 'Raven', 'Wolf', 'Otter', 'Falcon', 'Owl', 'Beaver', 'Marten', 'Woodpecker', 'Newt', 'Gecko',
+    'Panda', 'Llama', 'Puma', 'Kiwi', 'Eagle', 'Deer', 'Frog', 'Crab', 'Bear', 'Penguin', 'Dolphin'];
+  function randomName() {
+    const en = typeof window !== 'undefined' && window.LW && window.LW.lang === 'en', L = en ? ANIMALS : TIERE;
+    return L[Math.floor(Math.random() * L.length)] + (10 + Math.floor(Math.random() * 990));
+  }
   function cleanLocal(n) { return String(n || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16).trim(); }
   function secret() {
     let s = '';

@@ -180,6 +180,19 @@ Sie erkennt das Rundenende meist selbst („Nochmal“-Knopf, Sieg-Meldung, Rang
 if (window.LW) LW.rundeFertig();   // am Ende jeder Runde aufrufen, egal ob gewonnen oder verloren
 ```
 
+### Englische Version (Pflicht für jedes Spiel)
+
+Die Seite gibt es auf Deutsch und Englisch. Dein Spiel schreibst du **auf Deutsch**, die Übersetzung passiert zur Laufzeit
+(`games/_shared/i18n.js`, wird von `deploy.sh` automatisch eingebunden, im Spiel nichts einbauen).
+Dafür braucht jedes Spiel ein Wörterbuch **`games/_shared/i18n/<spiel-id>.en.json`**: Schlüssel = deutscher Text, Wert = englische Übersetzung.
+
+- Alle sichtbaren Texte eintragen: Knöpfe, Anleitung, Meldungen, Canvas-Texte, `title`/`aria-label`, und die `description` aus dem Kopf (steht auch im Suchmaschinen-Block).
+- Texte mit Zahlen oder Namen als Vorlage: `"Raum {0} · {1} gegen {2}"`.
+- Den **Spieltitel** zusätzlich in `games/_shared/i18n/common.en.json` unter `_names` eintragen, damit er überall (Startseite, Freunde, Bewertungen, Einladungen) englisch erscheint.
+- Fehlende Texte finden: `NODE_PATH=$(npm root -g) node tools/i18n/spiele-crawl-ingame.js` (öffnet jedes Spiel auf Englisch und listet, was noch deutsch ist). Neue Texte extrahieren: `node tools/i18n/extrahieren.js <spiel-id> --offen`, Übersetzungen ergänzen mit `python3 tools/i18n/ergaenzen.py <spiel-id>`.
+- Selbst testen: im Browser `localStorage.setItem('lw-lang','en')` und neu laden (`lw-i18n-debug` = `1` zeigt fehlende Texte in `window.__lwMiss`).
+- Der Hauptname «KEI Langwiligi site» bleibt immer unübersetzt.
+
 ## 9. Abgabe
 
 Hochladen über GitHub (Schritt für Schritt in [MITMACHEN.md](MITMACHEN.md)) oder als ZIP an den Besitzer der Seite.
@@ -197,6 +210,7 @@ Liefere einen **Ordner `<spiel-id>/`** mit:
 - [ ] Ordnername = Spiel-ID: klein, ohne Umlaute und Leerzeichen, identisch mit `GAME_ID` im Code
 - [ ] `<title>`, `description`, `theme-color`, `spiel-modi`, `spiel-typ`, `spiel-tags` vorhanden
 - [ ] `cover.webp` im 16:10-Format ohne Text
+- [ ] `games/_shared/i18n/<spiel-id>.en.json` vorhanden (alle Texte, Beschreibung) und Titel in `common.en.json` unter `_names`
 - [ ] Startet lokal per Doppelklick ohne Fehler in der Konsole (F12)
 - [ ] Läuft auch ohne `GameHub` (Online-Teil wird dann ausgeblendet)
 - [ ] Komplett mit Touchpad und Tastatur spielbar (ohne Maus), auf kleinen Laptops (1366 × 768) nichts abgeschnitten

@@ -127,6 +127,12 @@ table.erg tr.t0 td:first-child{box-shadow:inset 4px 0 #e8352f}table.erg tr.t1 td
 .sieger .pod .p1 i{height:110px;background:linear-gradient(#ffe46a,#d9a000)}
 .sieger .pod .p2 i{height:80px;background:linear-gradient(#f0f4fa,#9aa6b8)}
 .sieger .pod .p3 i{height:60px;background:linear-gradient(#ffb47a,#b8641e)}
+.siegerbanner{margin:6px 0 4px}
+.siegerbanner small{display:block;font:600 16px var(--fn);letter-spacing:.2em;text-transform:uppercase;opacity:.85}
+.siegerbanner b{display:block;font:400 clamp(40px,8vw,84px)/1.05 var(--fn);color:#ffe46a;text-shadow:0 4px 0 #b07a00,0 10px 24px rgba(0,0,0,.55);word-break:break-word}
+.siegerbanner span{display:block;font:400 26px var(--fn);margin-top:2px}
+.siegerbanner.zeigen b{animation:siegerpop .9s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes siegerpop{0%{transform:scale(.2) rotate(-6deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
 .pokal{font-size:64px;line-height:1;filter:drop-shadow(0 6px 12px rgba(0,0,0,.5))}
 /* Online */
 .code{font-family:var(--fn);font-size:52px;letter-spacing:10px;text-align:center;color:var(--gelb);margin:4px 0}
@@ -151,6 +157,10 @@ details.help summary{cursor:pointer;font-weight:700}
 .h-item{position:absolute;left:calc(16px*var(--s));top:calc(14px*var(--s))}
 .vp.frei-oben .h-item{left:150px}
 .h-item-box{position:relative;width:calc(92px*var(--s));height:calc(92px*var(--s));border-radius:calc(20px*var(--s));background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.35),rgba(255,255,255,.08));border:calc(4px*var(--s)) solid #fff;box-shadow:0 0 0 calc(3px*var(--s)) rgba(0,0,0,.45),inset 0 0 18px rgba(255,255,255,.25),0 6px 16px rgba(0,0,0,.4)}
+.h-item2{position:absolute;left:calc(100px*var(--s));top:calc(6px*var(--s));width:calc(46px*var(--s));height:calc(46px*var(--s));border-radius:calc(12px*var(--s));border:calc(3px*var(--s)) solid rgba(255,255,255,.55);background:rgba(0,0,0,.35);opacity:.55}
+.h-item2.da{opacity:1;border-color:#fff}
+.h-item2.dreht{animation:itempop .35s ease-in-out infinite alternate}
+.h-item2 img{position:absolute;inset:8%;width:84%;height:84%;visibility:hidden}
 .h-item-box img{position:absolute;inset:8%;width:84%;height:84%;visibility:hidden}
 .h-item-box.dreht img{filter:blur(.6px);transform:scale(.9)}
 .h-item-box.neu img{animation:itempop .35s ease-out}
@@ -344,8 +354,10 @@ input.txt { border-radius:14px; background:#0b1330; border:3px solid #fff; }
 <section id="sSieger" class="screen dunkel hidden">
   <div class="panel mittel sieger">
     <div class="pokal" id="pokal">🏆</div>
+    <div class="siegerbanner" id="siegerBanner"></div>
     <h2 id="siegerTitel">Siegerehrung</h2>
     <div class="pod" id="podest"></div>
+    <div class="ergwrap"><table class="erg" id="siegerTabelle"></table></div>
     <p class="sub" id="siegerText"></p>
     <div class="row"><button class="btn haupt" id="siegerNochmal">Nochmal</button><button class="btn" id="siegerMenue">Menü</button></div>
   </div>

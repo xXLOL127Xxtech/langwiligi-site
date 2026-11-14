@@ -15,5 +15,6 @@
  "🎉 Spieler {0} gewinnt! Der Gegner hat seinen eigenen Kern getroffen.": "🎉 Player {0} wins! The opponent hit their own core.",
  "🎉 Spieler {0} gewinnt! Der Laser hat den gegnerischen Kern getroffen.": "🎉 Player {0} wins! The laser hit the enemy core.",
  "🔴 Rot": "🔴 Red",
- "🔵 Blau": "🔵 Blue"
+ "🔵 Blau": "🔵 Blue",
+ "Dreh und verschieb Spiegel, bis dein Laser den Kern des Gegners trifft – Knobel-Taktik zu zweit.": "Rotate and move mirrors until your laser hits the opponent's core – puzzle tactics for two."
 }

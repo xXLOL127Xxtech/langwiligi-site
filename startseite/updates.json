@@ -1,5 +1,7 @@
 [
   {"d": "2026-11-14", "t": "Baustellen-Banner und einheitliche Spielnamen", "tag": "Update", "p": ["Spiele, die noch in Arbeit sind, tragen auf der Startseite den Banner «Under Construction / Demo available»", "Alle Spiele heissen jetzt überall gleich, auch in der Adresse (z.B. /hillclimber/ statt /berg-bastler/). Alte Links und Einladungen leiten weiter, Ranglisten und Bewertungen bleiben erhalten", "Wer ein Online-Spiel verlässt, kann mit demselben Code sofort wieder beitreten. Die Meldung «Du bist mit diesem Gerät schon in diesem Spiel» kommt nicht mehr"]},
+  {"d": "2026-11-14", "t": "Turbo-Kart: zwei Items, Serien-Wertung, Einladungen", "tag": "Update", "p": ["Du kannst jetzt 2 Items tragen: das zweite rückt nach, sobald das erste benutzt ist", "Kreisende Bananen und Kugeln: Du kannst trotzdem neue Items einsammeln, und kreisende Bananen lösen aus, wenn jemand hineinfährt", "Grand Prix mit 3 Rennen: Punkte nach Platz, am Schluss wird der Sieger gross angekündigt, die Rangliste über alle Spiele erscheint nicht mehr nach dem Rennen", "Einladungslinks bringen dich direkt in den Raum, auch auf Englisch"]},
+  {"d": "2026-11-14", "t": "Englisch: Feinschliff", "tag": "Update", "p": ["Einladungslinks und Einladungsseite gibt es auf Englisch, englische Standardnamen (z. B. Fox42)", "Formenfabrik läuft auf Englisch, wenn die Seite auf Englisch gestellt ist", "Beschreibungen aller Spiele sind übersetzt"]},
   {"d": "2026-11-13", "t": "Englische Version der Seite", "tag": "Neu", "p": ["Beim ersten Besuch (nach der Animation) kannst du Deutsch oder Englisch wählen, später jederzeit oben umschalten", "Alles ausser dem Namen «KEI Langwiligi site» ist übersetzt, darunter steht «No boring site (translated from Swiss German)»", "Alle Spieltitel sind überall englisch: Startseite, im Spiel, Freunde, Bewertungen und Updates"]},
   { "d": "2026-11-13", "t": "Online-Spiele sind besser gegen Schummeln geschützt", "tag": "Intern", "p": [
     "Der Server prüft jetzt selbst, statt dem Browser alles zu glauben: Verbindungen nur noch von langwiligi.site, kein Spielen unter fremdem Namen mehr",
@@ -39,10 +41,10 @@
     "«Neuste Updates» unten auf der Startseite ist jetzt kurz: nur die drei neusten Einträge, alles Weitere im Fenster «Updates»"
   ] },
   { "d": "2026-10-29", "t": "Laptop-Steuerung und Tab-Wechsel", "tag": "Update", "p": [
-    "Catapult: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
+    "Katapult-Krieg: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
     "Weltenbrand und Kronenwacht: Zoomen auch mit den Tasten + und –",
-    "Eisenherbst und Snake: Allein im Hintergrund-Tab steht das Spiel still, Eisenherbst läuft flüssiger (Figuren-Umrisse ohne Pixel-Auslesen)",
-    "Bubble-Race: Allein im Hintergrund-Tab läuft keine Zeit mehr weiter",
+    "Eisenherbst und Schlangen-Arena: Allein im Hintergrund-Tab steht das Spiel still, Eisenherbst läuft flüssiger (Figuren-Umrisse ohne Pixel-Auslesen)",
+    "Bubble-Duell: Allein im Hintergrund-Tab läuft keine Zeit mehr weiter",
     "Eisenherbst und Federsturm: Ton startet zuverlässig nach der ersten Eingabe"
   ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Spieler in der Nähe, Freundschaftskämpfe, Bot-Markierung", "tag": "Update", "p": [
@@ -60,9 +62,9 @@
   { "d": "2026-10-29", "t": "Neue Bot-Gegner und bessere Bot-Stufen", "tag": "Update", "p": [
     "Festungssturm, Billard und Panzer-Duell können jetzt auch allein gegen den Bot gespielt werden (Leicht, Mittel, Schwer)",
     "Festungssturm: Spielfeld und Knöpfe sind auf dem Laptop grösser, alle Truppen und Upgrades lassen sich mit der Tastatur auslösen (Bahn 1 bis 3, Buchstaben auf den Knöpfen), eine Runde dauert jetzt 1 bis 2 Minuten statt unter einer halben",
-    "Reversi und Tic-Tac-Turbo: Die Stufen unterscheiden sich jetzt klar, «Schwer» schlägt «Mittel» und «Leicht»",
+    "Reversi und Ultimate Tic Tac Toe: Die Stufen unterscheiden sich jetzt klar, «Schwer» schlägt «Mittel» und «Leicht»",
     "Go: neue Stärke-Wahl (Leicht, Mittel, Schwer), der Bot passt jetzt sinnvoll und füllt nicht mehr die eigenen Augen",
-    "Dame: Remis, wenn lange nur mit Damen gezogen und nicht geschlagen wird. Mauerbauer «Schwer» denkt nicht mehr mehrere Sekunden. Dreh & Gewinn «Schwer» sieht Gewinnzüge des Gegners voraus"
+    "Dame: Remis, wenn lange nur mit Damen gezogen und nicht geschlagen wird. Mauerbauer «Schwer» denkt nicht mehr mehrere Sekunden. Dreh-Duell «Schwer» sieht Gewinnzüge des Gegners voraus"
   ] },
   { "d": "2026-10-29", "t": "Dead Maze auf Deutsch", "tag": "Update", "p": [
     "Alle Texte, Türme, Zombies, Menüs und Hilfen sind jetzt auf Deutsch",
