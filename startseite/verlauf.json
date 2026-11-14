@@ -1,6 +1,16 @@
 [
 {
 "d":"2026-11-14",
+"z":"13:40",
+"a":"Hüpf-Helden",
+"t":"Stampfen auf Eisblöcke und Plattformen blockiert die Figur nicht mehr, Eisblöcke zerspringen",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":109,
+"b":"quirky-babbage-ae0dkg"
+},
+{
+"d":"2026-11-14",
 "z":"13:20",
 "a":"Hüpf-Helden",
 "t":"Tasche auf der Weltkarte anklicken öffnet die Extras",

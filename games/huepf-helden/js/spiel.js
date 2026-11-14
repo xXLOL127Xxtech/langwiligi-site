@@ -356,6 +356,15 @@ function playPhysics(p, inp, dt) {
   const r = moveBody(p, dt, true);
   p.onGround = r.d; p.onPlat = null;
   if (!r.d && p.vy >= 0) platformCollide(p, prevBottom);
+  // Stampfen endet auch auf Plattformen und Eisblöcken (sonst bleibt die Figur im Stampfen hängen)
+  if (p.pounding && p.poundT <= 0 && p.onPlat) {
+    const s = p.onPlat;
+    p.pounding = false; SFX.pound(); shake(5); p.sx = 1.35; p.sy = .65;
+    if (s.mode === 'ice') {   // Eisblock zerspringt, die Figur federt hoch
+      s.timer = 0; s.shatter = true; p.onPlat = null; p.onGround = false; p.vy = p.inp.j ? -840 : -520; p.canDouble = true; p.whirlUsed = false;
+      if (s.kind) { p.ls.stomps++; addScore(p, 200, s.bx, s.by - s.h - 10); }
+    }
+  }
   p.wallSlide = false;
   if (r.l || r.r) {
     const wd = r.r ? 1 : -1;
