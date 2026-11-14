@@ -218,6 +218,7 @@ const SFX = {
   ice() { tone(N(96), 0.12, { type: 'sine', vol: 0.12, slide: 0.6 }); tone(N(100), 0.18, { type: 'triangle', vol: 0.06, delay: 0.04 }); },
   whirl() { tone(300, 0.5, { type: 'triangle', vol: 0.16, slide: 3, vib: 40 }); noise(0.4, { vol: 0.12, freq: 2000, slide: 2 }); },
   cannon() { tone(80, 0.3, { type: 'sine', vol: 0.4, slide: 0.5 }); noise(0.25, { vol: 0.3, freq: 500, type: 'lowpass' }); },
+  pipe() { [0, 1, 2].forEach(i => tone(300 - i * 70, 0.12, { type: 'square', vol: 0.09, delay: i * 0.11, slide: .7 })); },
   secret() { [79, 83, 86, 91, 86, 95].forEach((n, i) => tone(N(n), 0.2, { type: 'triangle', vol: 0.14, delay: i * 0.07 })); },
   hurry() { [84, 88, 91, 84, 88, 91].forEach((n, i) => tone(N(n), 0.1, { type: 'square', vol: 0.06, delay: i * 0.09 })); },
   thunder() { noise(1.6, { vol: 0.35, freq: 140, type: 'lowpass', slide: 0.5 }); },

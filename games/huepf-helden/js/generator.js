@@ -3,7 +3,7 @@
 //  Level-Generator: baut aus Bausteinen ein Level (gleicher Seed = gleiches Level)
 // =====================================================================
 const SEG_WEIGHTS = {
-  base:   { flat: 2, blocks: 4, pit: 3, step: 2, pillars: 2, stairs: 1.4, islands: 2, moving: 1.2, falling: .8, spring: .8, bees: .8, spikes: .8, group: 1.8, hidden: .5, urnen: .9, kanonen: .8, wichte: .8, pool: .7 },
+  base:   { flat: 2, blocks: 4, pit: 3, step: 2, pillars: 2, stairs: 1.4, islands: 2, moving: 1.2, falling: .8, spring: .8, bees: .8, spikes: .8, group: 1.8, hidden: .5, urnen: .9, kanonen: .8, wichte: .8, pool: .7, rohre: .9, doppel: .5, etagen: .4 },
   wiese:  { urnen: 1.2, pool: 1.2 },
   strand: { urnen: 1.4, islands: 2.5, bees: .4, pool: 2 },
   hoehle: { tunnel: 2.2, spikes: 1.3, spring: .3, urnen: 1.2, pool: 1 },
@@ -22,27 +22,42 @@ const SEG_WEIGHTS = {
   zucker: { islands: 2.6, spring: 2.2, group: 2, bees: 1.2, pillars: 2.6, moving: 1.6, falling: 1.2, stairs: 1.8, pool: .8, spikes: .3, kanonen: .5, urnen: .6 },
   himmel: { islands: 5, moving: 3, falling: 2.2, pit: 3.5, flat: 1, pillars: 1.4, step: 1, stairs: .6, spikes: .3, spring: 1.4, urnen: 0, kanonen: 1 },
 };
+// Bausteine für die Untergrund-Räume hinter den Rohren
+const ROOM_WEIGHTS = { flat: .6, blocks: 2, pit: 2, step: 2, pillars: 2, stairs: 1.2, islands: 1.4, moving: 1, falling: 1, spikes: 1.6, group: 1.5, tunnel: 1.6, wichte: .8, rohre: 1.2, doppel: 1.6, etagen: 1.6, feuerkette: .9 };
 const WATER_WEIGHTS = { wflat: 2, wrocks: 3, wpillars: 2.5, wfish: 2.5, wjelly: 1.6, wurchin: 1.6, wblocks: 2, wpit: 1.4 };
 
-function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, tunnel = false, bossLook = 1 }) {
+function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, tunnel = false, bossLook = 1, num = 1 }) {
   const th = THEMES[themeKey];
   const rng = makeRng(seed);
-  const H = 15, MAXW = 700;
+  const H = 15, MAXW = 900;
+  // Ab Level 3 (und in Geheimleveln) sind die Level länger und verschachtelter
+  const stufe = kind === 'normal' && num >= 3 ? 1 : 0;
   const g = new Uint8Array(MAXW * H);
   const L = {
     w: MAXW, h: H, g, theme: th, themeKey, seed, kind, ents: [], deko: [], content: new Map(), stars: [],
-    spawn: null, checkpoint: null, arena: null, water: th.water ? 2 * T : null, pools: [],
-    time: kind === 'burg' || kind === 'final' || kind === 'stern' ? 400 : 300,
+    spawn: null, checkpoint: null, arena: null, water: th.water ? 2 * T : null, pools: [], pipes: [], zones: [],
+    time: kind === 'burg' || kind === 'final' || kind === 'stern' ? 400 : stufe ? 500 : 320,
   };
-  const ceil = th.ceiling ? 2 : 0;
-  const GY_MIN = th.ceiling ? 9 : 8, GY_MAX = 12;
+  let ceil = th.ceiling ? 2 : 0;
+  let GY_MIN = th.ceiling ? 9 : 8, inRoom = false;
+  const GY_MAX = 12;
   const set = (tx, ty, c) => { if (tx >= 0 && tx < MAXW && ty >= 0 && ty < H) g[ty * MAXW + tx] = c; };
   const get = (tx, ty) => (tx >= 0 && tx < MAXW && ty >= 0 && ty < H) ? g[ty * MAXW + tx] : 0;
   const ground = (tx, gy) => { for (let ty = gy; ty < H; ty++) set(tx, ty, TILE.G); };
   const pit = tx => { if (th.lava) { set(tx, H - 2, TILE.V); set(tx, H - 1, TILE.V); } };
   const coin = (tx, ty) => { if (ty > ceil && get(tx, ty) === 0) set(tx, ty, TILE.C); };
   const content = (tx, ty, what) => L.content.set(ty * MAXW + tx, what);
-  const starSpot = (tx, ty, w = 1) => { if (ty > ceil) L.stars.push({ tx, ty, w }); };
+  let roomThird;
+  const starSpot = (tx, ty, w = 1, third) => { if (ty > ceil) L.stars.push({ tx, ty, w, third: third !== undefined ? third : inRoom ? roomThird : undefined }); };
+  // Rohr: 2 Kacheln breit. Stehend (Öffnung oben) oder hängend (Öffnung unten). Mit «to» kann man hineinsteigen.
+  const pipe = (tx, top, opt = {}) => {
+    const h = opt.h || 2;
+    for (let ty = top; ty < top + h; ty++) { set(tx, ty, TILE.O); set(tx + 1, ty, TILE.O); }
+    const q = Object.assign({ tx, ty: top, h, x: (tx + 1) * T, y: top * T }, opt);
+    L.pipes.push(q);
+    return q;
+  };
+  const rooms = [];
   const enemy = (k, tx, ty, extra) => L.ents.push(Object.assign({ type: 'enemy', kind: k, x: tx * T + T / 2, y: ty * T }, extra));
   const kinds = th.enemies;
   const pickEnemy = () => rng.weighted(kinds);
@@ -57,6 +72,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   const SOLID_GEN = c => c === TILE.G || c === TILE.S;
   const deko = (k, x, y, extra = {}) => L.deko.push(Object.assign({ kind: k, x, y, h: rng.f(), s: 0.85 + rng.f() * 0.3 }, extra));
   const decorate = (x0, x1, gy) => {
+    if (inRoom) return;
     for (let tx = x0; tx < x1; tx++) {
       if (th.deko.back.length && rng.chance(.12)) deko(rng.pick(th.deko.back), tx * T + rng.f() * T, gy * T, { back: true, s: 0.8 + rng.f() * .5 });
       if (th.deko.front.length && rng.chance(.16)) {
@@ -222,7 +238,7 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     },
     spring(x, gy) {
       const hgt = 5;
-      if (gy - hgt - 4 <= ceil || L.secretX) return S.blocks(x, gy);
+      if (gy - hgt - 4 <= ceil || L.secretX || inRoom) return S.blocks(x, gy);
       x = flatRun(x, 4, gy);
       L.ents.push({ type: 'feder', x: (x - 2) * T + T / 2, y: gy * T });
       const plen = rng.i(4, 7);
@@ -267,6 +283,56 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
       flatRun(x, len, gy);
       const hx = x + rng.i(2, len - 2);
       set(hx, gy - 4, TILE.H); content(hx, gy - 4, 'life');
+      return [x + len, gy];
+    },
+    // Rohrfeld: verschieden hohe Rohre, dazwischen eingesperrte Gegner
+    rohre(x, gy) {
+      const n = rng.i(2, 3 + stufe);
+      x = flatRun(x, 3, gy);
+      for (let k = 0; k < n; k++) {
+        const h = clamp(rng.i(1, 3), 1, Math.max(1, gy - ceil - 5));
+        flatRun(x, 2, gy, { noDeko: true });
+        pipe(x, gy - h, { h });
+        if (rng.chance(.55)) { coin(x, gy - h - 2); coin(x + 1, gy - h - 2); }
+        x += 2;
+        const gap = rng.i(3, 4);
+        flatRun(x, gap, gy, { noDeko: true });
+        if (k < n - 1 && rng.chance(.5 + diff * .4)) groundEnemy(x + 1, gy);
+        x += gap;
+      }
+      return [x, gy];
+    },
+    // Zwei Stockwerke: oben Münzen und Blöcke, unten Gegner und Stacheln
+    doppel(x, gy) {
+      const len = rng.i(16, 20), up = gy - 4;
+      flatRun(x, len, gy);
+      set(x + 1, gy - 1, TILE.S); set(x + 2, gy - 1, TILE.S); set(x + 2, gy - 2, TILE.S);
+      for (let i = 4; i < len - 3; i++) { set(x + i, up, TILE.P); if (i % 2 === 0) coin(x + i, up - 1); }
+      const mx = x + Math.floor(len / 2);
+      if (up - 4 > ceil) { set(mx - 1, up - 4, TILE.B); set(mx, up - 4, TILE.Q); content(mx, up - 4, blockContent()); set(mx + 1, up - 4, TILE.B); starSpot(mx + 2, up - 5, 2); }
+      else starSpot(x + len - 5, up - 2, 2);
+      if (up - 1 > ceil + 1 && rng.chance(.4 + diff * .4)) enemy('kaefer', x + len - 6, up);
+      set(mx, gy - 1, TILE.X); set(mx + 1, gy - 1, TILE.X);
+      const n = nEnemies(1, 2);
+      for (let i = 0; i < n; i++) groundEnemy(x + 5 + i * 3 + (x + 5 + i * 3 >= mx - 1 ? 4 : 0), gy);
+      return [x + len, gy];
+    },
+    // Etagen: Plattformen wie eine Treppe nach oben, zuoberst wartet eine Belohnung
+    etagen(x, gy) {
+      const len = 15;
+      flatRun(x, len, gy);
+      const rows = [gy - 3, gy - 6, gy - 9].filter(r => r > ceil + 2);
+      let px = x + 2;
+      rows.forEach((r, i) => {
+        px = x + 2 + i * 4;
+        for (let j = 0; j < 3; j++) set(px + j, r, TILE.P);
+        coin(px, r - 1); coin(px + 1, r - 1); coin(px + 2, r - 1);
+      });
+      const top = rows[rows.length - 1];
+      if (top - 3 > ceil) { set(px + 4, top - 1, TILE.Q); content(px + 4, top - 1, rng.chance(.5) ? 'power' : blockContent()); }
+      starSpot(px + 1, top - 3, 2);
+      if (rng.chance(.5 + diff * .4)) groundEnemy(x + 6, gy);
+      if (rng.chance(.3 + diff * .5)) groundEnemy(x + 11, gy);
       return [x + len, gy];
     },
     // Wasserstelle: Becken im Boden, in dem man schwimmt (Sprungtaste = Schwimmzug)
@@ -444,8 +510,40 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     },
   };
 
-  // ---------------- Geheimer Ausgang ----------------
-  // Brüchiger Boden -> darunter eine Sternfeder -> hoch oben ein versteckter Weg zum roten Ziel
+  // ---------------- Rohre in den Untergrund ----------------
+  // Rückkehr-Rohr im Hauptlevel: hier kommt man aus dem Untergrund wieder hoch
+  function returnPipe(x, gy) {
+    flatRun(x, 2, gy, { noDeko: true });
+    return pipe(x, gy - 2, { h: 2 });
+  }
+  // Bonus-Rohr: sichtbar, führt in einen kleinen Schatzraum
+  function bonusPipe(x, gy) {
+    x = flatRun(x, 3, gy);
+    flatRun(x, 2, gy, { noDeko: true });
+    const entry = pipe(x, gy - 2, { h: 2 });
+    const third = Math.min(2, Math.floor(x / (target / 3)));
+    x = flatRun(x + 2, rng.i(7, 10), gy);
+    if (rng.chance(.5 + diff * .4)) groundEnemy(x - 3, gy);
+    const ret = returnPipe(x, gy);
+    rooms.push({ kind: 'bonus', entry, ret, third });
+    x = flatRun(x + 2, 3, gy);
+    return [x, gy];
+  }
+  // Untergrund-Gang: Eine Felswand versperrt den Weg, weiter geht es nur durch das Rohr
+  function gangPipe(x, gy) {
+    x = flatRun(x, 4, gy);
+    flatRun(x, 2, gy, { noDeko: true });
+    const entry = pipe(x, gy - 2, { h: 2 });
+    x = flatRun(x + 2, 3, gy, { noDeko: true });
+    for (let i = 0; i < 6; i++) for (let ty = 0; ty < H; ty++) set(x + i, ty, TILE.G);
+    x = flatRun(x + 6, 2, gy, { noDeko: true });
+    const ret = returnPipe(x, gy);
+    rooms.push({ kind: 'gang', entry, ret, third: 2 });
+    x = flatRun(x + 2, 4, gy);
+    return [x, gy];
+  }
+  // Geheimweg: brüchiger Boden -> darunter ein verstecktes Rohr -> Untergrund mit der roten Geheimfahne.
+  // Danach geht es durch ein Rohr zurück ins Level und weiter bis zum echten Ziel.
   function secretPocket(x, gy) {
     const ng = Math.min(gy, 11);
     x = flatRun(x, 3, ng, { noDeko: true });
@@ -453,29 +551,64 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     flatRun(x, 2, ng, { noDeko: true });
     set(px, ng, TILE.R); set(px + 1, ng, TILE.R);
     for (const tx of [px, px + 1]) { set(tx, ng + 1, 0); set(tx, ng + 2, 0); }
-    const springY = (ng + 3) * T;
-    const uRow = th.ceiling ? 5 : 2;
-    const need = springY - uRow * T + 1.6 * T;
-    L.ents.push({ type: 'feder', superf: true, x: (px + 1) * T, y: springY, power: Math.sqrt(2 * 2150 * need) });
-    L.secretX = px; L.secretRow = uRow;
-    x = flatRun(x + 2, 4, ng);
+    const entry = pipe(px, ng + 3, { h: H - ng - 3, hidden: true });
+    L.secretX = px;
+    x = flatRun(x + 2, rng.i(5, 7), ng);
+    const ret = returnPipe(x, ng);
+    rooms.push({ kind: 'geheim', entry, ret, third: 1 });
+    x = flatRun(x + 2, 3, ng);
     return [x, ng];
   }
-  function secretRoute(endX) {
-    const sx = L.secretX, uRow = L.secretRow;
-    for (let tx = sx - 3; tx <= endX; tx++) for (let ty = ceil; ty <= uRow + 1; ty++) { const c = get(tx, ty); if (c !== 0) set(tx, ty, 0); }
-    for (let tx = sx - 2; tx <= sx + 3; tx++) set(tx, uRow, TILE.P);
-    let px = sx + 4 + rng.i(1, 2);
-    while (px < endX - 8) {
-      const pw = rng.i(3, 5), row = uRow + (rng.chance(.3) ? 1 : 0);
-      for (let i = 0; i < pw; i++) { set(px + i, row, TILE.P); coin(px + i, row - 1); }
-      if (rng.chance(.35)) enemy(kinds.hummel ? 'hummel' : 'flugkaefer', px + pw, row - 1);
-      px += pw + rng.i(1, 2);
+  // Raum im Untergrund bauen (liegt rechts hinter dem Hauptlevel, die Kamera bleibt im Raum)
+  function buildRoom(r, from) {
+    const w = r.kind === 'bonus' ? 34 : r.kind === 'geheim' ? 66 : 84;
+    const x0 = Math.ceil((from + 2) / 8) * 8, x1 = x0 + w;
+    if (x1 + 4 >= MAXW) return from;
+    const ceil0 = ceil, gmin0 = GY_MIN;
+    ceil = 2; GY_MIN = 9; inRoom = true; roomThird = r.third;
+    for (let tx = x0; tx < x1; tx++) { set(tx, 0, TILE.G); set(tx, 1, TILE.G); }
+    for (const tx of [x0, x0 + 1, x1 - 2, x1 - 1]) for (let ty = 0; ty < H; ty++) set(tx, ty, TILE.G);
+    let gy = 12, cx = flatRun(x0 + 2, 7, gy);
+    pipe(x0 + 3, 2, { h: 2, hang: true });
+    const z = L.zones.length;
+    L.zones.push({ x0: x0 * T, x1: x1 * T, kind: r.kind });
+    r.entry.to = { z, x: (x0 + 4) * T, y: 4 * T, dir: 'down' };
+    if (r.kind === 'bonus') {
+      const a = cx;
+      cx = flatRun(cx, 17, gy);
+      for (let i = 1; i < 16; i++) { coin(a + i, gy - 1); if (i % 2) coin(a + i, gy - 2); }
+      for (let i = 3; i < 13; i++) { set(a + i, gy - 4, TILE.P); coin(a + i, gy - 5); }
+      set(a + 7, gy - 8, TILE.B); set(a + 8, gy - 8, TILE.Q); content(a + 8, gy - 8, 'power'); set(a + 9, gy - 8, TILE.B);
+      if (rng.chance(.6)) starSpot(a + 14, gy - 6, 3, r.third);
+    } else {
+      const weights = Object.assign({}, ROOM_WEIGHTS);
+      if (th.lava) weights.lavapit = 2;
+      if (diff < .3) delete weights.feuerkette;
+      let last = '';
+      while (cx < x1 - (r.kind === 'geheim' ? 40 : 34)) {
+        let k;
+        do { k = rng.weighted(weights); } while (k === last);
+        last = k;
+        [cx, gy] = S[k](cx, gy);
+      }
+      if (r.kind === 'geheim') {
+        // Podest mit der roten Geheimfahne
+        cx = flatRun(cx, 3, gy);
+        const py = Math.max(GY_MIN - 1, gy - 2);
+        for (let i = 0; i < 2; i++) { ground(cx + i, gy); for (let h = 1; h <= (gy - py) * (i + 1) / 2; h++) set(cx + i, gy - h, TILE.S); }
+        cx += 2;
+        for (let i = 0; i < 5; i++) ground(cx + i, py);
+        L.ents.push({ type: 'geheimfahne', x: (cx + 2) * T + T / 2, y: py * T });
+        for (let i = 0; i < 5; i++) if (i !== 2) coin(cx + i, py - 3);
+        cx += 5; gy = py;
+      }
     }
-    const lx = Math.max(px, endX - 6);
-    for (let tx = lx; tx < lx + 6; tx++) { set(tx, uRow, TILE.G); set(tx, uRow + 1, TILE.G); }
-    L.ents.push({ type: 'ziel', secret: true, x: (lx + 3) * T + T / 2, y: uRow * T, top: Math.max(ceil + .5, uRow - 6) * T });
-    starSpot(lx + 1, uRow - 2, 3);
+    while (x1 - 9 - cx > 9) [cx, gy] = S.flat(cx, gy);
+    flatRun(cx, x1 - 2 - cx, gy, { noDeko: true });
+    const exit = pipe(x1 - 7, gy - 2, { h: 2 });
+    exit.to = { z: -1, x: r.ret.x, y: r.ret.y, dir: 'up' };
+    ceil = ceil0; GY_MIN = gmin0; inRoom = false;
+    return x1;
   }
 
   // ---------------- Versteckter Tunnel (Toad-Haus) ----------------
@@ -526,7 +659,11 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   L.spawn = { x: 3 * T, y: gy * T };
   if (water) [x, gy] = WS.wblocks(x, gy); else [x, gy] = S.blocks(x, gy, true);
   const boss = kind === 'turm' ? 'krax' : kind === 'burg' || kind === 'stern' ? 'koloss' : kind === 'final' ? 'morvax' : null;
-  const target = (kind === 'turm' ? 120 : kind === 'normal' ? 165 : 190) + Math.round(diff * 50) + (boss ? -20 : 0);
+  const target = Math.round(((kind === 'turm' ? 120 : kind === 'normal' ? 165 : 190) + Math.round(diff * 50) + (boss ? -20 : 0)) * (stufe ? 1.25 : 1));
+  if (stufe && !water) { weights.rohre *= 1.6; weights.doppel = (weights.doppel || .5) * 4; weights.etagen = (weights.etagen || .4) * 4; weights.flat *= .5; }
+  const canPipe = kind === 'normal' && !water;
+  const wantBonus = canPipe && (stufe === 1 || rng.chance(.6)), wantGang = canPipe && stufe === 1;
+  let bonusDone = false, gangDone = false;
   let last = 'blocks';
   while (x < target) {
     if (!L.checkpoint && x > target * .48) {
@@ -536,6 +673,8 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
       x = flatRun(x, 4, gy);
       continue;
     }
+    if (wantBonus && !bonusDone && x > target * .18) { bonusDone = true; [x, gy] = bonusPipe(x, gy); continue; }
+    if (wantGang && !gangDone && x > target * .74) { gangDone = true; [x, gy] = gangPipe(x, gy); continue; }
     if (tunnel && !water && !L.tunnelX && x > target * .3) { [x, gy] = toadTunnel(x, gy); continue; }
     if (secret && !water && !L.secretX && x > target * .56) { [x, gy] = secretPocket(x, gy); continue; }
     let k;
@@ -549,7 +688,6 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     x = arena(x, boss);
   } else {
     x = flatRun(x, 4, gy);
-    if (L.secretX) secretRoute(x - 2);
     const n = water ? 0 : Math.min(5, gy - ceil - 5);
     for (let i = 0; i < n; i++) { ground(x + i, gy); for (let h = 0; h <= i; h++) set(x + i, gy - 1 - h, TILE.S); }
     x += n;
@@ -559,9 +697,17 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
     x = flatRun(x, 16, gy, { noDeko: true });
     L.deko.push({ kind: 'tor', x: (x - 8) * T, y: gy * T, dyn: true, s: 1, h: .5 });
   }
+  // Hauptlevel endet hier; dahinter (unsichtbar) liegen die Untergrund-Räume
+  const mainW = x;
   if (th.ceiling) for (let tx = 0; tx < x; tx++) for (let ty = 0; ty < ceil; ty++) set(tx, ty, TILE.G);
   if (themeKey === 'burg' || themeKey === 'turm') for (let tx = 6; tx < x; tx += rng.i(6, 12)) L.deko.push({ kind: 'kette', x: tx * T + T / 2, y: ceil * T, back: true, s: 1, len: rng.i(2, 4) * T, h: .5 });
   for (const d of L.deko) if (d.kind === 'kette') d.y = ceil * T;
+
+  for (let ty = 0; ty < H; ty++) { set(mainW, ty, TILE.S); set(mainW + 1, ty, TILE.S); }
+  if (rooms.length) { for (const r of rooms) x = buildRoom(r, x); x = Math.min(MAXW, x + 1); }
+  L.pipes = L.pipes.filter(q => !q.hidden || q.to);
+  L.mainW = mainW;
+  const under = th.ceiling ? th : th.lava ? THEMES.burg : THEMES.hoehle;
 
   // Zuschneiden
   const W = x;
@@ -570,19 +716,25 @@ function generateLevel({ themeKey, seed, diff, kind = 'normal', secret = false, 
   const content2 = new Map();
   for (const [k, v] of L.content) { const ty = Math.floor(k / MAXW), tx = k % MAXW; if (tx < W && (g2[ty * W + tx] === TILE.Q || g2[ty * W + tx] === TILE.B || g2[ty * W + tx] === TILE.H)) content2.set(ty * W + tx, v); }
   L.w = W; L.g = g2; L.content = content2;
+  L.under = Object.create(L); L.under.theme = under;
 
   // Sternmünzen: je eine pro Drittel, versteckter Weg bevorzugt
-  const free = s => { const c = g2[s.ty * W + s.tx]; return s.tx > 12 && s.tx < W - 4 && s.ty > ceil && (c === 0 || c === TILE.C); };
+  const free = s => { const c = g2[s.ty * W + s.tx]; return s.tx > 12 && (s.third !== undefined || s.tx < mainW - 4) && s.ty > ceil && (c === 0 || c === TILE.C); };
+  const thirdOf = s => s.third !== undefined ? s.third : s.tx >= mainW ? -1 : Math.min(2, Math.floor(s.tx * 3 / mainW));
   const picks = [];
   for (let k = 0; k < 3; k++) {
-    const cand = L.stars.filter(s => free(s) && s.tx >= W * k / 3 && s.tx < W * (k + 1) / 3 && !picks.includes(s));
+    const cand = L.stars.filter(s => free(s) && thirdOf(s) === k && !picks.includes(s));
     const best = cand.filter(s => s.w >= 3);
     let s = best.length ? best[0] : cand.length ? rng.pick(cand) : null;
     if (!s) {
-      const tx = Math.floor(W * (k + .5) / 3);
+      const tx = Math.floor(mainW * (k + .5) / 3);
       let top = ceil; while (top < H && g2[top * W + tx] === 0) top++;
       s = { tx, ty: clamp(top - 4, ceil + 1, H - 2) };
-      if (g2[s.ty * W + s.tx] !== 0 && g2[s.ty * W + s.tx] !== TILE.C) s.ty = ceil + 1;
+      // Stelle belegt: nächste freie Stelle über begehbarem Boden suchen
+      for (let d = 0; d < 40 && g2[s.ty * W + s.tx] !== 0 && g2[s.ty * W + s.tx] !== TILE.C; d++) {
+        const cx = clamp(tx + (d % 2 ? -1 : 1) * Math.ceil(d / 2), 13, mainW - 5);
+        for (let ty = H - 3; ty > ceil + 1; ty--) if (g2[ty * W + cx] === 0 && g2[(ty - 1) * W + cx] === 0 && g2[(ty + 1) * W + cx] === TILE.G) { s.tx = cx; s.ty = ty - 1; break; }
+      }
     }
     if (g2[s.ty * W + s.tx] === TILE.C) g2[s.ty * W + s.tx] = 0;
     picks.push(s);

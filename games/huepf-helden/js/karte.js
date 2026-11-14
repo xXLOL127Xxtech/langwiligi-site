@@ -121,6 +121,7 @@ const Karte = {
   },
   click(mx, my) {
     if (!this.view) return;
+    if (this.inBag(mx, my)) { SFX.select(); UI.openInventory(); return; }
     for (const d of [-1, 1]) { const a = this.arrowPos(d); if (Math.hypot(mx - a.x, my - a.y) < a.r + 12) { this.switchWorld(d); return; } }
     if (this.route.length) return;
     let best = null, bd = 34;
@@ -132,6 +133,7 @@ const Karte = {
     }
     if (best) this.goTo(best.id);
   },
+  inBag(mx, my) { const b = this.bagBtn; return !!b && mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; },
   visible(nd) {
     if (nd.type === 'start') return true;
     const W = this.W;
@@ -293,17 +295,23 @@ const Karte = {
     g.font = '22px ' + FONT; g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText('× ' + G.lives, rx - 258, 48);
     g.save(); g.translate(rx - 168, 40); g.scale(.55, .55); drawStarCoin(g, 0, 0, 0, false, true); g.restore();
     g.fillText(String(Prog.starsFree()), rx - 148, 48);
+    // Tasche: anklicken öffnet das Inventar
     const invN = Object.values(Prog.save.inv).reduce((a, b) => a + b, 0);
-    g.font = '13px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.8)'; g.textAlign = 'right';
-    g.fillText(`🎒 ${invN} Extras`, rx - 14, 38);
-    if (G.startPower) { g.fillStyle = '#7ef08a'; g.fillText('Bereit: ' + ITEM_INFO[G.startPower].name, rx - 14, 58); }
+    const bb = this.bagBtn = { x: rx - 116, y: 19, w: 108, h: 50 };
+    g.fillStyle = this.bagHover ? 'rgba(255,210,58,.38)' : 'rgba(255,210,58,.18)'; rr(g, bb.x, bb.y, bb.w, bb.h, 12); g.fill();
+    g.strokeStyle = this.bagHover ? '#fff' : '#ffd23a'; g.lineWidth = 2; g.stroke();
+    g.font = '22px system-ui, sans-serif'; g.fillStyle = '#fff'; g.textAlign = 'left'; g.fillText('🎒', bb.x + 8, bb.y + 28);
+    g.font = '20px ' + FONT; g.fillText('× ' + invN, bb.x + 42, bb.y + 27);
+    g.font = '11px system-ui, sans-serif'; g.textAlign = 'center';
+    if (G.startPower) { g.fillStyle = '#7ef08a'; g.fillText('Bereit: ' + ITEM_INFO[G.startPower].name, bb.x + bb.w / 2, bb.y + 43, bb.w - 8); }
+    else { g.fillStyle = 'rgba(255,255,255,.85)'; g.fillText('Extras öffnen', bb.x + bb.w / 2, bb.y + 43, bb.w - 8); }
     // Info unten
     const bw = Math.min(640, SW - 40), bx = SW / 2 - bw / 2, by = SH - 130;
     g.fillStyle = 'rgba(12,10,24,.78)'; rr(g, bx, by, bw, 112, 18); g.fill();
     g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1.5; g.stroke();
     let title = nd.title, sub = '';
     const r = Prog.save.done[nd.id];
-    if (nd.type === 'level') { title = nd.geheim ? `Geheimlevel ${this.W.n}` : `Level ${nd.title}`; sub = THEMES[nd.theme].name + (nd.secret ? ' · hier gibt es einen geheimen Ausgang' : '') + (r && r.c ? ' · geschafft' : ''); }
+    if (nd.type === 'level') { title = nd.geheim ? `Geheimlevel ${this.W.n}` : `Level ${nd.title}`; sub = THEMES[nd.theme].name + (nd.secret ? (r && r.s ? ' · Geheimweg gefunden' : ' · hier ist ein Geheimweg versteckt') : '') + (r && r.c ? ' · geschafft' : ''); }
     else if (nd.type === 'turm') { title = `Turm ${this.W.n}`; sub = 'Zwischenboss Panzerkäfer Krax · danach wird gespeichert'; }
     else if (nd.type === 'burg') { title = burgName(this.W.n); sub = spec.final ? 'Hier hält Morvax Prinzessin Lunara gefangen!' : spec.sternFinale ? 'Der Sternenkönig wartet – der letzte Kampf der Sternenwelt!' : spec.himmelFinale ? `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · der Kampf um das Himmelsreich` : `${(BOSS_LOOK[this.W.n] || BOSS_LOOK[1]).name} wartet · danach geht es in die nächste Welt`; }
     else if (nd.type === 'haus') sub = nd.variant === 'toad' ? 'Geheimer Tunnel entdeckt! Wählt eine Truhe mit Extras oder Leben' : nd.variant === 'rot' ? 'Findet Paare und gewinnt Extras fürs Inventar' : 'Schiesst auf Ballons und gewinnt Extraleben';
@@ -314,7 +322,7 @@ const Karte = {
     g.fillText(title, SW / 2, by + 34);
     g.font = '14px system-ui, sans-serif'; g.fillStyle = '#fff'; g.fillText(sub, SW / 2, by + 58);
     g.font = '12.5px system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.7)';
-    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Inventar: E · Welt: Pfeile am Rand · Menü: Esc', SW / 2, by + 90);
+    g.fillText('Laufen: Pfeile/WASD · Starten: Leertaste, Springen oder Klick · Extras: E oder Tasche anklicken · Welt: Pfeile am Rand · Menü: Esc', SW / 2, by + 90, bw - 24);
     if (this.msg) {
       const a = Math.min(1, this.msg.t * 3);
       g.globalAlpha = a;
@@ -370,4 +378,5 @@ const Karte = {
   },
 };
 modeHandlers.map = { update: dt => Karte.update(dt), render: dt => Karte.render(dt) };
+cv.addEventListener('mousemove', e => { const h = G.mode === 'map' && !UI.overlayOpen() && Karte.inBag(e.clientX, e.clientY); Karte.bagHover = h; cv.style.cursor = h ? 'pointer' : ''; });
 cv.addEventListener('click', e => { if (G.mode === 'map' && !UI.overlayOpen()) Karte.click(e.clientX, e.clientY); else if (G.mode === 'memory') Memory.click(e.clientX, e.clientY); else if (G.mode === 'ballon') Ballon.click(); else if (G.mode === 'toad') Toad.click(e.clientX, e.clientY); else if (G.mode === 'story') Story.next(); });

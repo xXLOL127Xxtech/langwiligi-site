@@ -410,7 +410,7 @@ function getCloudSprite() {
 // ---------------------------------------------------------------------
 //  Kacheln zeichnen (für den Zwischenspeicher pro Abschnitt)
 // ---------------------------------------------------------------------
-const TILE = { EMPTY: 0, G: 1, S: 2, B: 3, Q: 4, U: 5, H: 6, P: 7, X: 8, C: 9, V: 10, R: 11, K: 12 };
+const TILE = { EMPTY: 0, G: 1, S: 2, B: 3, Q: 4, U: 5, H: 6, P: 7, X: 8, C: 9, V: 10, R: 11, K: 12, O: 13 };
 function rr(g, x, y, w, h, r) {
   g.beginPath();
   if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
@@ -438,6 +438,7 @@ function paintChunk(g, L, x0, x1) {
     if (L.g[ty * L.w + tx] === TILE.G && !isG(tx, ty - 1)) paintTop(g, tx, ty, isG, th);
   }
   for (const d of L.deko) if (!d.back && !d.dyn && d.x > x0 - 200 && d.x < x1 + 200) paintDeko(g, d, th);
+  if (L.pipes) for (const q of L.pipes) if (q.x > x0 - 2 * T && q.x < x1 + 2 * T) paintPipe(g, q);
 }
 
 function paintGround(g, tx, ty, isG, th, body) {

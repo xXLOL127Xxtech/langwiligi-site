@@ -242,6 +242,50 @@ function drawCheckpoint(g, c, t) {
   g.restore();
 }
 
+// Rohr (stehend: Öffnung oben, hängend: Öffnung unten)
+function paintPipe(g, q) {
+  const x = q.tx * T, y = q.y, w = 2 * T, h = q.h * T;
+  const grd = g.createLinearGradient(x, 0, x + w, 0);
+  grd.addColorStop(0, '#2fa86a'); grd.addColorStop(.3, '#8ff0b0'); grd.addColorStop(.55, '#3fbf78'); grd.addColorStop(1, '#17683f');
+  g.fillStyle = grd; g.fillRect(x + 6, y, w - 12, h);
+  g.strokeStyle = OL; g.lineWidth = 2.4;
+  g.beginPath(); g.moveTo(x + 6, y); g.lineTo(x + 6, y + h); g.moveTo(x + w - 6, y); g.lineTo(x + w - 6, y + h); g.stroke();
+  g.fillStyle = 'rgba(0,0,0,.16)'; g.fillRect(x + w - 26, y, 20, h);
+  const ly = q.hang ? y + h - 22 : y;
+  rr(g, x + 1, ly, w - 2, 22, 5); fs(g, grd, 2.4);
+  g.fillStyle = 'rgba(255,255,255,.4)'; rr(g, x + 10, ly + 4, 10, 14, 3); g.fill();
+  g.fillStyle = '#0c2a1a'; ell(g, x + T, q.hang ? y + h - 1 : y + 2, T - 10, 4); g.fill();
+}
+// Pfeil über einem Rohr, in das man steigen kann
+function drawPipeHint(g, q, t) {
+  const y = q.y - 30 + Math.sin(t * 5) * 6;
+  g.save(); g.translate(q.x, y);
+  g.beginPath(); g.moveTo(-8, -22); g.lineTo(8, -22); g.lineTo(8, -6); g.lineTo(18, -6); g.lineTo(0, 12); g.lineTo(-18, -6); g.lineTo(-8, -6); g.closePath();
+  fs(g, '#ffd23a', 2.4);
+  g.restore();
+}
+// Rote Geheimfahne im Untergrund: öffnet den Geheimweg auf der Karte
+function drawSecretFlag(g, f, t) {
+  const top = f.y - 150;
+  g.save();
+  rr(g, f.x - 22, f.y - 16, 44, 16, 5); fs(g, '#5a5a6a', 2.4);
+  const grd = g.createLinearGradient(f.x - 4, 0, f.x + 4, 0); grd.addColorStop(0, '#ffffff'); grd.addColorStop(1, '#9aa0b8');
+  rr(g, f.x - 4, top, 8, 136, 4); fs(g, grd, 2);
+  if (!f.got) {
+    const by = top - 16 + Math.sin(t * 3) * 4;
+    const gl = g.createRadialGradient(f.x, by, 4, f.x, by, 46);
+    gl.addColorStop(0, 'rgba(255,90,90,.7)'); gl.addColorStop(1, 'rgba(255,90,90,0)');
+    g.fillStyle = gl; g.beginPath(); g.arc(f.x, by, 46, 0, TAU); g.fill();
+    g.save(); g.translate(f.x, by); g.rotate(t * .8); starPath(g, 0, 0, 17, 7.5); fs(g, radial(g, 0, 0, 18, '#ffffff', '#ff7a7a', '#c01a2a'), 2); g.restore();
+  }
+  const fy = f.got ? top + 8 + (1 - Math.min(1, (f.rise || 1))) * 80 : f.y - 62;
+  const wv = Math.sin(t * 6) * 3;
+  g.beginPath(); g.moveTo(f.x + 4, fy); g.lineTo(f.x + 50, fy + 14 + wv); g.lineTo(f.x + 4, fy + 30);
+  fs(g, f.got ? '#e0283a' : '#8a4a52', 2);
+  g.fillStyle = '#ffffff'; starPath(g, f.x + 20, fy + 15 + wv * .5, 5.5, 2.4); g.fill();
+  g.restore();
+}
+
 // Zielmast (normal: blau mit Stern; geheim: rot)
 function drawGoal(g, z, t) {
   const top = z.top;

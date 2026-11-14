@@ -213,7 +213,7 @@ UI.playNode = nd => {
   G.starGot = [false, false, false];
   const r = Prog.save.done[nd.id];
   G.starPrev = r ? r.stars.slice() : [0, 0, 0];
-  G.checkReached = false;
+  G.checkReached = false; G.secretNew = false;
   for (const p of G.players) { p.ls = newStats(); if (p.state !== 'out') p.state = 'play'; }
   startLevel();
   updatePauseKnopf();
@@ -258,7 +258,7 @@ UI.levelClear = how => {
   const secretBefore = Prog.save.done[nd.id] && Prog.save.done[nd.id].s;
   Prog.levelDone(nd.id, how === 'secret' ? 'secret' : 'normal', G.starGot);
   Rang.melden($('ergRang'));
-  UI.after = { nd, how, newSecret: how === 'secret' && !secretBefore, newW9: !wasW9 && Prog.save.unlocked.includes(9), newWorlds: Prog.save.unlocked.filter(w => !unlockedBefore.includes(w) && w !== 9) };
+  UI.after = { nd, how, newSecret: G.secretNew || how === 'secret' && !secretBefore, newW9: !wasW9 && Prog.save.unlocked.includes(9), newWorlds: Prog.save.unlocked.filter(w => !unlockedBefore.includes(w) && w !== 9) };
   UI.autosave();
   setTimeout(() => {
     const aw = awardsFor(G.players, 'ls');
