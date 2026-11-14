@@ -4,7 +4,7 @@
 // =====================================================================
 // Jede Welt: Hauptweg Start → 1 → 2 → 3 → Turm → 4 → 5 → Burg
 //   nach Level 2: rotes Bonushaus (Memory)
-//   Level 1, 3 und 5 haben je einen geheimen Ausgang → Geheimlevel → Haus bzw. Kanone
+//   Level 1, 3 und 5 haben je einen versteckten Geheimweg (Rohr unter brüchigem Boden → rote Fahne) → Geheimlevel → Haus bzw. Kanone
 //   nach Level 4: Sternmünzen-Tor → grünes Bonushaus (Ballons)
 const WORLD_SPECS = [
   { name: 'Sonnenwiese', map: 'wiese', themes: ['wiese', 'wiese', 'hoehle', 'wiese', 'wiese'], geheim: 'wiese', burg: 'burg', warp: 3, gate: 5,
@@ -180,6 +180,8 @@ function loadSlot(i) {
   const s = store('spielstand-' + i);
   if (!s || s.v !== 2) return null;
   if (!s.toad) s.toad = {};
+  // Früher öffnete der geheime Ausgang nur den Geheimweg: solche Level gelten jetzt auch als geschafft
+  for (const k in s.done) if (s.done[k].s && !s.done[k].c) s.done[k].c = 1;
   applyUnlocks(s);
   return s;
 }

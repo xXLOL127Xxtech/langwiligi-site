@@ -1,6 +1,46 @@
 [
 {
 "d":"2026-11-14",
+"z":"13:20",
+"a":"Hüpf-Helden",
+"t":"Tasche auf der Weltkarte anklicken öffnet die Extras",
+"tag":"Update",
+"k":"Oberfläche",
+"pr":null,
+"b":"quirky-babbage-ae0dkg"
+},
+{
+"d":"2026-11-14",
+"z":"13:15",
+"a":"Hüpf-Helden",
+"t":"Ziel zählt auf jeder Höhe, niemand fliegt mehr über die Zielfahne hinaus",
+"tag":"Update",
+"k":"Fehlerbehebung",
+"pr":null,
+"b":"quirky-babbage-ae0dkg"
+},
+{
+"d":"2026-11-14",
+"z":"13:10",
+"a":"Hüpf-Helden",
+"t":"Geheimweg: verstecktes Rohr zur roten Fahne, das Level läuft weiter bis zum Ziel und öffnet beide Wege",
+"tag":"Update",
+"k":"Spielmechanik",
+"pr":null,
+"b":"quirky-babbage-ae0dkg"
+},
+{
+"d":"2026-11-14",
+"z":"13:05",
+"a":"Hüpf-Helden",
+"t":"Rohre in den Untergrund, längere und verschachteltere Level ab Level 3",
+"tag":"Neu",
+"k":"Spielmechanik",
+"pr":null,
+"b":"quirky-babbage-ae0dkg"
+},
+{
+"d":"2026-11-14",
 "z":"13:00",
 "a":"Startseite",
 "t":"Baustellen-Banner kleiner; jetzt auf Faust Duell und Festungssturm statt Kronenwacht, Bubble Rivals, Dreh und Gewinn, Tic Tac Turbo",

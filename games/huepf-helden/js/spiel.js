@@ -13,7 +13,7 @@ const PH = {
   jump: 890, jumpRun: .12, coyote: .1, buffer: .13,
 };
 const SOLID = new Uint8Array(16);
-SOLID[TILE.G] = SOLID[TILE.S] = SOLID[TILE.B] = SOLID[TILE.Q] = SOLID[TILE.U] = SOLID[TILE.X] = SOLID[TILE.R] = SOLID[TILE.K] = 1;
+SOLID[TILE.G] = SOLID[TILE.S] = SOLID[TILE.B] = SOLID[TILE.Q] = SOLID[TILE.U] = SOLID[TILE.X] = SOLID[TILE.R] = SOLID[TILE.K] = SOLID[TILE.O] = 1;
 const NOINPUT = { l: 0, r: 0, j: false, jP: false, d: false, dP: false, a: false, aP: false };
 
 const G = {
@@ -23,7 +23,7 @@ const G = {
   lives: 5, node: null, diffSet: 'normal', starGot: [false, false, false], checkReached: false,
   goalTimer: -1, goalHow: 'normal', introT: 0, wipeT: -1, arenaLocked: false, solo: true, totalJumps: 0,
   bg: null, ambient: [], clouds: [], time: 300, timeAcc: 0, hurry: false, hitstop: 0, flash: 0, startPower: null,
-  levelDiffNow: .3,
+  levelDiffNow: .3, pipes: [], flags: [], zone: null, pipeAnim: null, pipeFade: 0, secretNew: false,
 };
 
 // ---------------------------------------------------------------------
@@ -54,7 +54,7 @@ function getChunk(i) {
   c.width = Math.ceil((CHW + CPAD) * cs); c.height = Math.ceil(L.h * T * cs);
   const g = c.getContext('2d');
   g.scale(cs, cs); g.translate(-i * CHW, 0);
-  paintChunk(g, L, i * CHW, i * CHW + CHW + CPAD);
+  paintChunk(g, L.under && i * CHW >= L.mainW * T ? L.under : L, i * CHW, i * CHW + CHW + CPAD);
   e = { c, cs, used: ++chunkTick };
   chunkCache.set(i, e);
   return e;
@@ -203,7 +203,7 @@ function die(p, fell) {
   if (fell && G.L.theme.lava) for (let i = 0; i < 12; i++) part({ x: p.x + (Math.random() - .5) * 30, y: (G.L.h - 2) * T, vx: (Math.random() - .5) * 200, vy: -200 - Math.random() * 400, grav: 1200, life: .8, size: 6, color: '#ffb02a', kind: 'ember' });
 }
 function afterDeath(p) {
-  const alive = G.players.filter(q => q.state === 'play' || q.state === 'goal');
+  const alive = G.players.filter(q => q.state === 'play' || q.state === 'goal' || q.state === 'pipe');
   if (G.lives < 0 && alive.length) { p.state = 'out'; G.lives = 0; return; }
   if (alive.length && !G.solo) { toBubble(p); return; }
   p.state = 'wait';
@@ -879,7 +879,7 @@ function updateEnemy(e, dt) {
   }
   if (e.y > L.h * T + 100) e.remove = true;
   if (L.theme.lava && !INVULN[e.kind] && e.y > (L.h - 2) * T + 10) e.remove = true;
-  if (G.mode !== 'attract' && e.x < cam.cx - cam.vw / 2 - 30 * T) e.remove = true;
+  if (G.mode !== 'attract' && !G.zone && !G.pipeAnim && e.x < cam.cx - cam.vw / 2 - 30 * T) e.remove = true;
 }
 function platformCollideEnemy(e) {
   if (e.vy < 0) return;
@@ -1340,6 +1340,7 @@ function bossOrb(p, princess) {
 //  Ziel
 // ---------------------------------------------------------------------
 function touchGoal(p, z) {
+  if (p.y < z.top + 6) { p.y = z.top + 6; }
   const frac = clamp((z.y - (p.y - p.h)) / (z.y - z.top), 0, 1);
   p.state = 'goal'; p.goalPhase = 'slide'; p.goalT = 0; p.vx = 0; p.vy = 0; p.goal = z;
   dropCarry(p);
@@ -1377,13 +1378,83 @@ function goalAnim(p, dt) {
 }
 
 // ---------------------------------------------------------------------
+//  Geheimfahne und Rohre
+// ---------------------------------------------------------------------
+// Die Geheimfahne öffnet den Geheimweg sofort; das Level läuft danach normal weiter bis zum Ziel.
+function foundSecret(p, f) {
+  f.got = true; f.rise = 0;
+  if (G.node && Prog.save) {
+    const r = Prog.rec(G.node.id);
+    if (!r.s) { r.s = 1; G.secretNew = true; applyUnlocks(Prog.save); UI.autosave(); }
+  }
+  addScore(p, 3000, f.x, f.y - 190); SFX.secret(); sparkle(f.x, f.y - 150, 26, '#ff9a9a');
+  for (let i = 0; i < 50; i++) part({ x: f.x, y: f.y - 150, vx: (Math.random() - .5) * 600, vy: -Math.random() * 500, grav: 900, life: 1.8, size: 7, color: ['#ff5a5a', '#ffd23a', '#ffffff'][i % 3], kind: 'confetti', vr: 10 });
+  popup(f.x, f.y - 215, 'Geheimweg geöffnet!', '#ff9a9a');
+  G.secretMsg = 3.5;
+}
+function updatePipes(dt) {
+  const a = G.pipeAnim;
+  if (G.secretMsg > 0) G.secretMsg -= dt;
+  if (!a) {
+    G.pipeFade = Math.max(0, G.pipeFade - dt * 4);
+    for (const p of G.players) {
+      let on = null;
+      if (p.state === 'play' && p.onGround && !p.carried && p.inp && p.inp.d) for (const q of G.pipes) if (q.to && !q.hang && Math.abs(p.x - q.x) < 24 && Math.abs(p.y - q.y) < 3) on = q;
+      p.pipeT = on ? (p.pipeT || 0) + dt : 0;
+      if (on && p.pipeT > .14) { enterPipe(p, on); return; }
+    }
+    return;
+  }
+  a.t += dt;
+  const inPipe = G.players.filter(p => p.state === 'pipe');
+  if (a.phase === 'in') {
+    a.lead.y += 90 * dt; a.lead.x += (a.q.x - a.lead.x) * Math.min(1, dt * 14);
+    G.pipeFade = clamp((a.t - .35) / .3, 0, 1);
+    if (a.t > .7) {
+      const to = a.q.to;
+      G.zone = to.z >= 0 ? G.L.zones[to.z] : null;
+      inPipe.forEach((p, i) => { p.x = to.x; p.y = to.dir === 'down' ? to.y : to.y + p.h; p.pipeHide = true; p.pipeClip = { y: to.y, above: to.dir === 'up' }; p.pipeDelay = .25 + i * .3; p.face = 1; });
+      for (const p of G.players) if (p.state === 'bubble') { p.bx = to.x; p.by = to.y - 60; }
+      G.cam.cx = to.x; G.cam.cy = to.y; G.cam.look = 0;
+      updateCamera(1, true);
+      a.phase = 'out'; a.t = 0; a.to = to;
+    }
+  } else {
+    G.pipeFade = clamp(1 - a.t / .3, 0, 1);
+    const to = a.to;
+    let busy = false;
+    for (const p of inPipe) {
+      const lt = (a.t - p.pipeDelay) / .5;
+      if (lt < 0) { busy = true; continue; }
+      if (p.pipeHide) { p.pipeHide = false; SFX.pipe(); }
+      const k = Math.min(1, lt);
+      p.y = to.dir === 'down' ? to.y + k * (p.h + 2) : to.y + (1 - k) * p.h;
+      if (lt >= 1) { p.state = 'play'; p.vx = 0; p.vy = 0; p.onGround = false; p.pipeClip = null; p.pipeT = 0; p.inv = Math.max(p.inv, .8); }
+      else busy = true;
+    }
+    if (!busy) G.pipeAnim = null;
+  }
+}
+function enterPipe(p, q) {
+  for (const o of G.players) dropCarry(o);
+  for (const o of G.players) if (o.state === 'play') {
+    o.carried = null; o.state = 'pipe'; o.vx = o.vy = 0; o.pounding = false; o.floating = false; o.slide = false; o.spinJ = false;
+    o.dashT = o.rammT = o.tongueT = 0; o.pipeHide = o !== p; o.pipeClip = { y: q.y, above: true };
+  }
+  G.pipeAnim = { q, t: 0, phase: 'in', lead: p };
+  SFX.pipe();
+}
+// Thema an einer Stelle (im Untergrund sieht alles nach Höhle aus)
+function themeAt(x) { const L = G.L; return L.under && x >= L.mainW * T ? L.under.theme : L.theme; }
+
+// ---------------------------------------------------------------------
 //  Level starten
 // ---------------------------------------------------------------------
 function loadLevel(L) {
   G.L = L;
   chunkCache.clear(); G.bg = null;
   G.enemies = []; G.items = []; G.fbs = []; G.parts = []; G.pops = []; G.plats = []; G.springs = []; G.checks = []; G.chains = [];
-  G.starEnts = []; G.toadEnts = []; G.bumps.clear(); G.coinPops = []; G.goals = []; G.boss = null; G.cage = null;
+  G.starEnts = []; G.toadEnts = []; G.flags = []; G.pipes = L.pipes || []; G.zone = null; G.pipeAnim = null; G.pipeFade = 0; G.secretMsg = 0; G.bumps.clear(); G.coinPops = []; G.goals = []; G.boss = null; G.cage = null;
   G.goalTimer = -1; G.wipeT = -1; G.arenaLocked = false; G.goalHow = 'normal'; G.timeBonusDone = false; G.flash = 0; G.hitstop = 0;
   G.decoDyn = L.deko.filter(d => d.dyn);
   for (const d of L.ents) {
@@ -1394,6 +1465,7 @@ function loadLevel(L) {
     else if (d.type === 'toad') G.toadEnts.push({ x: d.x, y: d.y, got: !!(Prog.save && Prog.save.toad && G.node && Prog.save.toad[G.node.id]) });
     else if (d.type === 'sternmuenze') G.starEnts.push({ x: d.x, y: d.y, idx: d.idx, got: G.starGot[d.idx], prev: G.starPrev && G.starPrev[d.idx] });
     else if (d.type === 'ziel') G.goals.push({ x: d.x, y: d.y, top: d.top, taken: false, secret: !!d.secret });
+    else if (d.type === 'geheimfahne') G.flags.push({ x: d.x, y: d.y, rise: 1, got: !!(Prog.save && G.node && Prog.save.done[G.node.id] && Prog.save.done[G.node.id].s) });
     else if (d.type === 'boss') G.boss = makeBoss(d);
     else if (d.type === 'feuerkette') G.chains.push(Object.assign({}, d));
   }
@@ -1410,7 +1482,7 @@ function startLevel() {
   const themeKey = kind === 'turm' ? 'turm' : kind === 'final' ? 'schatten' : kind === 'stern' ? 'sterne' : kind === 'burg' ? 'burg' : nd.theme;
   const diff = Prog.levelDiff(nd);
   G.levelDiffNow = diff;
-  loadLevel(generateLevel({ themeKey, seed: Prog.levelSeed(nd.id), diff, kind, secret: !!nd.secret, tunnel: !!nd.tunnel, bossLook: nd.world }));
+  loadLevel(generateLevel({ themeKey, seed: Prog.levelSeed(nd.id), diff, kind, secret: !!nd.secret, tunnel: !!nd.tunnel, bossLook: nd.world, num: nd.num || 1 }));
   const L = G.L;
   const sp = G.checkReached && L.checkpoint ? L.checkpoint : L.spawn;
   G.players.forEach((p, i) => {
@@ -1444,7 +1516,7 @@ function restartFromCheckpoint() {
 function updateCamera(dt, snap) {
   const cam = G.cam, L = G.L;
   const baseW = SW / baseScale, baseH = VIEW_TILES_H * T;
-  let act = G.players.filter(p => p.state === 'play' || p.state === 'goal');
+  let act = G.players.filter(p => p.state === 'play' || p.state === 'goal' || p.state === 'pipe');
   if (!act.length) act = G.players.filter(p => p.state === 'dead');
   let tx = cam.cx, ty = cam.cy, zoomT = 1;
   if (G.mode === 'attract') {
@@ -1466,9 +1538,10 @@ function updateCamera(dt, snap) {
   const k = snap ? 1 : Math.min(1, dt * 7), ky = snap ? 1 : Math.min(1, dt * 3.5);
   cam.cx += (tx - cam.cx) * k;
   cam.cy += (ty - cam.cy) * ky;
-  const LW = L.w * T, LH = L.h * T;
-  cam.cx = clamp(cam.cx, cam.vw / 2, Math.max(cam.vw / 2, LW - cam.vw / 2));
-  const minTop = L.theme.ceiling ? 0 : -4 * T;
+  // Kamera bleibt im Hauptlevel bzw. im Untergrund-Raum
+  const LH = L.h * T, zx0 = G.zone ? G.zone.x0 : 0, zx1 = G.zone ? G.zone.x1 : (L.mainW || L.w) * T;
+  cam.cx = zx1 - zx0 <= cam.vw ? (G.zone ? (zx0 + zx1) / 2 : cam.vw / 2) : clamp(cam.cx, zx0 + cam.vw / 2, zx1 - cam.vw / 2);
+  const minTop = L.theme.ceiling || G.zone ? 0 : -4 * T;
   let top = cam.cy - cam.vh / 2;
   top = clamp(top, minTop, LH - cam.vh);
   if (cam.vh > LH - minTop) top = LH - cam.vh;
@@ -1551,7 +1624,13 @@ function update(dt) {
     addScore(p, 1000, k.x, k.y - 40); SFX.secret(); sparkle(k.x, k.y, 22, '#ffd23a'); popup(k.x, k.y - 70, 'Tunnelschlüssel! Ein Toad-Haus erscheint', '#ffd23a');
     break;
   }
-  for (const z of G.goals) for (const p of G.players) if (p.state === 'play' && !p.carried && Math.abs(p.x - z.x) < p.w / 2 + 6 && p.y - p.h < z.y && p.y > z.top) touchGoal(p, z);
+  // Ziel: zählt auf jeder Höhe – wer über den Mast springt, wird oben an der Spitze erfasst
+  for (const z of G.goals) for (const p of G.players) if (p.state === 'play' && !p.carried && !G.zone && p.y - p.h < z.y && (Math.abs(p.x - z.x) < p.w / 2 + 6 || !z.secret && p.x > z.x)) touchGoal(p, z);
+  for (const f of G.flags) {
+    if (f.got) { if (f.rise < 1) f.rise = Math.min(1, f.rise + dt * 1.6); continue; }
+    for (const p of G.players) if (p.state === 'play' && Math.abs(p.x - f.x) < 30 && p.y > f.y - 170 && p.y - p.h < f.y) { foundSecret(p, f); break; }
+  }
+  updatePipes(dt);
   if (L.arena && !G.arenaLocked) {
     const inside = G.players.find(p => p.state === 'play' && p.x > L.arena.x0 + 3 * T);
     if (inside) {
@@ -1707,6 +1786,11 @@ function render(dt) {
       ctx.fillStyle = fg; ctx.fillRect(0, 0, cv.width, cv.height);
     }
   }
+  if (G.zone) {   // Untergrund: dunkler Hintergrund statt Himmel
+    const ug = ctx.createLinearGradient(0, 0, 0, cv.height);
+    ug.addColorStop(0, '#07060f'); ug.addColorStop(1, '#1b1430');
+    ctx.fillStyle = ug; ctx.fillRect(0, 0, cv.width, cv.height);
+  }
   const s = baseScale * cam.zoom * DPR;
   const shx = cam.shake ? (Math.random() - .5) * cam.shake * DPR : 0, shy = cam.shake ? (Math.random() - .5) * cam.shake * DPR : 0;
   ctx.setTransform(s, 0, 0, s, Math.round(-cam.left * s + shx), Math.round(-cam.top * s + shy));
@@ -1728,17 +1812,19 @@ function render(dt) {
     if (c === TILE.B || c === TILE.Q || c === TILE.U || c === TILE.R || c === TILE.K) {
       const bt = G.bumps.get(k);
       const off = bt !== undefined ? -Math.sin(bt / .25 * Math.PI) * 12 : 0;
-      drawBlock(ctx, c, tx * T, ty * T + off, t, th);
+      drawBlock(ctx, c, tx * T, ty * T + off, t, G.zone ? themeAt(tx * T) : th);
     } else if (c === TILE.C) drawCoin(ctx, tx * T + T / 2, ty * T + T / 2, t);
   }
   if (th.lava) drawLava(ctx, L, tx0, tx1, t);
   for (const pl of G.plats) {
     if (pl.mode === 'ice') { if (!pl.carried) drawEisblock(ctx, { x: pl.bx, y: pl.by, w: pl.w, h: pl.h, kind: pl.kind, dir: pl.dir, timer: pl.timer }, t); continue; }
-    if (pl.state !== 'gone' && pl.x + pl.w > cam.left && pl.x < cam.left + cam.vw) drawPlatform(ctx, pl, th);
+    if (pl.state !== 'gone' && pl.x + pl.w > cam.left && pl.x < cam.left + cam.vw) drawPlatform(ctx, pl, G.zone ? themeAt(pl.x) : th);
   }
   for (const sp of G.springs) drawSpring(ctx, sp, t);
   for (const c of G.checks) drawCheckpoint(ctx, c, t);
   for (const z of G.goals) drawGoal(ctx, z, t);
+  for (const f of G.flags) drawSecretFlag(ctx, f, t);
+  if (G.mode !== 'attract') for (const q of G.pipes) if (q.to && !q.hang && q.x > cam.left - T && q.x < cam.left + cam.vw + T && (!q.hidden || G.players.some(p => p.state === 'play' && p.onGround && Math.abs(p.x - q.x) < 40 && Math.abs(p.y - q.y) < 3))) drawPipeHint(ctx, q, t);
   for (const st of G.starEnts) if (!st.got) drawStarCoin(ctx, st.x, st.y, t, !!st.prev);
   for (const k of G.toadEnts) if (!k.got) drawToadKey(ctx, k.x, k.y, t);
   for (const it of G.items) if (!it.emerge) {
@@ -1761,7 +1847,12 @@ function render(dt) {
     else if (b.type === 'speier') drawSpeier(ctx, b, t);
     else drawKoloss(ctx, b, t);
   }
-  if (G.mode !== 'attract') for (const p of G.players) drawPlayer(ctx, p, t);
+  if (G.mode !== 'attract') for (const p of G.players) {
+    if (p.state !== 'pipe') { drawPlayer(ctx, p, t); continue; }
+    if (p.pipeHide || !p.pipeClip) continue;
+    ctx.save(); ctx.beginPath(); ctx.rect(p.x - 120, p.pipeClip.above ? p.pipeClip.y - 400 : p.pipeClip.y, 240, 400); ctx.clip();
+    drawPlayer(ctx, p, t); ctx.restore();
+  }
   for (const p of G.players) if (p.carry && p.state === 'play') {
     const c = p.carry;
     if (c.type === 'shell') drawEnemy(ctx, c.ref, t);
@@ -1790,6 +1881,7 @@ function render(dt) {
     lv.addColorStop(0, 'rgba(255,90,20,0)'); lv.addColorStop(1, 'rgba(255,90,20,.18)');
     ctx.fillStyle = lv; ctx.fillRect(0, 0, SW, SH);
   }
+  if (G.pipeFade > 0) { ctx.fillStyle = `rgba(0,0,0,${G.pipeFade})`; ctx.fillRect(0, 0, SW, SH); }
   if (G.flash > 0) { ctx.fillStyle = `rgba(220,230,255,${G.flash * (G.flash > .25 ? 1.4 : .8)})`; ctx.fillRect(0, 0, SW, SH); }
   if (G.mode !== 'attract' && G.mode !== 'title' && !G.noHud) drawHUD();
 }
@@ -2080,7 +2172,7 @@ function attractUpdate(dt) {
   updateChains(dt);
   updateParticles(dt);
   updateCamera(dt);
-  if (G.cam.cx >= G.L.w * T - G.cam.vw / 2 - 2) startAttract();
+  if (G.cam.cx >= (G.L.mainW || G.L.w) * T - G.cam.vw / 2 - 2) startAttract();
 }
 function startAttract() {
   const keys = ['wiese', 'nebel', 'wueste', 'schnee', 'abend', 'strand', 'schatten'];
