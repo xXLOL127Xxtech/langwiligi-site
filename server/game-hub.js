@@ -1767,7 +1767,8 @@ function onMessage(ws, raw) {
       const game = cleanGame(m.game);
       if (!accountOf(m)) return send(ws, { t: 'error', msg: 'invalid' });
       let room = null;
-      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && !sitztSchon(r, ws, m) && (!room || freeSeats(r) < freeSeats(room))) room = r;
+      for (const r of [...rooms.values()]) if (r.pub && r.game === game) platzFreigeben(r, ws, m, true);
+      for (const r of rooms.values()) if (r.pub && r.game === game && freeSeats(r) > 0 && (!room || freeSeats(r) < freeSeats(room))) room = r;
       if (!room) {
         if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', msg: 'busy' });
         room = { ip: ws.ip, code: newCode(), game, max: Math.min(MAX_SEATS, Math.max(2, m.max | 0 || 2)), players: [], roundOpen: false, created: Date.now(), pub: true };
@@ -1800,13 +1801,15 @@ function onMessage(ws, raw) {
         return send(ws, { t: 'error', msg: 'not-found' });
       }
       if (room.game !== cleanGame(m.game)) return send(ws, { t: 'error', msg: 'wrong-game' });
+      // Wer rausgegangen ist und wieder beitritt, übernimmt seinen alten Platz (die alte Verbindung hängt oft noch)
+      if (ws.room !== room) platzFreigeben(room, ws, m);
       let idx = -1;
       for (let i = 0; i < room.max; i++) if (!room.players[i]) { idx = i; break; }
       if (idx < 0) return send(ws, { t: 'error', msg: 'full' });
-      if (sitztSchon(room, ws, m)) return send(ws, { t: 'error', msg: 'already-in' });
       const nm = roomName(ws, m);
-      if (!nm) return send(ws, { t: 'error', msg: 'invalid' });
+      if (!nm) { if (!room.players.some(Boolean)) rooms.delete(room.code); return send(ws, { t: 'error', msg: 'invalid' }); }
       leave(ws);
+      if (!rooms.has(room.code)) rooms.set(room.code, room);
       room.players[idx] = { ws, name: nm, code: accountOf(m) }; ws.room = room;
       send(ws, { t: 'joined', code: room.code, you: idx, players: names(room), max: room.max });
       others(room, ws).forEach(p => send(p.ws, { t: 'peer-join', idx, name: room.players[idx].name, players: names(room) }));
@@ -1986,7 +1989,13 @@ function ensureAccount(ip, secret, wanted) {
 // Name für einen Raum: der Name des Kontos (so kann sich niemand als jemand anderes ausgeben). Ohne Schlüssel (alte Seiten) der angegebene Name.
 // Dasselbe Gerät (gleicher Schlüssel = gleiches Konto) darf nur einmal pro Raum sitzen, auch nicht mit zwei Tabs
 function accountOf(m) { const s = String(m.secret || ''); return /^[A-Za-z0-9]{16,64}$/.test(s) ? friendCode(s) : null; }
-function sitztSchon(room, ws, m) { const c = accountOf(m); return !!c && room.players.some(p => p && p.ws !== ws && p.code === c); }
+// Alte Verbindung desselben Kontos aus dem Raum nehmen, damit man nach dem Rausgehen wieder beitreten kann.
+// Der Raum bleibt dabei bestehen (ausser bei loeschen), auch wenn er kurz leer ist.
+function platzFreigeben(room, ws, m, loeschen) {
+  const c = accountOf(m); if (!c) return;
+  room.players.filter(p => p && p.ws !== ws && p.code === c).forEach(p => leave(p.ws));
+  if (!loeschen && !rooms.has(room.code)) rooms.set(room.code, room);
+}
 function roomName(ws, m) {
   const code = ensureAccount(ws.ip, m.secret, m.name);
   if (!code) return null;
