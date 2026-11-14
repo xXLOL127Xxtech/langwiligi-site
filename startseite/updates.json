@@ -41,10 +41,10 @@
     "«Neuste Updates» unten auf der Startseite ist jetzt kurz: nur die drei neusten Einträge, alles Weitere im Fenster «Updates»"
   ] },
   { "d": "2026-10-29", "t": "Laptop-Steuerung und Tab-Wechsel", "tag": "Update", "p": [
-    "Katapult-Krieg: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
+    "Catapult: Abreissen geht jetzt auch ohne Rechtsklick (Taste E, Shift+Klick oder Knopf «Abreissen»)",
     "Weltenbrand und Kronenwacht: Zoomen auch mit den Tasten + und –",
-    "Eisenherbst und Schlangen-Arena: Allein im Hintergrund-Tab steht das Spiel still, Eisenherbst läuft flüssiger (Figuren-Umrisse ohne Pixel-Auslesen)",
-    "Bubble-Duell: Allein im Hintergrund-Tab läuft keine Zeit mehr weiter",
+    "Eisenherbst und Snake: Allein im Hintergrund-Tab steht das Spiel still, Eisenherbst läuft flüssiger (Figuren-Umrisse ohne Pixel-Auslesen)",
+    "Bubble-Race: Allein im Hintergrund-Tab läuft keine Zeit mehr weiter",
     "Eisenherbst und Federsturm: Ton startet zuverlässig nach der ersten Eingabe"
   ] },
   { "d": "2026-10-29", "t": "Catch a Mob: Spieler in der Nähe, Freundschaftskämpfe, Bot-Markierung", "tag": "Update", "p": [
@@ -62,9 +62,9 @@
   { "d": "2026-10-29", "t": "Neue Bot-Gegner und bessere Bot-Stufen", "tag": "Update", "p": [
     "Festungssturm, Billard und Panzer-Duell können jetzt auch allein gegen den Bot gespielt werden (Leicht, Mittel, Schwer)",
     "Festungssturm: Spielfeld und Knöpfe sind auf dem Laptop grösser, alle Truppen und Upgrades lassen sich mit der Tastatur auslösen (Bahn 1 bis 3, Buchstaben auf den Knöpfen), eine Runde dauert jetzt 1 bis 2 Minuten statt unter einer halben",
-    "Reversi und Ultimate Tic Tac Toe: Die Stufen unterscheiden sich jetzt klar, «Schwer» schlägt «Mittel» und «Leicht»",
+    "Reversi und Tic-Tac-Turbo: Die Stufen unterscheiden sich jetzt klar, «Schwer» schlägt «Mittel» und «Leicht»",
     "Go: neue Stärke-Wahl (Leicht, Mittel, Schwer), der Bot passt jetzt sinnvoll und füllt nicht mehr die eigenen Augen",
-    "Dame: Remis, wenn lange nur mit Damen gezogen und nicht geschlagen wird. Mauerbauer «Schwer» denkt nicht mehr mehrere Sekunden. Dreh-Duell «Schwer» sieht Gewinnzüge des Gegners voraus"
+    "Dame: Remis, wenn lange nur mit Damen gezogen und nicht geschlagen wird. Mauerbauer «Schwer» denkt nicht mehr mehrere Sekunden. Dreh & Gewinn «Schwer» sieht Gewinnzüge des Gegners voraus"
   ] },
   { "d": "2026-10-29", "t": "Dead Maze auf Deutsch", "tag": "Update", "p": [
     "Alle Texte, Türme, Zombies, Menüs und Hilfen sind jetzt auf Deutsch",
